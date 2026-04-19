@@ -1,7 +1,7 @@
 import { prisma } from '../../shared/services/prisma';
 import { NotFoundError } from '../../shared/middleware/errorHandler';
 
-// ─── Louisiana window series pricing (realistic Window World pricing) ──
+// â”€â”€â”€ Louisiana window series pricing (realistic Window World pricing) â”€â”€
 export const WINDOW_SERIES = {
   'SERIES_2000': { name: 'Series 2000', description: 'Standard vinyl single-hung, energy-efficient, builder grade', basePrice: 189, pricePerSqFt: 0, minPrice: 189 },
   'SERIES_3000': { name: 'Series 3000', description: 'Mid-range vinyl double-hung with Low-E glass', basePrice: 239, pricePerSqFt: 0.22, minPrice: 239 },
@@ -67,7 +67,7 @@ export class ProductsService {
 
   /**
    * Calculate price for a single window opening
-   * Width × Height are in inches (rough opening)
+   * Width Ã— Height are in inches (rough opening)
    */
   calculateWindowPrice(params: {
     seriesId: string;

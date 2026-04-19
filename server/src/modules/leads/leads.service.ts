@@ -191,7 +191,7 @@ export class LeadService {
 
     // Trigger background AI lead scoring
     // In production this would go through BullMQ
-    logger.info(`Lead created: ${lead.id} — queuing AI score`);
+    logger.info(`Lead created: ${lead.id} â€” queuing AI score`);
 
     return lead;
   }

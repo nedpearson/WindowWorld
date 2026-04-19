@@ -53,7 +53,7 @@ const CORS_ORIGINS = (process.env.CORS_ORIGIN || 'http://localhost:5173')
   .map((o) => o.trim());
 
 
-// ─── Middleware ─────────────────────────────────────────────
+// â”€â”€â”€ Middleware â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 app.use(helmet({
   crossOriginResourcePolicy: { policy: 'cross-origin' },
 }));
@@ -71,7 +71,7 @@ app.use(morgan('combined', { stream: { write: (msg) => logger.http(msg.trim()) }
 app.use(requestId);
 app.use(rateLimiter);
 
-// ─── Health check ───────────────────────────────────────────
+// â”€â”€â”€ Health check â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 app.get('/health', (req, res) => {
   res.json({
     status: 'ok',
@@ -81,14 +81,14 @@ app.get('/health', (req, res) => {
   });
 });
 
-// ─── Static file serving (uploads) ──────────────────────────
+// â”€â”€â”€ Static file serving (uploads) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const uploadDir = process.env.UPLOAD_DIR || path.join(process.cwd(), 'uploads');
 if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
 }
 app.use('/uploads', express.static(uploadDir));
 
-// ─── API Routes ─────────────────────────────────────────────
+// â”€â”€â”€ API Routes â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const apiV1 = '/api/v1';
 
 app.use(`${apiV1}/auth`, authRouter);
@@ -115,10 +115,10 @@ app.use(`${apiV1}/notifications`, notificationsRouter);
 app.use(`${apiV1}/campaigns`, campaignsRouter);
 app.use(`${apiV1}/admin`, adminRouter);
 
-// ─── Error handler (must be last) ───────────────────────────
+// â”€â”€â”€ Error handler (must be last) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 app.use(errorHandler);
 
-// ─── Start ──────────────────────────────────────────────────
+// â”€â”€â”€ Start â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 async function start() {
   try {
     // Initialize background job queues
@@ -126,7 +126,7 @@ async function start() {
       await initializeJobQueues();
       logger.info('Background job queues initialized');
     } else {
-      logger.warn('REDIS_URL not set — background jobs disabled');
+      logger.warn('REDIS_URL not set â€” background jobs disabled');
     }
 
     httpServer.listen(PORT, () => {

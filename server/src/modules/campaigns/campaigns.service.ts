@@ -2,7 +2,7 @@ import { prisma } from '../../shared/services/prisma';
 import { emailQueue } from '../../jobs';
 import { logger } from '../../shared/utils/logger';
 
-// ── Campaign Templates ────────────────────────────────────────
+// â”€â”€ Campaign Templates â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export const CAMPAIGN_TEMPLATES = {
   'new-lead-welcome': {
@@ -10,10 +10,10 @@ export const CAMPAIGN_TEMPLATES = {
     description: 'Automated welcome + appointment booking for new leads',
     triggerStatus: 'NEW',
     steps: [
-      { step: 1, delayHours: 0,   type: 'EMAIL', subject: 'Welcome to WindowWorld Louisiana — Your Free Estimate', templateKey: 'welcome_email' },
+      { step: 1, delayHours: 0,   type: 'EMAIL', subject: 'Welcome to WindowWorld Louisiana â€” Your Free Estimate', templateKey: 'welcome_email' },
       { step: 2, delayHours: 2,   type: 'SMS',   templateKey: 'welcome_sms' },
       { step: 3, delayHours: 24,  type: 'EMAIL', subject: 'Ready to schedule your free window assessment?', templateKey: 'appt_nudge_1' },
-      { step: 4, delayHours: 72,  type: 'EMAIL', subject: 'Special offer for {firstName} — limited time', templateKey: 'offer_email' },
+      { step: 4, delayHours: 72,  type: 'EMAIL', subject: 'Special offer for {firstName} â€” limited time', templateKey: 'offer_email' },
       { step: 5, delayHours: 144, type: 'SMS',   templateKey: 'final_nudge_sms' },
     ],
   },
@@ -25,7 +25,7 @@ export const CAMPAIGN_TEMPLATES = {
       { step: 1, delayHours: 24,  type: 'EMAIL', subject: 'Did you have a chance to review your WindowWorld proposal?', templateKey: 'proposal_followup_1' },
       { step: 2, delayHours: 72,  type: 'SMS',   templateKey: 'proposal_sms_2' },
       { step: 3, delayHours: 120, type: 'EMAIL', subject: 'Questions about your window replacement project?', templateKey: 'proposal_followup_3' },
-      { step: 4, delayHours: 168, type: 'EMAIL', subject: 'Final reminder — Your WindowWorld proposal expires soon', templateKey: 'proposal_expiry' },
+      { step: 4, delayHours: 168, type: 'EMAIL', subject: 'Final reminder â€” Your WindowWorld proposal expires soon', templateKey: 'proposal_expiry' },
     ],
   },
   'storm-lead-urgency': {
@@ -33,7 +33,7 @@ export const CAMPAIGN_TEMPLATES = {
     description: 'High-urgency follow-up for storm-damage leads',
     triggerStatus: 'NEW',
     steps: [
-      { step: 1, delayHours: 0,  type: 'EMAIL', subject: '⚡ Storm damage assessment — we can help ASAP', templateKey: 'storm_welcome' },
+      { step: 1, delayHours: 0,  type: 'EMAIL', subject: 'âš¡ Storm damage assessment â€” we can help ASAP', templateKey: 'storm_welcome' },
       { step: 2, delayHours: 1,  type: 'SMS',   templateKey: 'storm_sms_1' },
       { step: 3, delayHours: 24, type: 'EMAIL', subject: 'Insurance claim windows? WindowWorld handles it', templateKey: 'storm_insurance' },
       { step: 4, delayHours: 48, type: 'SMS',   templateKey: 'storm_sms_2' },
@@ -45,7 +45,7 @@ export const CAMPAIGN_TEMPLATES = {
     triggerStatus: 'INSTALLED',
     steps: [
       { step: 1, delayHours: 24,  type: 'EMAIL', subject: 'How are you enjoying your new windows?', templateKey: 'post_install_1' },
-      { step: 2, delayHours: 72,  type: 'EMAIL', subject: 'Leave us a Google Review — takes 30 seconds!', templateKey: 'review_request' },
+      { step: 2, delayHours: 72,  type: 'EMAIL', subject: 'Leave us a Google Review â€” takes 30 seconds!', templateKey: 'review_request' },
       { step: 3, delayHours: 336, type: 'EMAIL', subject: 'Know someone who needs new windows? Earn $100!', templateKey: 'referral_ask' },
     ],
   },
@@ -55,18 +55,18 @@ export const CAMPAIGN_TEMPLATES = {
     triggerStatus: null, // Triggered manually
     steps: [
       { step: 1, delayHours: 0,   type: 'SMS',   templateKey: 'no_answer_sms_1' },
-      { step: 2, delayHours: 24,  type: 'EMAIL', subject: 'We tried reaching you about your window estimate 📋', templateKey: 'no_answer_email_1' },
+      { step: 2, delayHours: 24,  type: 'EMAIL', subject: 'We tried reaching you about your window estimate ðŸ“‹', templateKey: 'no_answer_email_1' },
       { step: 3, delayHours: 72,  type: 'SMS',   templateKey: 'no_answer_sms_2' },
-      { step: 4, delayHours: 120, type: 'EMAIL', subject: 'Last attempt — your free WindowWorld estimate is ready', templateKey: 'no_answer_final' },
+      { step: 4, delayHours: 120, type: 'EMAIL', subject: 'Last attempt â€” your free WindowWorld estimate is ready', templateKey: 'no_answer_final' },
     ],
   },
 };
 
-// ── Email Templates ───────────────────────────────────────────
+// â”€â”€ Email Templates â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export const EMAIL_TEMPLATES: Record<string, (data: any) => { subject?: string; text: string; html: string }> = {
   welcome_email: (d) => ({
-    text: `Hi ${d.firstName}!\n\nThank you for reaching out to WindowWorld Louisiana. We're the #1 window replacement company in Louisiana and we'd love to help you upgrade your home.\n\nYour free in-home estimate includes:\n✓ Full window inspection by a certified consultant\n✓ Detailed written proposal with no hidden fees\n✓ Energy efficiency analysis for your home\n✓ Financing options starting at just $0 down\n\nReply to this email or call us at (225) 555-0100 to schedule your free estimate.\n\nWarm regards,\n${d.repName}\nWindowWorld Louisiana`,
+    text: `Hi ${d.firstName}!\n\nThank you for reaching out to WindowWorld Louisiana. We're the #1 window replacement company in Louisiana and we'd love to help you upgrade your home.\n\nYour free in-home estimate includes:\nâœ“ Full window inspection by a certified consultant\nâœ“ Detailed written proposal with no hidden fees\nâœ“ Energy efficiency analysis for your home\nâœ“ Financing options starting at just $0 down\n\nReply to this email or call us at (225) 555-0100 to schedule your free estimate.\n\nWarm regards,\n${d.repName}\nWindowWorld Louisiana`,
     html: buildEmailHtml(d, `
       <h2 style="color: #1e40af">Welcome to WindowWorld Louisiana, ${d.firstName}!</h2>
       <p>Thank you for reaching out. We're Louisiana's #1 replacement window company and we'd love to help you upgrade your home.</p>
@@ -78,7 +78,7 @@ export const EMAIL_TEMPLATES: Record<string, (data: any) => { subject?: string; 
         <li>Financing options starting at $0 down</li>
       </ul>
       <div style="margin-top: 28px; text-align: center">
-        <a href="tel:2255550100" style="background: #1e40af; color: white; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: 700">📞 Call to Schedule</a>
+        <a href="tel:2255550100" style="background: #1e40af; color: white; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: 700">ðŸ“ž Call to Schedule</a>
       </div>
     `),
   }),
@@ -87,7 +87,7 @@ export const EMAIL_TEMPLATES: Record<string, (data: any) => { subject?: string; 
     text: `Hi ${d.firstName}, just following up on your window estimate request. Are you available for a free in-home assessment this week?\n\nWe have morning and afternoon slots available. Reply or call (225) 555-0100.\n\n${d.repName} | WindowWorld Louisiana`,
     html: buildEmailHtml(d, `
       <h2 style="color: #1e40af">Ready to schedule, ${d.firstName}?</h2>
-      <p>We have free estimate appointments available this week. A certified WindowWorld consultant will come to your home — no obligation.</p>
+      <p>We have free estimate appointments available this week. A certified WindowWorld consultant will come to your home â€” no obligation.</p>
       <p style="margin-top: 16px">The whole assessment takes about 45-60 minutes and you'll leave with a detailed proposal in hand.</p>
       <div style="margin-top: 24px; text-align: center">
         <a href="tel:2255550100" style="background: #1e40af; color: white; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: 700">Schedule My Free Estimate</a>
@@ -103,8 +103,8 @@ export const EMAIL_TEMPLATES: Record<string, (data: any) => { subject?: string; 
       <p style="margin-top: 16px; color: #475569"><strong>A few things to keep in mind:</strong></p>
       <ul style="color: #475569; padding-left: 20px">
         <li>Lifetime warranty on all frames and glass</li>
-        <li>No-mess installation — we're typically done in one day</li>
-        <li>Financing options available — as low as $0 down</li>
+        <li>No-mess installation â€” we're typically done in one day</li>
+        <li>Financing options available â€” as low as $0 down</li>
       </ul>
     `),
   }),
@@ -124,7 +124,7 @@ export const EMAIL_TEMPLATES: Record<string, (data: any) => { subject?: string; 
         </ul>
       </div>
       <div style="text-align: center; margin-top: 20px">
-        <a href="tel:2255550100" style="background: #dc2626; color: white; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: 700">📞 Emergency Line: (225) 555-0100</a>
+        <a href="tel:2255550100" style="background: #dc2626; color: white; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: 700">ðŸ“ž Emergency Line: (225) 555-0100</a>
       </div>
     `),
   }),
@@ -136,7 +136,7 @@ export const EMAIL_TEMPLATES: Record<string, (data: any) => { subject?: string; 
       <p>We hope your WindowWorld experience has been outstanding. If you're happy with your new windows and our service, would you take 30 seconds to leave us a Google review?</p>
       <p style="color: #475569; margin-top: 12px">It helps us serve more Louisiana homeowners and means a lot to our local team.</p>
       <div style="text-align: center; margin-top: 24px">
-        <a href="https://g.page/windowworld-baton-rouge/review" style="background: #16a34a; color: white; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: 700">⭐ Leave a Google Review</a>
+        <a href="https://g.page/windowworld-baton-rouge/review" style="background: #16a34a; color: white; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: 700">â­ Leave a Google Review</a>
       </div>
     `),
   }),
@@ -162,30 +162,30 @@ function buildEmailHtml(data: any, body: string): string {
 <div style="max-width:600px;margin:0 auto;background:white;border-radius:12px;overflow:hidden;margin-top:20px;margin-bottom:20px;box-shadow:0 4px 24px rgba(0,0,0,0.08)">
   <div style="background:linear-gradient(135deg,#1e40af,#1e3a8a);padding:28px 36px;text-align:center">
     <div style="font-size:22px;font-weight:900;color:white;letter-spacing:-0.5px">Window<span style="color:#93c5fd">World</span> <span style="font-size:12px;opacity:0.7">Louisiana</span></div>
-    <div style="color:#bfdbfe;font-size:11px;margin-top:4px">Baton Rouge · Licensed &amp; Insured</div>
+    <div style="color:#bfdbfe;font-size:11px;margin-top:4px">Baton Rouge Â· Licensed &amp; Insured</div>
   </div>
   <div style="padding:36px">${body}</div>
   <div style="background:#1e293b;padding:20px 36px;text-align:center">
-    <div style="color:#94a3b8;font-size:11px">WindowWorld Louisiana · (225) 555-0100 · Baton Rouge, LA</div>
+    <div style="color:#94a3b8;font-size:11px">WindowWorld Louisiana Â· (225) 555-0100 Â· Baton Rouge, LA</div>
     <div style="color:#475569;font-size:10px;margin-top:4px">You received this because you requested a window estimate. <a href="#" style="color:#60a5fa">Unsubscribe</a></div>
   </div>
 </div>
 </body></html>`;
 }
 
-// ── SMS Templates ─────────────────────────────────────────────
+// â”€â”€ SMS Templates â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export const SMS_TEMPLATES: Record<string, (data: any) => string> = {
   welcome_sms: (d) => `Hi ${d.firstName}! This is ${d.repName} from WindowWorld Louisiana. Thanks for your inquiry! Reply YES to confirm interest or call (225) 555-0100 to schedule your FREE estimate. We'll make it easy!`,
-  final_nudge_sms: (d) => `${d.firstName}, last chance to grab your free WindowWorld estimate before your spot is released. Call/text back anytime. – ${d.repName}`,
-  proposal_sms_2: (d) => `Hi ${d.firstName}, just checking — did you get a chance to look at your WindowWorld proposal? Happy to answer questions. – ${d.repName} (225) 555-0100`,
-  storm_sms_1: (d) => `⚡ ${d.firstName} — WindowWorld here. Storm damage windows? We're fast + work with insurance. Call NOW: (225) 555-0100. – ${d.repName}`,
+  final_nudge_sms: (d) => `${d.firstName}, last chance to grab your free WindowWorld estimate before your spot is released. Call/text back anytime. â€“ ${d.repName}`,
+  proposal_sms_2: (d) => `Hi ${d.firstName}, just checking â€” did you get a chance to look at your WindowWorld proposal? Happy to answer questions. â€“ ${d.repName} (225) 555-0100`,
+  storm_sms_1: (d) => `âš¡ ${d.firstName} â€” WindowWorld here. Storm damage windows? We're fast + work with insurance. Call NOW: (225) 555-0100. â€“ ${d.repName}`,
   storm_sms_2: (d) => `${d.firstName}, still here to help with your storm windows. Limited spring install slots. Call ${d.repName}: (225) 555-0100`,
-  no_answer_sms_1: (d) => `Hi ${d.firstName}, this is ${d.repName} from WindowWorld LA. We tried calling about your window estimate — is there a better time to reach you?`,
-  no_answer_sms_2: (d) => `${d.firstName} — ${d.repName} @ WindowWorld here. Your free estimate is ready. Just need 5 min of your time! Reply or call (225) 555-0100.`,
+  no_answer_sms_1: (d) => `Hi ${d.firstName}, this is ${d.repName} from WindowWorld LA. We tried calling about your window estimate â€” is there a better time to reach you?`,
+  no_answer_sms_2: (d) => `${d.firstName} â€” ${d.repName} @ WindowWorld here. Your free estimate is ready. Just need 5 min of your time! Reply or call (225) 555-0100.`,
 };
 
-// ── Campaigns Service ─────────────────────────────────────────
+// â”€â”€ Campaigns Service â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export class CampaignsService {
   async list(organizationId: string) {
@@ -301,7 +301,7 @@ export class CampaignsService {
             leadId,
             type: 'campaign',
           });
-          logger.info(`Campaign email queued: ${emailTemplateKey} → ${toEmail}`);
+          logger.info(`Campaign email queued: ${emailTemplateKey} â†’ ${toEmail}`);
         }
       }
     }
@@ -320,7 +320,7 @@ export class CampaignsService {
       data: {
         leadId,
         type: stepConfig.type === 'EMAIL' ? 'EMAIL' : 'SMS',
-        title: `Campaign: ${template.name} — Step ${step}`,
+        title: `Campaign: ${template.name} â€” Step ${step}`,
         description: `${stepConfig.type} sent for campaign step ${step}`,
         userId: (enrollment as any)?.enrolledById,
         leadId,

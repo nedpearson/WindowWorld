@@ -4,7 +4,7 @@ import { logger } from '../../shared/utils/logger';
 
 /**
  * PDF generation service for proposals.
- * Uses HTMLTemplate → Puppeteer when available, falls back to text dump.
+ * Uses HTMLTemplate â†’ Puppeteer when available, falls back to text dump.
  */
 export class PdfGeneratorService {
   private readonly outputDir: string;
@@ -40,7 +40,7 @@ export class PdfGeneratorService {
         return outputPath;
       }
     } catch (err: any) {
-      logger.warn(`Puppeteer unavailable: ${err.message} — falling back to HTML file`);
+      logger.warn(`Puppeteer unavailable: ${err.message} â€” falling back to HTML file`);
     }
 
     // Fallback: save as HTML
@@ -60,14 +60,14 @@ export class PdfGeneratorService {
 
     const lineItemRows = lineItems.map((item: any) => `
       <tr>
-        <td>${item.roomLabel || '—'}</td>
-        <td>${item.windowType?.replace(/_/g, ' ') || '—'}</td>
-        <td>${item.productName || item.productSeriesId || '—'}</td>
-        <td style="font-family: monospace">${item.widthInches || '?'}" × ${item.heightInches || '?'}"</td>
+        <td>${item.roomLabel || 'â€”'}</td>
+        <td>${item.windowType?.replace(/_/g, ' ') || 'â€”'}</td>
+        <td>${item.productName || item.productSeriesId || 'â€”'}</td>
+        <td style="font-family: monospace">${item.widthInches || '?'}" Ã— ${item.heightInches || '?'}"</td>
         <td style="text-align: center">${item.quantity || 1}</td>
         <td style="text-align: right">$${(item.unitPrice || 0).toFixed(2)}</td>
         <td style="text-align: right; font-weight: 600">$${(item.lineTotal || 0).toFixed(2)}</td>
-        ${item.isAiEstimated ? '<td style="color: #d97706; font-size: 10px">⚠ AI Est.</td>' : '<td style="color: #10b981; font-size: 10px">✓ Verified</td>'}
+        ${item.isAiEstimated ? '<td style="color: #d97706; font-size: 10px">âš  AI Est.</td>' : '<td style="color: #10b981; font-size: 10px">âœ“ Verified</td>'}
       </tr>
     `).join('');
 
@@ -76,7 +76,7 @@ export class PdfGeneratorService {
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>WindowWorld Proposal — ${lead.firstName} ${lead.lastName}</title>
+<title>WindowWorld Proposal â€” ${lead.firstName} ${lead.lastName}</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: 'Helvetica Neue', Arial, sans-serif; color: #1e293b; font-size: 11pt; line-height: 1.5; }
@@ -105,7 +105,7 @@ export class PdfGeneratorService {
   .financing-box .label { font-size: 9pt; color: #4ade80; }
   .warranty-list { list-style: none; }
   .warranty-list li { display: flex; align-items: flex-start; gap: 8px; margin-bottom: 8px; font-size: 10pt; color: #475569; }
-  .warranty-list li::before { content: "✓"; color: #16a34a; font-weight: 700; flex-shrink: 0; margin-top: 1px; }
+  .warranty-list li::before { content: "âœ“"; color: #16a34a; font-weight: 700; flex-shrink: 0; margin-top: 1px; }
   .disclaimer { background: #fffbeb; border: 1px solid #fcd34d; border-radius: 6px; padding: 14px 18px; font-size: 9pt; color: #92400e; line-height: 1.6; }
   .footer { background: #1e293b; color: #94a3b8; padding: 24px 48px; font-size: 8.5pt; display: flex; justify-content: space-between; align-items: center; margin-top: 0; }
   .badge { display: inline-block; background: #dbeafe; color: #1e40af; font-size: 7.5pt; font-weight: 700; padding: 2px 8px; border-radius: 20px; }
@@ -183,7 +183,7 @@ export class PdfGeneratorService {
     
     ${lineItems.some((i: any) => i.isAiEstimated) ? `
     <div style="margin-top: 10px;" class="disclaimer">
-      <strong>⚠ AI-Estimated Dimensions Notice:</strong> One or more window measurements marked "AI Est." were generated from photo analysis. 
+      <strong>âš  AI-Estimated Dimensions Notice:</strong> One or more window measurements marked "AI Est." were generated from photo analysis. 
       These are estimates only. All AI-estimated measurements must be verified by a field technician before 
       placing any manufacturing order. WindowWorld will perform a final field verification before ordering.
     </div>` : ''}
@@ -208,7 +208,7 @@ export class PdfGeneratorService {
       <div>
         <table class="totals-table">
           <tr><td>Subtotal</td><td style="text-align: right">$${(quote.subtotal || quote.grandTotal || 0).toLocaleString()}</td></tr>
-          ${quote.discountAmount > 0 ? `<tr><td style="color: #16a34a">Discount (${quote.discountPct}%)</td><td style="text-align: right; color: #16a34a">−$${(quote.discountAmount || 0).toFixed(2)}</td></tr>` : ''}
+          ${quote.discountAmount > 0 ? `<tr><td style="color: #16a34a">Discount (${quote.discountPct}%)</td><td style="text-align: right; color: #16a34a">âˆ’$${(quote.discountAmount || 0).toFixed(2)}</td></tr>` : ''}
           ${quote.taxAmount > 0 ? `<tr><td>Tax</td><td style="text-align: right">$${(quote.taxAmount || 0).toFixed(2)}</td></tr>` : ''}
           <tr class="grand-total"><td><strong>Total Investment</strong></td><td style="text-align: right"><strong>$${(quote.grandTotal || 0).toLocaleString()}</strong></td></tr>
         </table>
@@ -240,7 +240,7 @@ export class PdfGeneratorService {
 <div class="footer">
   <div>
     <div style="font-weight: 700; color: #e2e8f0">WindowWorld of Louisiana</div>
-    <div>Baton Rouge, LA · Licensed &amp; Insured · Serving All Parishes</div>
+    <div>Baton Rouge, LA Â· Licensed &amp; Insured Â· Serving All Parishes</div>
   </div>
   <div style="text-align: right">
     <div>Questions? Contact: ${rep.phone || rep.email || 'your sales rep'}</div>
@@ -257,9 +257,9 @@ const defaultWarranty = [
   'Limited Lifetime Warranty on all window frames and glass',
   'Lifetime guarantee against seal failure and moisture intrusion',
   'Lifetime labor warranty on all window installation work',
-  'Transferable warranty — adds value to your home',
+  'Transferable warranty â€” adds value to your home',
   'Hurricane impact rating available (Series 6000)',
-  'Energy Star® certified products',
+  'Energy StarÂ® certified products',
 ];
 
 export const pdfGeneratorService = new PdfGeneratorService();

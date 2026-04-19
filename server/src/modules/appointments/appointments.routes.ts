@@ -18,7 +18,7 @@ router.get('/', auth.repOrAbove, async (req: Request, res: Response) => {
   res.json({ success: true, ...result });
 });
 
-// GET /api/v1/appointments/route — today's optimized route
+// GET /api/v1/appointments/route â€” today's optimized route
 router.get('/route', auth.repOrAbove, async (req: Request, res: Response) => {
   const user = (req as AuthenticatedRequest).user;
   const repId = req.query.repId as string || user.id;

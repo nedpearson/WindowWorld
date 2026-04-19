@@ -4,7 +4,7 @@ import { productsService } from './products.service';
 
 const router = Router();
 
-// GET /api/v1/products — full catalog
+// GET /api/v1/products â€” full catalog
 router.get('/', auth.repOrAbove, (req: Request, res: Response) => {
   const data = productsService.catalog();
   res.json({ success: true, data });
@@ -16,7 +16,7 @@ router.get('/:id', auth.repOrAbove, (req: Request, res: Response) => {
   res.json({ success: true, data });
 });
 
-// POST /api/v1/products/calculate — price a single window
+// POST /api/v1/products/calculate â€” price a single window
 router.post('/calculate', auth.repOrAbove, (req: Request, res: Response) => {
   const data = productsService.calculateWindowPrice(req.body);
   res.json({ success: true, data });

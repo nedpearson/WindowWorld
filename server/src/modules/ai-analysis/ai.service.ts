@@ -2,7 +2,7 @@ import OpenAI from 'openai';
 import { logger } from '../../shared/utils/logger';
 import { prisma } from '../../shared/services/prisma';
 
-// ─── Provider abstraction ────────────────────────────────────
+// â”€â”€â”€ Provider abstraction â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 interface AiProvider {
   generateText(prompt: string, systemPrompt?: string): Promise<string>;
   analyzeImage(imageBase64: string, prompt: string): Promise<string>;
@@ -63,12 +63,12 @@ function getProvider(): AiProvider {
     case 'openai':
       return new OpenAIProvider();
     default:
-      logger.warn(`Unknown AI provider "${provider}" — falling back to OpenAI`);
+      logger.warn(`Unknown AI provider "${provider}" â€” falling back to OpenAI`);
       return new OpenAIProvider();
   }
 }
 
-// ─── AI System Prompts ───────────────────────────────────────
+// â”€â”€â”€ AI System Prompts â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const WINDOW_ANALYSIS_SYSTEM = `You are an expert window replacement consultant assistant AI. 
 You analyze photos and property data to help Louisiana-based window sales representatives.
@@ -100,7 +100,7 @@ const MEASUREMENT_ANALYSIS_SYSTEM = `You are an AI measurement assistant for win
 You help analyze photos to estimate window dimensions using visual reference clues.
 
 CRITICAL RULES:
-1. ALWAYS label estimates as "AI-ESTIMATED — REQUIRES HUMAN VERIFICATION"
+1. ALWAYS label estimates as "AI-ESTIMATED â€” REQUIRES HUMAN VERIFICATION"
 2. Never claim exact precision from a photo
 3. When a reference object is visible, note it and use it for scale
 4. Recommend 3-point measurement protocol (width-high, width-mid, width-low)
@@ -109,7 +109,7 @@ CRITICAL RULES:
 
 You respond ONLY in valid JSON format.`;
 
-// ─── AI Service ──────────────────────────────────────────────
+// â”€â”€â”€ AI Service â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export class AiService {
   private provider: AiProvider;
@@ -155,7 +155,7 @@ Return a JSON object with this exact structure:
   "canEstimateDimensions": boolean,
   "estimatedWidthInches": number_or_null,
   "estimatedHeightInches": number_or_null,
-  "measurementDisclaimer": "AI-ESTIMATED — REQUIRES HUMAN VERIFICATION BEFORE ORDERING"
+  "measurementDisclaimer": "AI-ESTIMATED â€” REQUIRES HUMAN VERIFICATION BEFORE ORDERING"
 }`;
 
     const startMs = Date.now();
@@ -166,7 +166,7 @@ Return a JSON object with this exact structure:
       const parsed = JSON.parse(rawResponse.replace(/```json\n?|\n?```/g, '').trim());
 
       // Enforce disclaimer
-      parsed.measurementDisclaimer = 'AI-ESTIMATED — REQUIRES HUMAN VERIFICATION BEFORE ORDERING';
+      parsed.measurementDisclaimer = 'AI-ESTIMATED â€” REQUIRES HUMAN VERIFICATION BEFORE ORDERING';
 
       // Save to DB
       const analysis = await prisma.aiAnalysis.create({
@@ -311,7 +311,7 @@ Return JSON:
   "recommendedPitchAngle": "CONSULTATIVE|URGENCY_BASED|PREMIUM_VALUE|BUDGET_CONSCIOUS|ENERGY_SAVINGS|INSURANCE_STORM|COMFORT_FAMILY|FINANCING_FIRST",
   "likelyObjections": ["string"],
   "confidenceScore": 0.0_to_1.0,
-  "rationale": "Explanation of score — based only on lawful observable signals"
+  "rationale": "Explanation of score â€” based only on lawful observable signals"
 }`;
 
     const rawResponse = await this.provider.generateText(prompt, LEAD_PITCH_SYSTEM);
@@ -347,12 +347,12 @@ Return JSON:
   "imageAngle": "straight-on|angled",
   "recommendations": ["Specific guidance for the measurer"],
   "missingPhotos": ["What additional photos would help"],
-  "disclaimer": "AI-ESTIMATED — REQUIRES HUMAN VERIFICATION BEFORE ORDERING"
+  "disclaimer": "AI-ESTIMATED â€” REQUIRES HUMAN VERIFICATION BEFORE ORDERING"
 }`;
 
     const rawResponse = await this.provider.analyzeImage(params.imageBase64, prompt);
     const parsed = JSON.parse(rawResponse.replace(/```json\n?|\n?```/g, '').trim());
-    parsed.disclaimer = 'AI-ESTIMATED — REQUIRES HUMAN VERIFICATION BEFORE ORDERING';
+    parsed.disclaimer = 'AI-ESTIMATED â€” REQUIRES HUMAN VERIFICATION BEFORE ORDERING';
     return parsed;
   }
 

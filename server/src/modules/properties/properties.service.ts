@@ -119,7 +119,7 @@ export class PropertiesService {
       isOrderReady: approvedForOrder === total && total > 0,
       readinessPct: total > 0 ? Math.round((approvedForOrder / total) * 100) : 0,
       blockers: aiEstimatedOnly > 0
-        ? [`${aiEstimatedOnly} opening(s) have AI-estimated measurements only — must be verified onsite before ordering`]
+        ? [`${aiEstimatedOnly} opening(s) have AI-estimated measurements only â€” must be verified onsite before ordering`]
         : unverified > 0
         ? [`${unverified} opening(s) have no verified measurements`]
         : [],

@@ -5,7 +5,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { auth, AuthenticatedRequest } from '../../shared/middleware/auth';
 import { documentsService } from './documents.service';
 
-// ── Multer storage (local disk, swap to S3 adapter in prod) ──
+// â”€â”€ Multer storage (local disk, swap to S3 adapter in prod) â”€â”€
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, process.env.UPLOAD_DIR || './uploads'),
   filename: (req, file, cb) => {
@@ -25,7 +25,7 @@ const upload = multer({
 
 const router = Router();
 
-// GET /api/v1/documents — query by leadId/propertyId/openingId/inspectionId/type
+// GET /api/v1/documents â€” query by leadId/propertyId/openingId/inspectionId/type
 router.get('/', auth.repOrAbove, async (req: Request, res: Response) => {
   const data = await documentsService.list(req.query as any);
   res.json({ success: true, data });
@@ -37,7 +37,7 @@ router.get('/:id', auth.repOrAbove, async (req: Request, res: Response) => {
   res.json({ success: true, data });
 });
 
-// POST /api/v1/documents/upload — multipart form upload
+// POST /api/v1/documents/upload â€” multipart form upload
 router.post('/upload', auth.repOrAbove, upload.single('file'), async (req: Request, res: Response) => {
   const user = (req as AuthenticatedRequest).user;
   const file = req.file;
@@ -50,7 +50,7 @@ router.post('/upload', auth.repOrAbove, upload.single('file'), async (req: Reque
   const { leadId, propertyId, openingId, inspectionId, type, notes } = req.body;
   const triggerAiAnalysis = req.body.triggerAiAnalysis === 'true';
 
-  // Build URL — in prod this would be a CDN/S3 URL
+  // Build URL â€” in prod this would be a CDN/S3 URL
   const url = `/uploads/${file.filename}`;
 
   const doc = await documentsService.createFromUpload({

@@ -14,14 +14,14 @@ router.get('/:id', auth.repOrAbove, async (req: Request, res: Response) => {
   res.json({ success: true, data });
 });
 
-// POST /api/v1/quotes — create quote from manual line items
+// POST /api/v1/quotes â€” create quote from manual line items
 router.post('/', auth.repOrAbove, async (req: Request, res: Response) => {
   const user = (req as AuthenticatedRequest).user;
   const data = await quotesService.create({ ...req.body, createdById: user.id });
   res.status(201).json({ success: true, data });
 });
 
-// POST /api/v1/quotes/build — auto-build from property openings
+// POST /api/v1/quotes/build â€” auto-build from property openings
 router.post('/build', auth.repOrAbove, async (req: Request, res: Response) => {
   const user = (req as AuthenticatedRequest).user;
   const result = await quotesService.buildFromOpenings({
@@ -32,7 +32,7 @@ router.post('/build', auth.repOrAbove, async (req: Request, res: Response) => {
   res.json({ success: true, data: result });
 });
 
-// POST /api/v1/quotes/calculate — calculate totals without saving
+// POST /api/v1/quotes/calculate â€” calculate totals without saving
 router.post('/calculate', auth.repOrAbove, (req: Request, res: Response) => {
   const { lineItems, discountPct } = req.body;
   const result = quotesService.calculateTotals(lineItems, discountPct);

@@ -99,7 +99,7 @@ export class QuotesService {
         optionTotal: priceCalc.optionTotal,
         lineTotal: priceCalc.lineTotal,
         options: globalOptions,
-        notes: meas?.status === 'ESTIMATED' ? '⚠️ AI-estimated dimensions — verify before ordering' : undefined,
+        notes: meas?.status === 'ESTIMATED' ? 'âš ï¸ AI-estimated dimensions â€” verify before ordering' : undefined,
       });
     }
 
@@ -115,7 +115,7 @@ export class QuotesService {
     const discountAmount = Math.round(subtotal * (discountPct / 100) * 100) / 100;
     const afterDiscount = subtotal - discountAmount;
     // Louisiana: no sales tax on services/installation, but materials may vary by parish
-    const taxRate = 0.0; // 0% — WindowWorld typically bundles; update per parish
+    const taxRate = 0.0; // 0% â€” WindowWorld typically bundles; update per parish
     const taxAmount = Math.round(afterDiscount * taxRate * 100) / 100;
     const grandTotal = afterDiscount + taxAmount;
     const totalWindows = lineItems.reduce((s, l) => s + l.quantity, 0);

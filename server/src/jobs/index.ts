@@ -1,12 +1,12 @@
 /**
- * Queue singletons — exported so services can enqueue jobs without
+ * Queue singletons â€” exported so services can enqueue jobs without
  * importing the full BullMQ runtime during test/build.
  * Queues are only connected when Redis is available.
  */
 
 import { logger } from '../shared/utils/logger';
 
-// ── Lazy queue singletons ────────────────────────────────────
+// â”€â”€ Lazy queue singletons â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 let _pdfQueue: any = null;
 let _emailQueue: any = null;
 let _aiQueue: any = null;
@@ -17,7 +17,7 @@ let _leadScoringQueue: any = null;
 // Mock queue used when Redis is unavailable
 const mockQueue = {
   add: async (name: string, data: any) => {
-    logger.warn(`[MockQueue] Would enqueue "${name}" — Redis unavailable`, { data });
+    logger.warn(`[MockQueue] Would enqueue "${name}" â€” Redis unavailable`, { data });
     return { id: `mock-${Date.now()}` };
   },
 };
@@ -41,7 +41,7 @@ export const leadScoringQueue = new Proxy({} as any, {
   get: (_, prop) => (_leadScoringQueue || mockQueue)[prop]?.bind(_leadScoringQueue || mockQueue),
 });
 
-// ── Worker implementations ────────────────────────────────────
+// â”€â”€ Worker implementations â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 async function runLeadScoringJob(job: any) {
   const { leadId } = job.data;
@@ -217,12 +217,12 @@ async function runEmailJob(job: any) {
 
   // Email provider dispatch
   if (!process.env.SMTP_HOST && !process.env.SENDGRID_API_KEY) {
-    logger.warn(`[email] No email provider configured — would send to ${to}: ${subject}`);
+    logger.warn(`[email] No email provider configured â€” would send to ${to}: ${subject}`);
     return;
   }
 
   // Actual send handled by email queue if configured
-  logger.info(`[email] Would send to ${to}: ${subject} — provider: ${process.env.SMTP_HOST || 'none'}`);
+  logger.info(`[email] Would send to ${to}: ${subject} â€” provider: ${process.env.SMTP_HOST || 'none'}`);
 
   // If tied to a lead, log activity
   if (leadId) {
@@ -248,7 +248,7 @@ async function runAutomationJob(job: any) {
   await campaignsService.executeStep({ automationId, leadId, step });
 }
 
-// ── Main initializer ─────────────────────────────────────────
+// â”€â”€ Main initializer â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 let queuesInitialized = false;
 
@@ -256,7 +256,7 @@ export async function initializeJobQueues(): Promise<void> {
   if (queuesInitialized) return;
 
   if (!process.env.REDIS_URL) {
-    logger.warn('REDIS_URL not set — background jobs running in mock mode');
+    logger.warn('REDIS_URL not set â€” background jobs running in mock mode');
     return;
   }
 

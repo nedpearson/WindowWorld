@@ -87,7 +87,7 @@ export class DocumentsService {
         logger.info(`AI analysis queued for document ${doc.id}`);
       } catch (err) {
         logger.warn(`Failed to queue AI analysis for doc ${doc.id}: ${err}`);
-        // Non-fatal — doc is saved, analysis can be triggered manually
+        // Non-fatal â€” doc is saved, analysis can be triggered manually
       }
     }
 

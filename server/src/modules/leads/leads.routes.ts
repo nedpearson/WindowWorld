@@ -52,7 +52,7 @@ router.get('/', auth.repOrAbove, async (req: Request, res: Response) => {
   res.json({ success: true, ...result });
 });
 
-// GET /api/v1/leads/map — statewide lead map data
+// GET /api/v1/leads/map â€” statewide lead map data
 router.get('/map', auth.repOrAbove, async (req: Request, res: Response) => {
   const user = (req as AuthenticatedRequest).user;
   const { parish, zip, status, isStormLead } = req.query as Record<string, string>;
@@ -68,7 +68,7 @@ router.get('/map', auth.repOrAbove, async (req: Request, res: Response) => {
   res.json({ success: true, data });
 });
 
-// GET /api/v1/leads/best-today — AI-prioritized leads for today
+// GET /api/v1/leads/best-today â€” AI-prioritized leads for today
 router.get('/best-today', auth.repOrAbove, async (req: Request, res: Response) => {
   const user = (req as AuthenticatedRequest).user;
   const data = await leadService.getBestLeadsToday({
@@ -78,7 +78,7 @@ router.get('/best-today', auth.repOrAbove, async (req: Request, res: Response) =
   res.json({ success: true, data });
 });
 
-// GET /api/v1/leads/storm-follow-up — storm opportunity leads
+// GET /api/v1/leads/storm-follow-up â€” storm opportunity leads
 router.get('/storm-follow-up', auth.repOrAbove, async (req: Request, res: Response) => {
   const user = (req as AuthenticatedRequest).user;
   const data = await leadService.getStormFollowUpLeads({
@@ -87,7 +87,7 @@ router.get('/storm-follow-up', auth.repOrAbove, async (req: Request, res: Respon
   res.json({ success: true, data });
 });
 
-// GET /api/v1/leads/pipeline — kanban stage view
+// GET /api/v1/leads/pipeline â€” kanban stage view
 router.get('/pipeline', auth.repOrAbove, async (req: Request, res: Response) => {
   const user = (req as AuthenticatedRequest).user;
   const { repId } = req.query as Record<string, string>;
@@ -221,7 +221,7 @@ router.post('/:id/notes', auth.repOrAbove, async (req: Request, res: Response) =
   res.status(201).json({ success: true, data: note });
 });
 
-// GET /api/v1/leads/:id/ai-summary — AI-generated lead summary + pitch
+// GET /api/v1/leads/:id/ai-summary â€” AI-generated lead summary + pitch
 router.get('/:id/ai-summary', auth.repOrAbove, async (req: Request, res: Response) => {
   const user = (req as AuthenticatedRequest).user;
   const summary = await leadService.getAiSummary((req.params.id as string), user.organizationId);

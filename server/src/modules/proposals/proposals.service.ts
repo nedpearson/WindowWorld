@@ -204,20 +204,20 @@ export class ProposalsService {
   }
 }
 
-// ─── Default content ──────────────────────────────────────────
+// â”€â”€â”€ Default content â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const DEFAULT_INTRO = `Thank you for the opportunity to provide this window replacement proposal for your home. WindowWorld of Louisiana has been serving Baton Rouge and the surrounding parishes for years, providing premium replacement windows backed by the industry's best warranty.
 
 This proposal includes pricing for all identified window openings, your choice of product series, and all installation costs. Our installation teams are fully licensed and insured in Louisiana.
 
-We are committed to completing your project with zero surprises — no hidden fees, no subcontractors, and no pressure.`;
+We are committed to completing your project with zero surprises â€” no hidden fees, no subcontractors, and no pressure.`;
 
 const DEFAULT_WARRANTY_HIGHLIGHTS = [
   'Limited Lifetime Warranty on all window frames and glass',
   'Lifetime guarantee against seal failure and moisture intrusion',
   'Lifetime labor warranty on all window installation work',
-  'Transferable warranty — adds value to your home',
-  'Hurricane impact rating available (Series 6000) — meets LA building codes',
-  'Energy Star® certified products qualify for federal tax credits',
+  'Transferable warranty â€” adds value to your home',
+  'Hurricane impact rating available (Series 6000) â€” meets LA building codes',
+  'Energy StarÂ® certified products qualify for federal tax credits',
 ];
 
 export const proposalsService = new ProposalsService();

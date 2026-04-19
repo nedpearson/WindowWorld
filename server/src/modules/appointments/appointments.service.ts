@@ -7,7 +7,7 @@ export class AppointmentsService {
   async list(options: {
     organizationId: string;
     repId?: string;
-    date?: string;         // ISO date string — filter by day
+    date?: string;         // ISO date string â€” filter by day
     week?: string;         // ISO week start date
     status?: AppointmentStatus;
     leadId?: string;
