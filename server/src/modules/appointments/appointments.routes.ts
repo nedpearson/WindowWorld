@@ -1,12 +1,73 @@
-﻿import { Router } from 'express';
-import { auth } from '../../shared/middleware/auth';
-// TODO: Import service
+import { Router, Request, Response } from 'express';
+import { body } from 'express-validator';
+import { auth, AuthenticatedRequest } from '../../shared/middleware/auth';
+import { appointmentsService } from './appointments.service';
 
 const router = Router();
 
-// Placeholder — full implementation in progress
-router.get('/', auth.repOrAbove, (req, res) => {
-  res.json({ success: true, data: [], module: 'appointments', status: 'placeholder' });
+// GET /api/v1/appointments
+router.get('/', auth.repOrAbove, async (req: Request, res: Response) => {
+  const user = (req as AuthenticatedRequest).user;
+  const { page = '1', limit = '25', date, week, status, leadId, repId } = req.query as Record<string, string>;
+  const result = await appointmentsService.list({
+    organizationId: user.organizationId,
+    repId: ['SALES_REP', 'FIELD_MEASURE_TECH'].includes(user.role) ? user.id : repId,
+    date, week, status: status as any, leadId,
+    page: parseInt(page), limit: Math.min(parseInt(limit), 100),
+  });
+  res.json({ success: true, ...result });
+});
+
+// GET /api/v1/appointments/route — today's optimized route
+router.get('/route', auth.repOrAbove, async (req: Request, res: Response) => {
+  const user = (req as AuthenticatedRequest).user;
+  const repId = req.query.repId as string || user.id;
+  const route = await appointmentsService.getTodayRoute(repId, user.organizationId);
+  res.json({ success: true, data: route });
+});
+
+// GET /api/v1/appointments/calendar
+router.get('/calendar', auth.repOrAbove, async (req: Request, res: Response) => {
+  const user = (req as AuthenticatedRequest).user;
+  const { start, end, repId } = req.query as Record<string, string>;
+  const data = await appointmentsService.getCalendar(
+    ['SALES_REP', 'FIELD_MEASURE_TECH'].includes(user.role) ? user.id : repId,
+    user.organizationId,
+    start || new Date().toISOString(),
+    end || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+  );
+  res.json({ success: true, data });
+});
+
+// GET /api/v1/appointments/:id
+router.get('/:id', auth.repOrAbove, async (req: Request, res: Response) => {
+  const apt = await appointmentsService.getById(req.params.id);
+  res.json({ success: true, data: apt });
+});
+
+// POST /api/v1/appointments
+router.post('/',
+  auth.repOrAbove,
+  [body('leadId').notEmpty(), body('title').notEmpty(), body('scheduledAt').isISO8601()],
+  async (req: Request, res: Response) => {
+    const user = (req as AuthenticatedRequest).user;
+    const apt = await appointmentsService.create({ ...req.body, createdById: user.id });
+    res.status(201).json({ success: true, data: apt });
+  }
+);
+
+// PATCH /api/v1/appointments/:id
+router.patch('/:id', auth.repOrAbove, async (req: Request, res: Response) => {
+  const user = (req as AuthenticatedRequest).user;
+  const apt = await appointmentsService.update(req.params.id, req.body, user.id);
+  res.json({ success: true, data: apt });
+});
+
+// PATCH /api/v1/appointments/:id/status
+router.patch('/:id/status', auth.repOrAbove, async (req: Request, res: Response) => {
+  const user = (req as AuthenticatedRequest).user;
+  const apt = await appointmentsService.updateStatus(req.params.id, req.body.status, req.body.outcome, user.id);
+  res.json({ success: true, data: apt });
 });
 
 export { router as appointmentsRouter };
