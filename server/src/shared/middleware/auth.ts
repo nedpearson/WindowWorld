@@ -83,6 +83,7 @@ export function requireSameOrg(req: Request, res: Response, next: NextFunction):
 export const auth = {
   required: requireAuth,
   role: (...roles: UserRole[]) => [requireAuth, requireRole(...roles)],
+  adminOnly: [requireAuth, requireRole(UserRole.SUPER_ADMIN, UserRole.OFFICE_ADMIN)],
   superAdmin: [requireAuth, requireRole(UserRole.SUPER_ADMIN)],
   manager: [requireAuth, requireRole(UserRole.SUPER_ADMIN, UserRole.SALES_MANAGER)],
   repOrAbove: [requireAuth, requireRole(
