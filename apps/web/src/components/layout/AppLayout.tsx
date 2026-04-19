@@ -41,6 +41,7 @@ const navSections = [
   {
     label: 'Revenue',
     items: [
+      { label: 'Product Catalog', path: '/catalog', icon: BuildingStorefrontIcon },
       { label: 'Proposals', path: '/proposals', icon: DocumentTextIcon },
       { label: 'Invoices', path: '/invoices', icon: BanknotesIcon },
     ],

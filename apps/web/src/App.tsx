@@ -14,6 +14,8 @@ import { MeasurementPage } from './pages/inspections/MeasurementPage';
 import { AnalyticsPage } from './pages/analytics/AnalyticsPage';
 import { ProposalsPage } from './pages/proposals/ProposalsPage';
 import { ProposalDetailPage } from './pages/proposals/ProposalDetailPage';
+import { ProductCatalogPage } from './pages/proposals/ProductCatalogPage';
+import { QuotePage } from './pages/proposals/QuotePage';
 import { InvoicesPage } from './pages/invoices/InvoicesPage';
 import { MobileFieldApp } from './pages/mobile/MobileFieldApp';
 
@@ -52,6 +54,10 @@ export default function App() {
         {/* Inspections */}
         <Route path="inspections/:id" element={<InspectionPage />} />
         <Route path="measurements/:openingId" element={<MeasurementPage />} />
+
+        {/* Phase 4 — Product catalog & quoting */}
+        <Route path="catalog" element={<ProductCatalogPage />} />
+        <Route path="leads/:leadId/quote" element={<QuotePage />} />
 
         {/* Proposals & Invoices */}
         <Route path="proposals" element={<ProposalsPage />} />
