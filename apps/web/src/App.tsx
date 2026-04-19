@@ -9,6 +9,7 @@ import { LeadIntelligencePage } from './pages/leads/LeadIntelligencePage';
 import { PipelinePage } from './pages/leads/PipelinePage';
 import { TerritoryMapPage } from './pages/leads/TerritoryMapPage';
 import { AppointmentsPage } from './pages/leads/AppointmentsPage';
+import { AutomationsPage } from './pages/leads/AutomationsPage';
 import { InspectionPage } from './pages/inspections/InspectionPage';
 import { MeasurementPage } from './pages/inspections/MeasurementPage';
 import { AnalyticsPage } from './pages/analytics/AnalyticsPage';
@@ -50,6 +51,7 @@ export default function App() {
         <Route path="pipeline" element={<PipelinePage />} />
         <Route path="map" element={<TerritoryMapPage />} />
         <Route path="appointments" element={<AppointmentsPage />} />
+        <Route path="automations" element={<AutomationsPage />} />
 
         {/* Inspections */}
         <Route path="inspections/:id" element={<InspectionPage />} />

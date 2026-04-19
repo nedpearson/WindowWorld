@@ -30,6 +30,7 @@ const navSections = [
       { label: 'Pipeline', path: '/pipeline', icon: BuildingStorefrontIcon },
       { label: 'Territory Map', path: '/map', icon: MapIcon },
       { label: 'Appointments', path: '/appointments', icon: CalendarIcon },
+      { label: 'Automations', path: '/automations', icon: BoltIcon },
     ],
   },
   {

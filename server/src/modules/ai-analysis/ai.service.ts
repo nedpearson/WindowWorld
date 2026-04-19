@@ -431,6 +431,71 @@ Return JSON:
     const rawResponse = await this.provider.generateText(prompt, LEAD_PITCH_SYSTEM);
     return JSON.parse(rawResponse.replace(/```json\n?|\n?```/g, '').trim());
   }
+
+  // Generate AI Pitch Coach script for a lead
+  async generatePitchCoach(lead: any) {
+    const score = lead.latestScore;
+    const property = (lead.properties || [])[0];
+    const contact = (lead.contacts || [])[0];
+
+    const prompt = `You are an expert window sales coach for WindowWorld Louisiana, a premium replacement window company.
+Generate a personalized pitch coaching script for this specific lead.
+
+LEAD PROFILE:
+- Name: ${lead.firstName} ${lead.lastName}
+- Address: ${lead.address || 'Unknown'}, ${lead.city || 'Baton Rouge'}, LA
+- Lead Source: ${lead.source || 'unknown'}
+- Current Status: ${lead.status}
+- Home Year Built: ${property?.yearBuilt || 'unknown'}
+- Window Count Estimate: ${property?.windowCount || 'unknown'}
+- AI Lead Score: ${score?.totalScore || lead.leadScore || 'N/A'}/100
+- Urgency Score: ${score?.urgencyScore || lead.urgencyScore || 'N/A'}/10
+- Close Probability: ${score ? Math.round((score.closeProbability || 0) * 100) : 'N/A'}%
+- Recommended Pitch Angle: ${score?.recommendedPitchAngle || 'value and energy savings'}
+- Recommended Product: ${score?.recommendedProduct || 'Series 4000'}
+- Estimated Project Size: ${score?.estimatedProjectSize || 'unknown'}
+- Likely Objections: ${(score?.likelyObjections || []).join(', ') || 'none identified'}
+
+Return JSON with this exact structure:
+{
+  "opener": "A natural, personalized first-touch opening line for a phone call or door knock (2-3 sentences)",
+  "pitchAngle": "The primary value angle to lead with (e.g. energy savings, storm protection, curb appeal)",
+  "productRecommendation": "Which series to recommend and why, in plain language",
+  "objectionHandlers": [
+    { "objection": "price is too high", "response": "specific response script" },
+    { "objection": "need to think about it", "response": "specific response script" },
+    { "objection": "already got other quotes", "response": "specific response script" }
+  ],
+  "voicemailScript": "A compelling 20-second voicemail script",
+  "textScript": "A short text message to send if no answer (under 160 chars)",
+  "closingStrategy": "How to ask for the close based on this lead's profile",
+  "urgencyFraming": "Legitimate urgency talking point for this specific lead",
+  "financingAngle": "If applicable, how to introduce financing to this lead"
+}`;
+
+    const rawResponse = await this.provider.generateText(prompt);
+    return JSON.parse(rawResponse.replace(/```json\n?|\n?```/g, '').trim());
+  }
+
+  // Generate a concise AI summary of the lead
+  async generateLeadSummary(lead: any) {
+    const recentActivities = (lead.activities || []).slice(0, 5).map((a: any) => `${a.type}: ${a.title}`).join('; ');
+    const appointments = (lead.appointments || []).map((a: any) => `${a.type} on ${new Date(a.scheduledAt).toLocaleDateString()}`).join(', ');
+
+    const prompt = `Summarize this window replacement lead in 2-3 sentences for a sales rep. Be specific, actionable, and insightful.
+
+Lead: ${lead.firstName} ${lead.lastName} — ${lead.address}, ${lead.city}, LA
+Status: ${lead.status} | Source: ${lead.source}
+Score: ${lead.leadScore || 'N/A'}/100 | Close Prob: ${lead.closeProbability ? Math.round(lead.closeProbability * 100) + '%' : 'N/A'}
+Recent activity: ${recentActivities || 'none'}
+Appointments: ${appointments || 'none scheduled'}
+Notes: ${lead.notes || 'none'}
+
+Return JSON: { "summary": "2-3 sentence summary", "nextBestAction": "Single most important action the rep should take right now", "riskFlags": ["any red flags, e.g. no contact in 7 days"] }`;
+
+    const rawResponse = await this.provider.generateText(prompt);
+    return JSON.parse(rawResponse.replace(/```json\n?|\n?```/g, '').trim());
+  }
 }
 
 export const aiService = new AiService();

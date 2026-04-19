@@ -109,6 +109,7 @@ app.use(`${apiV1}/proposals`, proposalsRouter);
 app.use(`${apiV1}/invoices`, invoicesRouter);
 app.use(`${apiV1}/documents`, documentsRouter);
 app.use(`${apiV1}/ai-analysis`, aianalysisRouter);
+app.use(`${apiV1}/ai`, aianalysisRouter);        // Also mount on /ai for pitch coach + scoring
 app.use(`${apiV1}/automations`, automationsRouter);
 app.use(`${apiV1}/analytics`, analyticsRouter);
 app.use(`${apiV1}/notifications`, notificationsRouter);
