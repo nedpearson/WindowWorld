@@ -8,7 +8,7 @@ import {
   XMarkIcon, BoltIcon, CloudIcon, WifiIcon,
   ExclamationTriangleIcon, MagnifyingGlassIcon, BellIcon,
   ArrowRightOnRectangleIcon, BuildingStorefrontIcon,
-  CursorArrowRippleIcon, ClipboardDocumentListIcon, MapIcon,
+  CursorArrowRippleIcon, ClipboardDocumentListIcon, MapIcon, ShieldCheckIcon,
 } from '@heroicons/react/24/outline';
 import { BoltIcon as BoltSolid } from '@heroicons/react/24/solid';
 import clsx from 'clsx';
@@ -51,6 +51,7 @@ const navSections = [
   {
     label: 'Admin',
     items: [
+      { label: 'Admin Panel', path: '/admin', icon: ShieldCheckIcon },
       { label: 'Settings', path: '/settings', icon: Cog6ToothIcon },
     ],
   },
