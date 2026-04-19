@@ -23,6 +23,12 @@
   --danger: #ef4444;
   --info: #06b6d4;
   --storm: #7c3aed;
+
+  /* iOS Safe Area Variables */
+  --sat: env(safe-area-inset-top, 0px);
+  --sab: env(safe-area-inset-bottom, 0px);
+  --sal: env(safe-area-inset-left, 0px);
+  --sar: env(safe-area-inset-right, 0px);
 }
 
 /* ─── Base ────────────────────────────────────────────────── */
@@ -30,6 +36,15 @@
   box-sizing: border-box;
   margin: 0;
   padding: 0;
+  /* Prevent iOS callout on long-press */
+  -webkit-touch-callout: none;
+}
+
+/* Allow text selection in inputs */
+input, textarea, [contenteditable] {
+  -webkit-touch-callout: default;
+  -webkit-user-select: text;
+  user-select: text;
 }
 
 html {
@@ -37,6 +52,8 @@ html {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
+  /* Prevent iOS bounce scroll on the root */
+  overscroll-behavior: none;
 }
 
 body {

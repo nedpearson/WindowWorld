@@ -7,17 +7,30 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
-      registerType: 'autoUpdate',
+      registerType: 'prompt', // prompt user before updating so they don't lose field data
+      includeAssets: ['favicon.svg', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png'],
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
+        cleanupOutdatedCaches: true,
         runtimeCaching: [
           {
-            urlPattern: /^https:\/\/api\./,
+            // Cache API calls — network first, fallback to cache
+            urlPattern: ({ url }) => url.pathname.startsWith('/api/'),
             handler: 'NetworkFirst',
             options: {
               cacheName: 'api-cache',
-              expiration: { maxEntries: 200, maxAgeSeconds: 60 * 60 * 24 },
-              networkTimeoutSeconds: 10,
+              expiration: { maxEntries: 500, maxAgeSeconds: 60 * 60 * 24 },
+              networkTimeoutSeconds: 8,
+              cacheableResponse: { statuses: [0, 200] },
+            },
+          },
+          {
+            // Cache Google Fonts / external assets
+            urlPattern: /^https:\/\/fonts\.(googleapis|gstatic)\.com/,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'fonts-cache',
+              expiration: { maxEntries: 30, maxAgeSeconds: 60 * 60 * 24 * 365 },
             },
           },
         ],
@@ -26,13 +39,21 @@ export default defineConfig({
         name: 'WindowWorld Sales Platform',
         short_name: 'WindowWorld',
         description: 'AI-first window sales operating system for Louisiana',
-        theme_color: '#1a56db',
+        theme_color: '#0f172a',
         background_color: '#0f172a',
         display: 'standalone',
         orientation: 'any',
+        start_url: '/field',
+        scope: '/',
+        id: 'windowworld-sales-pwa',
+        categories: ['business', 'productivity'],
         icons: [
-          { src: '/icon-192.png', sizes: '192x192', type: 'image/png' },
-          { src: '/icon-512.png', sizes: '512x512', type: 'image/png' },
+          { src: '/icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
+          { src: '/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any maskable' },
+        ],
+        shortcuts: [
+          { name: 'Field App', short_name: 'Field', description: 'Open field mode', url: '/field', icons: [{ src: '/icon-192.png', sizes: '192x192' }] },
+          { name: 'Dashboard', short_name: 'Dash', description: 'Open dashboard', url: '/dashboard', icons: [{ src: '/icon-192.png', sizes: '192x192' }] },
         ],
       },
     }),
