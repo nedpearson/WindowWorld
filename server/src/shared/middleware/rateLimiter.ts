@@ -5,6 +5,7 @@ export const rateLimiter = rateLimit({
   max: 500,                  // Global limit per IP
   standardHeaders: true,
   legacyHeaders: false,
+  validate: { xForwardedForHeader: false }, // Railway runs behind a proxy
   message: {
     success: false,
     error: {
@@ -21,6 +22,7 @@ export const authRateLimiter = rateLimit({
   max: 20,                   // Stricter for auth endpoints
   standardHeaders: true,
   legacyHeaders: false,
+  validate: { xForwardedForHeader: false }, // Railway runs behind a proxy
   message: {
     success: false,
     error: {
