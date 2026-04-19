@@ -66,6 +66,8 @@ app.use((req, res, next) => {
 
 app.use(helmet({
   crossOriginResourcePolicy: { policy: 'cross-origin' },
+  // Google OAuth popup requires being able to postMessage back to us
+  crossOriginOpenerPolicy: false,
 }));
 app.use(cors({
   origin: CORS_ORIGINS,
