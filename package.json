@@ -1,0 +1,29 @@
+{
+  "name": "windowworld",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "apps/web",
+    "server",
+    "packages/types"
+  ],
+  "scripts": {
+    "dev": "concurrently \"npm run dev:server\" \"npm run dev:web\"",
+    "dev:server": "npm run dev --workspace=server",
+    "dev:web": "npm run dev --workspace=apps/web",
+    "build": "npm run build --workspaces",
+    "db:migrate": "npm run migrate --workspace=server",
+    "db:seed": "npm run seed --workspace=server",
+    "db:studio": "npm run studio --workspace=server",
+    "db:generate": "npm run generate --workspace=server",
+    "db:reset": "npm run db:reset --workspace=server",
+    "lint": "npm run lint --workspaces",
+    "typecheck": "npm run typecheck --workspaces"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

@@ -1,0 +1,426 @@
+import OpenAI from 'openai';
+import { logger } from '../../shared/utils/logger';
+import { prisma } from '../../shared/services/prisma';
+
+// ─── Provider abstraction ────────────────────────────────────
+interface AiProvider {
+  generateText(prompt: string, systemPrompt?: string): Promise<string>;
+  analyzeImage(imageBase64: string, prompt: string): Promise<string>;
+}
+
+class OpenAIProvider implements AiProvider {
+  private client: OpenAI;
+
+  constructor() {
+    this.client = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY,
+    });
+  }
+
+  async generateText(prompt: string, systemPrompt?: string): Promise<string> {
+    const response = await this.client.chat.completions.create({
+      model: process.env.AI_TEXT_MODEL || 'gpt-4o',
+      messages: [
+        ...(systemPrompt ? [{ role: 'system' as const, content: systemPrompt }] : []),
+        { role: 'user' as const, content: prompt },
+      ],
+      temperature: 0.7,
+      max_tokens: 4096,
+    });
+
+    return response.choices[0]?.message?.content || '';
+  }
+
+  async analyzeImage(imageBase64: string, prompt: string): Promise<string> {
+    const response = await this.client.chat.completions.create({
+      model: process.env.AI_VISION_MODEL || 'gpt-4o',
+      messages: [
+        {
+          role: 'user',
+          content: [
+            {
+              type: 'image_url',
+              image_url: {
+                url: `data:image/jpeg;base64,${imageBase64}`,
+                detail: 'high',
+              },
+            },
+            { type: 'text', text: prompt },
+          ],
+        },
+      ],
+      max_tokens: 4096,
+    });
+
+    return response.choices[0]?.message?.content || '';
+  }
+}
+
+function getProvider(): AiProvider {
+  const provider = process.env.AI_PROVIDER || 'openai';
+
+  switch (provider) {
+    case 'openai':
+      return new OpenAIProvider();
+    default:
+      logger.warn(`Unknown AI provider "${provider}" — falling back to OpenAI`);
+      return new OpenAIProvider();
+  }
+}
+
+// ─── AI System Prompts ───────────────────────────────────────
+
+const WINDOW_ANALYSIS_SYSTEM = `You are an expert window replacement consultant assistant AI. 
+You analyze photos and property data to help Louisiana-based window sales representatives.
+
+IMPORTANT RULES:
+1. Never state exact measurements from a single photo without calibration reference
+2. Always include a confidence score (0.0-1.0)
+3. Clearly distinguish between INFERRED (from image) vs CONFIRMED (from measurement)
+4. Flag any visual uncertainty
+5. Be honest about what you cannot determine from a photo
+6. All measurement estimates are AI-ESTIMATED and require human verification before ordering
+
+You respond ONLY in valid JSON format.`;
+
+const LEAD_PITCH_SYSTEM = `You are an expert window sales coach AI for a Louisiana window replacement company.
+You analyze lead data and generate highly personalized, ethical sales content.
+
+IMPORTANT RULES:
+1. Be honest and avoid manipulative tactics
+2. Use lawful, public information only
+3. Never claim to know exact income or financial data
+4. Focus on genuine home improvement value
+5. Louisiana weather, humidity, and storm context is highly relevant
+6. Financing options are important for many customers
+
+You respond ONLY in valid JSON format.`;
+
+const MEASUREMENT_ANALYSIS_SYSTEM = `You are an AI measurement assistant for window replacement.
+You help analyze photos to estimate window dimensions using visual reference clues.
+
+CRITICAL RULES:
+1. ALWAYS label estimates as "AI-ESTIMATED — REQUIRES HUMAN VERIFICATION"
+2. Never claim exact precision from a photo
+3. When a reference object is visible, note it and use it for scale
+4. Recommend 3-point measurement protocol (width-high, width-mid, width-low)
+5. Flag if image quality is insufficient for estimation
+6. Confidence score must reflect actual uncertainty honestly
+
+You respond ONLY in valid JSON format.`;
+
+// ─── AI Service ──────────────────────────────────────────────
+
+export class AiService {
+  private provider: AiProvider;
+
+  constructor() {
+    this.provider = getProvider();
+  }
+
+  // Window photo analysis
+  async analyzeWindowPhoto(params: {
+    imageBase64: string;
+    openingId?: string;
+    leadId?: string;
+    context?: string;
+  }) {
+    const prompt = `Analyze this window photo for a Louisiana replacement window sales consultation.
+
+${params.context ? `Additional context: ${params.context}` : ''}
+
+Return a JSON object with this exact structure:
+{
+  "windowType": "SINGLE_HUNG|DOUBLE_HUNG|SLIDER|CASEMENT|AWNING|PICTURE|BAY|BOW|SPECIALTY_SHAPE|TRANSOM|FIXED|UNKNOWN",
+  "frameMaterial": "VINYL|WOOD|ALUMINUM|FIBERGLASS|COMPOSITE|UNKNOWN",
+  "condition": "EXCELLENT|GOOD|FAIR|POOR|CRITICAL|UNKNOWN",
+  "hasCondensation": boolean,
+  "hasSealFailure": boolean,
+  "hasDamagedTrim": boolean,
+  "hasObstructions": boolean,
+  "obstructionNotes": "string or null",
+  "accessComplexity": "easy|moderate|difficult|specialty",
+  "requiresLadder": boolean,
+  "estimatedLadderHeightFt": number_or_null,
+  "replacementComplexity": "simple|moderate|complex|specialty",
+  "conditionSummary": "Brief description of visible window condition",
+  "visibleIssues": ["array of specific visible issues"],
+  "recommendedProductCategory": "basic|mid-range|premium",
+  "repNotes": "Internal notes for the sales rep",
+  "customerFriendlySummary": "What you'd tell the homeowner",
+  "measurementPrompts": ["Specific measurement steps needed"],
+  "confidenceScore": 0.0_to_1.0,
+  "confidenceNotes": "What limits confidence",
+  "imageQuality": "good|fair|poor",
+  "canEstimateDimensions": boolean,
+  "estimatedWidthInches": number_or_null,
+  "estimatedHeightInches": number_or_null,
+  "measurementDisclaimer": "AI-ESTIMATED — REQUIRES HUMAN VERIFICATION BEFORE ORDERING"
+}`;
+
+    const startMs = Date.now();
+    let rawResponse = '';
+
+    try {
+      rawResponse = await this.provider.analyzeImage(params.imageBase64, prompt);
+      const parsed = JSON.parse(rawResponse.replace(/```json\n?|\n?```/g, '').trim());
+
+      // Enforce disclaimer
+      parsed.measurementDisclaimer = 'AI-ESTIMATED — REQUIRES HUMAN VERIFICATION BEFORE ORDERING';
+
+      // Save to DB
+      const analysis = await prisma.aiAnalysis.create({
+        data: {
+          leadId: params.leadId,
+          openingId: params.openingId,
+          analysisType: 'window-classification',
+          provider: process.env.AI_PROVIDER || 'openai',
+          model: process.env.AI_VISION_MODEL || 'gpt-4o',
+          rawResponse: parsed,
+          detectedWindowType: parsed.windowType || null,
+          detectedFrameMaterial: parsed.frameMaterial || null,
+          detectedCondition: parsed.condition || null,
+          hasCondensation: parsed.hasCondensation || false,
+          hasSealFailure: parsed.hasSealFailure || false,
+          replacementComplexity: parsed.replacementComplexity,
+          estimatedWidth: parsed.estimatedWidthInches,
+          estimatedHeight: parsed.estimatedHeightInches,
+          confidenceScore: parsed.confidenceScore,
+          rationale: parsed.confidenceNotes,
+          processingMs: Date.now() - startMs,
+          status: 'COMPLETED',
+        },
+      });
+
+      return { ...parsed, analysisId: analysis.id };
+    } catch (error: any) {
+      logger.error('Window photo analysis failed:', error);
+
+      await prisma.aiAnalysis.create({
+        data: {
+          leadId: params.leadId,
+          openingId: params.openingId,
+          analysisType: 'window-classification',
+          provider: process.env.AI_PROVIDER || 'openai',
+          model: process.env.AI_VISION_MODEL || 'gpt-4o',
+          rawResponse: rawResponse ? { raw: rawResponse } : undefined,
+          status: 'FAILED',
+          errorMessage: error.message,
+          processingMs: Date.now() - startMs,
+        },
+      });
+
+      throw new Error(`AI analysis failed: ${error.message}`);
+    }
+  }
+
+  // Lead pitch generation
+  async generateLeadPitch(lead: any) {
+    const prompt = `Generate a complete sales pitch package for this window replacement lead.
+
+LEAD DATA:
+- Name: ${lead.firstName} ${lead.lastName}
+- Address: ${lead.address}, ${lead.city}, ${lead.state} ${lead.zip}
+- Parish: ${lead.parish}
+- Source: ${lead.source}
+- Status: ${lead.status}
+- Home Year Built: ${lead.properties?.[0]?.yearBuilt || 'unknown'}
+- Prior Contact: ${lead.lastContactedAt ? 'Yes' : 'No'}
+- Storm Lead: ${lead.isStormLead}
+- Tags: ${lead.tags?.join(', ') || 'none'}
+
+Return JSON with this structure:
+{
+  "profileSummary": "Best homeowner profile summary",
+  "likelyNeedReason": "Why they likely need replacement windows",
+  "recommendedPitchAngle": "CONSULTATIVE|URGENCY_BASED|PREMIUM_VALUE|BUDGET_CONSCIOUS|ENERGY_SAVINGS|INSURANCE_STORM|COMFORT_FAMILY|FINANCING_FIRST",
+  "opener": "Best conversation opener",
+  "discoveryQuestions": ["3-5 discovery questions"],
+  "shortPitch30sec": "30-second pitch",
+  "fullPitch2min": "2-minute pitch",
+  "likelyObjections": [
+    { "objection": "string", "rebuttal": "string" }
+  ],
+  "closingAsk": "Suggested closing question",
+  "voicemailScript": "Voicemail left if no answer",
+  "textFollowUp": "Follow-up text message",
+  "emailSubject": "Follow-up email subject",
+  "emailBody": "Follow-up email body",
+  "urgencyDrivers": ["What creates legitimate urgency"],
+  "financingPitch": "Payment-focused reframe",
+  "recommendedContactSequence": ["Step 1", "Step 2", ...],
+  "estimatedCloseProbability": 0.0_to_1.0,
+  "estimatedRevenueBand": "low|medium|high|premium",
+  "recommendedProductCategory": "string",
+  "bestContactTime": "string",
+  "nextBestAction": "Single most impactful next action for the rep",
+  "confidenceScore": 0.0_to_1.0,
+  "rationale": "Why these recommendations were made"
+}`;
+
+    const startMs = Date.now();
+
+    try {
+      const rawResponse = await this.provider.generateText(prompt, LEAD_PITCH_SYSTEM);
+      const parsed = JSON.parse(rawResponse.replace(/```json\n?|\n?```/g, '').trim());
+
+      await prisma.aiAnalysis.create({
+        data: {
+          leadId: lead.id,
+          analysisType: 'pitch',
+          provider: process.env.AI_PROVIDER || 'openai',
+          model: process.env.AI_TEXT_MODEL || 'gpt-4o',
+          rawResponse: parsed,
+          pitchOutput: parsed,
+          confidenceScore: parsed.confidenceScore,
+          rationale: parsed.rationale,
+          status: 'COMPLETED',
+          processingMs: Date.now() - startMs,
+        },
+      });
+
+      return parsed;
+    } catch (error: any) {
+      logger.error('Lead pitch generation failed:', error);
+      throw new Error(`AI pitch generation failed: ${error.message}`);
+    }
+  }
+
+  // Score a lead
+  async scoreLead(lead: any) {
+    const prompt = `Score this residential window replacement lead on multiple dimensions.
+
+LEAD DATA:
+${JSON.stringify(lead, null, 2)}
+
+Return JSON:
+{
+  "totalScore": 0_to_100,
+  "urgencyScore": 0_to_100,
+  "closeProbability": 0.0_to_1.0,
+  "financingPropensity": 0.0_to_1.0,
+  "homeAgeScore": 0_to_100,
+  "weatherExposureScore": 0_to_100,
+  "neighborhoodScore": 0_to_100,
+  "priorContactScore": 0_to_100,
+  "responseScore": 0_to_100,
+  "referralScore": 0_to_100,
+  "campaignScore": 0_to_100,
+  "estimatedRevenueBand": "low|medium|high|premium",
+  "estimatedProjectSize": "1-2 windows|partial replacement|full replacement",
+  "recommendedPitchAngle": "CONSULTATIVE|URGENCY_BASED|PREMIUM_VALUE|BUDGET_CONSCIOUS|ENERGY_SAVINGS|INSURANCE_STORM|COMFORT_FAMILY|FINANCING_FIRST",
+  "likelyObjections": ["string"],
+  "confidenceScore": 0.0_to_1.0,
+  "rationale": "Explanation of score — based only on lawful observable signals"
+}`;
+
+    const rawResponse = await this.provider.generateText(prompt, LEAD_PITCH_SYSTEM);
+    return JSON.parse(rawResponse.replace(/```json\n?|\n?```/g, '').trim());
+  }
+
+  // Analyze measurement photo with reference object
+  async analyzeMeasurementPhoto(params: {
+    imageBase64: string;
+    referenceObjectDescription?: string;
+    referenceObjectSizeInches?: number;
+    openingId?: string;
+  }) {
+    const prompt = `Analyze this window measurement photo.
+
+${params.referenceObjectDescription
+  ? `Reference object visible: ${params.referenceObjectDescription} (${params.referenceObjectSizeInches}" known size)`
+  : 'No reference object specified.'
+}
+
+IMPORTANT: All estimates are AI-ESTIMATED and must be verified by a human measurer before ordering.
+
+Return JSON:
+{
+  "canEstimateDimensions": boolean,
+  "estimatedWidthInches": number_or_null,
+  "estimatedHeightInches": number_or_null,
+  "measurementConfidence": 0.0_to_1.0,
+  "confidenceNotes": "What limits accuracy",
+  "referenceObjectDetected": boolean,
+  "referenceObjectNotes": "string",
+  "perspectiveDistortion": "none|minor|significant",
+  "imageAngle": "straight-on|angled",
+  "recommendations": ["Specific guidance for the measurer"],
+  "missingPhotos": ["What additional photos would help"],
+  "disclaimer": "AI-ESTIMATED — REQUIRES HUMAN VERIFICATION BEFORE ORDERING"
+}`;
+
+    const rawResponse = await this.provider.analyzeImage(params.imageBase64, prompt);
+    const parsed = JSON.parse(rawResponse.replace(/```json\n?|\n?```/g, '').trim());
+    parsed.disclaimer = 'AI-ESTIMATED — REQUIRES HUMAN VERIFICATION BEFORE ORDERING';
+    return parsed;
+  }
+
+  // Generate inspection summary
+  async generateInspectionSummary(params: {
+    leadId: string;
+    inspectionId: string;
+    openings: any[];
+    photos: any[];
+  }) {
+    const prompt = `Generate a comprehensive inspection summary for a window replacement consultation.
+
+OPENINGS IDENTIFIED: ${params.openings.length}
+OPENING DATA: ${JSON.stringify(params.openings.slice(0, 20), null, 2)}
+
+Return JSON:
+{
+  "executiveSummary": "2-3 sentence overview for the rep",
+  "customerSummary": "Customer-friendly project overview",
+  "projectScope": "full-house|partial|specific-area",
+  "totalOpenings": number,
+  "urgentOpenings": number,
+  "complexityRating": "simple|moderate|complex|specialty",
+  "estimatedInstallDays": number,
+  "requiredInstallNotes": ["key installation considerations"],
+  "topIssuesFound": ["main condition problems"],
+  "productRecommendationNotes": "string",
+  "estimatedRevenueBand": "low|medium|high|premium",
+  "verificationRequired": ["what must be verified onsite before ordering"],
+  "confidenceScore": 0.0_to_1.0,
+  "repNotes": "Tactical notes for closing the deal"
+}`;
+
+    const rawResponse = await this.provider.generateText(prompt, WINDOW_ANALYSIS_SYSTEM);
+    return JSON.parse(rawResponse.replace(/```json\n?|\n?```/g, '').trim());
+  }
+
+  // Generate proposal customer text
+  async generateProposalContent(params: {
+    lead: any;
+    quote: any;
+    openings: any[];
+    brandingMode?: string;
+  }) {
+    const prompt = `Generate professional proposal content for a residential window replacement project.
+
+CUSTOMER: ${params.lead.firstName} ${params.lead.lastName}
+PROPERTY: ${params.lead.address}, ${params.lead.city}, LA
+WINDOWS: ${params.openings.length} openings
+TOTAL QUOTE: $${params.quote.total?.toFixed(2)}
+
+Return JSON:
+{
+  "coverNote": "Personalized cover letter opening (2-3 sentences)",
+  "projectSummary": "Professional project scope paragraph",
+  "whyNow": "Legitimate urgency and value framing",
+  "productHighlights": ["Key product benefits to highlight"],
+  "financingNote": "If applicable, financing angle",
+  "customerFriendlyMeasurementNote": "How to explain estimated vs verified measurements",
+  "warrantyHighlights": "string",
+  "nextSteps": "Clear call to action",
+  "expirationNote": "e.g. This proposal is valid for 30 days",
+  "estimatedInstallTimeline": "string"
+}`;
+
+    const rawResponse = await this.provider.generateText(prompt, LEAD_PITCH_SYSTEM);
+    return JSON.parse(rawResponse.replace(/```json\n?|\n?```/g, '').trim());
+  }
+}
+
+export const aiService = new AiService();
