@@ -1,17 +1,18 @@
 import { Outlet, useLocation, Link } from 'react-router-dom';
 import { useAuthStore, useAppStore } from '../../store/auth.store';
 import { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import {
   HomeIcon, UsersIcon, MapPinIcon, CalendarIcon, ChartBarIcon,
   DocumentTextIcon, BanknotesIcon, BeakerIcon, Cog6ToothIcon,
-  Bars3Icon, XMarkIcon, BoltIcon, CloudIcon, WifiIcon,
+  XMarkIcon, BoltIcon, CloudIcon, WifiIcon,
   ExclamationTriangleIcon, MagnifyingGlassIcon, BellIcon,
   ArrowRightOnRectangleIcon, BuildingStorefrontIcon,
   CursorArrowRippleIcon, ClipboardDocumentListIcon, MapIcon,
 } from '@heroicons/react/24/outline';
 import { BoltIcon as BoltSolid } from '@heroicons/react/24/solid';
 import clsx from 'clsx';
+
 
 const navSections = [
   {

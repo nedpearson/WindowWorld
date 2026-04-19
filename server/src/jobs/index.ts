@@ -148,11 +148,14 @@ async function runAiPhotoJob(job: any) {
             openingId,
             status: 'ESTIMATED',
             isAiEstimated: true,
-            aiConfidenceScore: result.confidenceScore,
+            confidenceScore: result.confidenceScore,
             finalWidth: result.estimatedWidthInches,
             finalHeight: result.estimatedHeightInches,
-            measurementMethod: 'AI_PHOTO',
-            aiAnalysisId: result.analysisId,
+            captureMethod: 'guided',
+            aiEstimatedWidth: result.estimatedWidthInches,
+            aiEstimatedHeight: result.estimatedHeightInches,
+            aiEstimateConfidence: result.confidenceScore,
+            aiEstimateNotes: result.windowType ? `AI detected: ${result.windowType}` : undefined,
           },
         });
         logger.info(`[ai-photo] Created AI measurement estimate for opening ${openingId}: ${result.estimatedWidthInches}" x ${result.estimatedHeightInches}"`);
@@ -226,15 +229,14 @@ async function runEmailJob(job: any) {
   // If tied to a lead, log activity
   if (leadId) {
     const { prisma } = await import('../shared/services/prisma');
-    await prisma.leadActivity.create({
+    await prisma.activity.create({
       data: {
         leadId,
-        type: 'EMAIL_SENT',
+        type: 'EMAIL',
         title: subject,
-        body: text?.substring(0, 500),
-        channel: 'EMAIL',
-        direction: 'OUTBOUND',
-        createdById: job.data.sentById || null,
+        description: text?.substring(0, 500),
+        contactMethod: 'EMAIL',
+        userId: job.data.sentById || null,
       } as any,
     });
   }
