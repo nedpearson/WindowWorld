@@ -9,12 +9,16 @@ interface AiProvider {
 }
 
 class OpenAIProvider implements AiProvider {
-  private client: OpenAI;
+  private _client: OpenAI | null = null;
 
-  constructor() {
-    this.client = new OpenAI({
-      apiKey: process.env.OPENAI_API_KEY,
-    });
+  private get client(): OpenAI {
+    if (!this._client) {
+      if (!process.env.OPENAI_API_KEY) {
+        throw new Error('OPENAI_API_KEY is not configured. Set it in Railway environment variables.');
+      }
+      this._client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+    }
+    return this._client;
   }
 
   async generateText(prompt: string, systemPrompt?: string): Promise<string> {
@@ -27,7 +31,6 @@ class OpenAIProvider implements AiProvider {
       temperature: 0.7,
       max_tokens: 4096,
     });
-
     return response.choices[0]?.message?.content || '';
   }
 
@@ -38,25 +41,32 @@ class OpenAIProvider implements AiProvider {
         {
           role: 'user',
           content: [
-            {
-              type: 'image_url',
-              image_url: {
-                url: `data:image/jpeg;base64,${imageBase64}`,
-                detail: 'high',
-              },
-            },
+            { type: 'image_url', image_url: { url: `data:image/jpeg;base64,${imageBase64}`, detail: 'high' } },
             { type: 'text', text: prompt },
           ],
         },
       ],
       max_tokens: 4096,
     });
-
     return response.choices[0]?.message?.content || '';
   }
 }
 
+// Fallback when no AI provider is configured
+class NullProvider implements AiProvider {
+  async generateText(): Promise<string> {
+    throw new Error('AI features unavailable: OPENAI_API_KEY not configured. Add it in Railway environment variables.');
+  }
+  async analyzeImage(): Promise<string> {
+    throw new Error('AI vision unavailable: OPENAI_API_KEY not configured.');
+  }
+}
+
 function getProvider(): AiProvider {
+  if (!process.env.OPENAI_API_KEY) {
+    logger.warn('OPENAI_API_KEY not set - AI features disabled. Add it in Railway environment variables.');
+    return new NullProvider();
+  }
   const provider = process.env.AI_PROVIDER || 'openai';
 
   switch (provider) {
