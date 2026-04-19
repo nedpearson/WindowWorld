@@ -6,6 +6,8 @@ import compression from 'compression';
 import morgan from 'morgan';
 import dotenv from 'dotenv';
 import { createServer } from 'http';
+import path from 'path';
+import fs from 'fs';
 
 import { logger } from './shared/utils/logger';
 import { errorHandler } from './shared/middleware/errorHandler';
@@ -74,6 +76,13 @@ app.get('/health', (req, res) => {
     env: process.env.NODE_ENV,
   });
 });
+
+// ─── Static file serving (uploads) ──────────────────────────
+const uploadDir = process.env.UPLOAD_DIR || path.join(process.cwd(), 'uploads');
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
+}
+app.use('/uploads', express.static(uploadDir));
 
 // ─── API Routes ─────────────────────────────────────────────
 const apiV1 = '/api/v1';
