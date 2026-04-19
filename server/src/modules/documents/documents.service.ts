@@ -24,16 +24,20 @@ export class DocumentsService {
     return prisma.document.findMany({
       where,
       orderBy: { createdAt: 'desc' },
-      include: { createdBy: { select: { id: true, firstName: true, lastName: true } }, as any aiAnalyses: { orderBy: { createdAt: 'desc' }, take: 1 },
-      },
+      include: {
+        createdBy: { select: { id: true, firstName: true, lastName: true } },
+        aiAnalyses: { orderBy: { createdAt: 'desc' }, take: 1 },
+      } as any,
     });
   }
 
   async getById(id: string) {
     const doc = await prisma.document.findUnique({
       where: { id },
-      include: { createdBy: { select: { id: true, firstName: true, lastName: true } }, as any aiAnalyses: { orderBy: { createdAt: 'desc' } },
-      },
+      include: {
+        createdBy: { select: { id: true, firstName: true, lastName: true } },
+        aiAnalyses: { orderBy: { createdAt: 'desc' } },
+      } as any,
     });
     if (!doc) throw new NotFoundError('Document');
     return doc;
@@ -46,7 +50,7 @@ export class DocumentsService {
     size: number;
     url: string;
     localPath?: string;
-    type: string; // PHOTO_EXTERIOR | PHOTO_INTERIOR | PHOTO_DAMAGE | MEASUREMENT_SKETCH | PROPOSAL_PDF | OTHER
+    type: string;
     leadId?: string;
     propertyId?: string;
     openingId?: string;
@@ -87,7 +91,7 @@ export class DocumentsService {
         logger.info(`AI analysis queued for document ${doc.id}`);
       } catch (err) {
         logger.warn(`Failed to queue AI analysis for doc ${doc.id}: ${err}`);
-        // Non-fatal â€” doc is saved, analysis can be triggered manually
+        // Non-fatal — doc is saved, analysis can be triggered manually
       }
     }
 
@@ -96,7 +100,6 @@ export class DocumentsService {
 
   async delete(id: string, userId: string) {
     const doc = await this.getById(id);
-    // Optionally remove local file if stored on disk
     if ((doc as any).localPath) {
       try {
         fs.unlinkSync((doc as any).localPath);
@@ -113,7 +116,7 @@ export class DocumentsService {
       where: { id },
       data: { aiAnalysisStatus: 'PENDING' } as any,
     });
-    await scoringQueue.add('analyze-window-photo', {
+    await leadScoringQueue.add('analyze-window-photo', {
       documentId: doc.id,
       openingId: (doc as any).openingId,
       propertyId: (doc as any).propertyId,
