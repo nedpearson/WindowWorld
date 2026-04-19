@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { Cog6ToothIcon, BellIcon, ShieldCheckIcon, CreditCardIcon } from '@heroicons/react/24/outline';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuthStore } from '../../store/auth.store';
 
 export function SettingsPage() {
-  const { user } = useAuth();
+  const user = useAuthStore((state) => state.user);
   const [activeTab, setActiveTab] = useState('profile');
 
   const tabs = [
