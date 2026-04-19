@@ -12,6 +12,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { BoltIcon as BoltSolid, StarIcon } from '@heroicons/react/24/solid';
 import clsx from 'clsx';
+import { PitchCoachPanel } from '../../components/ai/PitchCoachPanel';
 
 const DEMO_LEAD = {
   id: '1',
@@ -366,33 +367,6 @@ export function LeadDetailPage({ isNew = false }: { isNew?: boolean }) {
                   </div>
                 )}
 
-                {/* Next action */}
-                <div className="ai-card">
-                  <div className="flex items-center gap-2 mb-3">
-                    <BoltSolid className="h-4 w-4 text-brand-400" />
-                    <span className="text-xs font-semibold text-brand-400 uppercase tracking-wide">Next Best Action</span>
-                  </div>
-                  <p className="text-sm text-slate-300 leading-relaxed">{lead.aiPitch.nextBestAction}</p>
-                  <div className="mt-3 pt-3 border-t border-slate-700/30 flex items-center justify-between">
-                    <span className="ai-confidence">
-                      <BoltIcon className="h-3 w-3" />
-                      {Math.round(lead.aiPitch.estimatedCloseProbability * 100)}% close probability
-                    </span>
-                    <button
-                      onClick={() => setActiveTab('ai-coach')}
-                      className="text-xs text-brand-400 hover:text-brand-300"
-                    >
-                      Full pitch →
-                    </button>
-                  </div>
-                </div>
-
-                {/* Financing */}
-                <div className="card p-4 border-amber-500/20">
-                  <div className="text-xs font-semibold text-amber-400 uppercase tracking-wide mb-2">Financing Angle</div>
-                  <p className="text-sm text-slate-300">{lead.aiPitch.financingPitch}</p>
-                </div>
-
                 {/* Key dates */}
                 <div className="card p-4">
                   <div className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">Timeline</div>
@@ -411,6 +385,12 @@ export function LeadDetailPage({ isNew = false }: { isNew?: boolean }) {
                     </div>
                   </div>
                 </div>
+
+                {/* Live AI Pitch Coach Panel */}
+                <PitchCoachPanel
+                  leadId={id || lead.id}
+                  leadName={`${lead.firstName} ${lead.lastName}`}
+                />
               </div>
             </div>
           )}
@@ -544,53 +524,11 @@ export function LeadDetailPage({ isNew = false }: { isNew?: boolean }) {
           )}
 
           {activeTab === 'ai-coach' && (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-              <div className="ai-card">
-                <div className="flex items-center gap-2 mb-4">
-                  <BoltSolid className="h-4 w-4 text-brand-400" />
-                  <span className="text-sm font-semibold text-white">Pitch Opener</span>
-                  <span className="badge badge-blue text-[10px] ml-auto">{lead.aiPitch.recommendedPitchAngle.replace(/_/g, ' ')}</span>
-                </div>
-                <div className="p-3 bg-slate-800/60 rounded-lg border border-slate-700/50 text-sm text-slate-300 leading-relaxed italic mb-4">
-                  "{lead.aiPitch.opener}"
-                </div>
-                <div className="text-xs text-slate-500 font-medium uppercase tracking-wide mb-2">Closing Ask</div>
-                <div className="p-3 bg-slate-800/60 rounded-lg border border-slate-700/50 text-sm text-slate-300 italic">
-                  "{lead.aiPitch.closingAsk}"
-                </div>
-              </div>
-
-              <div className="space-y-4">
-                <div className="card p-4">
-                  <div className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">Urgency Drivers</div>
-                  <div className="space-y-2">
-                    {lead.aiPitch.urgencyDrivers.map((d, i) => (
-                      <div key={i} className="flex items-start gap-2.5">
-                        <CheckCircleIcon className="h-4 w-4 text-emerald-400 flex-shrink-0 mt-0.5" />
-                        <span className="text-sm text-slate-300">{d}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="card p-4 border-amber-500/20">
-                  <div className="text-xs font-semibold text-amber-400 uppercase tracking-wide mb-3">Financing Pitch</div>
-                  <p className="text-sm text-slate-300 leading-relaxed">{lead.aiPitch.financingPitch}</p>
-                </div>
-
-                <div className="card p-4">
-                  <div className="flex items-center justify-between">
-                    <div className="text-xs font-semibold text-slate-500 uppercase tracking-wide">AI Confidence</div>
-                    <span className="text-xs text-slate-400">{Math.round(lead.aiPitch.confidenceScore * 100)}%</span>
-                  </div>
-                  <div className="score-bar mt-2">
-                    <div className="score-bar-fill bg-brand-500" style={{ width: `${lead.aiPitch.confidenceScore * 100}%` }} />
-                  </div>
-                  <p className="text-[11px] text-slate-600 mt-2">
-                    Based on 7 interaction data points, lead score signals, and verified sales patterns for East Baton Rouge.
-                  </p>
-                </div>
-              </div>
+            <div className="max-w-2xl">
+              <PitchCoachPanel
+                leadId={id || lead.id}
+                leadName={`${lead.firstName} ${lead.lastName}`}
+              />
             </div>
           )}
         </motion.div>
