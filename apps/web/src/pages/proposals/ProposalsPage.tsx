@@ -1,205 +1,273 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import {
-  DocumentTextIcon, EyeIcon, PaperAirplaneIcon, CheckCircleIcon,
-  ClockIcon, ExclamationCircleIcon, XMarkIcon, ChevronRightIcon,
-  MagnifyingGlassIcon, FunnelIcon, CalendarIcon,
+  DocumentTextIcon, PlusIcon, MagnifyingGlassIcon,
+  CheckCircleIcon, ClockIcon, EyeIcon, PaperAirplaneIcon,
+  ArrowDownTrayIcon, XMarkIcon, FunnelIcon, ChevronRightIcon,
 } from '@heroicons/react/24/outline';
 import { BoltIcon } from '@heroicons/react/24/solid';
 import clsx from 'clsx';
+import { useProposals, useUpdateProposalStatus, type Proposal } from '../../api/proposals';
 
-const PROPOSALS = [
-  { id: 'p1', status: 'ACCEPTED', lead: { id: '1', name: 'Michael Trosclair', address: '7824 Old Hammond Hwy', city: 'Baton Rouge' }, grandTotal: 8840, totalWindows: 9, sentAt: '2026-04-16T14:00:00', viewedAt: '2026-04-16T14:38:00', acceptedAt: '2026-04-17T09:00:00', series: 'Series 4000', rep: 'Jake T.', viewCount: 3 },
-  { id: 'p2', status: 'SENT', lead: { id: '2', name: 'Patricia Landry', address: '312 Sherwood Forest Dr', city: 'Baton Rouge' }, grandTotal: 5330, totalWindows: 5, sentAt: '2026-04-17T10:00:00', viewedAt: '2026-04-18T08:00:00', acceptedAt: null, series: 'Series 4000', rep: 'Jake T.', viewCount: 2 },
-  { id: 'p3', status: 'VIEWED', lead: { id: '4', name: 'Angela Mouton', address: '226 Tupelo Dr', city: 'Prairieville' }, grandTotal: 7450, totalWindows: 7, sentAt: '2026-04-15T09:00:00', viewedAt: '2026-04-16T11:00:00', acceptedAt: null, series: 'Series 6000', rep: 'Danielle A.', viewCount: 4 },
-  { id: 'p4', status: 'DRAFT', lead: { id: '5', name: 'Carol Chauvin', address: '1245 Gause Blvd', city: 'Slidell' }, grandTotal: 4810, totalWindows: 4, sentAt: null, viewedAt: null, acceptedAt: null, series: 'Series 3000', rep: 'Jake T.', viewCount: 0 },
-  { id: 'p5', status: 'DECLINED', lead: { id: '7', name: 'Robert Comeaux', address: '4521 Greenwell Springs Rd', city: 'Baton Rouge' }, grandTotal: 6200, totalWindows: 6, sentAt: '2026-04-10T10:00:00', viewedAt: '2026-04-11T09:00:00', acceptedAt: null, series: 'Series 4000', rep: 'Jake T.', viewCount: 1 },
-  { id: 'p6', status: 'SENT', lead: { id: '8', name: 'Louis Badeaux', address: '7024 Read Blvd', city: 'New Orleans' }, grandTotal: 12650, totalWindows: 14, sentAt: '2026-04-18T09:00:00', viewedAt: null, acceptedAt: null, series: 'Series 6000', rep: 'Danielle A.', viewCount: 0 },
-];
-
-const STATUS_FLOW = ['DRAFT', 'READY', 'SENT', 'VIEWED', 'ACCEPTED', 'CONTRACTED', 'DECLINED', 'ARCHIVED'];
-
-const STATUS_CONFIG: Record<string, { label: string; color: string; badge: string; icon: any }> = {
-  DRAFT: { label: 'Draft', color: 'text-slate-400', badge: 'badge-slate', icon: DocumentTextIcon },
-  READY: { label: 'Ready', color: 'text-blue-400', badge: 'badge-blue', icon: CheckCircleIcon },
-  SENT: { label: 'Sent', color: 'text-cyan-400', badge: 'badge-blue', icon: PaperAirplaneIcon },
-  VIEWED: { label: 'Viewed', color: 'text-purple-400', badge: 'badge-purple', icon: EyeIcon },
-  ACCEPTED: { label: 'Accepted', color: 'text-emerald-400', badge: 'badge-green', icon: CheckCircleIcon },
-  CONTRACTED: { label: 'Contracted', color: 'text-emerald-500', badge: 'badge-green', icon: CheckCircleIcon },
-  DECLINED: { label: 'Declined', color: 'text-red-400', badge: 'badge-red', icon: XMarkIcon },
-  REVISED: { label: 'Revision', color: 'text-amber-400', badge: 'badge-yellow', icon: PencilIcon },
-  ARCHIVED: { label: 'Archived', color: 'text-slate-600', badge: 'badge-slate', icon: DocumentTextIcon },
+// ─── Constants ────────────────────────────────────────────────
+const STATUS_STYLES: Record<string, { badge: string; label: string; icon?: any }> = {
+  DRAFT:      { badge: 'bg-slate-700 text-slate-300 border-slate-600',          label: 'Draft' },
+  READY:      { badge: 'bg-blue-500/15 text-blue-400 border-blue-500/25',       label: 'Ready' },
+  SENT:       { badge: 'bg-purple-500/15 text-purple-400 border-purple-500/25', label: 'Sent' },
+  VIEWED:     { badge: 'bg-cyan-500/15 text-cyan-400 border-cyan-500/25',       label: 'Viewed' },
+  ACCEPTED:   { badge: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/25', label: 'Accepted' },
+  DECLINED:   { badge: 'bg-red-500/15 text-red-400 border-red-500/25',          label: 'Declined' },
+  REVISED:    { badge: 'bg-amber-500/15 text-amber-400 border-amber-500/25',    label: 'Revised' },
+  CONTRACTED: { badge: 'bg-emerald-600/20 text-emerald-300 border-emerald-500/30', label: 'Contracted' },
+  ARCHIVED:   { badge: 'bg-slate-800 text-slate-500 border-slate-700',          label: 'Archived' },
 };
 
-function PencilIcon(props: any) {
-  return <svg {...props} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>;
+const PDF_STATUS: Record<string, string> = {
+  PENDING:    'text-slate-500',
+  GENERATING: 'text-amber-400 animate-pulse',
+  READY:      'text-emerald-400',
+  FAILED:     'text-red-400',
+};
+
+function formatCurrency(n?: number) {
+  if (!n) return '—';
+  return `$${n.toLocaleString('en-US', { minimumFractionDigits: 0 })}`;
 }
 
-function RelativeTime({ dateStr }: { dateStr: string | null }) {
-  if (!dateStr) return <span className="text-slate-600">—</span>;
-  const diff = Date.now() - new Date(dateStr).getTime();
-  const h = Math.floor(diff / 3600000);
-  const d = Math.floor(diff / 86400000);
-  const label = d > 0 ? `${d}d ago` : h > 0 ? `${h}h ago` : 'Just now';
-  return <span className="text-slate-500">{label}</span>;
+function formatDate(d?: string) {
+  if (!d) return '—';
+  return new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
+// ─── Demo fallback data ───────────────────────────────────────
+const DEMO_PROPOSALS: Proposal[] = [
+  {
+    id: 'p1', leadId: '3', title: 'Full Home Window Replacement — Robert Comeaux',
+    status: 'SENT', pdfStatus: 'READY', validDays: 30, viewCount: 3,
+    createdAt: '2026-04-18T12:00:00Z', sentAt: '2026-04-18T14:00:00Z', firstViewedAt: '2026-04-18T15:30:00Z',
+    lead: { id: '3', firstName: 'Robert', lastName: 'Comeaux', address: '4521 Greenwell Springs Rd', city: 'Baton Rouge', zip: '70806', phone: '(225) 555-1001' },
+    quote: { id: 'q1', grandTotal: 14750, subtotal: 15500, discountPct: 5, discountAmount: 750, totalWindows: 10 },
+    createdBy: { id: 'u1', firstName: 'Jake', lastName: 'Thibodaux', phone: '(225) 555-9000', email: 'jake@windowworldla.com' },
+  },
+  {
+    id: 'p2', leadId: '1', title: 'Storm Replacement — Michael Trosclair',
+    status: 'ACCEPTED', pdfStatus: 'READY', validDays: 30, viewCount: 7,
+    createdAt: '2026-04-17T10:00:00Z', sentAt: '2026-04-17T11:00:00Z', acceptedAt: '2026-04-18T09:15:00Z',
+    lead: { id: '1', firstName: 'Michael', lastName: 'Trosclair', address: '7824 Old Hammond Hwy', city: 'Baton Rouge', zip: '70809', phone: '(225) 555-1003' },
+    quote: { id: 'q2', grandTotal: 22400, totalWindows: 14 },
+    createdBy: { id: 'u1', firstName: 'Jake', lastName: 'Thibodaux' },
+  },
+  {
+    id: 'p3', leadId: '6', title: 'Series 4000 — Karen Guidry',
+    status: 'DRAFT', pdfStatus: 'PENDING', validDays: 30, viewCount: 0,
+    createdAt: '2026-04-19T08:00:00Z',
+    lead: { id: '6', firstName: 'Karen', lastName: 'Guidry', address: '1134 Range Ave', city: 'Denham Springs', zip: '70726' },
+    quote: { id: 'q3', grandTotal: 8200, totalWindows: 6 },
+    createdBy: { id: 'u2', firstName: 'Chad', lastName: 'Melancon' },
+  },
+  {
+    id: 'p4', leadId: '4', title: 'Master Suite Upgrade — Angela Mouton',
+    status: 'VIEWED', pdfStatus: 'READY', validDays: 30, viewCount: 2,
+    createdAt: '2026-04-16T14:00:00Z', sentAt: '2026-04-16T15:00:00Z', firstViewedAt: '2026-04-17T10:30:00Z',
+    lead: { id: '4', firstName: 'Angela', lastName: 'Mouton', address: '226 Tupelo Dr', city: 'Prairieville', zip: '70769' },
+    quote: { id: 'q4', grandTotal: 5900, totalWindows: 4 },
+    createdBy: { id: 'u3', firstName: 'Danielle', lastName: 'Arceneaux' },
+  },
+];
+
+// ─── Page Component ───────────────────────────────────────────
 export function ProposalsPage() {
-  const [proposals, setProposals] = useState(PROPOSALS);
+  const navigate = useNavigate();
   const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState('ALL');
+  const [statusFilter, setStatusFilter] = useState<string>('');
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
+  const { data: apiData, isLoading } = useProposals({ status: statusFilter || undefined });
+  const statusMutation = useUpdateProposalStatus();
+
+  // Use API data if available, else demo
+  const proposals: Proposal[] = apiData?.data?.length ? apiData.data : DEMO_PROPOSALS;
+
   const filtered = proposals.filter((p) => {
-    const matchSearch = !search || p.lead.name.toLowerCase().includes(search.toLowerCase()) || p.lead.city.toLowerCase().includes(search.toLowerCase());
-    const matchStatus = statusFilter === 'ALL' || p.status === statusFilter;
-    return matchSearch && matchStatus;
+    const name = p.lead ? `${p.lead.firstName} ${p.lead.lastName}` : '';
+    const q = search.toLowerCase();
+    return !q || p.title.toLowerCase().includes(q) || name.toLowerCase().includes(q);
   });
 
-  const Pipeline = () => {
-    const stages = STATUS_FLOW.slice(0, 6);
-    const counts = stages.map((s) => proposals.filter((p) => p.status === s).length);
-    const values = stages.map((s) => proposals.filter((p) => p.status === s).reduce((sum, p) => sum + p.grandTotal, 0));
-    return (
-      <div className="card p-4">
-        <div className="flex items-center gap-2 mb-4">
-          <BoltIcon className="h-4 w-4 text-brand-400" />
-          <span className="text-sm font-semibold text-white">Proposal Pipeline</span>
-        </div>
-        <div className="grid grid-cols-3 md:grid-cols-6 gap-3">
-          {stages.map((s, i) => {
-            const config = STATUS_CONFIG[s];
-            const Icon = config.icon;
-            return (
-              <button key={s} onClick={() => setStatusFilter(s === statusFilter ? 'ALL' : s)}
-                className={clsx('flex flex-col items-center gap-1.5 p-3 rounded-xl border transition-all',
-                  statusFilter === s ? 'border-brand-500/50 bg-brand-600/10' : 'border-slate-700/50 bg-slate-800/40 hover:border-slate-600')}>
-                <Icon className={clsx('h-4 w-4', config.color)} />
-                <div className="text-lg font-bold text-white">{counts[i]}</div>
-                <div className="text-[10px] text-slate-500">{config.label}</div>
-                <div className="text-[10px] text-slate-600">${values[i] > 0 ? (values[i] / 1000).toFixed(0) + 'K' : '—'}</div>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-    );
+  // Group stats
+  const totalValue = proposals.reduce((s, p) => s + (p.quote?.grandTotal || 0), 0);
+  const acceptedValue = proposals.filter(p => p.status === 'ACCEPTED').reduce((s, p) => s + (p.quote?.grandTotal || 0), 0);
+  const sentCount = proposals.filter(p => ['SENT', 'VIEWED'].includes(p.status)).length;
+
+  const handleStatusChange = async (id: string, status: string) => {
+    try {
+      await statusMutation.mutateAsync({ id, status });
+      toast.success(`Proposal marked as ${status.toLowerCase()}`);
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Status update failed');
+    }
   };
 
   return (
     <div className="p-6 space-y-5 page-transition">
       {/* Header */}
-      <div className="flex items-start justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-xl font-bold text-white">Proposals</h1>
-          <p className="text-slate-500 text-sm mt-0.5">{proposals.length} total · ${proposals.filter((p) => p.status === 'ACCEPTED').reduce((s, p) => s + p.grandTotal, 0).toLocaleString()} accepted</p>
+          <p className="text-slate-500 text-sm mt-0.5">
+            {isLoading ? 'Loading...' : `${proposals.length} proposals · ${formatCurrency(totalValue)} pipeline`}
+          </p>
         </div>
-        <div className="flex gap-2">
-          <Link to="/catalog" className="btn-secondary btn-sm">Product Catalog</Link>
-          <Link to="/leads/1/quote" className="btn-primary btn-sm">
-            <DocumentTextIcon className="h-4 w-4" /> New Quote
-          </Link>
-        </div>
+        <button onClick={() => toast.info('Select a lead to create a proposal from their Lead Detail page')}
+          className="btn-primary flex items-center gap-2 btn-sm">
+          <PlusIcon className="h-4 w-4" /> New Proposal
+        </button>
       </div>
 
-      <Pipeline />
-
-      {/* Search + filter */}
-      <div className="flex gap-3">
-        <div className="relative flex-1">
-          <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
-          <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search proposals..." className="input pl-9" />
-        </div>
-        <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="select w-40">
-          <option value="ALL">All Statuses</option>
-          {STATUS_FLOW.map((s) => <option key={s} value={s}>{STATUS_CONFIG[s]?.label}</option>)}
-        </select>
-      </div>
-
-      {/* Proposals list */}
-      <div className="space-y-2">
-        {filtered.map((proposal) => {
-          const config = STATUS_CONFIG[proposal.status] || STATUS_CONFIG['ARCHIVED'];
-          const Icon = config.icon;
-
-          return (
-            <motion.div
-              key={proposal.id}
-              layout
-              onClick={() => setSelectedId(selectedId === proposal.id ? null : proposal.id)}
-              className="card p-4 cursor-pointer hover:border-slate-600/60 transition-all"
-            >
-              <div className="flex items-start justify-between gap-4">
-                <div className="flex items-center gap-3 flex-1 min-w-0">
-                  <div className={clsx('w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0',
-                    proposal.status === 'ACCEPTED' ? 'bg-emerald-500/15 text-emerald-400' :
-                    proposal.status === 'SENT' ? 'bg-cyan-500/15 text-cyan-400' :
-                    proposal.status === 'VIEWED' ? 'bg-purple-500/15 text-purple-400' :
-                    proposal.status === 'DECLINED' ? 'bg-red-500/15 text-red-400' :
-                    'bg-slate-700 text-slate-400'
-                  )}>
-                    <Icon className="h-4 w-4" />
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-semibold text-white">{proposal.lead.name}</span>
-                      <span className={clsx('badge text-[10px]', config.badge)}>{config.label}</span>
-                      {proposal.viewCount > 0 && (
-                        <span className="flex items-center gap-1 text-[10px] text-purple-400">
-                          <EyeIcon className="h-3 w-3" /> {proposal.viewCount} views
-                        </span>
-                      )}
-                    </div>
-                    <div className="text-xs text-slate-500 mt-0.5">{proposal.lead.city} · {proposal.series} · {proposal.rep}</div>
-                  </div>
-                </div>
-
-                <div className="flex items-start gap-4 flex-shrink-0">
-                  <div className="text-right">
-                    <div className="font-bold text-white">${proposal.grandTotal.toLocaleString()}</div>
-                    <div className="text-xs text-slate-500">{proposal.totalWindows} windows</div>
-                  </div>
-                  <div className="text-right text-xs">
-                    {proposal.sentAt && <div className="text-slate-500"><span className="text-slate-600">Sent </span><RelativeTime dateStr={proposal.sentAt} /></div>}
-                    {proposal.acceptedAt && <div className="text-emerald-400 mt-0.5"><span className="text-emerald-600">Accepted </span><RelativeTime dateStr={proposal.acceptedAt} /></div>}
-                  </div>
-                  <ChevronRightIcon className={clsx('h-4 w-4 text-slate-600 transition-transform mt-1', selectedId === proposal.id && 'rotate-90')} />
-                </div>
-              </div>
-
-              {/* Expanded detail */}
-              <AnimatePresence>
-                {selectedId === proposal.id && (
-                  <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }}
-                    className="overflow-hidden mt-4 pt-4 border-t border-slate-700/50">
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
-                      <div><div className="text-xs text-slate-500">Total</div><div className="text-sm font-bold text-white">${proposal.grandTotal.toLocaleString()}</div></div>
-                      <div><div className="text-xs text-slate-500">Windows</div><div className="text-sm font-bold text-white">{proposal.totalWindows}</div></div>
-                      <div><div className="text-xs text-slate-500">Sent</div><div className="text-sm text-slate-300">{proposal.sentAt ? new Date(proposal.sentAt).toLocaleDateString() : '—'}</div></div>
-                      <div><div className="text-xs text-slate-500">Views</div><div className="text-sm text-slate-300">{proposal.viewCount}</div></div>
-                    </div>
-                    <div className="flex gap-2 flex-wrap">
-                      <Link to={`/proposals/${proposal.id}`} className="btn-secondary btn-sm">View Full Proposal</Link>
-                      {proposal.status === 'DRAFT' && <button className="btn-primary btn-sm" onClick={() => { toast.success('Proposal sent!'); setSelectedId(null); }}><PaperAirplaneIcon className="h-3.5 w-3.5" /> Send</button>}
-                      {proposal.status === 'SENT' && <button className="btn-secondary btn-sm" onClick={() => toast.info('Reminder sent!')}>Send Reminder</button>}
-                      {proposal.status === 'ACCEPTED' && <Link to="/invoices" className="btn-success btn-sm"><CheckCircleIcon className="h-3.5 w-3.5" /> Create Invoice</Link>}
-                      {proposal.status === 'DECLINED' && <button className="btn-secondary btn-sm" onClick={() => toast.info('Revision queued')}>Revise &amp; Resend</button>}
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </motion.div>
-          );
-        })}
-
-        {filtered.length === 0 && (
-          <div className="card p-10 text-center">
-            <DocumentTextIcon className="h-10 w-10 text-slate-700 mx-auto mb-3" />
-            <p className="text-slate-500 text-sm">No proposals match your filter</p>
+      {/* Stats */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        {[
+          { label: 'Total Pipeline', value: formatCurrency(totalValue), sub: `${proposals.length} proposals`, color: 'text-brand-400' },
+          { label: 'Accepted', value: formatCurrency(acceptedValue), sub: `${proposals.filter(p => p.status === 'ACCEPTED').length} won`, color: 'text-emerald-400' },
+          { label: 'Out for Review', value: sentCount.toString(), sub: 'sent or viewed', color: 'text-purple-400' },
+          { label: 'Avg Value', value: proposals.length ? formatCurrency(Math.round(totalValue / proposals.length)) : '—', sub: 'per proposal', color: 'text-cyan-400' },
+        ].map((s) => (
+          <div key={s.label} className="card p-4">
+            <div className="text-xs text-slate-500 mb-1">{s.label}</div>
+            <div className={clsx('text-xl font-bold', s.color)}>{s.value}</div>
+            <div className="text-[11px] text-slate-600 mt-0.5">{s.sub}</div>
           </div>
-        )}
+        ))}
+      </div>
+
+      {/* Filters */}
+      <div className="flex items-center gap-3 flex-wrap">
+        <div className="relative flex-1 min-w-[200px] max-w-sm">
+          <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
+          <input value={search} onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search proposals..." className="input pl-9" />
+        </div>
+        <div className="flex gap-1.5 flex-wrap">
+          {['', 'DRAFT', 'READY', 'SENT', 'VIEWED', 'ACCEPTED', 'DECLINED'].map((s) => (
+            <button key={s} onClick={() => setStatusFilter(s)}
+              className={clsx('btn-sm transition-colors', statusFilter === s ? 'btn-primary' : 'btn-secondary')}>
+              {s || 'All'}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Table */}
+      <div className="card overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead>
+              <tr className="border-b border-slate-800">
+                {['Customer', 'Title', 'Value', 'Status', 'PDF', 'Views', 'Expiry', ''].map((h) => (
+                  <th key={h} className="px-4 py-3 text-left text-[10px] font-semibold text-slate-500 uppercase tracking-wide">
+                    {h}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-800/50">
+              {isLoading ? (
+                <tr><td colSpan={8} className="px-4 py-10 text-center text-slate-500">Loading proposals...</td></tr>
+              ) : filtered.length === 0 ? (
+                <tr><td colSpan={8} className="px-4 py-10 text-center text-slate-500">No proposals found</td></tr>
+              ) : filtered.map((p) => (
+                <>
+                  <tr key={p.id}
+                    onClick={() => setSelectedId(selectedId === p.id ? null : p.id)}
+                    className="hover:bg-slate-800/40 cursor-pointer transition-colors">
+                    <td className="px-4 py-3">
+                      <div className="text-sm font-medium text-white">
+                        {p.lead ? `${p.lead.firstName} ${p.lead.lastName}` : '—'}
+                      </div>
+                      <div className="text-[11px] text-slate-500">{p.lead?.city}</div>
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="text-sm text-slate-300 max-w-[200px] truncate">{p.title}</div>
+                      <div className="text-[11px] text-slate-600">{p.quote?.totalWindows} windows · by {p.createdBy?.firstName}</div>
+                    </td>
+                    <td className="px-4 py-3 font-semibold text-white">{formatCurrency(p.quote?.grandTotal)}</td>
+                    <td className="px-4 py-3">
+                      <span className={clsx('text-[10px] px-2 py-0.5 rounded-full font-medium border',
+                        STATUS_STYLES[p.status]?.badge || 'bg-slate-800 text-slate-400')}>
+                        {STATUS_STYLES[p.status]?.label || p.status}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className={clsx('text-[11px]', PDF_STATUS[p.pdfStatus || 'PENDING'])}>
+                        {p.pdfStatus === 'READY' ? '✓ PDF' : p.pdfStatus === 'GENERATING' ? '⟳ Gen...' : p.pdfStatus === 'FAILED' ? '✗ Failed' : '– None'}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-sm text-slate-400">{p.viewCount || 0}</td>
+                    <td className="px-4 py-3 text-sm text-slate-400">{formatDate(p.expiresAt)}</td>
+                    <td className="px-4 py-3">
+                      <Link to={`/proposals/${p.id}`} onClick={(e) => e.stopPropagation()}
+                        className="btn-icon btn-ghost h-7 w-7">
+                        <ChevronRightIcon className="h-4 w-4" />
+                      </Link>
+                    </td>
+                  </tr>
+                  <AnimatePresence>
+                    {selectedId === p.id && (
+                      <tr key={`detail-${p.id}`}>
+                        <td colSpan={8} className="p-0">
+                          <motion.div
+                            initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
+                            <div className="px-4 py-4 bg-slate-800/30 border-b border-slate-800 flex items-center gap-3 flex-wrap">
+                              <Link to={`/proposals/${p.id}`} className="btn-primary btn-sm">
+                                <EyeIcon className="h-4 w-4" /> View Full Proposal
+                              </Link>
+                              {p.status === 'DRAFT' && (
+                                <button onClick={() => handleStatusChange(p.id, 'READY')}
+                                  className="btn-secondary btn-sm">Mark Ready</button>
+                              )}
+                              {p.status === 'READY' && (
+                                <button onClick={() => handleStatusChange(p.id, 'SENT')}
+                                  className="btn-sm bg-purple-600/20 text-purple-400 border border-purple-500/20 hover:bg-purple-600/30">
+                                  <PaperAirplaneIcon className="h-4 w-4" /> Send to Customer
+                                </button>
+                              )}
+                              {['SENT', 'VIEWED'].includes(p.status) && (
+                                <>
+                                  <button onClick={() => handleStatusChange(p.id, 'ACCEPTED')}
+                                    className="btn-sm bg-emerald-600/20 text-emerald-400 border border-emerald-500/20">
+                                    <CheckCircleIcon className="h-4 w-4" /> Mark Accepted
+                                  </button>
+                                  <button onClick={() => handleStatusChange(p.id, 'DECLINED')}
+                                    className="btn-sm bg-red-500/10 text-red-400 border border-red-500/20">
+                                    <XMarkIcon className="h-4 w-4" /> Mark Declined
+                                  </button>
+                                </>
+                              )}
+                              {p.pdfStatus === 'READY' && p.pdfUrl && (
+                                <a href={p.pdfUrl} target="_blank" rel="noopener noreferrer"
+                                  className="btn-secondary btn-sm">
+                                  <ArrowDownTrayIcon className="h-4 w-4" /> Download PDF
+                                </a>
+                              )}
+                              {p.lead && (
+                                <Link to={`/leads/${p.lead.id}`} className="btn-secondary btn-sm ml-auto">
+                                  Open Lead →
+                                </Link>
+                              )}
+                            </div>
+                          </motion.div>
+                        </td>
+                      </tr>
+                    )}
+                  </AnimatePresence>
+                </>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );
