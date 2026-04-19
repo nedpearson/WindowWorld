@@ -212,19 +212,21 @@ async function runPdfJob(job: any) {
 }
 
 async function runEmailJob(job: any) {
-  const { to, subject, html, text, leadId, type } = job.data;
+  const { to, subject, html, text, leadId, type, sentById } = job.data;
   logger.info(`[email] Sending "${type || 'notification'}" to: ${to}`);
 
-  // Email provider dispatch
-  if (!process.env.SMTP_HOST && !process.env.SENDGRID_API_KEY) {
-    logger.warn(`[email] No email provider configured â€” would send to ${to}: ${subject}`);
-    return;
+  const { sendEmail } = await import('../shared/services/email.service');
+
+  const result = await sendEmail({ to, subject, html, text });
+
+  if (!result.success) {
+    logger.error(`[email] Failed to send to ${to}: ${result.error}`);
+    // Don't throw — let the job complete so it doesn't infinitely retry
+  } else {
+    logger.info(`[email] Delivered via ${result.provider}: id=${result.id}`);
   }
 
-  // Actual send handled by email queue if configured
-  logger.info(`[email] Would send to ${to}: ${subject} â€” provider: ${process.env.SMTP_HOST || 'none'}`);
-
-  // If tied to a lead, log activity
+  // Log activity on the lead timeline regardless of email success
   if (leadId) {
     const { prisma } = await import('../shared/services/prisma');
     await prisma.activity.create({
@@ -234,7 +236,7 @@ async function runEmailJob(job: any) {
         title: subject,
         description: text?.substring(0, 500),
         contactMethod: 'EMAIL',
-        userId: job.data.sentById || null,
+        userId: sentById || null,
       } as any,
     });
   }

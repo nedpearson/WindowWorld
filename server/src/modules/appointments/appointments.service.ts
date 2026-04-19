@@ -127,13 +127,34 @@ export class AppointmentsService {
     });
 
     // Auto-advance lead status to APPOINTMENT_SET if it's earlier in funnel
-    const lead = await prisma.lead.findUnique({ where: { id: data.leadId }, select: { status: true } });
+    const lead = await prisma.lead.findUnique({ where: { id: data.leadId }, select: { status: true, email: true } });
     const earlyStatuses = ['NEW_LEAD', 'ATTEMPTING_CONTACT', 'CONTACTED', 'QUALIFIED'];
     if (lead && earlyStatuses.includes(lead.status)) {
       await prisma.lead.update({
         where: { id: data.leadId },
         data: { status: 'APPOINTMENT_SET' },
       });
+    }
+
+    // Send confirmation email if lead has email on file
+    if (lead?.email) {
+      try {
+        const { sendAppointmentConfirmation } = await import('../../shared/services/email.service');
+        const scheduledDate = new Date(data.scheduledAt);
+        await sendAppointmentConfirmation({
+          to: lead.email,
+          customerName: `${(apt as any).lead?.firstName || ''} ${(apt as any).lead?.lastName || ''}`.trim(),
+          repName: `${(apt as any).createdBy?.firstName || ''} ${(apt as any).createdBy?.lastName || ''}`.trim(),
+          repPhone: (apt as any).createdBy?.phone,
+          appointmentDate: scheduledDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }),
+          appointmentTime: scheduledDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }),
+          address: data.address,
+          duration: data.duration,
+        });
+      } catch (err: any) {
+        // Non-fatal
+        logger.warn(`[appointments] Email confirmation failed for apt ${apt.id}: ${err.message}`);
+      }
     }
 
     return apt;

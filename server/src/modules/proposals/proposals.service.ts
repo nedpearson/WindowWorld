@@ -178,8 +178,37 @@ export class ProposalsService {
   async send(id: string, userId: string, channel: 'email' | 'sms' | 'both') {
     const proposal = await this.getById(id);
     await this.updateStatus(id, 'SENT', userId);
-    // Email/SMS notifications queued via notification system
-    logger.info(`Proposal ${id} sent via ${channel} to lead ${proposal.leadId}`);
+
+    const lead = (proposal as any).lead;
+    const rep = (proposal as any).createdBy;
+    const quote = (proposal as any).quote;
+
+    // Send email if customer has an email address
+    if ((channel === 'email' || channel === 'both') && lead?.email) {
+      const { sendProposalEmail } = await import('../../shared/services/email.service');
+      const result = await sendProposalEmail({
+        to: lead.email,
+        customerName: `${lead.firstName} ${lead.lastName}`,
+        repName: rep ? `${rep.firstName} ${rep.lastName}` : 'Your WindowWorld Representative',
+        repPhone: rep?.phone,
+        repEmail: rep?.email,
+        proposalTitle: (proposal as any).title,
+        proposalId: id,
+        windowCount: quote?.totalWindows || 0,
+        totalAmount: quote?.grandTotal || 0,
+        expiresAt: (proposal as any).expiresAt,
+        pdfUrl: (proposal as any).pdfUrl,
+      });
+      logger.info(`Proposal ${id} email ${result.success ? 'delivered' : 'failed'}: provider=${result.provider}`);
+    } else if (channel === 'email' || channel === 'both') {
+      logger.warn(`Proposal ${id}: no customer email on file for lead ${proposal.leadId}`);
+    }
+
+    // SMS: log for now — wire Twilio when ready
+    if (channel === 'sms' || channel === 'both') {
+      logger.info(`Proposal ${id} SMS queued for lead ${proposal.leadId} (Twilio not yet configured)`);
+    }
+
     return { sent: true, channel, proposalId: id };
   }
 

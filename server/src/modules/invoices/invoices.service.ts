@@ -192,6 +192,43 @@ export class InvoicesService {
       where: { id },
       data: { status: 'SENT', sentAt: new Date() } as any,
     });
+
+    // Send email if we can resolve the customer email via proposal → lead
+    try {
+      const full = await prisma.invoice.findUnique({
+        where: { id },
+        include: {
+          proposal: {
+            include: {
+              lead: { select: { email: true, firstName: true, lastName: true } },
+              createdBy: { select: { firstName: true, lastName: true } },
+            },
+          },
+        } as any,
+      }) as any;
+
+      const lead = full?.proposal?.lead;
+      const rep = full?.proposal?.createdBy;
+
+      if (lead?.email) {
+        const { sendInvoiceEmail } = await import('../../shared/services/email.service');
+        await sendInvoiceEmail({
+          to: lead.email,
+          customerName: `${lead.firstName} ${lead.lastName}`,
+          invoiceNumber: invoice.invoiceNumber as string,
+          grandTotal: (invoice as any).grandTotal,
+          depositAmount: (invoice as any).depositAmount ?? undefined,
+          dueDate: (invoice as any).dueDate ?? undefined,
+          pdfUrl: (invoice as any).pdfUrl ?? undefined,
+          repName: rep ? `${rep.firstName} ${rep.lastName}` : undefined,
+        });
+      }
+    } catch (err: any) {
+      // Non-fatal — invoice status is already updated
+      const { logger } = await import('../../shared/utils/logger');
+      logger.warn(`[invoice] Email send failed for ${id}: ${err.message}`);
+    }
+
     return updated;
   }
 
