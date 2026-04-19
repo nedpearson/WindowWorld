@@ -27,7 +27,7 @@ export class InspectionsService {
         take: limit,
         orderBy: { createdAt: 'desc' },
         include: {
-          inspectedBy: { select: { id: true, firstName: true, lastName: true } },
+          createdBy: { select: { id: true, firstName: true, lastName: true } },
           lead: { select: { id: true, firstName: true, lastName: true, address: true } },
           property: { select: { id: true, address: true, city: true } },
           _count: { select: { openings: true } },
@@ -42,7 +42,7 @@ export class InspectionsService {
     const inspection = await prisma.inspection.findUnique({
       where: { id },
       include: {
-        inspectedBy: { select: { id: true, firstName: true, lastName: true, phone: true } },
+        createdBy: { select: { id: true, firstName: true, lastName: true, phone: true } },
         lead: {
           include: {
             contacts: { orderBy: { isPrimary: 'desc' } },

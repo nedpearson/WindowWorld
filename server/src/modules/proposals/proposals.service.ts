@@ -30,7 +30,7 @@ export class ProposalsService {
         orderBy: { createdAt: 'desc' },
         include: {
           lead: { select: { id: true, firstName: true, lastName: true, address: true, city: true } },
-          quote: { select: { id: true, grandTotal: true, totalWindows: true } },
+          quote: { select: { id: true, total: true, totalWindows: true } },
           createdBy: { select: { id: true, firstName: true, lastName: true } },
         },
       }),
@@ -46,11 +46,10 @@ export class ProposalsService {
         lead: {
           include: {
             contacts: { where: { isPrimary: true }, take: 1 },
-            assignedTo: { select: { id: true, firstName: true, lastName: true, phone: true, email: true } },
+            assignedRep: { select: { id: true, firstName: true, lastName: true, phone: true, email: true } },
           },
         },
         quote: true,
-        property: true,
         createdBy: { select: { id: true, firstName: true, lastName: true, phone: true, email: true } },
       },
     });
@@ -115,8 +114,8 @@ export class ProposalsService {
       // Queue PDF generation job
       const job = await pdfQueue.add('generate-proposal-pdf', {
         proposalId: id,
-        leadName: `${proposal.lead.firstName} ${proposal.lead.lastName}`,
-        address: proposal.lead.address,
+        leadName: `${(proposal as any).lead?.firstName} ${(proposal as any).lead?.lastName}`,
+        address: (proposal as any).lead?.address,
       });
 
       logger.info(`PDF generation queued for proposal ${id}, job ${job.id}`);

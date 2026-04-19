@@ -41,7 +41,7 @@ router.get('/calendar', auth.repOrAbove, async (req: Request, res: Response) => 
 
 // GET /api/v1/appointments/:id
 router.get('/:id', auth.repOrAbove, async (req: Request, res: Response) => {
-  const apt = await appointmentsService.getById(req.params.id);
+  const apt = await appointmentsService.getById((req.params.id as string));
   res.json({ success: true, data: apt });
 });
 
@@ -59,14 +59,14 @@ router.post('/',
 // PATCH /api/v1/appointments/:id
 router.patch('/:id', auth.repOrAbove, async (req: Request, res: Response) => {
   const user = (req as AuthenticatedRequest).user;
-  const apt = await appointmentsService.update(req.params.id, req.body, user.id);
+  const apt = await appointmentsService.update((req.params.id as string), req.body, user.id);
   res.json({ success: true, data: apt });
 });
 
 // PATCH /api/v1/appointments/:id/status
 router.patch('/:id/status', auth.repOrAbove, async (req: Request, res: Response) => {
   const user = (req as AuthenticatedRequest).user;
-  const apt = await appointmentsService.updateStatus(req.params.id, req.body.status, req.body.outcome, user.id);
+  const apt = await appointmentsService.updateStatus((req.params.id as string), req.body.status, req.body.outcome, user.id);
   res.json({ success: true, data: apt });
 });
 

@@ -6,7 +6,7 @@ const router = Router();
 
 // GET /api/v1/measurements/opening/:openingId
 router.get('/opening/:openingId', auth.repOrAbove, async (req: Request, res: Response) => {
-  const data = await measurementsService.getByOpening(req.params.openingId);
+  const data = await measurementsService.getByOpening((req.params.openingId as string));
   res.json({ success: true, data });
 });
 
@@ -27,14 +27,14 @@ router.post('/', auth.repOrAbove, async (req: Request, res: Response) => {
 router.post('/opening/:openingId/verify', auth.repOrAbove, async (req: Request, res: Response) => {
   const user = (req as AuthenticatedRequest).user;
   const { finalWidth, finalHeight } = req.body;
-  const data = await measurementsService.verify(req.params.openingId, user.id, parseFloat(finalWidth), parseFloat(finalHeight));
+  const data = await measurementsService.verify((req.params.openingId as string), user.id, parseFloat(finalWidth), parseFloat(finalHeight));
   res.json({ success: true, data });
 });
 
 // POST /api/v1/measurements/opening/:openingId/approve-for-order
 router.post('/opening/:openingId/approve-for-order', auth.manager, async (req: Request, res: Response) => {
   const user = (req as AuthenticatedRequest).user;
-  const data = await measurementsService.approveForOrder(req.params.openingId, user.id);
+  const data = await measurementsService.approveForOrder((req.params.openingId as string), user.id);
   res.json({ success: true, data });
 });
 

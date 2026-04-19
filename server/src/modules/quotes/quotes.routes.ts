@@ -4,25 +4,25 @@ import { quotesService } from './quotes.service';
 
 const router = Router();
 
-router.get('/lead/:leadId', auth.repOrAbove, async (req, res) => {
+router.get('/lead/:leadId', auth.repOrAbove, async (req: Request, res: Response) => {
   const data = await quotesService.listForLead(req.params.leadId);
   res.json({ success: true, data });
 });
 
-router.get('/:id', auth.repOrAbove, async (req, res) => {
-  const data = await quotesService.getById(req.params.id);
+router.get('/:id', auth.repOrAbove, async (req: Request, res: Response) => {
+  const data = await quotesService.getById((req.params.id as string));
   res.json({ success: true, data });
 });
 
 // POST /api/v1/quotes — create quote from manual line items
-router.post('/', auth.repOrAbove, async (req, res) => {
+router.post('/', auth.repOrAbove, async (req: Request, res: Response) => {
   const user = (req as AuthenticatedRequest).user;
   const data = await quotesService.create({ ...req.body, createdById: user.id });
   res.status(201).json({ success: true, data });
 });
 
 // POST /api/v1/quotes/build — auto-build from property openings
-router.post('/build', auth.repOrAbove, async (req, res) => {
+router.post('/build', auth.repOrAbove, async (req: Request, res: Response) => {
   const user = (req as AuthenticatedRequest).user;
   const result = await quotesService.buildFromOpenings({
     ...req.body,
@@ -33,21 +33,21 @@ router.post('/build', auth.repOrAbove, async (req, res) => {
 });
 
 // POST /api/v1/quotes/calculate — calculate totals without saving
-router.post('/calculate', auth.repOrAbove, (req, res) => {
+router.post('/calculate', auth.repOrAbove, (req: Request, res: Response) => {
   const { lineItems, discountPct } = req.body;
   const result = quotesService.calculateTotals(lineItems, discountPct);
   res.json({ success: true, data: result });
 });
 
-router.patch('/:id', auth.repOrAbove, async (req, res) => {
+router.patch('/:id', auth.repOrAbove, async (req: Request, res: Response) => {
   const user = (req as AuthenticatedRequest).user;
-  const data = await quotesService.update(req.params.id, req.body, user.id);
+  const data = await quotesService.update((req.params.id as string), req.body, user.id);
   res.json({ success: true, data });
 });
 
-router.delete('/:id', auth.manager, async (req, res) => {
+router.delete('/:id', auth.manager, async (req: Request, res: Response) => {
   const user = (req as AuthenticatedRequest).user;
-  await quotesService.delete(req.params.id, user.id);
+  await quotesService.delete((req.params.id as string), user.id);
   res.json({ success: true, message: 'Quote deleted' });
 });
 

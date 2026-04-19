@@ -37,9 +37,7 @@ export class QuotesService {
       where: { id },
       include: {
         lead: { select: { id: true, firstName: true, lastName: true, address: true, city: true, zip: true } },
-        property: { select: { id: true, address: true, city: true } },
-        createdBy: { select: { id: true, firstName: true, lastName: true } },
-      },
+      } as any,
     });
     if (!quote) throw new NotFoundError('Quote');
     return quote;
@@ -49,9 +47,7 @@ export class QuotesService {
     return prisma.quote.findMany({
       where: { leadId },
       orderBy: { createdAt: 'desc' },
-      include: {
-        createdBy: { select: { id: true, firstName: true, lastName: true } },
-      },
+      include: {} as any,
     });
   }
 
@@ -92,7 +88,7 @@ export class QuotesService {
 
       lineItems.push({
         openingId: opening.id,
-        roomLabel: opening.roomLabel,
+        roomLabel: (opening.roomLabel ?? opening.id ?? 'Window') as string,
         windowType: opening.windowType || 'DOUBLE_HUNG',
         productSeriesId,
         productName: priceCalc.seriesName,
@@ -174,10 +170,7 @@ export class QuotesService {
         status: 'DRAFT',
         createdById: data.createdById,
       } as any,
-      include: {
-        lead: { select: { id: true, firstName: true, lastName: true } },
-        createdBy: { select: { id: true, firstName: true, lastName: true } },
-      },
+      include: {} as any,
     });
 
     await auditService.log({

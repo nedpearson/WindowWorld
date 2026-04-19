@@ -5,31 +5,31 @@ import { productsService } from './products.service';
 const router = Router();
 
 // GET /api/v1/products — full catalog
-router.get('/', auth.repOrAbove, (req, res) => {
+router.get('/', auth.repOrAbove, (req: Request, res: Response) => {
   const data = productsService.catalog();
   res.json({ success: true, data });
 });
 
 // GET /api/v1/products/:id
-router.get('/:id', auth.repOrAbove, (req, res) => {
-  const data = productsService.getById(req.params.id);
+router.get('/:id', auth.repOrAbove, (req: Request, res: Response) => {
+  const data = productsService.getById((req.params.id as string));
   res.json({ success: true, data });
 });
 
 // POST /api/v1/products/calculate — price a single window
-router.post('/calculate', auth.repOrAbove, (req, res) => {
+router.post('/calculate', auth.repOrAbove, (req: Request, res: Response) => {
   const data = productsService.calculateWindowPrice(req.body);
   res.json({ success: true, data });
 });
 
 // GET /api/v1/products/financing/options
-router.get('/financing/options', auth.repOrAbove, (req, res) => {
+router.get('/financing/options', auth.repOrAbove, (req: Request, res: Response) => {
   const data = productsService.financingOptions();
   res.json({ success: true, data });
 });
 
 // POST /api/v1/products/financing/calculate
-router.post('/financing/calculate', auth.repOrAbove, (req, res) => {
+router.post('/financing/calculate', auth.repOrAbove, (req: Request, res: Response) => {
   const { principal, finOptionId } = req.body;
   const data = productsService.calculateMonthlyPayment(parseFloat(principal), finOptionId);
   res.json({ success: true, data });

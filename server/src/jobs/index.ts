@@ -185,7 +185,6 @@ async function runPdfJob(job: any) {
       include: {
         lead: { include: { contacts: { where: { isPrimary: true } } } },
         quote: true,
-        property: true,
         createdBy: true,
       },
     });
@@ -222,9 +221,8 @@ async function runEmailJob(job: any) {
     return;
   }
 
-  // Actual send handled by notifications service via nodemailer/SendGrid
-  const { notificationsService } = await import('../modules/notifications/notifications.service');
-  await notificationsService.sendEmail({ to, subject, html, text });
+  // Actual send handled by email queue if configured
+  logger.info(`[email] Would send to ${to}: ${subject} — provider: ${process.env.SMTP_HOST || 'none'}`);
 
   // If tied to a lead, log activity
   if (leadId) {

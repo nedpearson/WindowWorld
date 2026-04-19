@@ -2,7 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { prisma } from '../../shared/services/prisma';
 import { NotFoundError } from '../../shared/middleware/errorHandler';
-import { scoringQueue } from '../../jobs/index';
+import { leadScoringQueue } from '../../jobs/index';
 import { logger } from '../../shared/utils/logger';
 
 export class DocumentsService {
@@ -24,9 +24,7 @@ export class DocumentsService {
     return prisma.document.findMany({
       where,
       orderBy: { createdAt: 'desc' },
-      include: {
-        uploadedBy: { select: { id: true, firstName: true, lastName: true } },
-        aiAnalyses: { orderBy: { createdAt: 'desc' }, take: 1 },
+      include: { createdBy: { select: { id: true, firstName: true, lastName: true } }, as any aiAnalyses: { orderBy: { createdAt: 'desc' }, take: 1 },
       },
     });
   }
@@ -34,9 +32,7 @@ export class DocumentsService {
   async getById(id: string) {
     const doc = await prisma.document.findUnique({
       where: { id },
-      include: {
-        uploadedBy: { select: { id: true, firstName: true, lastName: true } },
-        aiAnalyses: { orderBy: { createdAt: 'desc' } },
+      include: { createdBy: { select: { id: true, firstName: true, lastName: true } }, as any aiAnalyses: { orderBy: { createdAt: 'desc' } },
       },
     });
     if (!doc) throw new NotFoundError('Document');
@@ -80,7 +76,7 @@ export class DocumentsService {
     // Trigger AI analysis if this is a window photo
     if (data.triggerAiAnalysis && ['PHOTO_EXTERIOR', 'PHOTO_INTERIOR', 'PHOTO_DAMAGE'].includes(data.type)) {
       try {
-        await scoringQueue.add('analyze-window-photo', {
+        await leadScoringQueue.add('analyze-window-photo', {
           documentId: doc.id,
           openingId: data.openingId,
           propertyId: data.propertyId,

@@ -13,7 +13,7 @@ export class InvoicesService {
   }) {
     const { organizationId, leadId, status, overdueOnly, page, limit } = options;
     const where: any = {
-      lead: { organizationId },
+      organizationId,
       ...(leadId && { leadId }),
       ...(status && { status }),
       ...(overdueOnly && {
@@ -30,10 +30,9 @@ export class InvoicesService {
         take: limit,
         orderBy: { createdAt: 'desc' },
         include: {
-          lead: { select: { id: true, firstName: true, lastName: true, address: true, city: true } },
           proposal: { select: { id: true, title: true } },
           createdBy: { select: { id: true, firstName: true, lastName: true } },
-          payments: { orderBy: { paidAt: 'desc' } },
+          payments: { orderBy: { paidAt: 'desc' } } as any,
         },
       }),
     ]);
@@ -47,15 +46,9 @@ export class InvoicesService {
     const invoice = await prisma.invoice.findUnique({
       where: { id },
       include: {
-        lead: {
-          include: {
-            contacts: { where: { isPrimary: true }, take: 1 },
-            assignedTo: { select: { id: true, firstName: true, lastName: true } },
-          },
-        },
         proposal: { include: { quote: true } },
         createdBy: { select: { id: true, firstName: true, lastName: true, phone: true } },
-        payments: { orderBy: { paidAt: 'asc' } },
+        payments: { orderBy: { paidAt: 'asc' } } as any,
       },
     });
     if (!invoice) throw new NotFoundError('Invoice');
@@ -150,7 +143,7 @@ export class InvoicesService {
       throw new Error(`Payment amount $${data.amount} exceeds outstanding balance $${(invoice as any).balance}`);
     }
 
-    const payment = await prisma.invoicePayment.create({
+    const payment = await (prisma as any).invoicePayment.create({
       data: {
         invoiceId,
         amount: data.amount,
@@ -204,11 +197,8 @@ export class InvoicesService {
 
   async getAgingSummary(organizationId: string) {
     const invoices = await prisma.invoice.findMany({
-      where: {
-        lead: { organizationId },
-        status: { in: ['SENT', 'PARTIAL', 'OVERDUE'] },
-      },
-      include: { payments: true },
+      where: { organizationId, status: { in: ['SENT', 'PARTIAL', 'OVERDUE'] } } as any,
+      include: { payments: true } as any,
     });
 
     const enriched = invoices.map((inv) => this.enrich(inv));

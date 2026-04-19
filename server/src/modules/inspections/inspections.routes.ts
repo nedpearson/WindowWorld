@@ -16,7 +16,7 @@ router.get('/', auth.repOrAbove, async (req: Request, res: Response) => {
 });
 
 router.get('/:id', auth.repOrAbove, async (req: Request, res: Response) => {
-  const data = await inspectionsService.getById(req.params.id);
+  const data = await inspectionsService.getById((req.params.id as string));
   res.json({ success: true, data });
 });
 
@@ -28,18 +28,18 @@ router.post('/', auth.repOrAbove, async (req: Request, res: Response) => {
 
 router.patch('/:id/start', auth.repOrAbove, async (req: Request, res: Response) => {
   const user = (req as AuthenticatedRequest).user;
-  const data = await inspectionsService.startInspection(req.params.id, user.id);
+  const data = await inspectionsService.startInspection((req.params.id as string), user.id);
   res.json({ success: true, data });
 });
 
 router.patch('/:id/complete', auth.repOrAbove, async (req: Request, res: Response) => {
   const user = (req as AuthenticatedRequest).user;
-  const data = await inspectionsService.completeInspection(req.params.id, user.id, req.body);
+  const data = await inspectionsService.completeInspection((req.params.id as string), user.id, req.body);
   res.json({ success: true, data });
 });
 
 router.post('/:id/openings', auth.repOrAbove, async (req: Request, res: Response) => {
-  const data = await inspectionsService.addOpening(req.params.id, req.body);
+  const data = await inspectionsService.addOpening((req.params.id as string), req.body);
   res.status(201).json({ success: true, data });
 });
 

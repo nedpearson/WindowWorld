@@ -33,7 +33,7 @@ router.get('/', auth.repOrAbove, async (req: Request, res: Response) => {
 
 // GET /api/v1/documents/:id
 router.get('/:id', auth.repOrAbove, async (req: Request, res: Response) => {
-  const data = await documentsService.getById(req.params.id);
+  const data = await documentsService.getById((req.params.id as string));
   res.json({ success: true, data });
 });
 
@@ -72,14 +72,14 @@ router.post('/upload', auth.repOrAbove, upload.single('file'), async (req: Reque
 
 // POST /api/v1/documents/:id/retrigger-ai
 router.post('/:id/retrigger-ai', auth.repOrAbove, async (req: Request, res: Response) => {
-  const result = await documentsService.retriggerAiAnalysis(req.params.id);
+  const result = await documentsService.retriggerAiAnalysis((req.params.id as string));
   res.json({ success: true, data: result });
 });
 
 // DELETE /api/v1/documents/:id
 router.delete('/:id', auth.repOrAbove, async (req: Request, res: Response) => {
   const user = (req as AuthenticatedRequest).user;
-  await documentsService.delete(req.params.id, user.id);
+  await documentsService.delete((req.params.id as string), user.id);
   res.json({ success: true, message: 'Document deleted' });
 });
 

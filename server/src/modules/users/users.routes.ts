@@ -24,7 +24,7 @@ router.get('/leaderboard', auth.repOrAbove, async (req: Request, res: Response) 
 });
 
 router.get('/:id', auth.manager, async (req: Request, res: Response) => {
-  const data = await usersService.getById(req.params.id);
+  const data = await usersService.getById((req.params.id as string));
   res.json({ success: true, data });
 });
 
@@ -45,13 +45,13 @@ router.post('/', auth.manager, [
 
 router.patch('/:id', auth.manager, async (req: Request, res: Response) => {
   const user = (req as AuthenticatedRequest).user;
-  const data = await usersService.update(req.params.id, req.body, user.id);
+  const data = await usersService.update((req.params.id as string), req.body, user.id);
   res.json({ success: true, data });
 });
 
 router.patch('/:id/deactivate', auth.superAdmin, async (req: Request, res: Response) => {
   const user = (req as AuthenticatedRequest).user;
-  await usersService.deactivate(req.params.id, user.id);
+  await usersService.deactivate((req.params.id as string), user.id);
   res.json({ success: true, message: 'User deactivated' });
 });
 

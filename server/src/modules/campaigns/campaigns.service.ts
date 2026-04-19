@@ -192,7 +192,7 @@ export class CampaignsService {
     return prisma.campaign.findMany({
       where: { organizationId },
       orderBy: { createdAt: 'desc' },
-      include: { _count: { select: { enrollments: true } } },
+      include: { _count: { select: { leads: true } } } as any,
     });
   }
 
@@ -205,14 +205,14 @@ export class CampaignsService {
   }
 
   async enroll(leadId: string, campaignTemplateKey: string, enrolledById: string) {
-    const template = CAMPAIGN_TEMPLATES[campaignTemplateKey];
+    const template = (CAMPAIGN_TEMPLATES as any)[campaignTemplateKey];
     if (!template) throw new Error(`Campaign template not found: ${campaignTemplateKey}`);
 
     const lead = await prisma.lead.findUnique({ where: { id: leadId }, include: { contacts: { where: { isPrimary: true } } } });
     if (!lead) throw new Error(`Lead not found: ${leadId}`);
 
     // Check not already enrolled
-    const existing = await prisma.campaignEnrollment.findFirst({
+    const existing = await (prisma as any).campaignEnrollment?.findFirst({
       where: { leadId, campaign: { templateKey: campaignTemplateKey }, status: 'ACTIVE' },
     });
     if (existing) return { enrolled: false, message: 'Lead already enrolled in this campaign' };
@@ -236,7 +236,7 @@ export class CampaignsService {
       });
     }
 
-    const enrollment = await prisma.campaignEnrollment.create({
+    const enrollment = await (prisma as any).campaignEnrollment?.create({
       data: {
         campaignId: campaign.id,
         leadId,
@@ -258,14 +258,14 @@ export class CampaignsService {
     const { leadId, step } = params;
 
     // Find enrollment
-    const enrollment = await prisma.campaignEnrollment.findFirst({
+    const enrollment = await (prisma as any).campaignEnrollment?.findFirst({
       where: { leadId, status: 'ACTIVE' },
       include: { campaign: true },
     });
     if (!enrollment) { logger.warn(`No active enrollment for lead ${leadId}`); return; }
 
-    const templateKey = (enrollment.campaign as any).templateKey;
-    const template = CAMPAIGN_TEMPLATES[templateKey];
+    const templateKey = (enrollment?.campaign as any)?.templateKey;
+    const template = (CAMPAIGN_TEMPLATES as any)[templateKey];
     if (!template) return;
 
     const stepConfig = template.steps.find((s) => s.step === step);
@@ -273,11 +273,11 @@ export class CampaignsService {
 
     const lead = await prisma.lead.findUnique({
       where: { id: leadId },
-      include: { contacts: { where: { isPrimary: true } }, assignedTo: true },
+      include: { contacts: { where: { isPrimary: true } }, assignedRep: true } as any,
     });
     if (!lead) return;
 
-    const repName = lead.assignedTo ? `${(lead.assignedTo as any).firstName} ${(lead.assignedTo as any).lastName}` : 'Your WindowWorld Rep';
+    const repName = (lead as any).assignedRep ? `${(lead as any).assignedRep.firstName} ${(lead as any).assignedRep.lastName}` : 'Your WindowWorld Rep';
     const primaryContact = (lead.contacts as any[])[0];
     const templateData = {
       firstName: lead.firstName,
@@ -316,15 +316,14 @@ export class CampaignsService {
     }
 
     // Log activity
-    await prisma.leadActivity.create({
+    await prisma.activity.create({
       data: {
         leadId,
-        type: stepConfig.type === 'EMAIL' ? 'EMAIL_SENT' : 'SMS_SENT',
+        type: stepConfig.type === 'EMAIL' ? 'EMAIL' : 'SMS',
         title: `Campaign: ${template.name} — Step ${step}`,
-        body: `${stepConfig.type} sent for campaign step ${step}`,
-        channel: stepConfig.type as any,
-        direction: 'OUTBOUND',
-        createdById: (enrollment as any).enrolledById,
+        description: `${stepConfig.type} sent for campaign step ${step}`,
+        userId: (enrollment as any)?.enrolledById,
+        leadId,
       } as any,
     });
 
@@ -333,14 +332,14 @@ export class CampaignsService {
     const nextStepConfig = template.steps.find((s) => s.step === nextStep);
 
     if (nextStepConfig) {
-      await prisma.campaignEnrollment.update({
+      await (prisma as any).campaignEnrollment?.update({
         where: { id: enrollment.id },
         data: { currentStep: nextStep } as any,
       });
       await this.scheduleNextStep(leadId, templateKey, nextStep, lead);
     } else {
       // Campaign complete
-      await prisma.campaignEnrollment.update({
+      await (prisma as any).campaignEnrollment?.update({
         where: { id: enrollment.id },
         data: { status: 'COMPLETED', completedAt: new Date() } as any,
       });
@@ -349,7 +348,7 @@ export class CampaignsService {
   }
 
   private async scheduleNextStep(leadId: string, templateKey: string, step: number, lead: any) {
-    const template = CAMPAIGN_TEMPLATES[templateKey];
+    const template = (CAMPAIGN_TEMPLATES as any)[templateKey];
     const stepConfig = template?.steps.find((s) => s.step === step);
     if (!stepConfig) return;
 
@@ -367,7 +366,7 @@ export class CampaignsService {
   }
 
   async unenroll(leadId: string, reason?: string) {
-    await prisma.campaignEnrollment.updateMany({
+    await (prisma as any).campaignEnrollment?.updateMany({
       where: { leadId, status: 'ACTIVE' },
       data: { status: 'UNSUBSCRIBED', unenrolledAt: new Date(), unenrollReason: reason } as any,
     });

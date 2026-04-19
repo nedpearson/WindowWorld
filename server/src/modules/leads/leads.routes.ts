@@ -102,7 +102,7 @@ router.get('/pipeline', auth.repOrAbove, async (req: Request, res: Response) => 
 // GET /api/v1/leads/:id
 router.get('/:id', auth.repOrAbove, async (req: Request, res: Response) => {
   const user = (req as AuthenticatedRequest).user;
-  const lead = await leadService.getById(req.params.id, user.organizationId);
+  const lead = await leadService.getById((req.params.id as string), user.organizationId);
   res.json({ success: true, data: lead });
 });
 
@@ -139,7 +139,7 @@ router.post(
 // PATCH /api/v1/leads/:id
 router.patch('/:id', auth.repOrAbove, async (req: Request, res: Response) => {
   const user = (req as AuthenticatedRequest).user;
-  const lead = await leadService.update(req.params.id, user.organizationId, req.body, user.id);
+  const lead = await leadService.update((req.params.id as string), user.organizationId, req.body, user.id);
   res.json({ success: true, data: lead });
 });
 
@@ -152,7 +152,7 @@ router.patch(
     validate(req);
     const user = (req as AuthenticatedRequest).user;
     const lead = await leadService.updateStatus(
-      req.params.id,
+      (req.params.id as string),
       user.organizationId,
       req.body.status,
       req.body.reason,
@@ -166,7 +166,7 @@ router.patch(
 router.patch('/:id/assign', auth.manager, async (req: Request, res: Response) => {
   const user = (req as AuthenticatedRequest).user;
   const lead = await leadService.assign(
-    req.params.id,
+    (req.params.id as string),
     user.organizationId,
     req.body.repId,
     user.id
@@ -177,14 +177,14 @@ router.patch('/:id/assign', auth.manager, async (req: Request, res: Response) =>
 // POST /api/v1/leads/:id/duplicate-check
 router.post('/:id/duplicate-check', auth.repOrAbove, async (req: Request, res: Response) => {
   const user = (req as AuthenticatedRequest).user;
-  const duplicates = await leadService.checkForDuplicates(req.params.id, user.organizationId);
+  const duplicates = await leadService.checkForDuplicates((req.params.id as string), user.organizationId);
   res.json({ success: true, data: duplicates });
 });
 
 // GET /api/v1/leads/:id/activities
 router.get('/:id/activities', auth.repOrAbove, async (req: Request, res: Response) => {
   const user = (req as AuthenticatedRequest).user;
-  const activities = await leadService.getActivities(req.params.id, user.organizationId);
+  const activities = await leadService.getActivities((req.params.id as string), user.organizationId);
   res.json({ success: true, data: activities });
 });
 
@@ -192,7 +192,7 @@ router.get('/:id/activities', auth.repOrAbove, async (req: Request, res: Respons
 router.post('/:id/activities', auth.repOrAbove, async (req: Request, res: Response) => {
   const user = (req as AuthenticatedRequest).user;
   const activity = await leadService.logActivity({
-    leadId: req.params.id,
+    leadId: (req.params.id as string),
     organizationId: user.organizationId,
     userId: user.id,
     ...req.body,
@@ -203,7 +203,7 @@ router.post('/:id/activities', auth.repOrAbove, async (req: Request, res: Respon
 // GET /api/v1/leads/:id/notes
 router.get('/:id/notes', auth.repOrAbove, async (req: Request, res: Response) => {
   const user = (req as AuthenticatedRequest).user;
-  const notes = await leadService.getNotes(req.params.id, user.organizationId);
+  const notes = await leadService.getNotes((req.params.id as string), user.organizationId);
   res.json({ success: true, data: notes });
 });
 
@@ -211,7 +211,7 @@ router.get('/:id/notes', auth.repOrAbove, async (req: Request, res: Response) =>
 router.post('/:id/notes', auth.repOrAbove, async (req: Request, res: Response) => {
   const user = (req as AuthenticatedRequest).user;
   const note = await leadService.addNote({
-    leadId: req.params.id,
+    leadId: (req.params.id as string),
     organizationId: user.organizationId,
     authorId: user.id,
     content: req.body.content,
@@ -224,14 +224,14 @@ router.post('/:id/notes', auth.repOrAbove, async (req: Request, res: Response) =
 // GET /api/v1/leads/:id/ai-summary — AI-generated lead summary + pitch
 router.get('/:id/ai-summary', auth.repOrAbove, async (req: Request, res: Response) => {
   const user = (req as AuthenticatedRequest).user;
-  const summary = await leadService.getAiSummary(req.params.id, user.organizationId);
+  const summary = await leadService.getAiSummary((req.params.id as string), user.organizationId);
   res.json({ success: true, data: summary });
 });
 
 // DELETE /api/v1/leads/:id
 router.delete('/:id', auth.manager, async (req: Request, res: Response) => {
   const user = (req as AuthenticatedRequest).user;
-  await leadService.softDelete(req.params.id, user.organizationId, user.id);
+  await leadService.softDelete((req.params.id as string), user.organizationId, user.id);
   res.json({ success: true, message: 'Lead deleted' });
 });
 

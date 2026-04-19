@@ -24,7 +24,7 @@ router.get('/lead/:leadId', auth.repOrAbove, async (req: Request, res: Response)
 
 // GET /api/v1/contacts/:id
 router.get('/:id', auth.repOrAbove, async (req: Request, res: Response) => {
-  const contact = await contactsService.getById(req.params.id);
+  const contact = await contactsService.getById((req.params.id as string));
   res.json({ success: true, data: contact });
 });
 
@@ -48,14 +48,14 @@ router.post('/',
 // PATCH /api/v1/contacts/:id
 router.patch('/:id', auth.repOrAbove, async (req: Request, res: Response) => {
   const user = (req as AuthenticatedRequest).user;
-  const contact = await contactsService.update(req.params.id, req.body, user.id);
+  const contact = await contactsService.update((req.params.id as string), req.body, user.id);
   res.json({ success: true, data: contact });
 });
 
 // DELETE /api/v1/contacts/:id
 router.delete('/:id', auth.manager, async (req: Request, res: Response) => {
   const user = (req as AuthenticatedRequest).user;
-  await contactsService.delete(req.params.id, user.id);
+  await contactsService.delete((req.params.id as string), user.id);
   res.json({ success: true, message: 'Contact deleted' });
 });
 

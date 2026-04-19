@@ -16,13 +16,13 @@ router.get('/', auth.repOrAbove, async (req: Request, res: Response) => {
 
 // GET /api/v1/properties/:id
 router.get('/:id', auth.repOrAbove, async (req: Request, res: Response) => {
-  const property = await propertiesService.getById(req.params.id);
+  const property = await propertiesService.getById((req.params.id as string));
   res.json({ success: true, data: property });
 });
 
 // GET /api/v1/properties/:id/order-readiness
 router.get('/:id/order-readiness', auth.repOrAbove, async (req: Request, res: Response) => {
-  const readiness = await propertiesService.getOrderReadiness(req.params.id);
+  const readiness = await propertiesService.getOrderReadiness((req.params.id as string));
   res.json({ success: true, data: readiness });
 });
 
@@ -36,13 +36,13 @@ router.post('/', auth.repOrAbove, async (req: Request, res: Response) => {
 // PATCH /api/v1/properties/:id
 router.patch('/:id', auth.repOrAbove, async (req: Request, res: Response) => {
   const user = (req as AuthenticatedRequest).user;
-  const property = await propertiesService.update(req.params.id, req.body, user.id);
+  const property = await propertiesService.update((req.params.id as string), req.body, user.id);
   res.json({ success: true, data: property });
 });
 
 // POST /api/v1/properties/:id/link-lead
 router.post('/:id/link-lead', auth.repOrAbove, async (req: Request, res: Response) => {
-  const property = await propertiesService.linkToLead(req.params.id, req.body.leadId);
+  const property = await propertiesService.linkToLead((req.params.id as string), req.body.leadId);
   res.json({ success: true, data: property });
 });
 
