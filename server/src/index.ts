@@ -32,7 +32,7 @@ import { quotesRouter } from './modules/quotes/quotes.routes';
 import { proposalsRouter } from './modules/proposals/proposals.routes';
 import { invoicesRouter } from './modules/invoices/invoices.routes';
 import { documentsRouter } from './modules/documents/documents.routes';
-import { aianalysisRouter } from './modules/ai-analysis/ai-analysis.routes';
+import { aiAnalysisRouter } from './modules/ai-analysis/ai-analysis.routes';
 import { automationsRouter } from './modules/automations/automations.routes';
 import { analyticsRouter } from './modules/analytics/analytics.routes';
 import { notificationsRouter } from './modules/notifications/notifications.routes';
@@ -108,8 +108,8 @@ app.use(`${apiV1}/quotes`, quotesRouter);
 app.use(`${apiV1}/proposals`, proposalsRouter);
 app.use(`${apiV1}/invoices`, invoicesRouter);
 app.use(`${apiV1}/documents`, documentsRouter);
-app.use(`${apiV1}/ai-analysis`, aianalysisRouter);
-app.use(`${apiV1}/ai`, aianalysisRouter);        // Also mount on /ai for pitch coach + scoring
+app.use(`${apiV1}/ai-analysis`, aiAnalysisRouter);
+app.use(`${apiV1}/ai`, aiAnalysisRouter);        // Also mount on /ai for pitch coach + scoring
 app.use(`${apiV1}/automations`, automationsRouter);
 app.use(`${apiV1}/analytics`, analyticsRouter);
 app.use(`${apiV1}/notifications`, notificationsRouter);
