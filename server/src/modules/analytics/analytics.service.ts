@@ -1,233 +1,225 @@
-import { Prisma } from '@prisma/client';
 import { prisma } from '../../shared/services/prisma';
 
 export class AnalyticsService {
-  async getDashboard(organizationId: string, repId?: string) {
-    const now = new Date();
-    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-    const weekStart = new Date(now);
-    weekStart.setDate(now.getDate() - now.getDay());
+  async getRevenueSummary(organizationId: string, periodDays = 30) {
+    const since = new Date();
+    since.setDate(since.getDate() - periodDays);
 
-    const repFilter: Prisma.LeadWhereInput = repId ? { assignedRepId: repId } : {};
-    const orgLeadFilter: Prisma.LeadWhereInput = { organizationId, deletedAt: null, ...repFilter };
-
-    const [
-      totalLeads, newLeadsToday, newLeadsWeek,
-      activeLeads, soldMonth, proposalsSent,
-      appointmentsToday, stormLeads,
-      pipelineAgg, revenueMonth,
-    ] = await Promise.all([
-      // Total active leads
-      prisma.lead.count({ where: { ...orgLeadFilter, status: { notIn: ['LOST', 'PAID', 'INSTALLED'] } } }),
-
-      // New today
-      prisma.lead.count({
-        where: { ...orgLeadFilter, createdAt: { gte: new Date(now.setHours(0,0,0,0)) } }
+    const [invoices, proposals, leads, appointments] = await Promise.all([
+      prisma.invoice.findMany({
+        where: { lead: { organizationId }, createdAt: { gte: since } },
+        include: { payments: true },
       }),
-
-      // New this week
-      prisma.lead.count({ where: { ...orgLeadFilter, createdAt: { gte: weekStart } } }),
-
-      // Active in funnel
-      prisma.lead.count({ where: { ...orgLeadFilter, status: { in: ['APPOINTMENT_SET', 'INSPECTION_COMPLETE', 'MEASURING_COMPLETE', 'PROPOSAL_SENT', 'FOLLOW_UP', 'VERBAL_COMMIT'] } } }),
-
-      // Sold this month
-      prisma.lead.count({ where: { ...orgLeadFilter, status: { in: ['SOLD', 'ORDERED', 'INSTALLED', 'PAID'] }, updatedAt: { gte: monthStart } } }),
-
-      // Proposals sent this month
-      prisma.proposal.count({ where: { lead: { organizationId }, sentAt: { gte: monthStart } } }),
-
-      // Appointments today
-      prisma.appointment.count({
-        where: {
-          lead: { organizationId },
-          scheduledAt: { gte: new Date(new Date().setHours(0,0,0,0)), lte: new Date(new Date().setHours(23,59,59,999)) },
-          status: { in: ['SCHEDULED', 'CONFIRMED', 'IN_PROGRESS'] },
-        },
+      prisma.proposal.findMany({
+        where: { lead: { organizationId }, createdAt: { gte: since } },
+        include: { quote: { select: { grandTotal: true } } },
       }),
-
-      // Storm leads active
-      prisma.lead.count({ where: { ...orgLeadFilter, isStormLead: true, status: { notIn: ['SOLD', 'LOST', 'PAID'] } } }),
-
-      // Pipeline value aggregate
-      prisma.lead.aggregate({
-        where: { ...orgLeadFilter, status: { notIn: ['LOST', 'PAID', 'INSTALLED'] }, estimatedRevenue: { not: null } },
-        _sum: { estimatedRevenue: true },
-        _avg: { leadScore: true },
+      prisma.lead.findMany({
+        where: { organizationId, createdAt: { gte: since } },
+        select: { id: true, status: true, source: true, closeProbability: true, estimatedRevenue: true,
+          createdAt: true, assignedToId: true },
       }),
-
-      // Revenue this month (from sold leads Est revenue)
-      prisma.lead.aggregate({
-        where: { ...orgLeadFilter, status: { in: ['SOLD', 'ORDERED', 'INSTALLED', 'PAID'] }, updatedAt: { gte: monthStart } },
-        _sum: { estimatedRevenue: true },
+      prisma.appointment.findMany({
+        where: { organizationId, scheduledFor: { gte: since } },
+        select: { id: true, status: true, outcome: true },
       }),
     ]);
 
-    // Pipeline by stage
-    const stageLeads = await prisma.lead.groupBy({
-      by: ['status'],
-      where: { ...orgLeadFilter, status: { notIn: ['LOST', 'PAID', 'INSTALLED', 'ORDERED', 'NEW_LEAD', 'ATTEMPTING_CONTACT', 'CONTACTED', 'NURTURE'] } },
-      _count: { id: true },
-      _sum: { estimatedRevenue: true },
-    });
+    // Revenue metrics
+    const totalInvoiced = invoices.reduce((s, inv) => s + (inv as any).grandTotal, 0);
+    const totalCollected = invoices.reduce((s, inv) =>
+      s + inv.payments.reduce((ps: number, p: any) => ps + p.amount, 0), 0);
+    const paidInvoices = invoices.filter((inv) => inv.status === 'PAID');
+    const overdueInvoices = invoices.filter((inv) => inv.isOverdue);
 
-    // Lead sources breakdown
-    const bySources = await prisma.lead.groupBy({
-      by: ['source'],
-      where: { organizationId, deletedAt: null, createdAt: { gte: new Date(now.getFullYear(), now.getMonth() - 2, 1) } },
-      _count: { id: true },
-    });
+    // Pipeline metrics
+    const acceptedProposals = proposals.filter((p) => ['ACCEPTED', 'CONTRACTED'].includes(p.status as string));
+    const sentProposals = proposals.filter((p) => p.status === 'SENT');
+    const proposalValue = proposals.reduce((s, p) => s + ((p.quote as any)?.grandTotal || 0), 0);
+    const closedValue = acceptedProposals.reduce((s, p) => s + ((p.quote as any)?.grandTotal || 0), 0);
 
-    // Close rate
-    const closedTotal = await prisma.lead.count({ where: { ...orgLeadFilter, status: { in: ['SOLD', 'ORDERED', 'INSTALLED', 'PAID'] } } });
-    const lostTotal = await prisma.lead.count({ where: { ...orgLeadFilter, status: 'LOST' } });
-    const closeRate = closedTotal + lostTotal > 0 ? closedTotal / (closedTotal + lostTotal) : 0;
+    // Lead metrics
+    const newLeads = leads.filter((l) => l.status === 'NEW');
+    const closedLeads = leads.filter((l) => ['VERBAL_COMMIT', 'CONTRACTED', 'PAID', 'INSTALLED'].includes(l.status as string));
+    const closeRate = leads.length > 0 ? closedLeads.length / leads.length : 0;
+
+    // Appointment metrics
+    const completedAppts = appointments.filter((a) => a.status === 'COMPLETED');
+    const noShows = appointments.filter((a) => a.status === 'NO_SHOW');
+    const apptShowRate = appointments.length > 0 ? completedAppts.length / appointments.length : 0;
 
     return {
-      kpis: {
-        totalLeads,
-        newLeadsToday,
-        newLeadsWeek,
-        activeLeads,
-        soldMonth,
-        proposalsSent,
-        appointmentsToday,
-        stormLeads,
-        pipelineValue: pipelineAgg._sum.estimatedRevenue || 0,
-        revenueMonth: revenueMonth._sum.estimatedRevenue || 0,
-        avgLeadScore: Math.round(pipelineAgg._avg.leadScore || 0),
-        closeRate: Math.round(closeRate * 100),
-        avgTicket: closedTotal > 0 ? Math.round((revenueMonth._sum.estimatedRevenue || 0) / Math.max(soldMonth, 1)) : 0,
+      period: { days: periodDays, since },
+      revenue: {
+        totalInvoiced: Math.round(totalInvoiced * 100) / 100,
+        totalCollected: Math.round(totalCollected * 100) / 100,
+        outstanding: Math.round((totalInvoiced - totalCollected) * 100) / 100,
+        paidInvoiceCount: paidInvoices.length,
+        overdueCount: overdueInvoices.length,
+        overdueAmount: overdueInvoices.reduce((s, inv) => {
+          const paid = inv.payments.reduce((ps: number, p: any) => ps + p.amount, 0);
+          return s + ((inv as any).grandTotal - paid);
+        }, 0),
       },
-      pipelineByStage: stageLeads.map((s) => ({
-        stage: s.status,
-        count: s._count.id,
-        value: s._sum.estimatedRevenue || 0,
-      })),
-      leadsBySource: bySources.map((s) => ({
-        source: s.source || 'unknown',
-        count: s._count.id,
-      })),
+      pipeline: {
+        proposalValue: Math.round(proposalValue * 100) / 100,
+        closedValue: Math.round(closedValue * 100) / 100,
+        closeRate: Math.round(closeRate * 100) / 100,
+        sentCount: sentProposals.length,
+        acceptedCount: acceptedProposals.length,
+        totalProposals: proposals.length,
+      },
+      leads: {
+        total: leads.length,
+        new: newLeads.length,
+        closed: closedLeads.length,
+        closeRate: Math.round(closeRate * 10000) / 100,
+        avgCloseProb: leads.length > 0
+          ? Math.round(leads.reduce((s, l) => s + (l.closeProbability || 0), 0) / leads.length * 100) / 100
+          : 0,
+        pipelineValue: leads.reduce((s, l) => s + ((l.estimatedRevenue || 0) * (l.closeProbability || 0)), 0),
+      },
+      appointments: {
+        total: appointments.length,
+        completed: completedAppts.length,
+        noShows: noShows.length,
+        showRate: Math.round(apptShowRate * 10000) / 100,
+      },
     };
   }
 
-  async getRepPerformance(organizationId: string, period: 'week' | 'month' | 'quarter' = 'month') {
-    const now = new Date();
-    let startDate = new Date();
-    if (period === 'week') startDate.setDate(now.getDate() - 7);
-    else if (period === 'month') startDate.setMonth(now.getMonth() - 1);
-    else startDate.setMonth(now.getMonth() - 3);
+  async getRepPerformance(organizationId: string, periodDays = 30) {
+    const since = new Date();
+    since.setDate(since.getDate() - periodDays);
 
     const reps = await prisma.user.findMany({
-      where: { organizationId, role: { in: ['SALES_REP', 'SALES_MANAGER'] }, isActive: true },
+      where: { organizationId, role: { in: ['SALES_REP', 'MANAGER', 'ADMIN'] } },
       select: {
-        id: true, firstName: true, lastName: true, avatarUrl: true,
-        assignedLeads: {
-          where: { deletedAt: null },
-          select: { id: true, status: true, estimatedRevenue: true, createdAt: true, updatedAt: true },
-        },
+        id: true, firstName: true, lastName: true, role: true,
+        _count: { select: { assignedLeads: true } },
       },
     });
 
-    return reps.map((rep) => {
-      const leads = rep.assignedLeads;
-      const closed = leads.filter((l) => ['SOLD', 'ORDERED', 'INSTALLED', 'PAID'].includes(l.status) && l.updatedAt >= startDate);
-      const lost = leads.filter((l) => l.status === 'LOST' && l.updatedAt >= startDate);
-      const new_ = leads.filter((l) => l.createdAt >= startDate);
-      const revenue = closed.reduce((sum, l) => sum + (l.estimatedRevenue || 0), 0);
+    const repStats = await Promise.all(reps.map(async (rep) => {
+      const [assignedLeads, proposals, invoices] = await Promise.all([
+        prisma.lead.count({
+          where: { assignedToId: rep.id, createdAt: { gte: since } },
+        }),
+        prisma.proposal.count({
+          where: { createdById: rep.id, createdAt: { gte: since } },
+        }),
+        prisma.invoice.findMany({
+          where: { createdById: rep.id, createdAt: { gte: since } },
+          include: { payments: true },
+        }),
+      ]);
 
-      return {
-        repId: rep.id,
-        name: `${rep.firstName} ${rep.lastName}`,
-        avatarUrl: rep.avatarUrl,
-        newLeads: new_.length,
-        closedDeals: closed.length,
-        lostDeals: lost.length,
-        revenue,
-        closeRate: closed.length + lost.length > 0 ? Math.round((closed.length / (closed.length + lost.length)) * 100) : 0,
-        avgTicket: closed.length > 0 ? Math.round(revenue / closed.length) : 0,
-        totalActive: leads.filter((l) => !['LOST', 'PAID', 'INSTALLED'].includes(l.status)).length,
-      };
-    }).sort((a, b) => b.revenue - a.revenue);
-  }
-
-  async getRevenueChart(organizationId: string, months: number = 6) {
-    const result: { month: string; revenue: number; deals: number }[] = [];
-    const now = new Date();
-
-    for (let i = months - 1; i >= 0; i--) {
-      const start = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      const end = new Date(now.getFullYear(), now.getMonth() - i + 1, 0, 23, 59, 59);
-
-      const agg = await prisma.lead.aggregate({
+      const closedLeads = await prisma.lead.count({
         where: {
-          organizationId,
-          deletedAt: null,
-          status: { in: ['SOLD', 'ORDERED', 'INSTALLED', 'PAID'] },
-          updatedAt: { gte: start, lte: end },
+          assignedToId: rep.id,
+          createdAt: { gte: since },
+          status: { in: ['VERBAL_COMMIT', 'CONTRACTED', 'PAID', 'INSTALLED'] },
         },
-        _sum: { estimatedRevenue: true },
-        _count: { id: true },
       });
 
-      result.push({
-        month: start.toLocaleDateString('en-US', { month: 'short', year: '2-digit' }),
-        revenue: agg._sum.estimatedRevenue || 0,
-        deals: agg._count.id,
-      });
-    }
+      const revenue = invoices.reduce((s, inv) =>
+        s + inv.payments.reduce((ps: number, p: any) => ps + p.amount, 0), 0);
 
-    return result;
-  }
-
-  async getParishLeaderboard(organizationId: string) {
-    const leads = await prisma.lead.findMany({
-      where: { organizationId, deletedAt: null, parish: { not: null } },
-      select: { parish: true, status: true, estimatedRevenue: true, leadScore: true },
-    });
-
-    const byParish: Record<string, { parish: string; total: number; closed: number; revenue: number; avgScore: number; scores: number[] }> = {};
-
-    leads.forEach((lead) => {
-      const p = lead.parish!;
-      if (!byParish[p]) byParish[p] = { parish: p, total: 0, closed: 0, revenue: 0, avgScore: 0, scores: [] };
-      byParish[p].total++;
-      if (['SOLD', 'ORDERED', 'INSTALLED', 'PAID'].includes(lead.status)) {
-        byParish[p].closed++;
-        byParish[p].revenue += lead.estimatedRevenue || 0;
-      }
-      if (lead.leadScore) byParish[p].scores.push(lead.leadScore);
-    });
-
-    return Object.values(byParish).map((p) => ({
-      parish: p.parish,
-      totalLeads: p.total,
-      closedDeals: p.closed,
-      totalRevenue: p.revenue,
-      closeRate: p.total > 0 ? Math.round((p.closed / p.total) * 100) : 0,
-      avgLeadScore: p.scores.length > 0 ? Math.round(p.scores.reduce((a, b) => a + b, 0) / p.scores.length) : 0,
-    })).sort((a, b) => b.totalRevenue - a.totalRevenue);
-  }
-
-  async getPipelineAging(organizationId: string) {
-    const leads = await prisma.lead.findMany({
-      where: {
-        organizationId,
-        deletedAt: null,
-        status: { notIn: ['SOLD', 'LOST', 'PAID', 'INSTALLED', 'ORDERED'] },
-      },
-      select: { id: true, status: true, updatedAt: true, estimatedRevenue: true, firstName: true, lastName: true },
-    });
-
-    const now = Date.now();
-    return leads.map((lead) => {
-      const daysSinceUpdate = Math.floor((now - lead.updatedAt.getTime()) / (1000 * 60 * 60 * 24));
       return {
-        ...lead,
-        daysInStage: daysSinceUpdate,
-        agingFlag: daysSinceUpdate > 30 ? 'critical' : daysSinceUpdate > 14 ? 'warning' : 'ok',
+        id: rep.id,
+        name: `${rep.firstName} ${rep.lastName}`,
+        role: rep.role,
+        metrics: {
+          leadsAssigned: assignedLeads,
+          proposalsSent: proposals,
+          dealsClosed: closedLeads,
+          revenue: Math.round(revenue * 100) / 100,
+          closeRate: assignedLeads > 0 ? Math.round((closedLeads / assignedLeads) * 10000) / 100 : 0,
+          avgDealSize: closedLeads > 0 ? Math.round((revenue / closedLeads) * 100) / 100 : 0,
+        },
       };
-    }).sort((a, b) => b.daysInStage - a.daysInStage);
+    }));
+
+    return repStats.sort((a, b) => b.metrics.revenue - a.metrics.revenue);
+  }
+
+  async getLeadSourceBreakdown(organizationId: string, periodDays = 30) {
+    const since = new Date();
+    since.setDate(since.getDate() - periodDays);
+
+    const leads = await prisma.lead.findMany({
+      where: { organizationId, createdAt: { gte: since } },
+      select: { source: true, status: true, estimatedRevenue: true },
+    });
+
+    const bySource = leads.reduce((acc: Record<string, any>, lead) => {
+      const src = lead.source || 'UNKNOWN';
+      if (!acc[src]) acc[src] = { source: src, count: 0, closed: 0, revenue: 0 };
+      acc[src].count++;
+      if (['VERBAL_COMMIT', 'CONTRACTED', 'PAID', 'INSTALLED'].includes(lead.status as string)) {
+        acc[src].closed++;
+        acc[src].revenue += lead.estimatedRevenue || 0;
+      }
+      return acc;
+    }, {});
+
+    return Object.values(bySource).map((s: any) => ({
+      ...s,
+      closeRate: s.count > 0 ? Math.round((s.closed / s.count) * 10000) / 100 : 0,
+    })).sort((a: any, b: any) => b.count - a.count);
+  }
+
+  async getRevenueTrend(organizationId: string, periodDays = 90) {
+    const since = new Date();
+    since.setDate(since.getDate() - periodDays);
+
+    const payments = await prisma.invoicePayment.findMany({
+      where: { paidAt: { gte: since }, invoice: { lead: { organizationId } } },
+      select: { amount: true, paidAt: true },
+      orderBy: { paidAt: 'asc' },
+    });
+
+    // Group by week
+    const byWeek: Record<string, number> = {};
+    payments.forEach((p) => {
+      const weekStart = new Date(p.paidAt!);
+      weekStart.setDate(weekStart.getDate() - weekStart.getDay());
+      const key = weekStart.toISOString().split('T')[0];
+      byWeek[key] = (byWeek[key] || 0) + p.amount;
+    });
+
+    return Object.entries(byWeek).map(([week, amount]) => ({
+      week,
+      amount: Math.round(amount * 100) / 100,
+    }));
+  }
+
+  async getConversionFunnel(organizationId: string, periodDays = 30) {
+    const since = new Date();
+    since.setDate(since.getDate() - periodDays);
+
+    const statuses = [
+      { key: 'LEAD_IN', label: 'Leads In', statuses: ['NEW', 'CONTACTED', 'QUALIFIED', 'APPOINTMENT_SET', 'INSPECTED', 'PROPOSAL_SENT', 'NEGOTIATING', 'VERBAL_COMMIT', 'CONTRACTED', 'INSTALLED', 'PAID'] },
+      { key: 'APPOINTMENT_SET', label: 'Appt Set', statuses: ['APPOINTMENT_SET', 'INSPECTED', 'PROPOSAL_SENT', 'NEGOTIATING', 'VERBAL_COMMIT', 'CONTRACTED', 'INSTALLED', 'PAID'] },
+      { key: 'INSPECTED', label: 'Inspected', statuses: ['INSPECTED', 'PROPOSAL_SENT', 'NEGOTIATING', 'VERBAL_COMMIT', 'CONTRACTED', 'INSTALLED', 'PAID'] },
+      { key: 'PROPOSAL_SENT', label: 'Proposal Sent', statuses: ['PROPOSAL_SENT', 'NEGOTIATING', 'VERBAL_COMMIT', 'CONTRACTED', 'INSTALLED', 'PAID'] },
+      { key: 'COMMITTED', label: 'Committed', statuses: ['VERBAL_COMMIT', 'CONTRACTED', 'INSTALLED', 'PAID'] },
+      { key: 'CLOSED', label: 'Closed', statuses: ['CONTRACTED', 'INSTALLED', 'PAID'] },
+    ];
+
+    const counts = await Promise.all(statuses.map(async (s) => ({
+      key: s.key,
+      label: s.label,
+      count: await prisma.lead.count({
+        where: { organizationId, createdAt: { gte: since }, status: { in: s.statuses as any[] } },
+      }),
+    })));
+
+    const total = counts[0].count || 1;
+    return counts.map((s) => ({
+      ...s,
+      pct: Math.round((s.count / total) * 100),
+    }));
   }
 }
 

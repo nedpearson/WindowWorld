@@ -4,38 +4,38 @@ import { analyticsService } from './analytics.service';
 
 const router = Router();
 
-router.get('/dashboard', auth.repOrAbove, async (req: Request, res: Response) => {
+router.get('/summary', auth.repOrAbove, async (req: Request, res: Response) => {
   const user = (req as AuthenticatedRequest).user;
-  const repId = ['SALES_REP', 'FIELD_MEASURE_TECH'].includes(user.role)
-    ? user.id
-    : (req.query.repId as string);
-  const data = await analyticsService.getDashboard(user.organizationId, repId);
+  const days = parseInt(req.query.days as string) || 30;
+  const data = await analyticsService.getRevenueSummary(user.organizationId, days);
   res.json({ success: true, data });
 });
 
 router.get('/rep-performance', auth.manager, async (req: Request, res: Response) => {
   const user = (req as AuthenticatedRequest).user;
-  const period = (req.query.period as 'week' | 'month' | 'quarter') || 'month';
-  const data = await analyticsService.getRepPerformance(user.organizationId, period);
+  const days = parseInt(req.query.days as string) || 30;
+  const data = await analyticsService.getRepPerformance(user.organizationId, days);
   res.json({ success: true, data });
 });
 
-router.get('/revenue', auth.repOrAbove, async (req: Request, res: Response) => {
+router.get('/sources', auth.repOrAbove, async (req: Request, res: Response) => {
   const user = (req as AuthenticatedRequest).user;
-  const months = parseInt(req.query.months as string) || 6;
-  const data = await analyticsService.getRevenueChart(user.organizationId, months);
+  const days = parseInt(req.query.days as string) || 30;
+  const data = await analyticsService.getLeadSourceBreakdown(user.organizationId, days);
   res.json({ success: true, data });
 });
 
-router.get('/parish-leaderboard', auth.repOrAbove, async (req: Request, res: Response) => {
+router.get('/revenue-trend', auth.repOrAbove, async (req: Request, res: Response) => {
   const user = (req as AuthenticatedRequest).user;
-  const data = await analyticsService.getParishLeaderboard(user.organizationId);
+  const days = parseInt(req.query.days as string) || 90;
+  const data = await analyticsService.getRevenueTrend(user.organizationId, days);
   res.json({ success: true, data });
 });
 
-router.get('/pipeline-aging', auth.repOrAbove, async (req: Request, res: Response) => {
+router.get('/funnel', auth.repOrAbove, async (req: Request, res: Response) => {
   const user = (req as AuthenticatedRequest).user;
-  const data = await analyticsService.getPipelineAging(user.organizationId);
+  const days = parseInt(req.query.days as string) || 30;
+  const data = await analyticsService.getConversionFunnel(user.organizationId, days);
   res.json({ success: true, data });
 });
 
