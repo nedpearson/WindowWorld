@@ -13,6 +13,7 @@ import { logger } from './shared/utils/logger';
 import { errorHandler } from './shared/middleware/errorHandler';
 import { rateLimiter } from './shared/middleware/rateLimiter';
 import { requestId } from './shared/middleware/requestId';
+import { wsService } from './shared/services/websocket.service';
 
 // Module routers
 import { authRouter } from './modules/auth/auth.routes';
@@ -129,6 +130,9 @@ async function start() {
     } else {
       logger.warn('REDIS_URL not set â€” background jobs disabled');
     }
+
+    // Initialize WebSocket integration
+    wsService.initialize(httpServer, CORS_ORIGINS);
 
     httpServer.listen(PORT, () => {
       logger.info(`WindowWorld API server running on port ${PORT}`);

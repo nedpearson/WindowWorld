@@ -194,14 +194,22 @@ async function runPdfJob(job: any) {
       return;
     }
 
+    const { storageService } = await import('../shared/services/storage.service');
+    const fs = await import('fs/promises');
+    const path = await import('path');
+
     const pdfPath = await pdfGeneratorService.generate(proposal as any);
+    
+    // Read local generated file and upload to Cloud Storage
+    const buffer = await fs.readFile(pdfPath);
+    const { url } = await storageService.upload(buffer, path.basename(pdfPath), 'application/pdf');
 
     await prisma.proposal.update({
       where: { id: proposalId },
-      data: { pdfPath, pdfStatus: 'READY', pdfGeneratedAt: new Date() } as any,
+      data: { pdfPath: url, pdfStatus: 'READY', pdfGeneratedAt: new Date() } as any,
     });
 
-    logger.info(`[pdf] PDF generated for proposal ${proposalId}: ${pdfPath}`);
+    logger.info(`[pdf] PDF generated and uploaded for proposal ${proposalId} -> ${url}`);
   } catch (error: any) {
     logger.error(`[pdf] PDF generation failed for ${proposalId}:`, error.message);
     await prisma.proposal.update({

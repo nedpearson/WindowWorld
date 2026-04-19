@@ -6,6 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
 import { EyeIcon, EyeSlashIcon, BoltIcon } from '@heroicons/react/24/outline';
+import { GoogleLogin } from '@react-oauth/google';
 import { api } from '../../api/client';
 import { useAuthStore } from '../../store/auth.store';
 
@@ -37,6 +38,22 @@ export function LoginPage() {
       toast.success(`Welcome back, ${result.data.user.firstName}!`);
     } catch (err: any) {
       toast.error(err.response?.data?.error?.message || 'Login failed');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGoogleSuccess = async (credentialResponse: any) => {
+    if (!credentialResponse.credential) return;
+    setLoading(true);
+    try {
+      const result = await api.auth.google(credentialResponse.credential) as any;
+      setTokens(result.data.tokens.accessToken, result.data.tokens.refreshToken);
+      setUser(result.data.user);
+      navigate('/dashboard');
+      toast.success(`Welcome back, ${result.data.user.firstName}!`);
+    } catch (err: any) {
+      toast.error(err.response?.data?.error?.message || 'Google Login failed');
     } finally {
       setLoading(false);
     }
@@ -80,6 +97,29 @@ export function LoginPage() {
 
           <h1 className="text-2xl font-bold text-white mb-1">Welcome back</h1>
           <p className="text-slate-500 text-sm mb-8">Sign in to your sales operating system</p>
+
+          <div className="mb-6 flex justify-center">
+             <GoogleLogin
+                onSuccess={handleGoogleSuccess}
+                onError={() => {
+                  toast.error('Google Sign-In failed');
+                }}
+                theme="outline"
+                size="large"
+                width="100%"
+                text="continue_with"
+                shape="rectangular"
+              />
+          </div>
+          
+          <div className="relative mb-6">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-slate-800"></div>
+            </div>
+            <div className="relative flex justify-center text-sm">
+              <span className="px-2 bg-slate-950 text-slate-500">Or sign in with email</span>
+            </div>
+          </div>
 
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             <div>

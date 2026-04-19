@@ -4,6 +4,7 @@ import { prisma } from '../../shared/services/prisma';
 import { NotFoundError } from '../../shared/middleware/errorHandler';
 import { leadScoringQueue } from '../../jobs/index';
 import { logger } from '../../shared/utils/logger';
+import { storageService } from '../../shared/services/storage.service';
 
 export class DocumentsService {
   async list(options: {
@@ -100,13 +101,7 @@ export class DocumentsService {
 
   async delete(id: string, userId: string) {
     const doc = await this.getById(id);
-    if ((doc as any).localPath) {
-      try {
-        fs.unlinkSync((doc as any).localPath);
-      } catch {
-        // non-fatal
-      }
-    }
+    await storageService.delete(doc.url, (doc as any).localPath);
     await prisma.document.delete({ where: { id } });
   }
 

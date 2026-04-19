@@ -20,6 +20,7 @@ import { QuotePage } from './pages/proposals/QuotePage';
 import { InvoicesPage } from './pages/invoices/InvoicesPage';
 import { MobileFieldApp } from './pages/mobile/MobileFieldApp';
 import { AdminPage } from './pages/admin/AdminPage';
+import { SettingsPage } from './pages/settings/SettingsPage';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
@@ -69,6 +70,7 @@ export default function App() {
 
         {/* Admin */}
         <Route path="admin" element={<AdminPage />} />
+        <Route path="settings" element={<SettingsPage />} />
 
         {/* Analytics */}
         <Route path="analytics" element={<AnalyticsPage />} />

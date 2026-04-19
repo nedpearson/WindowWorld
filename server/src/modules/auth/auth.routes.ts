@@ -35,6 +35,21 @@ router.post(
   }
 );
 
+// POST /api/v1/auth/google
+router.post(
+  '/google',
+  authRateLimiter,
+  [
+    body('idToken').isString().notEmpty().withMessage('Google ID token required'),
+  ],
+  async (req: Request, res: Response) => {
+    validateRequest(req);
+    const { idToken } = req.body;
+    const result = await authService.googleLogin(idToken);
+    res.json({ success: true, data: result });
+  }
+);
+
 // POST /api/v1/auth/refresh
 router.post(
   '/refresh',

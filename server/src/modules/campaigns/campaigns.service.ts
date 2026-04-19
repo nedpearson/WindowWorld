@@ -1,6 +1,7 @@
 import { prisma } from '../../shared/services/prisma';
 import { emailQueue } from '../../jobs';
 import { logger } from '../../shared/utils/logger';
+import { smsService } from '../../shared/services/sms.service';
 
 // â”€â”€ Campaign Templates â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
@@ -310,8 +311,13 @@ export class CampaignsService {
       const smsTemplate = SMS_TEMPLATES[stepConfig.templateKey];
       if (smsTemplate) {
         const body = smsTemplate(templateData);
-        logger.info(`[SMS] Would send to ${primaryContact?.phone || 'unknown'}: ${body.substring(0, 50)}...`);
-        // SMS dispatch via Twilio/Vonage integration
+        // SMS dispatch via Twilio wrapper
+        const phone = primaryContact?.phone || (lead as any).phone;
+        if (phone) {
+          await smsService.sendSms(phone, body);
+        } else {
+          logger.warn(`Could not send SMS for lead ${leadId} - no phone number`);
+        }
       }
     }
 

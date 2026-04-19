@@ -4,6 +4,9 @@ import { prisma } from '../../shared/services/prisma';
 import { AppError, UnauthorizedError, NotFoundError } from '../../shared/middleware/errorHandler';
 import { logger } from '../../shared/utils/logger';
 import { v4 as uuidv4 } from 'uuid';
+import { OAuth2Client } from 'google-auth-library';
+
+const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 const JWT_SECRET = process.env.JWT_SECRET || 'CHANGE_THIS_SECRET';
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '7d';
@@ -121,6 +124,90 @@ export class AuthService {
         role: user.role,
         organizationId: user.organizationId,
         avatarUrl: user.avatarUrl,
+      },
+      tokens,
+    };
+  }
+
+  async googleLogin(idToken: string): Promise<LoginResult> {
+    if (!process.env.GOOGLE_CLIENT_ID) {
+      throw new Error('Google SSO is not configured on the server');
+    }
+
+    const ticket = await googleClient.verifyIdToken({
+      idToken,
+      audience: process.env.GOOGLE_CLIENT_ID,
+    });
+    
+    const payload = ticket.getPayload();
+    if (!payload || !payload.email) {
+      throw new UnauthorizedError('Invalid Google Token payload');
+    }
+
+    const email = payload.email.toLowerCase().trim();
+    const googleId = payload.sub;
+
+    let user = await prisma.user.findFirst({
+      where: {
+        OR: [{ email }, { googleId }],
+      },
+    });
+
+    if (!user) {
+      throw new UnauthorizedError('Your Google account is not associated with any active user in the system.');
+    }
+
+    if (!user.isActive) {
+      throw new UnauthorizedError('Account is deactivated. Contact your administrator.');
+    }
+
+    // Link google ID if not linked yet
+    if (!user.googleId) {
+      user = await prisma.user.update({
+        where: { id: user.id },
+        data: { googleId },
+      });
+    }
+
+    const tokenPayload: TokenPayload = {
+      sub: user.id,
+      email: user.email,
+      role: user.role,
+      organizationId: user.organizationId,
+      firstName: user.firstName,
+      lastName: user.lastName,
+    };
+
+    const tokens = generateTokens(tokenPayload);
+
+    // Store refresh token
+    const refreshExpiresAt = new Date();
+    refreshExpiresAt.setDate(refreshExpiresAt.getDate() + 30);
+
+    await prisma.refreshToken.create({
+      data: {
+        userId: user.id,
+        token: tokens.refreshToken,
+        expiresAt: refreshExpiresAt,
+      },
+    });
+
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { lastLoginAt: new Date() },
+    });
+
+    logger.info(`User logged in via Google SSO: ${user.email}`);
+
+    return {
+      user: {
+        id: user.id,
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        role: user.role,
+        organizationId: user.organizationId,
+        avatarUrl: user.avatarUrl || payload.picture || null, // Auto sync picture if missing
       },
       tokens,
     };

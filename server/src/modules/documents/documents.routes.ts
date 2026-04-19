@@ -1,18 +1,11 @@
 import { Router, Request, Response } from 'express';
 import multer from 'multer';
-import path from 'path';
-import { v4 as uuidv4 } from 'uuid';
 import { auth, AuthenticatedRequest } from '../../shared/middleware/auth';
 import { documentsService } from './documents.service';
+import { storageService } from '../../shared/services/storage.service';
 
-// â”€â”€ Multer storage (local disk, swap to S3 adapter in prod) â”€â”€
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, process.env.UPLOAD_DIR || './uploads'),
-  filename: (req, file, cb) => {
-    const ext = path.extname(file.originalname);
-    cb(null, `${uuidv4()}${ext}`);
-  },
-});
+// ─── Multer memory storage for Cloud Upload ───
+const storage = multer.memoryStorage();
 
 const upload = multer({
   storage,
@@ -50,16 +43,16 @@ router.post('/upload', auth.repOrAbove, upload.single('file'), async (req: Reque
   const { leadId, propertyId, openingId, inspectionId, type, notes } = req.body;
   const triggerAiAnalysis = req.body.triggerAiAnalysis === 'true';
 
-  // Build URL â€” in prod this would be a CDN/S3 URL
-  const url = `/uploads/${file.filename}`;
+  // Upload to Cloud (or local disk fallback)
+  const { url } = await storageService.upload(file.buffer, file.originalname, file.mimetype);
 
   const doc = await documentsService.createFromUpload({
-    filename: file.filename,
+    filename: file.originalname, // use original name here since unique ID is handled in StorageService
     originalName: file.originalname,
     mimeType: file.mimetype,
     size: file.size,
     url,
-    localPath: file.path,
+    localPath: undefined, // Cloud handles this now
     type: type || 'PHOTO_EXTERIOR',
     leadId, propertyId, openingId, inspectionId,
     uploadedById: user.id,

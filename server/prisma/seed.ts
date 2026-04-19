@@ -181,8 +181,10 @@ async function main() {
   // PRODUCTS
   // ─────────────────────────────────────────────
   const products = await Promise.all([
-    prisma.product.create({
-      data: {
+    prisma.product.upsert({
+      where: { sku: 'WW-2000-DH' },
+      update: {},
+      create: {
         organizationId: org.id,
         manufacturer: 'WindowWorld',
         productLine: 'Series 2000',
@@ -214,8 +216,10 @@ async function main() {
         },
       },
     }),
-    prisma.product.create({
-      data: {
+    prisma.product.upsert({
+      where: { sku: 'WW-4000-DH' },
+      update: {},
+      create: {
         organizationId: org.id,
         manufacturer: 'WindowWorld',
         productLine: 'Series 4000',
@@ -233,8 +237,10 @@ async function main() {
         warrantyYears: 30,
       },
     }),
-    prisma.product.create({
-      data: {
+    prisma.product.upsert({
+      where: { sku: 'WW-2000-SH' },
+      update: {},
+      create: {
         organizationId: org.id,
         manufacturer: 'WindowWorld',
         productLine: 'Series 2000',
@@ -250,8 +256,10 @@ async function main() {
         warrantyYears: 15,
       },
     }),
-    prisma.product.create({
-      data: {
+    prisma.product.upsert({
+      where: { sku: 'WW-3000-CS' },
+      update: {},
+      create: {
         organizationId: org.id,
         manufacturer: 'WindowWorld',
         productLine: 'Series 3000',
@@ -266,8 +274,10 @@ async function main() {
         warrantyYears: 20,
       },
     }),
-    prisma.product.create({
-      data: {
+    prisma.product.upsert({
+      where: { sku: 'WW-3000-PW' },
+      update: {},
+      create: {
         organizationId: org.id,
         manufacturer: 'WindowWorld',
         productLine: 'Series 3000',

@@ -10,9 +10,43 @@ import {
   ArrowRightOnRectangleIcon, BuildingStorefrontIcon,
   CursorArrowRippleIcon, ClipboardDocumentListIcon, MapIcon, ShieldCheckIcon,
 } from '@heroicons/react/24/outline';
-import { BoltIcon as BoltSolid } from '@heroicons/react/24/solid';
+import { BoltIcon as BoltSolid, PlusSmallIcon } from '@heroicons/react/24/solid';
 import clsx from 'clsx';
+import { io, Socket } from 'socket.io-client';
+import { useEffect } from 'react';
 
+function NotificationsDropdown({ isOpen, onClose, notifications }: { isOpen: boolean; onClose: () => void; notifications: any[] }) {
+  if (!isOpen) return null;
+  const displayNotifs = notifications.length ? notifications : [
+    { title: 'No new notifications', desc: 'You are all caught up', time: 'Just now' }
+  ];
+
+  return (
+    <>
+      <div className="fixed inset-0 z-40" onClick={onClose} />
+      <div className="absolute top-12 right-0 mt-2 w-80 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl z-50 overflow-hidden text-left">
+        <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50 flex justify-between items-center">
+          <h3 className="font-semibold text-slate-800 dark:text-white">Notifications</h3>
+          <button className="text-xs text-brand-600 dark:text-brand-400 font-medium hover:underline">Mark all read</button>
+        </div>
+        <div className="max-h-96 overflow-y-auto">
+          {displayNotifs.map((n, i) => (
+            <div key={i} className={`px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer border-b border-slate-100 dark:border-slate-800/50 ${n.unread ? 'bg-brand-50/50 dark:bg-brand-900/10' : ''}`}>
+              <div className="flex justify-between items-start">
+                <span className={`text-sm font-medium ${n.unread ? 'text-slate-900 dark:text-white' : 'text-slate-700 dark:text-slate-300'}`}>{n.title}</span>
+                <span className="text-xs text-slate-400 dark:text-slate-500">{n.time}</span>
+              </div>
+              <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">{n.desc}</p>
+            </div>
+          ))}
+        </div>
+        <div className="p-2 text-center border-t border-slate-100 dark:border-slate-800">
+          <Link to="/settings" onClick={onClose} className="text-xs text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300">View Preferences</Link>
+        </div>
+      </div>
+    </>
+  );
+}
 
 const navSections = [
   {
@@ -90,6 +124,26 @@ export function AppLayout() {
   const offlineMode = useAppStore((s) => s.offlineMode);
   const syncPending = useAppStore((s) => s.syncPending);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [notifications, setNotifications] = useState<any[]>([]);
+
+  useEffect(() => {
+    const token = localStorage.getItem('ww_token');
+    if (!token) return;
+
+    const socket: Socket = io(import.meta.env.VITE_API_URL || 'http://localhost:3001', {
+      auth: { token },
+      transports: ['websocket'],
+    });
+
+    socket.on('notification', (data) => {
+      setNotifications(prev => [data, ...prev].slice(0, 20)); // Keep max 20
+    });
+
+    return () => {
+      socket.disconnect();
+    };
+  }, []);
 
   const isActive = (path: string) => location.pathname === path || location.pathname.startsWith(path + '/');
 
@@ -252,10 +306,23 @@ export function AppLayout() {
             </div>
 
             {/* Notifications */}
-            <button className="relative p-2 rounded-lg text-slate-500 hover:text-slate-300 hover:bg-slate-800 transition-colors">
-              <BellIcon className="h-5 w-5" />
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-brand-500 rounded-full" />
-            </button>
+            <div className="relative">
+              <button 
+                onClick={() => setNotificationsOpen(!notificationsOpen)}
+                className="relative p-2 rounded-lg text-slate-500 hover:text-slate-300 hover:bg-slate-800 transition-colors"
+                aria-label="Notifications"
+              >
+                <BellIcon className="h-5 w-5" />
+                {notifications.some(n => n.unread !== false) && (
+                  <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-brand-500 rounded-full" />
+                )}
+              </button>
+              <NotificationsDropdown 
+                isOpen={notificationsOpen} 
+                onClose={() => setNotificationsOpen(false)} 
+                notifications={notifications}
+              />
+            </div>
           </div>
         </header>
 

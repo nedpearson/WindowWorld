@@ -1,0 +1,30 @@
+import { test, expect } from '@playwright/test';
+
+test.describe('WindowWorld Core Revenue Flow Smoke Test', () => {
+  
+  test('should load the login page and authenticate to dashboard', async ({ page }) => {
+    // Navigate to local dev server
+    await page.goto('http://localhost:5173/login');
+
+    // View login form assertions
+    await expect(page).toHaveTitle(/WindowWorld/);
+    await expect(page.getByRole('heading', { name: 'Welcome back' })).toBeVisible();
+
+    // Trigger demo bypass button logic (since we do not have an active db in simple CI runs without composing)
+    const previewBtn = page.locator('#preview-mode-btn');
+    
+    if (await previewBtn.isVisible()) {
+      await previewBtn.click();
+      
+      // Should result in a transition to the dashboard
+      await page.waitForURL('**/dashboard');
+      
+      // Verify Dashboard Loaded
+      await expect(page.getByRole('heading', { name: 'Dashboard' })).toBeVisible();
+      
+      // Verify "Overview" and specific metrics loaded
+      await expect(page.getByText('Lead Sources')).toBeVisible();
+    }
+  });
+
+});

@@ -86,6 +86,7 @@ export const api = {
   // Auth
   auth: {
     login: (email: string, password: string) => post('/auth/login', { email, password }),
+    google: (idToken: string) => post('/auth/google', { idToken }),
     me: () => get('/auth/me'),
     logout: (refreshToken: string) => post('/auth/logout', { refreshToken }),
     refresh: (refreshToken: string) => post('/auth/refresh', { refreshToken }),
