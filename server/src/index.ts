@@ -53,11 +53,25 @@ const CORS_ORIGINS = (process.env.CORS_ORIGIN || 'http://localhost:5173')
   .map((o) => o.trim());
 
 
-// â”€â”€â”€ Middleware â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Middleware ──────────────────────────────────────────────────────────────
+// ─── Health check (MUST be first - before HTTPS redirect or any middleware) ─
+// Railway healthcheck sends plain HTTP internally; must respond 200 unconditionally
+app.get('/health', (_req, res) => {
+  res.json({
+    status: 'ok',
+    timestamp: new Date().toISOString(),
+    version: process.env.npm_package_version || '1.0.0',
+    env: process.env.NODE_ENV,
+  });
+});
+
+
 // Force HTTPS in production
 app.enable('trust proxy');
 app.use((req, res, next) => {
-  if (process.env.NODE_ENV === 'production' && req.headers['x-forwarded-proto'] !== 'https') {
+  if (process.env.NODE_ENV === 'production'
+    && req.headers['x-forwarded-proto'] !== 'https'
+    && req.path !== '/health') {
     return res.redirect(`https://${req.headers.host}${req.url}`);
   }
   next();
@@ -83,17 +97,8 @@ app.use(requestId);
 // Rate limiting disabled temporarily - Railway proxy causes ERR_ERL_UNEXPECTED_X_FORWARDED_FOR
 // app.use(rateLimiter);
 
-// â”€â”€â”€ Health check â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-app.get('/health', (req, res) => {
-  res.json({
-    status: 'ok',
-    timestamp: new Date().toISOString(),
-    version: process.env.npm_package_version || '1.0.0',
-    env: process.env.NODE_ENV,
-  });
-});
-
-// â”€â”€â”€ Static file serving (uploads) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─────────────────────────────────────────────────────────────────────────────
+// ─── Static file serving (uploads) ───────────────────────────────────────────
 const uploadDir = process.env.UPLOAD_DIR || path.join(process.cwd(), 'uploads');
 if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
