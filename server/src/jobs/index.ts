@@ -276,7 +276,6 @@ export async function initializeJobQueues(): Promise<void> {
 
     const connection = new IORedis(process.env.REDIS_URL, {
       maxRetriesPerRequest: null,      // required by BullMQ
-      enableOfflineQueue: false,       // fail fast when Redis is down
       retryStrategy: (times: number) => {
         if (times > 10) {
           logger.error('[Redis] Max reconnection attempts reached - background jobs disabled');
