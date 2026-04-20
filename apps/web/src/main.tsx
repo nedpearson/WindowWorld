@@ -49,3 +49,26 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
     </GoogleOAuthProvider>
   </React.StrictMode>
 );
+
+// ── Service Worker Registration ─────────────────────────────
+if ('serviceWorker' in navigator && import.meta.env.PROD) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker
+      .register('/sw.js', { scope: '/' })
+      .then((registration) => {
+        console.log('[PWA] Service Worker registered:', registration.scope);
+        // Notify user when a new version is available
+        registration.addEventListener('updatefound', () => {
+          const newWorker = registration.installing;
+          if (!newWorker) return;
+          newWorker.addEventListener('statechange', () => {
+            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+              // New content available — show a toast via the global toast
+              console.log('[PWA] New version available. Reload to update.');
+            }
+          });
+        });
+      })
+      .catch((err) => console.warn('[PWA] Service Worker registration failed:', err));
+  });
+}

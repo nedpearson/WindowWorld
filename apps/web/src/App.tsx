@@ -29,6 +29,7 @@ import { PostInstallPage } from './pages/installs/PostInstallPage';
 import { QuickQuotePage } from './pages/proposals/QuickQuotePage';
 import { CommissionPage } from './pages/commissions/CommissionPage';
 import { CsvImportPage } from './pages/leads/CsvImportPage';
+import { HomeownerPortalPage } from './pages/homeowner/HomeownerPortalPage';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
@@ -39,6 +40,9 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 export default function App() {
   return (
     <Routes>
+      {/* Public homeowner proposal portal — no auth required */}
+      <Route path="/portal/:id" element={<HomeownerPortalPage />} />
+
       <Route path="/login" element={<LoginPage />} />
 
       {/* Mobile standalone route */}

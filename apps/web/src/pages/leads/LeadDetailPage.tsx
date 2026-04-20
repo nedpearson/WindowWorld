@@ -16,6 +16,7 @@ import { BoltIcon as BoltSolid, StarIcon } from '@heroicons/react/24/solid';
 import clsx from 'clsx';
 import { PitchCoachPanel } from '../../components/ai/PitchCoachPanel';
 import { SmsTemplateDrawer } from '../../components/sms/SmsTemplateDrawer';
+import { EmailTemplateDrawer } from '../../components/email/EmailTemplateDrawer';
 
 const DEMO_LEAD = {
   id: '1',
@@ -259,6 +260,8 @@ export function LeadDetailPage({ isNew = false }: { isNew?: boolean }) {
   const [showNoteBox, setShowNoteBox] = useState(false);
   const [showStatusMenu, setShowStatusMenu] = useState(false);
   const [smsOpen, setSmsOpen] = useState(false);
+  const [emailOpen, setEmailOpen] = useState(false);
+  const [recording, setRecording] = useState(false);
 
   const lead = DEMO_LEAD; // In prod: useQuery({ queryKey: ['lead', id], queryFn: () => api.leads.getById(id!) })
   const property = lead.property;
@@ -351,7 +354,8 @@ export function LeadDetailPage({ isNew = false }: { isNew?: boolean }) {
           <button onClick={() => setSmsOpen(true)} className="btn-secondary btn-sm flex items-center gap-1.5">
             <ChatBubbleLeftIcon className="h-4 w-4" /> Text
           </button>
-          <a href={`mailto:${lead.email}`} className="btn-secondary btn-sm flex items-center gap-1.5">
+          <a href={`mailto:${lead.email}`} className="btn-secondary btn-sm flex items-center gap-1.5"
+            onClick={e => { e.preventDefault(); setEmailOpen(true); }}>
             <EnvelopeIcon className="h-4 w-4" /> Email
           </a>
           <a href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(lead.address + ', ' + lead.city + ', ' + lead.state)}`}
@@ -404,12 +408,46 @@ export function LeadDetailPage({ isNew = false }: { isNew?: boolean }) {
               exit={{ opacity: 0, height: 0 }}
               className="mt-3"
             >
-              <textarea
-                value={newNote}
-                onChange={(e) => setNewNote(e.target.value)}
-                placeholder="Add an internal note..."
-                className="textarea min-h-[80px]"
-              />
+              <div className="relative">
+                <textarea
+                  value={newNote}
+                  onChange={(e) => setNewNote(e.target.value)}
+                  placeholder="Add an internal note..."
+                  className="textarea min-h-[80px] pr-10"
+                />
+                {/* Voice-to-Note mic */}
+                <button
+                  title={recording ? 'Stop recording' : 'Dictate note'}
+                  onClick={() => {
+                    const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+                    if (!SR) { toast.error('Speech recognition not supported in this browser'); return; }
+                    if (recording) { setRecording(false); return; }
+                    setRecording(true);
+                    const sr = new SR();
+                    sr.continuous = false;
+                    sr.interimResults = false;
+                    sr.lang = 'en-US';
+                    sr.onresult = (e: any) => {
+                      const transcript = e.results[0][0].transcript;
+                      setNewNote(prev => prev ? prev + ' ' + transcript : transcript);
+                      toast.success('Note dictated!');
+                    };
+                    sr.onerror = () => { toast.error('Microphone error'); setRecording(false); };
+                    sr.onend = () => setRecording(false);
+                    sr.start();
+                  }}
+                  className={clsx(
+                    'absolute right-2.5 top-2.5 w-7 h-7 rounded-full flex items-center justify-center transition-all',
+                    recording
+                      ? 'bg-red-500/20 text-red-400 animate-pulse'
+                      : 'bg-slate-700/50 text-slate-500 hover:text-slate-300 hover:bg-slate-700'
+                  )}
+                >
+                  <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 01-3-3V4.5a3 3 0 116 0v8.25a3 3 0 01-3 3z" />
+                  </svg>
+                </button>
+              </div>
               <div className="flex gap-2 mt-2">
                 <button onClick={() => { toast.success('Note saved'); setNewNote(''); setShowNoteBox(false); }} className="btn-primary btn-sm">
                   Save Note
@@ -806,6 +844,13 @@ export function LeadDetailPage({ isNew = false }: { isNew?: boolean }) {
         onClose={() => setSmsOpen(false)}
         contactName={`${lead.firstName} ${lead.lastName}`}
         contactPhone={lead.phone}
+        repName={`${lead.assignedRep.firstName} ${lead.assignedRep.lastName}`}
+      />
+      <EmailTemplateDrawer
+        isOpen={emailOpen}
+        onClose={() => setEmailOpen(false)}
+        contactName={`${lead.firstName} ${lead.lastName}`}
+        contactEmail={lead.email}
         repName={`${lead.assignedRep.firstName} ${lead.assignedRep.lastName}`}
       />
     </div>
