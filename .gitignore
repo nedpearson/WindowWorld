@@ -1,5 +1,7 @@
 node_modules/
-dist/
+# server/dist is committed so Railway uses our pre-built local compilation
+apps/web/dist/
+apps/mobile/dist/
 build/
 .env
 .env.local
