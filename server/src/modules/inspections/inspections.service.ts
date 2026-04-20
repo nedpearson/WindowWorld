@@ -31,7 +31,7 @@ export class InspectionsService {
           lead: { select: { id: true, firstName: true, lastName: true, address: true } },
           property: { select: { id: true, address: true, city: true } },
           _count: { select: { openings: true } },
-        },
+        } as any,
       }),
     ]);
 
@@ -57,7 +57,7 @@ export class InspectionsService {
             documents: { where: { type: 'PHOTO_EXTERIOR' }, select: { id: true, url: true, filename: true, createdAt: true } },
           },
         },
-      },
+      } as any,
     });
     if (!inspection) throw new NotFoundError('Inspection');
     return inspection;

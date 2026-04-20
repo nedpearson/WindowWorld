@@ -12,7 +12,7 @@ router.get('/opening/:openingId', auth.repOrAbove, async (req: Request, res: Res
 
 // GET /api/v1/measurements/property/:propertyId/summary
 router.get('/property/:propertyId/summary', auth.repOrAbove, async (req: Request, res: Response) => {
-  const data = await measurementsService.getPropertySummary(req.params.propertyId);
+  const data = await measurementsService.getPropertySummary(req.params.propertyId as string);
   res.json({ success: true, data });
 });
 

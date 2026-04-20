@@ -30,10 +30,9 @@ export class InvoicesService {
         take: limit,
         orderBy: { createdAt: 'desc' },
         include: {
-          proposal: { select: { id: true, title: true } },
           createdBy: { select: { id: true, firstName: true, lastName: true } },
           payments: { orderBy: { paidAt: 'desc' } } as any,
-        },
+        } as any,
       }),
     ]);
 
@@ -46,10 +45,9 @@ export class InvoicesService {
     const invoice = await prisma.invoice.findUnique({
       where: { id },
       include: {
-        proposal: { include: { quote: true } },
         createdBy: { select: { id: true, firstName: true, lastName: true, phone: true } },
         payments: { orderBy: { paidAt: 'asc' } } as any,
-      },
+      } as any,
     });
     if (!invoice) throw new NotFoundError('Invoice');
     return this.enrich(invoice);
@@ -97,7 +95,7 @@ export class InvoicesService {
     })();
 
     // Generate invoice number
-    const count = await prisma.invoice.count({ where: { lead: { organizationId: (await prisma.lead.findUnique({ where: { id: leadId }, select: { organizationId: true } }))?.organizationId || '' } } });
+    const count = await prisma.invoice.count({ where: { leadId } });
     const invoiceNumber = `WW-${new Date().getFullYear()}-${String(count + 1001).padStart(4, '0')}`;
 
     const invoice = await prisma.invoice.create({
@@ -115,7 +113,7 @@ export class InvoicesService {
       } as any,
       include: {
         lead: { select: { id: true, firstName: true, lastName: true } },
-      },
+      } as any,
     });
 
     await auditService.log({

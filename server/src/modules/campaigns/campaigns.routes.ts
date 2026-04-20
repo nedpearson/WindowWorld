@@ -31,7 +31,7 @@ router.post('/trigger-for-status', auth.repOrAbove, async (req: Request, res: Re
 
 router.post('/:leadId/unenroll', auth.repOrAbove, async (req: Request, res: Response) => {
   const { reason } = req.body;
-  await campaignsService.unenroll(req.params.leadId, reason);
+  await campaignsService.unenroll(req.params.leadId as string, reason);
   res.json({ success: true, message: 'Lead unenrolled from all active campaigns' });
 });
 

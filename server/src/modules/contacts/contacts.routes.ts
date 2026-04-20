@@ -18,7 +18,7 @@ function validate(req: Request) {
 // GET /api/v1/contacts/lead/:leadId
 router.get('/lead/:leadId', auth.repOrAbove, async (req: Request, res: Response) => {
   const user = (req as AuthenticatedRequest).user;
-  const contacts = await contactsService.listByLead(req.params.leadId, user.organizationId);
+  const contacts = await contactsService.listByLead(req.params.leadId as string, user.organizationId);
   res.json({ success: true, data: contacts });
 });
 

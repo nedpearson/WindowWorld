@@ -221,7 +221,7 @@ export class CampaignsService {
     // Find or create campaign record
     const lead_with_org = await prisma.lead.findUnique({ where: { id: leadId }, select: { organizationId: true } });
     let campaign = await prisma.campaign.findFirst({
-      where: { templateKey: campaignTemplateKey, organizationId: lead_with_org!.organizationId },
+      where: { templateKey: campaignTemplateKey, organizationId: lead_with_org!.organizationId } as any,
     });
     if (!campaign) {
       campaign = await prisma.campaign.create({
@@ -269,7 +269,7 @@ export class CampaignsService {
     const template = (CAMPAIGN_TEMPLATES as any)[templateKey];
     if (!template) return;
 
-    const stepConfig = template.steps.find((s) => s.step === step);
+    const stepConfig = template.steps.find((s: any) => s.step === step);
     if (!stepConfig) return;
 
     const lead = await prisma.lead.findUnique({
@@ -329,13 +329,12 @@ export class CampaignsService {
         title: `Campaign: ${template.name} â€” Step ${step}`,
         description: `${stepConfig.type} sent for campaign step ${step}`,
         userId: (enrollment as any)?.enrolledById,
-        leadId,
       } as any,
     });
 
     // Advance step
     const nextStep = step + 1;
-    const nextStepConfig = template.steps.find((s) => s.step === nextStep);
+    const nextStepConfig = template.steps.find((s: any) => s.step === nextStep);
 
     if (nextStepConfig) {
       await (prisma as any).campaignEnrollment?.update({
@@ -355,7 +354,7 @@ export class CampaignsService {
 
   private async scheduleNextStep(leadId: string, templateKey: string, step: number, lead: any) {
     const template = (CAMPAIGN_TEMPLATES as any)[templateKey];
-    const stepConfig = template?.steps.find((s) => s.step === step);
+    const stepConfig = template?.steps.find((s: any) => s.step === step);
     if (!stepConfig) return;
 
     const delayMs = stepConfig.delayHours * 60 * 60 * 1000;

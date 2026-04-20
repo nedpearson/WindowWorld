@@ -124,8 +124,8 @@ export class LeadService {
           orderBy: { createdAt: 'desc' },
           take: 5,
           select: {
-            id: true, status: true, total: true, sentAt: true, createdAt: true, pdfUrl: true,
-          },
+            id: true, status: true, sentAt: true, createdAt: true, pdfUrl: true,
+          } as any,
         },
         quotes: {
           orderBy: { createdAt: 'desc' },

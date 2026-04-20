@@ -54,7 +54,7 @@ export class ProductsService {
       id,
       ...product,
       options: Object.entries(OPTION_PRICES)
-        .filter(([, opt]) => opt.included.includes(id))
+        .filter(([, opt]) => (opt.included as string[]).includes(id))
         .map(([optId, opt]) => ({ id: optId, name: opt.name, price: opt.price, included: true })),
     }));
   }
@@ -89,7 +89,7 @@ export class ProductsService {
 
     for (const optId of options) {
       const opt = OPTION_PRICES[optId as keyof typeof OPTION_PRICES];
-      if (opt && !opt.included.includes(seriesId)) {
+      if (opt && !(opt.included as string[]).includes(seriesId)) {
         optionTotal += opt.price;
         appliedOptions.push({ id: optId, name: opt.name, price: opt.price });
       } else if (opt) {

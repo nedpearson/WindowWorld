@@ -34,21 +34,21 @@ router.post('/users', auth.adminOnly, async (req: Request, res: Response) => {
 /** PATCH /api/v1/admin/users/:id — update user details / role */
 router.patch('/users/:id', auth.adminOnly, async (req: Request, res: Response) => {
   const actor = (req as AuthenticatedRequest).user;
-  const data = await usersService.update(req.params.id, req.body, actor.id);
+  const data = await usersService.update(req.params.id as string, req.body, actor.id);
   res.json({ success: true, data });
 });
 
 /** POST /api/v1/admin/users/:id/deactivate */
 router.post('/users/:id/deactivate', auth.adminOnly, async (req: Request, res: Response) => {
   const actor = (req as AuthenticatedRequest).user;
-  await usersService.deactivate(req.params.id, actor.id);
+  await usersService.deactivate(req.params.id as string, actor.id);
   res.json({ success: true, message: 'User deactivated' });
 });
 
 /** POST /api/v1/admin/users/:id/reactivate */
 router.post('/users/:id/reactivate', auth.adminOnly, async (req: Request, res: Response) => {
   const actor = (req as AuthenticatedRequest).user;
-  const data = await usersService.update(req.params.id, { isActive: true }, actor.id);
+  const data = await usersService.update(req.params.id as string, { isActive: true }, actor.id);
   res.json({ success: true, data });
 });
 
@@ -103,12 +103,12 @@ router.get('/stats', auth.adminOnly, async (req: Request, res: Response) => {
     prisma.lead.count({ where: { organizationId: orgId, status: { notIn: ['LOST', 'INSTALLED', 'PAID'] } } }),
     prisma.proposal.count({ where: { lead: { organizationId: orgId } } }),
     prisma.proposal.count({ where: { lead: { organizationId: orgId }, status: { in: ['SENT', 'VIEWED', 'ACCEPTED'] } } }),
-    prisma.invoice.count({ where: { lead: { organizationId: orgId } } }),
-    prisma.invoice.count({ where: { lead: { organizationId: orgId }, status: 'PAID' } }),
+    prisma.invoice.count({ where: { lead: { organizationId: orgId } } as any }),
+    prisma.invoice.count({ where: { lead: { organizationId: orgId }, status: 'PAID' } as any }),
     prisma.user.count({ where: { organizationId: orgId, isActive: true } }),
     prisma.invoice.aggregate({
-      where: { lead: { organizationId: orgId }, status: 'PAID' },
-      _sum: { amountPaid: true },
+      where: { lead: { organizationId: orgId }, status: 'PAID' } as any,
+      _sum: { total: true } as any,
     }),
   ]);
 
@@ -119,7 +119,7 @@ router.get('/stats', auth.adminOnly, async (req: Request, res: Response) => {
       totalProposals, sentProposals,
       totalInvoices, paidInvoices,
       activeUsers,
-      totalRevenue: totalRevenue._sum.amountPaid || 0,
+      totalRevenue: (totalRevenue._sum?.total) || 0,
     },
   });
 });

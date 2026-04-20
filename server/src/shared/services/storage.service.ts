@@ -34,12 +34,12 @@ export class StorageService {
           ContentType: mimeType,
           // ACL: isPublic ? 'public-read' : 'private', // Not recommended for some S3 compatibles unless explicitly enabled
         }));
-        
+
         // If there's a custom public CDN URL, use it
         if (process.env.S3_PUBLIC_URL_PREFIX) {
           return { url: `${process.env.S3_PUBLIC_URL_PREFIX}/${key}`, s3Key: key };
         }
-        
+
         // As a fallback (if no public URL prefix is given), generate a Presigned URL for demo purposes or use endpoint mapping
         // Cloudflare R2 public buckets usually have a custom URL configured instead.
         const command = new GetObjectCommand({ Bucket: process.env.S3_BUCKET_NAME, Key: key });
@@ -55,7 +55,7 @@ export class StorageService {
     // Local Disk Fallback
     const uploadDir = path.resolve(process.env.UPLOAD_DIR || './uploads');
     const localPath = path.join(uploadDir, path.basename(key));
-    
+
     try {
       await fs.mkdir(uploadDir, { recursive: true });
       await fs.writeFile(localPath, buffer);

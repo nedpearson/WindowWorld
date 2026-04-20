@@ -30,7 +30,7 @@ export class ProposalsService {
         orderBy: { createdAt: 'desc' },
         include: {
           lead: { select: { id: true, firstName: true, lastName: true, address: true, city: true } },
-          quote: { select: { id: true, total: true, totalWindows: true } },
+          quote: { select: { id: true, total: true } } as any,
           createdBy: { select: { id: true, firstName: true, lastName: true } },
         },
       }),
@@ -86,7 +86,7 @@ export class ProposalsService {
       } as any,
       include: {
         lead: { select: { id: true, firstName: true, lastName: true } },
-        quote: { select: { id: true, grandTotal: true } },
+        quote: { select: { id: true, total: true } } as any,
       },
     });
 

@@ -15,7 +15,7 @@ router.get('/pitch-coach/:leadId', auth.repOrAbove, async (req: Request, res: Re
   const { leadId } = req.params;
 
   const lead = await prisma.lead.findUnique({
-    where: { id: leadId },
+    where: { id: leadId as string },
     include: {
       properties: true,
       contacts: { where: { isPrimary: true }, take: 1 },
@@ -44,7 +44,7 @@ router.get('/pitch-coach/:leadId', auth.repOrAbove, async (req: Request, res: Re
 router.post('/score-lead/:leadId', auth.repOrAbove, async (req: Request, res: Response) => {
   const { leadId } = req.params;
 
-  const lead = await prisma.lead.findUnique({ where: { id: leadId } });
+  const lead = await prisma.lead.findUnique({ where: { id: leadId as string } });
   if (!lead) return res.status(404).json({ success: false, message: 'Lead not found' });
 
   const job = await leadScoringQueue.add('score-single-lead', { leadId }, { priority: 1 });
@@ -59,7 +59,7 @@ router.get('/lead-summary/:leadId', auth.repOrAbove, async (req: Request, res: R
   const { leadId } = req.params;
 
   const lead = await prisma.lead.findUnique({
-    where: { id: leadId },
+    where: { id: leadId as string },
     include: {
       properties: true,
       contacts: { where: { isPrimary: true }, take: 1 },

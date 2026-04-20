@@ -101,7 +101,7 @@ export class DocumentsService {
 
   async delete(id: string, userId: string) {
     const doc = await this.getById(id);
-    await storageService.delete(doc.url, (doc as any).localPath);
+    await storageService.delete(doc.url ?? '', (doc as any).localPath);
     await prisma.document.delete({ where: { id } });
   }
 

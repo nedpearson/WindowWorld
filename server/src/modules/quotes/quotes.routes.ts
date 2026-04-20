@@ -5,7 +5,7 @@ import { quotesService } from './quotes.service';
 const router = Router();
 
 router.get('/lead/:leadId', auth.repOrAbove, async (req: Request, res: Response) => {
-  const data = await quotesService.listForLead(req.params.leadId);
+  const data = await quotesService.listForLead(req.params.leadId as string);
   res.json({ success: true, data });
 });
 
