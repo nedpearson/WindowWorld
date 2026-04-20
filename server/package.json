@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "build": "prisma generate && (tsc || true)",
-    "start": "prisma db push --accept-data-loss && node dist/index.js",
+    "start": "prisma db push --accept-data-loss && tsx src/index.ts",
     "migrate": "prisma migrate dev",
     "migrate:deploy": "prisma migrate deploy",
     "generate": "prisma generate",
