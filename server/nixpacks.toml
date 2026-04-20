@@ -5,10 +5,7 @@ nixPkgs = ["nodejs_20"]
 cmds = ["npm install"]
 
 [phases.build]
-cmds = ["npm run build"]
+cmds = ["prisma generate"]
 
 [start]
-cmd = "npm start"
-
-[staticAssets]
-errorPage = "dist/index.html"
+cmd = "prisma db push --accept-data-loss && node dist/index.js"
