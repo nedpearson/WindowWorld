@@ -6,7 +6,7 @@ import {
   MagnifyingGlassIcon, PhoneIcon, EnvelopeIcon,
   ChatBubbleLeftIcon, PlusIcon, UserIcon,
   HomeIcon, UsersIcon, StarIcon,
-  FunnelIcon, ArrowUpDownIcon,
+  FunnelIcon, ArrowsUpDownIcon,
 } from '@heroicons/react/24/outline';
 import { StarIcon as StarSolid } from '@heroicons/react/24/solid';
 import clsx from 'clsx';
@@ -200,7 +200,7 @@ export function ContactsPage() {
           ))}
         </div>
         <div className="flex items-center gap-1.5 ml-auto">
-          <ArrowUpDownIcon className="h-3.5 w-3.5 text-slate-500" />
+          <ArrowsUpDownIcon className="h-3.5 w-3.5 text-slate-500" />
           <select value={sortBy} onChange={e => setSortBy(e.target.value as any)}
             className="text-xs bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-1.5 text-slate-300">
             <option value="name">Sort: Name</option>

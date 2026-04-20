@@ -43,7 +43,7 @@ const DEMO_REPS: RepMetric[] = [
     weeklyTrend: [8200, 9100, 7400, 10200, 8800, 11400, 9600, 12100],
     strengths: ['Close rate top 10%', 'Fastest response time', 'High appointment show rate'],
     improvements: ['Proposal acceptance below avg (48% vs 55% team)', 'Pipeline getting thin — 34 leads, need 40+'],
-    coachingTip: 'Jake's closing rate is strong but his proposal-to-close gap suggests he's not pre-qualifying financing before presenting. Try leading with the monthly payment option before quoting grand total.',
+    coachingTip: `Jake's closing rate is strong but his proposal-to-close gap suggests he's not pre-qualifying financing before presenting. Try leading with the monthly payment option before quoting grand total.`,
   },
   {
     id: 'r2', name: 'Chad Melancon', avatar: 'CM', role: 'Sales Rep',
