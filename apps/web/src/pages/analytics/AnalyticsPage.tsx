@@ -75,10 +75,37 @@ const ACTIVE_CAMPAIGNS = [
 ];
 
 type Period = '7d' | '30d' | '90d';
+type AnalyticsTab = 'overview' | 'reps' | 'campaigns' | 'sources' | 'win-loss' | 'velocity';
+
+// ─── Win/Loss data ─────────────────────────────────────────
+const LOST_DEALS = [
+  { reason: 'Price too high', count: 14, color: '#ef4444' },
+  { reason: 'Going with competitor', count: 8, color: '#f97316' },
+  { reason: 'Needs spouse approval', count: 7, color: '#f59e0b' },
+  { reason: 'Not ready / timing', count: 6, color: '#eab308' },
+  { reason: 'Financing declined', count: 4, color: '#84cc16' },
+  { reason: 'House for sale', count: 3, color: '#22d3ee' },
+];
+const WON_BY_SOURCE = [
+  { source: 'REFERRAL', deals: 7, avgDays: 12, avgDeal: 11800 },
+  { source: 'STORM',    deals: 3, avgDays: 8,  avgDeal: 14200 },
+  { source: 'CANVASS',  deals: 8, avgDays: 18, avgDeal: 8400 },
+  { source: 'WEBSITE',  deals: 3, avgDays: 22, avgDeal: 9100 },
+];
+
+// ─── Pipeline velocity data ────────────────────────────────
+const STAGE_VELOCITY = [
+  { stage: 'NEW → Contacted',         avgDays: 1.2, target: 1,  count: 87, color: '#3b82f6' },
+  { stage: 'Contacted → Appt Set',    avgDays: 4.8, target: 3,  count: 62, color: '#6366f1' },
+  { stage: 'Appt Set → Inspected',    avgDays: 3.1, target: 3,  count: 48, color: '#8b5cf6' },
+  { stage: 'Inspected → Proposal',    avgDays: 2.4, target: 2,  count: 39, color: '#a855f7' },
+  { stage: 'Proposal → Committed',    avgDays: 8.7, target: 5,  count: 24, color: '#ef4444' },
+  { stage: 'Committed → Closed',      avgDays: 2.1, target: 2,  count: 19, color: '#10b981' },
+];
 
 export function AnalyticsPage() {
   const [period, setPeriod] = useState<Period>('30d');
-  const [activeTab, setActiveTab] = useState<'overview' | 'reps' | 'campaigns' | 'sources'>('overview');
+  const [activeTab, setActiveTab] = useState<AnalyticsTab>('overview');
 
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (!active || !payload?.length) return null;
@@ -133,12 +160,19 @@ export function AnalyticsPage() {
       </div>
 
       {/* Tab nav */}
-      <div className="flex gap-1 border-b border-slate-700">
-        {(['overview', 'reps', 'campaigns', 'sources'] as const).map((tab) => (
+      <div className="flex gap-0.5 border-b border-slate-700 overflow-x-auto">
+        {([
+          ['overview', 'Overview'],
+          ['reps', 'Rep Performance'],
+          ['campaigns', 'Campaigns'],
+          ['sources', 'Lead Sources'],
+          ['win-loss', 'Win / Loss'],
+          ['velocity', 'Pipeline Velocity'],
+        ] as [AnalyticsTab, string][]).map(([tab, label]) => (
           <button key={tab} onClick={() => setActiveTab(tab)}
-            className={clsx('px-4 py-2.5 text-sm font-medium capitalize border-b-2 transition-colors -mb-px',
+            className={clsx('px-4 py-2.5 text-sm font-medium whitespace-nowrap border-b-2 transition-colors -mb-px',
               activeTab === tab ? 'border-brand-500 text-brand-400' : 'border-transparent text-slate-500 hover:text-slate-300')}>
-            {tab === 'reps' ? 'Rep Performance' : tab.charAt(0).toUpperCase() + tab.slice(1)}
+            {label}
           </button>
         ))}
       </div>
@@ -457,6 +491,135 @@ export function AnalyticsPage() {
                   ))}
                 </tbody>
               </table>
+            </div>
+          </motion.div>
+        )}
+
+        {/* ── WIN / LOSS ── */}
+        {activeTab === 'win-loss' && (
+          <motion.div key="win-loss" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-5">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+              <div className="card p-5">
+                <h2 className="text-sm font-semibold text-white mb-4">Top Loss Reasons (Last 30 Days)</h2>
+                <div className="space-y-3">
+                  {LOST_DEALS.map((d, i) => (
+                    <div key={i}>
+                      <div className="flex justify-between text-xs mb-1">
+                        <span className="text-slate-400">{d.reason}</span>
+                        <span className="font-semibold text-white">{d.count} deals</span>
+                      </div>
+                      <div className="h-2 bg-slate-800 rounded-full overflow-hidden">
+                        <motion.div initial={{ width: 0 }} animate={{ width: `${(d.count / LOST_DEALS[0].count) * 100}%` }}
+                          transition={{ delay: i * 0.06 }} className="h-full rounded-full" style={{ background: d.color }} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className="mt-4 p-3 bg-amber-500/8 border border-amber-500/15 rounded-xl">
+                  <p className="text-xs text-amber-300">💡 <strong>"Price too high"</strong> accounts for 33% of lost deals. Recommend leading with monthly payment framing and energy savings offset before revealing total.</p>
+                </div>
+              </div>
+              <div className="card p-5">
+                <h2 className="text-sm font-semibold text-white mb-4">Won Deals by Source</h2>
+                <div className="space-y-3">
+                  {WON_BY_SOURCE.map((w, i) => (
+                    <div key={w.source} className="flex items-center justify-between p-3 rounded-xl bg-slate-800/50">
+                      <div>
+                        <div className="text-xs font-semibold text-white">{w.source}</div>
+                        <div className="text-[11px] text-slate-500">Avg {w.avgDays} days to close</div>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-xs font-bold text-emerald-400">${w.avgDeal.toLocaleString()}</div>
+                        <div className="text-[10px] text-slate-600">{w.deals} deals</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+            <div className="card p-5">
+              <h2 className="text-sm font-semibold text-white mb-1">Loss Pattern Insights</h2>
+              <p className="text-xs text-slate-500 mb-4">AI-generated from activity notes on lost deals</p>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {[
+                  { title: 'Most Vulnerable Stage', value: 'Proposal → Committed', desc: '8.7 days avg stall — where 41% of losses occur. Follow-up on day 2 and 5 post-proposal.', alert: true },
+                  { title: 'Best Close Source', value: 'Referral Leads', desc: 'Close 3.2× more than canvass leads and have 40% higher avg deal size.', alert: false },
+                  { title: 'Winning Objection Response', value: 'Monthly Payment First', desc: 'Reps who lead with monthly payment close 22% more deals than those who open with total price.', alert: false },
+                ].map(insight => (
+                  <div key={insight.title} className={clsx('p-4 rounded-xl border', insight.alert ? 'bg-red-500/6 border-red-500/15' : 'bg-brand-500/6 border-brand-500/15')}>
+                    <div className={clsx('text-[10px] font-bold uppercase tracking-wide mb-1', insight.alert ? 'text-red-400' : 'text-brand-400')}>{insight.title}</div>
+                    <div className="text-sm font-semibold text-white mb-1">{insight.value}</div>
+                    <p className="text-[11px] text-slate-500 leading-relaxed">{insight.desc}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </motion.div>
+        )}
+
+        {/* ── PIPELINE VELOCITY ── */}
+        {activeTab === 'velocity' && (
+          <motion.div key="velocity" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-5">
+            <div className="card p-5">
+              <h2 className="text-sm font-semibold text-white mb-1">Average Days per Stage</h2>
+              <p className="text-xs text-slate-500 mb-5">Where deals stall vs. target cadence · Red = over target</p>
+              <div className="space-y-4">
+                {STAGE_VELOCITY.map((s, i) => {
+                  const overTarget = s.avgDays > s.target;
+                  return (
+                    <div key={i}>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <span className="text-xs text-slate-400">{s.stage}</span>
+                        <div className="flex items-center gap-3 text-xs">
+                          <span className="text-slate-600">{s.count} leads</span>
+                          <span className={clsx('font-bold', overTarget ? 'text-red-400' : 'text-emerald-400')}>
+                            {s.avgDays}d {overTarget ? '▲' : '✓'}
+                          </span>
+                          <span className="text-slate-700">target: {s.target}d</span>
+                        </div>
+                      </div>
+                      <div className="h-3 bg-slate-800 rounded-full overflow-hidden">
+                        <motion.div initial={{ width: 0 }}
+                          animate={{ width: `${Math.min(100, (s.avgDays / (s.target * 2)) * 100)}%` }}
+                          transition={{ delay: i * 0.07 }}
+                          className="h-full rounded-full" style={{ background: overTarget ? '#ef4444' : '#10b981' }} />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {[
+                { title: 'Total Avg Cycle Time', value: `${STAGE_VELOCITY.reduce((s, v) => s + v.avgDays, 0).toFixed(1)} days`, color: 'text-white' },
+                { title: 'Biggest Bottleneck', value: 'Proposal → Committed', color: 'text-red-400' },
+                { title: 'If Bottleneck Fixed', value: '+$18K/mo est. uplift', color: 'text-emerald-400' },
+              ].map(s => (
+                <div key={s.title} className="card p-5 text-center">
+                  <div className={clsx('text-xl font-bold', s.color)}>{s.value}</div>
+                  <div className="text-[11px] text-slate-500 mt-1">{s.title}</div>
+                </div>
+              ))}
+            </div>
+            <div className="card p-5">
+              <h2 className="text-sm font-semibold text-white mb-3">Velocity Action Plan</h2>
+              <div className="space-y-2">
+                {[
+                  { stage: 'Proposal → Committed is 74% over target (8.7d vs 5d target)', action: 'Implement 2-day and 5-day follow-up automations on all sent proposals. Add urgency driver: "Pricing locked for X days."', priority: 'HIGH' },
+                  { stage: 'Contacted → Appt Set is 60% over target (4.8d vs 3d)', action: 'Same-day SMS follow-up for all new contacts. Train reps on offering 2 appointment slots instead of open-ended scheduling.', priority: 'MEDIUM' },
+                ].map((a, i) => (
+                  <div key={i} className="flex gap-3 p-3 rounded-xl bg-slate-800/50">
+                    <span className={clsx('text-[9px] font-bold mt-0.5 flex-shrink-0 px-1.5 py-0.5 rounded border h-fit',
+                      a.priority === 'HIGH' ? 'text-red-400 border-red-500/20 bg-red-500/8' : 'text-amber-400 border-amber-500/20 bg-amber-500/8')}>
+                      {a.priority}
+                    </span>
+                    <div>
+                      <div className="text-xs font-medium text-white mb-0.5">{a.stage}</div>
+                      <p className="text-[11px] text-slate-500 leading-relaxed">{a.action}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           </motion.div>
         )}

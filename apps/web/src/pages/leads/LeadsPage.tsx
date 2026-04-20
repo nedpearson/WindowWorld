@@ -60,6 +60,13 @@ function ScoreBar({ score }: { score: number }) {
   );
 }
 
+function leadAge(createdAt: string): { days: number; badge: string; color: string } {
+  const days = Math.floor((Date.now() - new Date(createdAt).getTime()) / 86400000);
+  if (days <= 3)  return { days, badge: `${days}d`, color: 'text-emerald-400' };
+  if (days <= 10) return { days, badge: `${days}d`, color: 'text-amber-400' };
+  return { days, badge: `${days}d`, color: 'text-red-400 font-semibold' };
+}
+
 // ─── DEMO DATA (shown while API wires up) ─────────────────────
 const DEMO_LEADS = [
   { id: '1', firstName: 'Michael', lastName: 'Trosclair', email: 'mtrosclair@hotmail.com', phone: '(225) 555-1003', address: '7824 Old Hammond Hwy', city: 'Baton Rouge', zip: '70809', parish: 'East Baton Rouge', status: 'VERBAL_COMMIT', leadScore: 91, urgencyScore: 88, isStormLead: true, estimatedRevenue: 14800, source: 'web', assignedRep: { firstName: 'Jake', lastName: 'Thibodaux' }, createdAt: '2026-04-01' },
@@ -127,6 +134,9 @@ export function LeadsPage() {
           </Link>
           <Link to="/pipeline" className="btn-secondary btn-sm">
             Pipeline
+          </Link>
+          <Link to="/leads/import" className="btn-secondary btn-sm flex items-center gap-1.5">
+            <ArrowPathIcon className="h-4 w-4" /> Import CSV
           </Link>
           <Link to="/leads/new" className="btn-primary btn-sm">
             <PlusIcon className="h-4 w-4" />
@@ -243,6 +253,9 @@ export function LeadsPage() {
                             <CloudIcon className="h-2.5 w-2.5" />
                           </span>
                         )}
+                        <span className={clsx('text-[9px] font-mono ml-0.5', leadAge(lead.createdAt).color)}>
+                          {leadAge(lead.createdAt).badge}
+                        </span>
                       </div>
                       <div className="text-xs text-slate-500 truncate max-w-[180px]">
                         {lead.address}

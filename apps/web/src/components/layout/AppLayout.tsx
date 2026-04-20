@@ -10,11 +10,13 @@ import {
   ArrowRightOnRectangleIcon, BuildingStorefrontIcon,
   CursorArrowRippleIcon, ClipboardDocumentListIcon, MapIcon, ShieldCheckIcon,
   UserGroupIcon, WrenchScrewdriverIcon, StarIcon, AcademicCapIcon,
+  ArrowUpTrayIcon, CurrencyDollarIcon,
 } from '@heroicons/react/24/outline';
 import { BoltIcon as BoltSolid, PlusSmallIcon } from '@heroicons/react/24/solid';
 import clsx from 'clsx';
 import { io, Socket } from 'socket.io-client';
-import { useEffect } from 'react';
+import { useEffect, useCallback } from 'react';
+import { GlobalSearch } from '../search/GlobalSearch';
 
 function NotificationsDropdown({ isOpen, onClose, notifications }: { isOpen: boolean; onClose: () => void; notifications: any[] }) {
   if (!isOpen) return null;
@@ -64,6 +66,7 @@ const navSections = [
       { label: 'Lead Intelligence', path: '/lead-intelligence', icon: BeakerIcon },
       { label: 'All Leads',         path: '/leads',             icon: UsersIcon },
       { label: 'Contacts',          path: '/contacts',          icon: UserGroupIcon },
+      { label: 'CSV Import',        path: '/leads/import',      icon: ArrowUpTrayIcon },
       { label: 'Pipeline',          path: '/pipeline',          icon: BuildingStorefrontIcon },
       { label: 'Territory Map',     path: '/map',               icon: MapIcon },
       { label: 'Appointments',      path: '/appointments',      icon: CalendarIcon },
@@ -80,9 +83,11 @@ const navSections = [
   {
     label: 'Revenue',
     items: [
+      { label: 'Quick Quote',        path: '/quick-quote',          icon: BoltIcon },
       { label: 'Product Catalog',    path: '/catalog',              icon: BuildingStorefrontIcon },
       { label: 'Proposals',          path: '/proposals',            icon: DocumentTextIcon },
       { label: 'Invoices',           path: '/invoices',             icon: BanknotesIcon },
+      { label: 'Commissions',        path: '/commissions',          icon: CurrencyDollarIcon },
       { label: 'Install Schedule',   path: '/installs',             icon: WrenchScrewdriverIcon },
       { label: 'Reviews & Referrals',path: '/installs/post-install', icon: StarIcon },
     ],
@@ -131,6 +136,7 @@ export function AppLayout() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [notifications, setNotifications] = useState<any[]>([]);
+  const [searchOpen, setSearchOpen] = useState(false);
 
   useEffect(() => {
     const token = localStorage.getItem('ww_token');
@@ -148,6 +154,18 @@ export function AppLayout() {
     return () => {
       socket.disconnect();
     };
+  }, []);
+
+  // ⌘K / Ctrl+K global shortcut
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        setSearchOpen(open => !open);
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
   }, []);
 
   const isActive = (path: string) => location.pathname === path || location.pathname.startsWith(path + '/');
@@ -288,7 +306,8 @@ export function AppLayout() {
         {/* Topbar */}
         <header className="sticky top-0 h-14 bg-slate-900/95 backdrop-blur-sm border-b border-slate-800 z-30 flex items-center px-6 gap-4">
           {/* Search */}
-          <button className="flex items-center gap-2.5 px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 text-slate-500 text-sm hover:border-slate-600 transition-colors flex-1 max-w-sm">
+          <button onClick={() => setSearchOpen(true)}
+            className="flex items-center gap-2.5 px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 text-slate-500 text-sm hover:border-brand-500/40 hover:text-slate-300 transition-colors flex-1 max-w-sm">
             <MagnifyingGlassIcon className="h-4 w-4" />
             <span>Search leads, properties...</span>
             <span className="ml-auto text-[10px] bg-slate-700 px-1.5 py-0.5 rounded font-mono text-slate-500">⌘K</span>
@@ -341,6 +360,7 @@ export function AppLayout() {
           </motion.div>
         </main>
       </div>
+      <GlobalSearch isOpen={searchOpen} onClose={() => setSearchOpen(false)} />
     </div>
   );
 }

@@ -26,6 +26,9 @@ import { ContactsPage } from './pages/contacts/ContactsPage';
 import { InstallSchedulePage } from './pages/installs/InstallSchedulePage';
 import { CoachingPage } from './pages/analytics/CoachingPage';
 import { PostInstallPage } from './pages/installs/PostInstallPage';
+import { QuickQuotePage } from './pages/proposals/QuickQuotePage';
+import { CommissionPage } from './pages/commissions/CommissionPage';
+import { CsvImportPage } from './pages/leads/CsvImportPage';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
@@ -92,6 +95,15 @@ export default function App() {
 
         {/* Coaching dashboard */}
         <Route path="coaching" element={<CoachingPage />} />
+
+        {/* Quick Quote */}
+        <Route path="quick-quote" element={<QuickQuotePage />} />
+
+        {/* Commissions */}
+        <Route path="commissions" element={<CommissionPage />} />
+
+        {/* CSV Import */}
+        <Route path="leads/import" element={<CsvImportPage />} />
 
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Route>
