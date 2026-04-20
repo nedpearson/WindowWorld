@@ -11,7 +11,6 @@ import fs from 'fs';
 
 import { logger } from './shared/utils/logger';
 import { errorHandler } from './shared/middleware/errorHandler';
-import { rateLimiter } from './shared/middleware/rateLimiter';
 import { requestId } from './shared/middleware/requestId';
 import { wsService } from './shared/services/websocket.service';
 
@@ -81,7 +80,8 @@ app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.use(morgan('combined', { stream: { write: (msg) => logger.http(msg.trim()) } }));
 app.use(requestId);
-app.use(rateLimiter);
+// Rate limiting disabled temporarily - Railway proxy causes ERR_ERL_UNEXPECTED_X_FORWARDED_FOR
+// app.use(rateLimiter);
 
 // â”€â”€â”€ Health check â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 app.get('/health', (req, res) => {
