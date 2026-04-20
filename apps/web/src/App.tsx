@@ -24,6 +24,8 @@ import { SettingsPage } from './pages/settings/SettingsPage';
 import { NotificationsPage } from './pages/notifications/NotificationsPage';
 import { ContactsPage } from './pages/contacts/ContactsPage';
 import { InstallSchedulePage } from './pages/installs/InstallSchedulePage';
+import { CoachingPage } from './pages/analytics/CoachingPage';
+import { PostInstallPage } from './pages/installs/PostInstallPage';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
@@ -84,8 +86,12 @@ export default function App() {
         {/* Notifications */}
         <Route path="notifications" element={<NotificationsPage />} />
 
-        {/* Install Schedule */}
+        {/* Install Schedule + Post-Install */}
         <Route path="installs" element={<InstallSchedulePage />} />
+        <Route path="installs/post-install" element={<PostInstallPage />} />
+
+        {/* Coaching dashboard */}
+        <Route path="coaching" element={<CoachingPage />} />
 
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Route>

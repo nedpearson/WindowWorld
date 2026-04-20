@@ -9,7 +9,7 @@ import {
   ExclamationTriangleIcon, MagnifyingGlassIcon, BellIcon,
   ArrowRightOnRectangleIcon, BuildingStorefrontIcon,
   CursorArrowRippleIcon, ClipboardDocumentListIcon, MapIcon, ShieldCheckIcon,
-  UserGroupIcon, WrenchScrewdriverIcon, PhoneArrowUpRightIcon,
+  UserGroupIcon, WrenchScrewdriverIcon, StarIcon, AcademicCapIcon,
 } from '@heroicons/react/24/outline';
 import { BoltIcon as BoltSolid, PlusSmallIcon } from '@heroicons/react/24/solid';
 import clsx from 'clsx';
@@ -55,6 +55,7 @@ const navSections = [
     items: [
       { label: 'Dashboard',        path: '/dashboard',         icon: HomeIcon },
       { label: 'Analytics',        path: '/analytics',         icon: ChartBarIcon },
+      { label: 'Rep Coaching',     path: '/coaching',          icon: AcademicCapIcon },
     ],
   },
   {
@@ -79,10 +80,11 @@ const navSections = [
   {
     label: 'Revenue',
     items: [
-      { label: 'Product Catalog', path: '/catalog',    icon: BuildingStorefrontIcon },
-      { label: 'Proposals',       path: '/proposals',  icon: DocumentTextIcon },
-      { label: 'Invoices',        path: '/invoices',   icon: BanknotesIcon },
-      { label: 'Install Schedule',path: '/installs',   icon: WrenchScrewdriverIcon },
+      { label: 'Product Catalog',    path: '/catalog',              icon: BuildingStorefrontIcon },
+      { label: 'Proposals',          path: '/proposals',            icon: DocumentTextIcon },
+      { label: 'Invoices',           path: '/invoices',             icon: BanknotesIcon },
+      { label: 'Install Schedule',   path: '/installs',             icon: WrenchScrewdriverIcon },
+      { label: 'Reviews & Referrals',path: '/installs/post-install', icon: StarIcon },
     ],
   },
   {

@@ -15,6 +15,7 @@ import {
 import { BoltIcon as BoltSolid, StarIcon } from '@heroicons/react/24/solid';
 import clsx from 'clsx';
 import { PitchCoachPanel } from '../../components/ai/PitchCoachPanel';
+import { SmsTemplateDrawer } from '../../components/sms/SmsTemplateDrawer';
 
 const DEMO_LEAD = {
   id: '1',
@@ -257,6 +258,7 @@ export function LeadDetailPage({ isNew = false }: { isNew?: boolean }) {
   const [newNote, setNewNote] = useState('');
   const [showNoteBox, setShowNoteBox] = useState(false);
   const [showStatusMenu, setShowStatusMenu] = useState(false);
+  const [smsOpen, setSmsOpen] = useState(false);
 
   const lead = DEMO_LEAD; // In prod: useQuery({ queryKey: ['lead', id], queryFn: () => api.leads.getById(id!) })
   const property = lead.property;
@@ -346,9 +348,9 @@ export function LeadDetailPage({ isNew = false }: { isNew?: boolean }) {
           <a href={`tel:${lead.phone}`} className="btn-primary btn-sm flex items-center gap-1.5">
             <PhoneIcon className="h-4 w-4" /> Call
           </a>
-          <a href={`sms:${lead.phone}`} className="btn-secondary btn-sm flex items-center gap-1.5">
+          <button onClick={() => setSmsOpen(true)} className="btn-secondary btn-sm flex items-center gap-1.5">
             <ChatBubbleLeftIcon className="h-4 w-4" /> Text
-          </a>
+          </button>
           <a href={`mailto:${lead.email}`} className="btn-secondary btn-sm flex items-center gap-1.5">
             <EnvelopeIcon className="h-4 w-4" /> Email
           </a>
@@ -799,6 +801,13 @@ export function LeadDetailPage({ isNew = false }: { isNew?: boolean }) {
           )}
         </motion.div>
       </AnimatePresence>
+      <SmsTemplateDrawer
+        isOpen={smsOpen}
+        onClose={() => setSmsOpen(false)}
+        contactName={`${lead.firstName} ${lead.lastName}`}
+        contactPhone={lead.phone}
+        repName={`${lead.assignedRep.firstName} ${lead.assignedRep.lastName}`}
+      />
     </div>
   );
 }
