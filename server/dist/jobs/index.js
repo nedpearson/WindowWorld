@@ -277,7 +277,21 @@ async function initializeJobQueues() {
         const { Queue, Worker } = await Promise.resolve().then(() => __importStar(require('bullmq')));
         const IORedis = (await Promise.resolve().then(() => __importStar(require('ioredis')))).default;
         const connection = new IORedis(process.env.REDIS_URL, {
-            maxRetriesPerRequest: null,
+            maxRetriesPerRequest: null, // required by BullMQ
+            enableOfflineQueue: false, // fail fast when Redis is down
+            retryStrategy: (times) => {
+                if (times > 10) {
+                    logger_1.logger.error('[Redis] Max reconnection attempts reached - background jobs disabled');
+                    return null; // stop retrying
+                }
+                const delay = Math.min(times * 2000, 30000);
+                logger_1.logger.warn(`[Redis] Reconnecting in ${delay}ms (attempt ${times}/10)...`);
+                return delay;
+            },
+        });
+        // Route Redis errors through our logger instead of raw stderr spam
+        connection.on('error', (err) => {
+            logger_1.logger.warn(`[Redis] ${err.message.split('\n')[0]}`);
         });
         // Initialize queues
         _leadScoringQueue = new Queue('lead-scoring', { connection });

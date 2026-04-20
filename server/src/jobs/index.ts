@@ -275,7 +275,22 @@ export async function initializeJobQueues(): Promise<void> {
     const IORedis = (await import('ioredis')).default;
 
     const connection = new IORedis(process.env.REDIS_URL, {
-      maxRetriesPerRequest: null,
+      maxRetriesPerRequest: null,      // required by BullMQ
+      enableOfflineQueue: false,       // fail fast when Redis is down
+      retryStrategy: (times: number) => {
+        if (times > 10) {
+          logger.error('[Redis] Max reconnection attempts reached - background jobs disabled');
+          return null; // stop retrying
+        }
+        const delay = Math.min(times * 2000, 30000);
+        logger.warn(`[Redis] Reconnecting in ${delay}ms (attempt ${times}/10)...`);
+        return delay;
+      },
+    });
+
+    // Route Redis errors through our logger instead of raw stderr spam
+    connection.on('error', (err: Error) => {
+      logger.warn(`[Redis] ${err.message.split('\n')[0]}`);
     });
 
     // Initialize queues
