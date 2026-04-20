@@ -2,7 +2,6 @@ import { Router, Request, Response } from 'express';
 import { body, validationResult } from 'express-validator';
 import { authService } from './auth.service';
 import { requireAuth, AuthenticatedRequest } from '../../shared/middleware/auth';
-import { authRateLimiter } from '../../shared/middleware/rateLimiter';
 import { ValidationError } from '../../shared/middleware/errorHandler';
 
 const router = Router();
@@ -22,7 +21,6 @@ function validateRequest(req: Request): void {
 // POST /api/v1/auth/login
 router.post(
   '/login',
-  authRateLimiter,
   [
     body('email').isEmail().normalizeEmail().withMessage('Valid email required'),
     body('password').isLength({ min: 1 }).withMessage('Password required'),
@@ -38,7 +36,6 @@ router.post(
 // POST /api/v1/auth/google
 router.post(
   '/google',
-  authRateLimiter,
   [
     body('idToken').isString().notEmpty().withMessage('Google ID token required'),
   ],
