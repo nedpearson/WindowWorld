@@ -9,6 +9,9 @@ interface User {
   role: string;
   organizationId: string;
   avatarUrl: string | null;
+  phone?: string | null;
+  googleId?: string | null;
+  createdAt?: string;
   organization?: {
     id: string;
     name: string;
