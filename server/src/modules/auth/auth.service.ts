@@ -154,24 +154,40 @@ export class AuthService {
     });
 
     if (!user) {
-      // TEMPORARY: Auto-provision any Google SSO user to ensure login success
-      // In production later, we will lock this down to strictly invited users!
-      const org = await prisma.organization.findFirst();
-      if (!org) throw new UnauthorizedError('System has no organizations.');
+      // Auto-provision: find or bootstrap org, then create user
+      let org = await prisma.organization.findFirst();
       
+      if (!org) {
+        // First-ever login: bootstrap the organization
+        logger.info(`[Google SSO] No organization found - bootstrapping WindowWorld organization`);
+        org = await prisma.organization.create({
+          data: {
+            name: 'WindowWorld Louisiana',
+            slug: 'windowworld-la',
+            phone: '(225) 555-0100',
+            email: 'admin@windowworldla.com',
+            address: 'Baton Rouge, LA',
+            isActive: true,
+          } as any,
+        });
+        logger.info(`[Google SSO] Organization created: ${org.id}`);
+      }
+
+      logger.info(`[Google SSO] Creating new SUPER_ADMIN user for ${email}`);
       user = await prisma.user.create({
         data: {
           email,
           googleId,
-          passwordHash: await bcrypt.hash('autoprovisioned', 12),
-          firstName: payload.given_name || 'Admin',
+          passwordHash: await bcrypt.hash(uuidv4(), 12),
+          firstName: payload.given_name || email.split('@')[0],
           lastName: payload.family_name || 'User',
           role: 'SUPER_ADMIN',
           organizationId: org.id,
-          avatarUrl: payload.picture,
-          isActive: true
-        }
+          avatarUrl: payload.picture ?? null,
+          isActive: true,
+        } as any,
       });
+      logger.info(`[Google SSO] User created: ${user.id} (${user.email})`);
     }
 
     if (!user.isActive) {
