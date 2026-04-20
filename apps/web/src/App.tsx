@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuthStore } from './store/auth.store';
 import { AppLayout } from './components/layout/AppLayout';
@@ -12,24 +13,35 @@ import { AppointmentsPage } from './pages/leads/AppointmentsPage';
 import { AutomationsPage } from './pages/leads/AutomationsPage';
 import { InspectionPage } from './pages/inspections/InspectionPage';
 import { MeasurementPage } from './pages/inspections/MeasurementPage';
-import { AnalyticsPage } from './pages/analytics/AnalyticsPage';
 import { ProposalsPage } from './pages/proposals/ProposalsPage';
 import { ProposalDetailPage } from './pages/proposals/ProposalDetailPage';
-import { ProductCatalogPage } from './pages/proposals/ProductCatalogPage';
 import { QuotePage } from './pages/proposals/QuotePage';
 import { InvoicesPage } from './pages/invoices/InvoicesPage';
-import { MobileFieldApp } from './pages/mobile/MobileFieldApp';
-import { AdminPage } from './pages/admin/AdminPage';
-import { SettingsPage } from './pages/settings/SettingsPage';
-import { NotificationsPage } from './pages/notifications/NotificationsPage';
 import { ContactsPage } from './pages/contacts/ContactsPage';
-import { InstallSchedulePage } from './pages/installs/InstallSchedulePage';
-import { CoachingPage } from './pages/analytics/CoachingPage';
-import { PostInstallPage } from './pages/installs/PostInstallPage';
-import { QuickQuotePage } from './pages/proposals/QuickQuotePage';
-import { CommissionPage } from './pages/commissions/CommissionPage';
-import { CsvImportPage } from './pages/leads/CsvImportPage';
-import { HomeownerPortalPage } from './pages/homeowner/HomeownerPortalPage';
+import { NotificationsPage } from './pages/notifications/NotificationsPage';
+import { SettingsPage } from './pages/settings/SettingsPage';
+
+// ─── Lazy-loaded (code-split) heavy pages ─────────────────
+const AnalyticsPage       = lazy(() => import('./pages/analytics/AnalyticsPage').then(m => ({ default: m.AnalyticsPage })));
+const CoachingPage        = lazy(() => import('./pages/analytics/CoachingPage').then(m => ({ default: m.CoachingPage })));
+const ProductCatalogPage  = lazy(() => import('./pages/proposals/ProductCatalogPage').then(m => ({ default: m.ProductCatalogPage })));
+const AdminPage           = lazy(() => import('./pages/admin/AdminPage').then(m => ({ default: m.AdminPage })));
+const MobileFieldApp      = lazy(() => import('./pages/mobile/MobileFieldApp').then(m => ({ default: m.MobileFieldApp })));
+const InstallSchedulePage = lazy(() => import('./pages/installs/InstallSchedulePage').then(m => ({ default: m.InstallSchedulePage })));
+const PostInstallPage     = lazy(() => import('./pages/installs/PostInstallPage').then(m => ({ default: m.PostInstallPage })));
+const QuickQuotePage      = lazy(() => import('./pages/proposals/QuickQuotePage').then(m => ({ default: m.QuickQuotePage })));
+const CommissionPage      = lazy(() => import('./pages/commissions/CommissionPage').then(m => ({ default: m.CommissionPage })));
+const CsvImportPage       = lazy(() => import('./pages/leads/CsvImportPage').then(m => ({ default: m.CsvImportPage })));
+const HomeownerPortalPage = lazy(() => import('./pages/homeowner/HomeownerPortalPage').then(m => ({ default: m.HomeownerPortalPage })));
+
+// Slim fallback for lazy routes
+function PageLoader() {
+  return (
+    <div className="flex items-center justify-center h-48">
+      <div className="w-7 h-7 border-2 border-brand-500/30 border-t-brand-500 rounded-full animate-spin" />
+    </div>
+  );
+}
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
@@ -39,78 +51,80 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
 export default function App() {
   return (
-    <Routes>
-      {/* Public homeowner proposal portal — no auth required */}
-      <Route path="/portal/:id" element={<HomeownerPortalPage />} />
+    <Suspense fallback={<PageLoader />}>
+      <Routes>
+        {/* Public homeowner proposal portal — no auth required */}
+        <Route path="/portal/:id" element={<HomeownerPortalPage />} />
 
-      <Route path="/login" element={<LoginPage />} />
+        <Route path="/login" element={<LoginPage />} />
 
-      {/* Mobile standalone route */}
-      <Route path="/field" element={
-        <ProtectedRoute><MobileFieldApp /></ProtectedRoute>
-      } />
+        {/* Mobile standalone route */}
+        <Route path="/field" element={
+          <ProtectedRoute><MobileFieldApp /></ProtectedRoute>
+        } />
 
-      {/* Main app with sidebar layout */}
-      <Route path="/" element={
-        <ProtectedRoute><AppLayout /></ProtectedRoute>
-      }>
-        <Route index element={<Navigate to="/dashboard" replace />} />
-        <Route path="dashboard" element={<DashboardPage />} />
+        {/* Main app with sidebar layout */}
+        <Route path="/" element={
+          <ProtectedRoute><AppLayout /></ProtectedRoute>
+        }>
+          <Route index element={<Navigate to="/dashboard" replace />} />
+          <Route path="dashboard" element={<DashboardPage />} />
 
-        {/* Leads */}
-        <Route path="leads" element={<LeadsPage />} />
-        <Route path="leads/:id" element={<LeadDetailPage />} />
-        <Route path="leads/new" element={<LeadDetailPage isNew />} />
-        <Route path="lead-intelligence" element={<LeadIntelligencePage />} />
-        <Route path="pipeline" element={<PipelinePage />} />
-        <Route path="map" element={<TerritoryMapPage />} />
-        <Route path="appointments" element={<AppointmentsPage />} />
-        <Route path="automations" element={<AutomationsPage />} />
+          {/* Leads */}
+          <Route path="leads" element={<LeadsPage />} />
+          <Route path="leads/:id" element={<LeadDetailPage />} />
+          <Route path="leads/new" element={<LeadDetailPage isNew />} />
+          <Route path="lead-intelligence" element={<LeadIntelligencePage />} />
+          <Route path="pipeline" element={<PipelinePage />} />
+          <Route path="map" element={<TerritoryMapPage />} />
+          <Route path="appointments" element={<AppointmentsPage />} />
+          <Route path="automations" element={<AutomationsPage />} />
 
-        {/* Inspections */}
-        <Route path="inspections/:id" element={<InspectionPage />} />
-        <Route path="measurements/:openingId" element={<MeasurementPage />} />
+          {/* Inspections */}
+          <Route path="inspections/:id" element={<InspectionPage />} />
+          <Route path="measurements/:openingId" element={<MeasurementPage />} />
 
-        {/* Phase 4 — Product catalog & quoting */}
-        <Route path="catalog" element={<ProductCatalogPage />} />
-        <Route path="leads/:leadId/quote" element={<QuotePage />} />
+          {/* Product catalog & quoting */}
+          <Route path="catalog" element={<ProductCatalogPage />} />
+          <Route path="leads/:leadId/quote" element={<QuotePage />} />
 
-        {/* Proposals & Invoices */}
-        <Route path="proposals" element={<ProposalsPage />} />
-        <Route path="proposals/:id" element={<ProposalDetailPage />} />
-        <Route path="invoices" element={<InvoicesPage />} />
+          {/* Proposals & Invoices */}
+          <Route path="proposals" element={<ProposalsPage />} />
+          <Route path="proposals/:id" element={<ProposalDetailPage />} />
+          <Route path="invoices" element={<InvoicesPage />} />
 
-        {/* Admin */}
-        <Route path="admin" element={<AdminPage />} />
-        <Route path="settings" element={<SettingsPage />} />
+          {/* Admin */}
+          <Route path="admin" element={<AdminPage />} />
+          <Route path="settings" element={<SettingsPage />} />
 
-        {/* Analytics */}
-        <Route path="analytics" element={<AnalyticsPage />} />
+          {/* Analytics */}
+          <Route path="analytics" element={<AnalyticsPage />} />
 
-        {/* Contacts */}
-        <Route path="contacts" element={<ContactsPage />} />
+          {/* Contacts */}
+          <Route path="contacts" element={<ContactsPage />} />
 
-        {/* Notifications */}
-        <Route path="notifications" element={<NotificationsPage />} />
+          {/* Notifications */}
+          <Route path="notifications" element={<NotificationsPage />} />
 
-        {/* Install Schedule + Post-Install */}
-        <Route path="installs" element={<InstallSchedulePage />} />
-        <Route path="installs/post-install" element={<PostInstallPage />} />
+          {/* Install Schedule + Post-Install */}
+          <Route path="installs" element={<InstallSchedulePage />} />
+          <Route path="installs/post-install" element={<PostInstallPage />} />
 
-        {/* Coaching dashboard */}
-        <Route path="coaching" element={<CoachingPage />} />
+          {/* Coaching dashboard — manager only (guarded in component) */}
+          <Route path="coaching" element={<CoachingPage />} />
 
-        {/* Quick Quote */}
-        <Route path="quick-quote" element={<QuickQuotePage />} />
+          {/* Quick Quote */}
+          <Route path="quick-quote" element={<QuickQuotePage />} />
 
-        {/* Commissions */}
-        <Route path="commissions" element={<CommissionPage />} />
+          {/* Commissions */}
+          <Route path="commissions" element={<CommissionPage />} />
 
-        {/* CSV Import */}
-        <Route path="leads/import" element={<CsvImportPage />} />
+          {/* CSV Import */}
+          <Route path="leads/import" element={<CsvImportPage />} />
 
-        <Route path="*" element={<Navigate to="/dashboard" replace />} />
-      </Route>
-    </Routes>
+          <Route path="*" element={<Navigate to="/dashboard" replace />} />
+        </Route>
+      </Routes>
+    </Suspense>
   );
 }

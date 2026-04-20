@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
+import { useQuery } from '@tanstack/react-query';
 import {
   MagnifyingGlassIcon, PhoneIcon, EnvelopeIcon,
   ChatBubbleLeftIcon, PlusIcon, UserIcon,
@@ -10,6 +11,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { StarIcon as StarSolid } from '@heroicons/react/24/solid';
 import clsx from 'clsx';
+import { api } from '../../api/client';
 
 // ─── Types ────────────────────────────────────────────────
 interface Contact {
@@ -28,21 +30,31 @@ interface Contact {
   isStarred?: boolean;
 }
 
-// ─── Demo data ────────────────────────────────────────────
-const DEMO_CONTACTS: Contact[] = [
-  { id: 'c1', firstName: 'Patricia', lastName: 'Landry', role: 'PRIMARY', phone: '(225) 555-2048', email: 'patricia.landry@gmail.com', leadId: '2', leadName: 'Patricia Landry', leadStatus: 'PROPOSAL_SENT', leadValue: 9200, isPrimary: true, isStarred: true, notes: 'Decision maker. Responds best to email. Works from home Tue/Thu.' },
-  { id: 'c2', firstName: 'Gary', lastName: 'Landry', role: 'SPOUSE', phone: '(225) 555-2049', leadId: '2', leadName: 'Patricia Landry', leadStatus: 'PROPOSAL_SENT', isPrimary: false, notes: 'Handles finances. Must be in room for contract signing.' },
-  { id: 'c3', firstName: 'Michael', lastName: 'Trosclair', role: 'PRIMARY', phone: '(225) 555-1003', email: 'michael.t@outlook.com', leadId: '1', leadName: 'Michael Trosclair', leadStatus: 'VERBAL_COMMIT', leadValue: 22400, isPrimary: true, isStarred: true },
-  { id: 'c4', firstName: 'Jennifer', lastName: 'Trosclair', role: 'SPOUSE', phone: '(225) 555-1004', leadId: '1', leadName: 'Michael Trosclair', leadStatus: 'VERBAL_COMMIT', isPrimary: false, notes: 'Prefers monthly payment framing. Sits in on all calls.' },
-  { id: 'c5', firstName: 'Robert', lastName: 'Comeaux', role: 'PRIMARY', phone: '(225) 555-0021', email: 'rcomeaux@yahoo.com', leadId: '3', leadName: 'Robert Comeaux', leadStatus: 'APPOINTMENT_SET', leadValue: 14750, isPrimary: true },
-  { id: 'c6', firstName: 'Angela', lastName: 'Mouton', role: 'PRIMARY', phone: '(225) 555-4413', email: 'angela.mouton@gmail.com', leadId: '4', leadName: 'Angela Mouton', leadStatus: 'MEASURING_COMPLETE', leadValue: 5900, isPrimary: true },
-  { id: 'c7', firstName: 'Karen', lastName: 'Guidry', role: 'PRIMARY', phone: '(225) 555-7723', leadId: '6', leadName: 'Karen Guidry', leadStatus: 'APPOINTMENT_SET', leadValue: 8200, isPrimary: true },
-  { id: 'c8', firstName: 'Susan', lastName: 'Bourgeois', role: 'PRIMARY', phone: '(225) 555-3102', email: 's.bourgeois@gmail.com', leadId: '3b', leadName: 'Susan Bourgeois', leadStatus: 'NEW_LEAD', leadValue: 4200, isPrimary: true },
-  { id: 'c9', firstName: 'James', lastName: 'Fontenot', role: 'PRIMARY', phone: '(225) 555-6671', leadId: '7', leadName: 'James Fontenot', leadStatus: 'QUALIFIED', leadValue: 8400, isPrimary: true, notes: 'Follow-up overdue 5 days. Best time: mornings.' },
-  { id: 'c10', firstName: 'Carol', lastName: 'Chauvin', role: 'PRIMARY', phone: '(225) 555-5560', email: 'cchauvin@bellsouth.net', leadId: '6a', leadName: 'Carol Chauvin', leadStatus: 'FOLLOW_UP', leadValue: 7400, isPrimary: true },
-  { id: 'c11', firstName: 'Tom', lastName: 'Bergeron', role: 'PRIMARY', phone: '(225) 555-8834', leadId: '5', leadName: 'Tom Bergeron', leadStatus: 'PROPOSAL_SENT', leadValue: 6800, isPrimary: true },
-  { id: 'c12', firstName: 'Mark', lastName: 'Hebert', role: 'PRIMARY', phone: '(225) 555-9921', email: 'mark.hebert@icloud.com', leadId: '8', leadName: 'Mark Hebert', leadStatus: 'PROPOSAL_SENT', leadValue: 12100, isPrimary: true, isStarred: true },
-];
+// Map server contact (with nested `lead`) → our Contact interface
+function mapContact(c: any): Contact {
+  const isSpouse = c.isSpouse;
+  const isManager = c.notes?.toLowerCase().includes('manager') || c.role === 'PROPERTY_MANAGER';
+  let role: Contact['role'] = 'PRIMARY';
+  if (isSpouse) role = 'SPOUSE';
+  else if (isManager) role = 'PROPERTY_MANAGER';
+  else if (c.isOwner === false) role = 'OTHER';
+
+  return {
+    id: c.id,
+    firstName: c.firstName,
+    lastName: c.lastName,
+    role,
+    phone: c.phone || undefined,
+    email: c.email || undefined,
+    notes: c.notes || undefined,
+    leadId: c.leadId || '',
+    leadName: c.lead ? `${c.lead.firstName || ''} ${c.lead.lastName || ''}`.trim() : 'Unknown Lead',
+    leadStatus: c.lead?.status || 'UNKNOWN',
+    leadValue: c.lead?.estimatedValue ? Number(c.lead.estimatedValue) : undefined,
+    isPrimary: c.isPrimary ?? true,
+    isStarred: false,
+  };
+}
 
 const ROLE_CONFIG: Record<string, { label: string; class: string }> = {
   PRIMARY:          { label: 'Primary',  class: 'bg-brand-500/10 text-brand-400 border-brand-500/20' },
@@ -123,9 +135,24 @@ export function ContactsPage() {
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState('');
   const [sortBy, setSortBy] = useState<'name' | 'value' | 'status'>('name');
-  const [contacts, setContacts] = useState<Contact[]>(DEMO_CONTACTS);
+  const [starredIds, setStarredIds] = useState<Set<string>>(new Set());
 
-  const toggleStar = (id: string) => setContacts(prev => prev.map(c => c.id === id ? { ...c, isStarred: !c.isStarred } : c));
+  const { data: rawData, isLoading } = useQuery({
+    queryKey: ['contacts-list'],
+    queryFn: () => api.contacts.list().then((r: any) => (r.data || []).map(mapContact)),
+    staleTime: 60_000,
+  });
+
+  const contacts: Contact[] = (rawData || []).map((c: Contact) => ({
+    ...c,
+    isStarred: starredIds.has(c.id),
+  }));
+
+  const toggleStar = (id: string) => setStarredIds(prev => {
+    const next = new Set(prev);
+    next.has(id) ? next.delete(id) : next.add(id);
+    return next;
+  });
 
   const filtered = useMemo(() => {
     let list = contacts;
@@ -149,6 +176,16 @@ export function ContactsPage() {
 
   const totalWithPhone = contacts.filter(c => c.phone).length;
   const starred = contacts.filter(c => c.isStarred).length;
+
+  if (isLoading) return (
+    <div className="p-6">
+      <div className="animate-pulse space-y-3">
+        {[...Array(6)].map((_, i) => (
+          <div key={i} className="h-20 bg-slate-800 rounded-xl" />
+        ))}
+      </div>
+    </div>
+  );
 
   return (
     <div className="p-6 space-y-5 page-transition">

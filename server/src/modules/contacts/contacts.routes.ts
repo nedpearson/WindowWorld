@@ -15,6 +15,14 @@ function validate(req: Request) {
   }
 }
 
+// GET /api/v1/contacts — list all contacts for org (with optional search)
+router.get('/', auth.repOrAbove, async (req: Request, res: Response) => {
+  const user = (req as AuthenticatedRequest).user;
+  const { search } = req.query as Record<string, string>;
+  const data = await contactsService.listForOrg(user.organizationId, search);
+  res.json({ success: true, data });
+});
+
 // GET /api/v1/contacts/lead/:leadId
 router.get('/lead/:leadId', auth.repOrAbove, async (req: Request, res: Response) => {
   const user = (req as AuthenticatedRequest).user;

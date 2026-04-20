@@ -1,8 +1,42 @@
 import { Router, Request, Response } from 'express';
 import { auth, AuthenticatedRequest } from '../../shared/middleware/auth';
 import { proposalsService } from './proposals.service';
+import { prisma } from '../../shared/services/prisma';
 
 const router = Router();
+
+// ── Public: homeowner portal (no auth required) ────────────────
+// GET /api/v1/proposals/portal/:id
+router.get('/portal/:id', async (req: Request, res: Response) => {
+  try {
+    const data = await proposalsService.getById(req.params.id as string);
+    // Record view
+    await proposalsService.recordView(req.params.id as string, req.ip);
+    res.json({ success: true, data });
+  } catch {
+    res.status(404).json({ success: false, error: { message: 'Proposal not found or expired' } });
+  }
+});
+
+// POST /api/v1/proposals/portal/:id/accept
+router.post('/portal/:id/accept', async (req: Request, res: Response) => {
+  const { signerName } = req.body;
+  if (!signerName?.trim()) {
+    return res.status(400).json({ success: false, error: { message: 'Signer name is required' } });
+  }
+  try {
+    // Mark accepted + advance lead to VERBAL_COMMIT (handled in updateStatus)
+    await proposalsService.updateStatus(req.params.id as string, 'ACCEPTED', 'portal-signature');
+    // Store signer name in notes-compatible field
+    await prisma.proposal.update({
+      where: { id: req.params.id as string },
+      data: { acceptedAt: new Date() } as any,
+    });
+    res.json({ success: true, message: 'Proposal accepted and signed', signerName });
+  } catch (err: any) {
+    res.status(400).json({ success: false, error: { message: err.message } });
+  }
+});
 
 router.get('/', auth.repOrAbove, async (req: Request, res: Response) => {
   const user = (req as AuthenticatedRequest).user;

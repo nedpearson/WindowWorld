@@ -1,44 +1,38 @@
 import { useState } from 'react';
 import { useParams } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import {
   CheckCircleIcon, DocumentTextIcon, PhoneIcon, EnvelopeIcon,
-  HomeIcon, ShieldCheckIcon, StarIcon, XMarkIcon,
-  CalendarIcon, SparklesIcon, ChevronDownIcon,
+  HomeIcon, ShieldCheckIcon, XMarkIcon,
+  ChevronDownIcon, SparklesIcon,
 } from '@heroicons/react/24/outline';
-import { CheckCircleIcon as CheckSolid, StarIcon as StarSolid } from '@heroicons/react/24/solid';
+import { CheckCircleIcon as CheckSolid } from '@heroicons/react/24/solid';
 import clsx from 'clsx';
 
-// ─── Demo proposal (in prod: fetched by token/id, no auth) ─
-const DEMO_PROPOSAL = {
-  id: 'prop-abc123',
-  customerName: 'Patricia Landry',
-  address: '312 Sherwood Forest Blvd, Baton Rouge, LA 70815',
-  createdDate: 'April 18, 2026',
-  expiresDate: 'May 18, 2026',
-  rep: { name: 'Jake Thibodaux', phone: '(225) 555-0103', email: 'jake@windowworldla.com', photo: null },
-  series: 'Series 4000 — Premium Double-Pane',
-  windows: [
-    { room: 'Living Room – Front',  type: 'Double Hung', size: '35¾" × 47¾"', qty: 1 },
-    { room: 'Living Room – Side',   type: 'Double Hung', size: '35⅞" × 47¾"', qty: 1 },
-    { room: 'Kitchen',              type: 'Single Hung', size: '28" × 36"',    qty: 1 },
-    { room: 'Master Bedroom – East',type: 'Double Hung', size: '35¾" × 47¾"', qty: 1 },
-    { room: 'Master Bedroom – South',type:'Double Hung', size: '35¾" × 47¾"', qty: 1 },
-    { room: 'Bedroom 2',            type: 'Double Hung', size: '27½" × 41"',   qty: 1 },
-  ],
-  subtotal: 8480,
-  installFee: 720,
-  total: 9200,
-  monthlyPayment: 511,
-  financingTerm: '18-month same-as-cash, 0% interest',
-  warranty: ['Lifetime Limited Warranty on glass', 'Limited Lifetime on frames & hardware', '10-year warranty on installation workmanship'],
-  features: ['Energy Star certified', 'Argon gas fill for superior insulation', 'Low-E glass coating', 'STC-30 sound reduction rating', 'Multi-point locking system'],
-};
+const API_BASE = import.meta.env.VITE_API_URL || '/api/v1';
+
+async function fetchPortalProposal(id: string) {
+  const res = await fetch(`${API_BASE}/proposals/portal/${id}`);
+  if (!res.ok) throw new Error('Proposal not found');
+  const json = await res.json();
+  return json.data;
+}
+
+async function acceptProposal(id: string, signerName: string) {
+  const res = await fetch(`${API_BASE}/proposals/portal/${id}/accept`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ signerName }),
+  });
+  if (!res.ok) throw new Error('Failed to accept proposal');
+  return res.json();
+}
 
 type Step = 'view' | 'accept' | 'done';
 
-function AcceptModal({ onClose, onConfirm }: { onClose: () => void; onConfirm: () => void }) {
+function AcceptModal({ total, onClose, onConfirm }: { total: number; onClose: () => void; onConfirm: (name: string) => void }) {
   const [name, setName] = useState('');
   const [agreed, setAgreed] = useState(false);
 
@@ -54,13 +48,13 @@ function AcceptModal({ onClose, onConfirm }: { onClose: () => void; onConfirm: (
           <button onClick={onClose}><XMarkIcon className="h-5 w-5 text-slate-400" /></button>
         </div>
         <p className="text-sm text-slate-600 mb-5">
-          By entering your name and accepting, you agree to the WindowWorld proposal totaling <strong className="text-slate-900">${DEMO_PROPOSAL.total.toLocaleString()}</strong> on the terms stated above.
+          By entering your name and accepting, you agree to the WindowWorld proposal totaling <strong className="text-slate-900">${total.toLocaleString()}</strong> on the terms stated above.
         </p>
         <div className="space-y-4">
           <div>
             <label className="block text-xs font-semibold text-slate-700 mb-1.5">Type your full name as your digital signature</label>
             <input value={name} onChange={e => setName(e.target.value)}
-              placeholder="e.g. Patricia Landry"
+              placeholder="Your full name"
               className="w-full border border-slate-300 rounded-xl px-4 py-2.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500" />
           </div>
           <label className="flex items-start gap-3 cursor-pointer">
@@ -71,12 +65,12 @@ function AcceptModal({ onClose, onConfirm }: { onClose: () => void; onConfirm: (
             </span>
           </label>
         </div>
-        <button onClick={onConfirm} disabled={!name.trim() || !agreed}
+        <button onClick={() => onConfirm(name)} disabled={!name.trim() || !agreed}
           className={clsx('w-full mt-6 py-3 rounded-xl text-sm font-bold transition-all',
             name.trim() && agreed
               ? 'bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-500/20'
               : 'bg-slate-100 text-slate-400 cursor-not-allowed')}>
-          ✓ Accept & Sign Proposal
+          ✓ Accept &amp; Sign Proposal
         </button>
       </motion.div>
     </motion.div>
@@ -88,39 +82,102 @@ export function HomeownerPortalPage() {
   const [step, setStep] = useState<Step>('view');
   const [showModal, setShowModal] = useState(false);
   const [expandWarranty, setExpandWarranty] = useState(false);
-  const p = DEMO_PROPOSAL;
 
-  const handleAccept = () => { setShowModal(false); setStep('done'); };
+  const { data: proposal, isLoading, isError } = useQuery({
+    queryKey: ['portal-proposal', id],
+    queryFn: () => fetchPortalProposal(id!),
+    enabled: !!id,
+    retry: 1,
+    staleTime: 5 * 60_000,
+  });
 
-  if (step === 'done') {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-slate-50 flex items-center justify-center p-6">
-        <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
-          className="bg-white rounded-3xl p-10 text-center max-w-md w-full shadow-2xl">
-          <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-5">
-            <CheckSolid className="h-9 w-9 text-emerald-500" />
-          </div>
-          <h1 className="text-2xl font-bold text-slate-900 mb-2">Proposal Accepted! 🎉</h1>
-          <p className="text-slate-500 text-sm leading-relaxed mb-6">
-            Thank you, {p.customerName.split(' ')[0]}! Jake will be in touch within 24 hours to schedule your install.
-          </p>
-          <div className="p-4 bg-blue-50 rounded-xl text-left space-y-2">
-            <div className="text-xs font-semibold text-blue-700 uppercase tracking-wide">What Happens Next</div>
-            {['Jake will call to schedule install date', 'Install crew arrives — 1 day typical duration', 'Walk-through + sign-off on completion', 'Final invoice with balance due'].map((step, i) => (
-              <div key={i} className="flex items-center gap-2 text-xs text-blue-600">
-                <div className="w-4 h-4 rounded-full bg-blue-200 text-blue-600 flex items-center justify-center text-[9px] font-bold flex-shrink-0">{i+1}</div>
-                {step}
-              </div>
-            ))}
-          </div>
-          <a href={`tel:${p.rep.phone}`}
-            className="mt-5 flex items-center gap-2 justify-center py-3 bg-blue-600 text-white rounded-xl text-sm font-semibold hover:bg-blue-500 transition-colors">
-            <PhoneIcon className="h-4 w-4" /> Call Jake: {p.rep.phone}
-          </a>
-        </motion.div>
+  const handleAccept = async (signerName: string) => {
+    try {
+      await acceptProposal(id!, signerName);
+      setShowModal(false);
+      setStep('done');
+      toast.success('Proposal accepted! Your rep will be in touch shortly.');
+    } catch {
+      toast.error('Something went wrong. Please try again.');
+    }
+  };
+
+  // ─── Map real API data → display fields ──────────────────
+  const lead = proposal?.lead;
+  const rep = proposal?.createdBy || lead?.assignedRep;
+  const quote = proposal?.quote;
+  const lineItems = quote?.lineItems || [];
+  const warrantyItems: string[] = proposal?.warrantyHighlights || [
+    'Limited Lifetime Warranty on all window frames and glass',
+    'Lifetime guarantee against seal failure and moisture intrusion',
+    'Lifetime labor warranty on all window installation work',
+    'Transferable warranty — adds value to your home',
+  ];
+  const customerFirst = lead?.firstName || 'there';
+  const customerName = lead ? `${lead.firstName} ${lead.lastName}` : 'Valued Customer';
+  const address = [lead?.address, lead?.city].filter(Boolean).join(', ') || 'Your home';
+  const total = Number(quote?.grandTotal || 0);
+  const monthly = Math.round(total / 18);
+  const expiresStr = proposal?.expiresAt
+    ? new Date(proposal.expiresAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+    : '30 days from receipt';
+  const repName = rep ? `${rep.firstName} ${rep.lastName}` : 'Your Rep';
+  const repPhone = rep?.phone || '';
+  const repEmail = rep?.email || '';
+  const repInitials = repName.split(' ').map((n: string) => n[0]).join('');
+
+  // ─── Loading ───────────────────────────────────────────
+  if (isLoading) return (
+    <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white flex items-center justify-center">
+      <div className="text-center">
+        <div className="w-12 h-12 border-2 border-blue-200 border-t-blue-600 rounded-full animate-spin mx-auto mb-4" />
+        <p className="text-sm text-slate-500">Loading your proposal...</p>
       </div>
-    );
-  }
+    </div>
+  );
+
+  // ─── Error ─────────────────────────────────────────────
+  if (isError || !proposal) return (
+    <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white flex items-center justify-center p-6">
+      <div className="text-center max-w-sm">
+        <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-4">
+          <XMarkIcon className="h-8 w-8 text-red-400" />
+        </div>
+        <h1 className="text-xl font-bold text-slate-900 mb-2">Proposal Not Found</h1>
+        <p className="text-sm text-slate-500">This proposal link may have expired or is no longer valid. Contact your WindowWorld representative.</p>
+      </div>
+    </div>
+  );
+
+  // ─── Success / Done ────────────────────────────────────
+  if (step === 'done') return (
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-slate-50 flex items-center justify-center p-6">
+      <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
+        className="bg-white rounded-3xl p-10 text-center max-w-md w-full shadow-2xl">
+        <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-5">
+          <CheckSolid className="h-9 w-9 text-emerald-500" />
+        </div>
+        <h1 className="text-2xl font-bold text-slate-900 mb-2">Proposal Accepted! 🎉</h1>
+        <p className="text-slate-500 text-sm leading-relaxed mb-6">
+          Thank you, {customerFirst}! {repName.split(' ')[0]} will be in touch within 24 hours to schedule your install.
+        </p>
+        <div className="p-4 bg-blue-50 rounded-xl text-left space-y-2">
+          <div className="text-xs font-semibold text-blue-700 uppercase tracking-wide">What Happens Next</div>
+          {['Rep calls to schedule install date', 'Install crew arrives — 1 day typical', 'Walk-through + sign-off on completion', 'Final invoice with balance due'].map((s, i) => (
+            <div key={i} className="flex items-center gap-2 text-xs text-blue-600">
+              <div className="w-4 h-4 rounded-full bg-blue-200 flex items-center justify-center text-[9px] font-bold flex-shrink-0">{i+1}</div>
+              {s}
+            </div>
+          ))}
+        </div>
+        {repPhone && (
+          <a href={`tel:${repPhone}`} className="mt-5 flex items-center gap-2 justify-center py-3 bg-blue-600 text-white rounded-xl text-sm font-semibold hover:bg-blue-500 transition-colors">
+            <PhoneIcon className="h-4 w-4" /> Call {repName.split(' ')[0]}: {repPhone}
+          </a>
+        )}
+      </motion.div>
+    </div>
+  );
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white">
@@ -138,7 +195,7 @@ export function HomeownerPortalPage() {
           </div>
           <div className="text-right">
             <div className="text-xs text-slate-400">Your Proposal</div>
-            <div className="text-[10px] text-slate-500">Expires {p.expiresDate}</div>
+            <div className="text-[10px] text-slate-500">Expires {expiresStr}</div>
           </div>
         </div>
       </header>
@@ -148,59 +205,58 @@ export function HomeownerPortalPage() {
         <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
           className="bg-gradient-to-br from-blue-600 to-blue-700 rounded-2xl p-6 text-white">
           <div className="text-xs text-blue-200 uppercase tracking-widest mb-1">Window Replacement Proposal</div>
-          <h1 className="text-xl font-bold mb-1">Hello, {p.customerName.split(' ')[0]} 👋</h1>
+          <h1 className="text-xl font-bold mb-1">Hello, {customerFirst} 👋</h1>
           <p className="text-sm text-blue-100 leading-relaxed">
-            Here's your personalized proposal for {p.windows.length} windows at <span className="font-semibold text-white">{p.address.split(',')[0]}</span>.
+            Here's your personalized proposal for {lineItems.length || 'your'} windows at <span className="font-semibold text-white">{address.split(',')[0]}</span>.
           </p>
-          <div className="mt-4 flex items-center gap-3">
-            <div className="flex-1 bg-blue-500/30 rounded-xl p-3 text-center">
-              <div className="text-xl font-black">${p.total.toLocaleString()}</div>
-              <div className="text-[10px] text-blue-200">Total Investment</div>
+          {total > 0 && (
+            <div className="mt-4 flex items-center gap-3">
+              <div className="flex-1 bg-blue-500/30 rounded-xl p-3 text-center">
+                <div className="text-xl font-black">${total.toLocaleString()}</div>
+                <div className="text-[10px] text-blue-200">Total Investment</div>
+              </div>
+              <div className="flex-1 bg-blue-500/30 rounded-xl p-3 text-center">
+                <div className="text-xl font-black">${monthly}</div>
+                <div className="text-[10px] text-blue-200">/mo, 18-mo 0%</div>
+              </div>
             </div>
-            <div className="flex-1 bg-blue-500/30 rounded-xl p-3 text-center">
-              <div className="text-xl font-black">${p.monthlyPayment}</div>
-              <div className="text-[10px] text-blue-200">/mo, 18-mo 0%</div>
-            </div>
-          </div>
+          )}
         </motion.div>
 
-        {/* Product */}
-        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-          <div className="px-5 py-4 border-b border-slate-50 flex items-center gap-2">
-            <DocumentTextIcon className="h-4 w-4 text-slate-400" />
-            <h2 className="text-sm font-semibold text-slate-800">{p.series}</h2>
-          </div>
-          <div className="divide-y divide-slate-50">
-            {p.windows.map((w, i) => (
-              <div key={i} className="flex items-center justify-between px-5 py-3">
-                <div>
-                  <div className="text-sm text-slate-700 font-medium">{w.room}</div>
-                  <div className="text-xs text-slate-400">{w.type} · {w.size}</div>
-                </div>
-                <div className="text-xs text-slate-500">× {w.qty}</div>
-              </div>
-            ))}
-          </div>
-          <div className="px-5 py-4 bg-slate-50 space-y-1.5 text-sm">
-            <div className="flex justify-between text-slate-600"><span>Windows ({p.windows.length} units)</span><span>${p.subtotal.toLocaleString()}</span></div>
-            <div className="flex justify-between text-slate-600"><span>Installation</span><span>${p.installFee.toLocaleString()}</span></div>
-            <div className="flex justify-between font-bold text-slate-900 pt-1.5 border-t border-slate-200">
-              <span>Total</span><span>${p.total.toLocaleString()}</span>
+        {/* Line items / windows */}
+        {lineItems.length > 0 && (
+          <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+            <div className="px-5 py-4 border-b border-slate-50 flex items-center gap-2">
+              <DocumentTextIcon className="h-4 w-4 text-slate-400" />
+              <h2 className="text-sm font-semibold text-slate-800">
+                {proposal.title || 'Window Replacement Proposal'}
+              </h2>
             </div>
-          </div>
-        </div>
-
-        {/* Features */}
-        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
-          <h2 className="text-sm font-semibold text-slate-800 mb-3">What You're Getting</h2>
-          <div className="space-y-2">
-            {p.features.map((f, i) => (
-              <div key={i} className="flex items-center gap-2.5 text-sm text-slate-600">
-                <CheckSolid className="h-4 w-4 text-blue-500 flex-shrink-0" />{f}
+            <div className="divide-y divide-slate-50">
+              {lineItems.map((item: any, i: number) => (
+                <div key={i} className="flex items-center justify-between px-5 py-3">
+                  <div>
+                    <div className="text-sm text-slate-700 font-medium">{item.description || item.productName || `Window ${i+1}`}</div>
+                    <div className="text-xs text-slate-400">{item.type || item.series || ''}{item.dimensions ? ` · ${item.dimensions}` : ''}</div>
+                  </div>
+                  <div className="text-xs text-slate-500 font-medium">
+                    {item.quantity > 1 ? `×${item.quantity}` : ''} {item.unitPrice ? `$${Number(item.unitPrice).toLocaleString()}` : ''}
+                  </div>
+                </div>
+              ))}
+            </div>
+            {total > 0 && (
+              <div className="px-5 py-4 bg-slate-50 space-y-1.5 text-sm">
+                {quote?.subtotal && (
+                  <div className="flex justify-between text-slate-600"><span>Subtotal</span><span>${Number(quote.subtotal).toLocaleString()}</span></div>
+                )}
+                <div className="flex justify-between font-bold text-slate-900 pt-1.5 border-t border-slate-200">
+                  <span>Total</span><span>${total.toLocaleString()}</span>
+                </div>
               </div>
-            ))}
+            )}
           </div>
-        </div>
+        )}
 
         {/* Warranty */}
         <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
@@ -214,7 +270,7 @@ export function HomeownerPortalPage() {
           </button>
           {expandWarranty && (
             <div className="px-5 pb-4 space-y-2">
-              {p.warranty.map((w, i) => (
+              {warrantyItems.map((w: string, i: number) => (
                 <div key={i} className="flex items-center gap-2.5 text-sm text-slate-600">
                   <CheckSolid className="h-3.5 w-3.5 text-emerald-500 flex-shrink-0" />{w}
                 </div>
@@ -223,38 +279,65 @@ export function HomeownerPortalPage() {
           )}
         </div>
 
+        {/* What you're getting */}
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
+          <div className="flex items-center gap-2 mb-3">
+            <SparklesIcon className="h-4 w-4 text-blue-500" />
+            <h2 className="text-sm font-semibold text-slate-800">Why WindowWorld</h2>
+          </div>
+          <div className="space-y-2">
+            {['Energy Star certified — may qualify for federal tax credit', 'No subcontractors — our crews, our standards', 'Clean, one-day installs — no mess left behind', 'Price-match guarantee if you find a lower quote'].map((f, i) => (
+              <div key={i} className="flex items-center gap-2.5 text-sm text-slate-600">
+                <CheckSolid className="h-4 w-4 text-blue-500 flex-shrink-0" />{f}
+              </div>
+            ))}
+          </div>
+        </div>
+
         {/* Rep card */}
         <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 flex items-center gap-4">
           <div className="w-11 h-11 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-sm flex-shrink-0">
-            {p.rep.name.split(' ').map(n => n[0]).join('')}
+            {repInitials}
           </div>
           <div className="flex-1">
-            <div className="text-sm font-semibold text-slate-800">{p.rep.name}</div>
+            <div className="text-sm font-semibold text-slate-800">{repName}</div>
             <div className="text-xs text-slate-500">Your WindowWorld Rep · Baton Rouge</div>
           </div>
           <div className="flex gap-2">
-            <a href={`tel:${p.rep.phone}`} className="w-9 h-9 rounded-full bg-blue-50 flex items-center justify-center hover:bg-blue-100 transition-colors">
-              <PhoneIcon className="h-4 w-4 text-blue-600" />
-            </a>
-            <a href={`mailto:${p.rep.email}`} className="w-9 h-9 rounded-full bg-blue-50 flex items-center justify-center hover:bg-blue-100 transition-colors">
-              <EnvelopeIcon className="h-4 w-4 text-blue-600" />
-            </a>
+            {repPhone && (
+              <a href={`tel:${repPhone}`} className="w-9 h-9 rounded-full bg-blue-50 flex items-center justify-center hover:bg-blue-100 transition-colors">
+                <PhoneIcon className="h-4 w-4 text-blue-600" />
+              </a>
+            )}
+            {repEmail && (
+              <a href={`mailto:${repEmail}`} className="w-9 h-9 rounded-full bg-blue-50 flex items-center justify-center hover:bg-blue-100 transition-colors">
+                <EnvelopeIcon className="h-4 w-4 text-blue-600" />
+              </a>
+            )}
           </div>
         </div>
 
         {/* CTA */}
-        <div className="sticky bottom-5">
-          <motion.button onClick={() => setShowModal(true)} whileTap={{ scale: 0.98 }}
-            className="w-full py-4 bg-blue-600 hover:bg-blue-500 text-white rounded-2xl font-bold text-base shadow-2xl shadow-blue-500/30 transition-colors flex items-center gap-2 justify-center">
-            <CheckCircleIcon className="h-5 w-5" /> Accept This Proposal
-          </motion.button>
-          <p className="text-center text-[11px] text-slate-400 mt-2">No payment due now · Digital signature only</p>
-        </div>
+        {proposal.status !== 'ACCEPTED' && proposal.status !== 'CONTRACTED' ? (
+          <div className="sticky bottom-5">
+            <motion.button onClick={() => setShowModal(true)} whileTap={{ scale: 0.98 }}
+              className="w-full py-4 bg-blue-600 hover:bg-blue-500 text-white rounded-2xl font-bold text-base shadow-2xl shadow-blue-500/30 transition-colors flex items-center gap-2 justify-center">
+              <CheckCircleIcon className="h-5 w-5" /> Accept This Proposal
+            </motion.button>
+            <p className="text-center text-[11px] text-slate-400 mt-2">No payment due now · Digital signature only</p>
+          </div>
+        ) : (
+          <div className="p-4 bg-emerald-50 rounded-2xl text-center">
+            <CheckSolid className="h-6 w-6 text-emerald-500 mx-auto mb-1" />
+            <p className="text-sm font-semibold text-emerald-700">This proposal has been accepted</p>
+          </div>
+        )}
       </main>
 
       <AnimatePresence>
-        {showModal && <AcceptModal onClose={() => setShowModal(false)} onConfirm={handleAccept} />}
+        {showModal && <AcceptModal total={total} onClose={() => setShowModal(false)} onConfirm={handleAccept} />}
       </AnimatePresence>
     </div>
   );
 }
+

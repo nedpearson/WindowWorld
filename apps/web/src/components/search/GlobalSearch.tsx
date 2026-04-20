@@ -1,15 +1,17 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   MagnifyingGlassIcon, XMarkIcon, UsersIcon, DocumentTextIcon,
   BanknotesIcon, CalendarIcon, ClockIcon, ArrowRightIcon,
-  BoltIcon, HomeIcon, ChartBarIcon, PhoneIcon,
+  HomeIcon, ChartBarIcon, PhoneIcon,
 } from '@heroicons/react/24/outline';
 import { BoltIcon as BoltSolid } from '@heroicons/react/24/solid';
+import { api } from '../../api/client';
 import clsx from 'clsx';
 
-// ─── Search data ───────────────────────────────────────────
+// ─── Types ────────────────────────────────────────────────
 interface SearchResult {
   id: string;
   type: 'lead' | 'contact' | 'proposal' | 'invoice' | 'page';
@@ -20,32 +22,18 @@ interface SearchResult {
   badgeColor?: string;
 }
 
-const SEARCH_INDEX: SearchResult[] = [
-  // Leads
-  { id: 'l1', type: 'lead', title: 'Michael Trosclair', subtitle: '7824 Old Hammond Hwy, Baton Rouge · VERBAL COMMIT · $14,800', path: '/leads/1', badge: 'Lead', badgeColor: 'text-blue-400' },
-  { id: 'l2', type: 'lead', title: 'Patricia Landry', subtitle: '312 Sherwood Forest Blvd, Baton Rouge · PROPOSAL SENT · $9,200', path: '/leads/2', badge: 'Lead', badgeColor: 'text-blue-400' },
-  { id: 'l3', type: 'lead', title: 'Robert Comeaux', subtitle: '4521 Greenwell Springs Rd, Baton Rouge · APPOINTMENT SET · $6,500', path: '/leads/3', badge: 'Lead', badgeColor: 'text-blue-400' },
-  { id: 'l4', type: 'lead', title: 'Angela Mouton', subtitle: '226 Tupelo Dr, Prairieville · MEASURING COMPLETE · $8,900', path: '/leads/4', badge: 'Lead', badgeColor: 'text-blue-400' },
-  { id: 'l5', type: 'lead', title: 'Karen Guidry', subtitle: '1134 Range Ave, Denham Springs · INSPECTION COMPLETE · $7,800', path: '/leads/6', badge: 'Lead', badgeColor: 'text-blue-400' },
-  { id: 'l6', type: 'lead', title: 'Susan Bourgeois', subtitle: '2207 Jefferson Hwy, Baton Rouge · NEW LEAD · $4,200 · Storm', path: '/leads/5', badge: 'Storm', badgeColor: 'text-purple-400' },
-  { id: 'l7', type: 'lead', title: 'Carol Chauvin', subtitle: '1245 Gause Blvd, Slidell · QUALIFIED · $7,400', path: '/leads/7', badge: 'Lead', badgeColor: 'text-blue-400' },
-  { id: 'l8', type: 'lead', title: 'James Hebert', subtitle: '5316 Perkins Rd, Baton Rouge · SOLD · $11,600', path: '/leads/8', badge: 'Lead', badgeColor: 'text-blue-400' },
-  // Contacts
-  { id: 'c1', type: 'contact', title: 'Jennifer Trosclair', subtitle: '(225) 555-1099 · Spouse of Michael Trosclair', path: '/contacts', badge: 'Contact', badgeColor: 'text-purple-400' },
-  { id: 'c2', type: 'contact', title: 'Gary Landry', subtitle: '(225) 555-2049 · Spouse of Patricia Landry', path: '/contacts', badge: 'Contact', badgeColor: 'text-purple-400' },
-  // Proposals
-  { id: 'p1', type: 'proposal', title: 'Full Home Window Replacement — Robert Comeaux', subtitle: '$14,750 · Series 3000 · SENT · Viewed 3×', path: '/proposals/p1', badge: 'Proposal', badgeColor: 'text-violet-400' },
-  { id: 'p2', type: 'proposal', title: 'Storm Replacement — Michael Trosclair', subtitle: '$22,400 · Series 4000 · ACCEPTED', path: '/proposals/p2', badge: 'Proposal', badgeColor: 'text-emerald-400' },
-  { id: 'p3', type: 'proposal', title: 'Series 4000 — Karen Guidry', subtitle: '$8,200 · DRAFT', path: '/proposals/p3', badge: 'Proposal', badgeColor: 'text-violet-400' },
-  // Invoices
-  { id: 'i1', type: 'invoice', title: 'INV-2024-041 — Angela Mouton', subtitle: '$5,900 · Deposit Paid · Balance $4,300', path: '/invoices', badge: 'Invoice', badgeColor: 'text-emerald-400' },
-  { id: 'i2', type: 'invoice', title: 'INV-2024-038 — Robert Comeaux', subtitle: '$14,750 · OVERDUE 12 days', path: '/invoices', badge: 'Overdue', badgeColor: 'text-red-400' },
-  // Pages
-  { id: 'pg1', type: 'page', title: 'Dashboard', subtitle: 'Today\'s action queue and goal progress', path: '/dashboard', badge: 'Page', badgeColor: 'text-slate-400' },
-  { id: 'pg2', type: 'page', title: 'Appointments', subtitle: 'Upcoming schedule and route calendar', path: '/appointments', badge: 'Page', badgeColor: 'text-slate-400' },
-  { id: 'pg3', type: 'page', title: 'Analytics', subtitle: 'Revenue trends and rep performance', path: '/analytics', badge: 'Page', badgeColor: 'text-slate-400' },
+// Static navigation pages always visible in quick actions
+const PAGE_INDEX: SearchResult[] = [
+  { id: 'pg1', type: 'page', title: 'Dashboard',        subtitle: "Today's action queue and goal progress", path: '/dashboard', badge: 'Page', badgeColor: 'text-slate-400' },
+  { id: 'pg2', type: 'page', title: 'Appointments',     subtitle: 'Upcoming schedule and route calendar',  path: '/appointments', badge: 'Page', badgeColor: 'text-slate-400' },
+  { id: 'pg3', type: 'page', title: 'Analytics',        subtitle: 'Revenue trends and rep performance',    path: '/analytics', badge: 'Page', badgeColor: 'text-slate-400' },
   { id: 'pg4', type: 'page', title: 'Install Schedule', subtitle: 'Crew assignments and install calendar', path: '/installs', badge: 'Page', badgeColor: 'text-slate-400' },
-  { id: 'pg5', type: 'page', title: 'Quick Quote', subtitle: 'Fast ballpark estimate tool', path: '/quick-quote', badge: 'Page', badgeColor: 'text-slate-400' },
+  { id: 'pg5', type: 'page', title: 'Quick Quote',      subtitle: 'Fast ballpark estimate tool',           path: '/quick-quote', badge: 'Page', badgeColor: 'text-slate-400' },
+  { id: 'pg6', type: 'page', title: 'All Proposals',   subtitle: 'View and manage proposals',            path: '/proposals', badge: 'Page', badgeColor: 'text-slate-400' },
+  { id: 'pg7', type: 'page', title: 'Invoices',         subtitle: 'Track payments and outstanding balances', path: '/invoices', badge: 'Page', badgeColor: 'text-slate-400' },
+  { id: 'pg8', type: 'page', title: 'Contacts',         subtitle: 'All homeowner contacts',               path: '/contacts', badge: 'Page', badgeColor: 'text-slate-400' },
+  { id: 'pg9', type: 'page', title: 'CSV Import',       subtitle: 'Bulk import leads from spreadsheet',   path: '/leads/import', badge: 'Page', badgeColor: 'text-slate-400' },
+  { id: 'pg10', type: 'page', title: 'Commissions',     subtitle: 'Rep commission tracker',               path: '/commissions', badge: 'Page', badgeColor: 'text-slate-400' },
 ];
 
 const QUICK_ACTIONS = [
@@ -62,6 +50,14 @@ const TYPE_ICONS: Record<string, any> = {
   invoice: BanknotesIcon, page: HomeIcon,
 };
 
+const STATUS_LABELS: Record<string, string> = {
+  NEW_LEAD: 'New', ATTEMPTING_CONTACT: 'Contacting', CONTACTED: 'Contacted',
+  QUALIFIED: 'Qualified', APPOINTMENT_SET: 'Appt Set', MEASURING_COMPLETE: 'Measured',
+  INSPECTION_COMPLETE: 'Inspected', PROPOSAL_SENT: 'Proposal Sent', FOLLOW_UP: 'Follow-Up',
+  VERBAL_COMMIT: 'Verbal Commit', ORDER_SUBMITTED: 'Order In', IN_PRODUCTION: 'In Production',
+  INSTALLED: 'Installed', SOLD: 'Sold', LOST: 'Lost',
+};
+
 interface GlobalSearchProps {
   isOpen: boolean;
   onClose: () => void;
@@ -69,28 +65,61 @@ interface GlobalSearchProps {
 
 export function GlobalSearch({ isOpen, onClose }: GlobalSearchProps) {
   const [query, setQuery] = useState('');
+  const [debouncedQuery, setDebouncedQuery] = useState('');
   const [selected, setSelected] = useState(0);
   const navigate = useNavigate();
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const results = query.length >= 1
-    ? SEARCH_INDEX.filter(r =>
-        r.title.toLowerCase().includes(query.toLowerCase()) ||
-        r.subtitle.toLowerCase().includes(query.toLowerCase())
-      ).slice(0, 8)
+  // Debounce: 220ms after last keystroke
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedQuery(query), 220);
+    return () => clearTimeout(t);
+  }, [query]);
+
+  // ─── Real API: search leads (name, phone, address, email)
+  const { data: leadsData, isFetching: leadsLoading } = useQuery({
+    queryKey: ['global-search-leads', debouncedQuery],
+    queryFn: () => api.leads.search(debouncedQuery, 8),
+    enabled: debouncedQuery.length >= 2,
+    staleTime: 15_000,
+  });
+
+  // ─── Map API leads → SearchResult
+  const leadResults: SearchResult[] = (leadsData?.data || []).map((l: any) => ({
+    id: `lead-${l.id}`,
+    type: 'lead' as const,
+    title: `${l.firstName || ''} ${l.lastName || ''}`.trim() || 'Unnamed Lead',
+    subtitle: [
+      l.address && `${l.address}, ${l.city || ''}`,
+      STATUS_LABELS[l.status] || l.status,
+      l.estimatedValue && `$${Number(l.estimatedValue).toLocaleString()}`,
+    ].filter(Boolean).join(' · '),
+    path: `/leads/${l.id}`,
+    badge: l.isStormLead ? 'Storm' : 'Lead',
+    badgeColor: l.isStormLead ? 'text-purple-400' : 'text-blue-400',
+  }));
+
+  // ─── Filter static pages matching query
+  const pageResults: SearchResult[] = debouncedQuery.length >= 2
+    ? PAGE_INDEX.filter(p =>
+        p.title.toLowerCase().includes(debouncedQuery.toLowerCase()) ||
+        p.subtitle.toLowerCase().includes(debouncedQuery.toLowerCase())
+      )
     : [];
+
+  const results: SearchResult[] = [...leadResults, ...pageResults].slice(0, 10);
 
   const handleSelect = useCallback((path: string) => {
     navigate(path);
     setQuery('');
+    setDebouncedQuery('');
     setSelected(0);
     onClose();
   }, [navigate, onClose]);
 
   useEffect(() => {
     if (isOpen) {
-      setQuery('');
-      setSelected(0);
+      setQuery(''); setDebouncedQuery(''); setSelected(0);
       setTimeout(() => inputRef.current?.focus(), 50);
     }
   }, [isOpen]);
@@ -99,25 +128,23 @@ export function GlobalSearch({ isOpen, onClose }: GlobalSearchProps) {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (!isOpen) return;
       if (e.key === 'Escape') { onClose(); return; }
-      const items = results.length ? results : [];
-      if (e.key === 'ArrowDown') { e.preventDefault(); setSelected(s => Math.min(s + 1, items.length - 1)); }
-      if (e.key === 'ArrowUp') { e.preventDefault(); setSelected(s => Math.max(s - 1, 0)); }
-      if (e.key === 'Enter' && items[selected]) { handleSelect(items[selected].path); }
+      if (e.key === 'ArrowDown') { e.preventDefault(); setSelected(s => Math.min(s + 1, results.length - 1)); }
+      if (e.key === 'ArrowUp')   { e.preventDefault(); setSelected(s => Math.max(s - 1, 0)); }
+      if (e.key === 'Enter' && results[selected]) { handleSelect(results[selected].path); }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, results, selected, handleSelect, onClose]);
 
-  // Global ⌘K listener
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
-        e.preventDefault();
-      }
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') e.preventDefault();
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
   }, []);
+
+  const showLoading = leadsLoading && debouncedQuery.length >= 2;
 
   return (
     <AnimatePresence>
@@ -132,12 +159,12 @@ export function GlobalSearch({ isOpen, onClose }: GlobalSearchProps) {
 
             {/* Search input */}
             <div className="flex items-center gap-3 px-4 py-3.5 border-b border-slate-800">
-              <MagnifyingGlassIcon className="h-5 w-5 text-slate-400 flex-shrink-0" />
+              <MagnifyingGlassIcon className={clsx('h-5 w-5 flex-shrink-0', showLoading ? 'text-brand-400 animate-pulse' : 'text-slate-400')} />
               <input ref={inputRef} value={query} onChange={e => { setQuery(e.target.value); setSelected(0); }}
                 className="flex-1 bg-transparent text-white placeholder:text-slate-500 outline-none text-base"
-                placeholder="Search leads, contacts, proposals..." />
+                placeholder="Search leads, contacts, pages..." />
               {query && (
-                <button onClick={() => setQuery('')} className="text-slate-600 hover:text-slate-400">
+                <button onClick={() => { setQuery(''); setDebouncedQuery(''); }} className="text-slate-600 hover:text-slate-400">
                   <XMarkIcon className="h-4 w-4" />
                 </button>
               )}
@@ -147,29 +174,44 @@ export function GlobalSearch({ isOpen, onClose }: GlobalSearchProps) {
             {/* Results */}
             {query ? (
               <div className="max-h-80 overflow-y-auto">
-                {results.length === 0 ? (
-                  <div className="py-8 text-center text-sm text-slate-500">No results for "{query}"</div>
+                {showLoading ? (
+                  <div className="py-8 text-center">
+                    <div className="text-xs text-slate-500 animate-pulse">Searching...</div>
+                  </div>
+                ) : results.length === 0 ? (
+                  <div className="py-8 text-center">
+                    <div className="text-sm text-slate-500">No results for "{query}"</div>
+                    <div className="text-xs text-slate-700 mt-1">Try searching by name, address, or phone</div>
+                  </div>
                 ) : (
-                  results.map((r, i) => {
-                    const Icon = TYPE_ICONS[r.type] || HomeIcon;
-                    return (
-                      <button key={r.id} onClick={() => handleSelect(r.path)}
-                        className={clsx('w-full flex items-center gap-3 px-4 py-3 text-left transition-colors',
-                          selected === i ? 'bg-brand-600/15' : 'hover:bg-slate-800/50')}>
-                        <div className={clsx('w-8 h-8 rounded-lg bg-slate-800 flex items-center justify-center flex-shrink-0')}>
-                          <Icon className={clsx('h-4 w-4', r.badgeColor)} />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="text-sm font-medium text-white truncate">{r.title}</div>
-                          <div className="text-[11px] text-slate-500 truncate">{r.subtitle}</div>
-                        </div>
-                        <div className="flex items-center gap-2 flex-shrink-0">
-                          <span className={clsx('text-[9px] font-medium', r.badgeColor)}>{r.badge}</span>
-                          <ArrowRightIcon className="h-3 w-3 text-slate-700" />
-                        </div>
+                  <>
+                    {results.map((r, i) => {
+                      const Icon = TYPE_ICONS[r.type] || HomeIcon;
+                      return (
+                        <button key={r.id} onClick={() => handleSelect(r.path)}
+                          className={clsx('w-full flex items-center gap-3 px-4 py-3 text-left transition-colors',
+                            selected === i ? 'bg-brand-600/15' : 'hover:bg-slate-800/50')}>
+                          <div className="w-8 h-8 rounded-lg bg-slate-800 flex items-center justify-center flex-shrink-0">
+                            <Icon className={clsx('h-4 w-4', r.badgeColor)} />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="text-sm font-medium text-white truncate">{r.title}</div>
+                            <div className="text-[11px] text-slate-500 truncate">{r.subtitle}</div>
+                          </div>
+                          <div className="flex items-center gap-2 flex-shrink-0">
+                            <span className={clsx('text-[9px] font-medium', r.badgeColor)}>{r.badge}</span>
+                            <ArrowRightIcon className="h-3 w-3 text-slate-700" />
+                          </div>
+                        </button>
+                      );
+                    })}
+                    {leadResults.length > 0 && (
+                      <button onClick={() => handleSelect(`/leads?search=${encodeURIComponent(query)}`)}
+                        className="w-full px-4 py-2.5 text-xs text-brand-400 hover:text-brand-300 hover:bg-slate-800/30 transition-colors text-center border-t border-slate-800">
+                        View all leads matching "{query}" →
                       </button>
-                    );
-                  })
+                    )}
+                  </>
                 )}
               </div>
             ) : (

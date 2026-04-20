@@ -5,10 +5,11 @@ import {
   ChartBarIcon, UserGroupIcon, ArrowTrendingUpIcon, ArrowTrendingDownIcon,
   StarIcon, ClockIcon, PhoneIcon, DocumentTextIcon,
   BanknotesIcon, FunnelIcon, SparklesIcon, ExclamationTriangleIcon,
-  CheckCircleIcon, BoltIcon,
+  CheckCircleIcon, BoltIcon, LockClosedIcon,
 } from '@heroicons/react/24/outline';
 import { StarIcon as StarSolid, FireIcon } from '@heroicons/react/24/solid';
 import clsx from 'clsx';
+import { useAuthStore } from '../../store/auth.store';
 
 // ─── Types & Demo data ─────────────────────────────────────
 
@@ -223,7 +224,22 @@ function RepCard({ rep, rank }: { rep: RepMetric; rank: number }) {
 
 // ─── Page ──────────────────────────────────────────────────
 export function CoachingPage() {
+  const user = useAuthStore((s) => s.user);
   const [sortBy, setSortBy] = useState<'revenue' | 'closeRate' | 'contactRate'>('revenue');
+
+  // ── Role guard: manager+ only ───────────────────────────
+  const isManager = ['ADMIN', 'MANAGER', 'OWNER', 'SALES_MANAGER'].includes(user?.role || '');
+  if (!isManager) return (
+    <div className="p-6 flex items-center justify-center min-h-[60vh]">
+      <div className="text-center">
+        <div className="w-16 h-16 bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-4">
+          <LockClosedIcon className="h-8 w-8 text-slate-500" />
+        </div>
+        <h2 className="text-lg font-bold text-white mb-2">Manager Access Only</h2>
+        <p className="text-slate-500 text-sm">Rep coaching data is visible to managers and above.</p>
+      </div>
+    </div>
+  );
 
   const sorted = [...DEMO_REPS].sort((a, b) => {
     if (sortBy === 'revenue') return b.revenueThisMonth - a.revenueThisMonth;

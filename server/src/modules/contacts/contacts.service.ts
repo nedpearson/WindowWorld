@@ -4,6 +4,26 @@ import { NotFoundError } from '../../shared/middleware/errorHandler';
 import { auditService } from '../admin/audit.service';
 
 export class ContactsService {
+  async listForOrg(organizationId: string, search?: string) {
+    const searchWhere = search ? {
+      OR: [
+        { firstName: { contains: search, mode: 'insensitive' as const } },
+        { lastName: { contains: search, mode: 'insensitive' as const } },
+        { phone: { contains: search } },
+        { email: { contains: search, mode: 'insensitive' as const } },
+      ],
+    } : {};
+
+    return prisma.contact.findMany({
+      where: { lead: { organizationId }, ...searchWhere },
+      include: {
+        lead: { select: { id: true, firstName: true, lastName: true, status: true, estimatedValue: true } },
+      },
+      orderBy: [{ isPrimary: 'desc' }, { lastName: 'asc' }],
+      take: 500,
+    });
+  }
+
   async listByLead(leadId: string, organizationId: string) {
     // Verify lead belongs to org
     const lead = await prisma.lead.findFirst({ where: { id: leadId, organizationId } });

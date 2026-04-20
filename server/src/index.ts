@@ -13,6 +13,7 @@ import { logger } from './shared/utils/logger';
 import { errorHandler } from './shared/middleware/errorHandler';
 import { requestId } from './shared/middleware/requestId';
 import { wsService } from './shared/services/websocket.service';
+import { rateLimiter, authRateLimiter } from './shared/middleware/rateLimiter';
 
 // Module routers
 import { authRouter } from './modules/auth/auth.routes';
@@ -94,8 +95,9 @@ app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.use(morgan('combined', { stream: { write: (msg) => logger.http(msg.trim()) } }));
 app.use(requestId);
-// Rate limiting disabled temporarily - Railway proxy causes ERR_ERL_UNEXPECTED_X_FORWARDED_FOR
-// app.use(rateLimiter);
+// Rate limiting — Railway-safe (validate.xForwardedForHeader = false in rateLimiter.ts)
+app.use(rateLimiter);
+
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ─── Static file serving (uploads) ───────────────────────────────────────────

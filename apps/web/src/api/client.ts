@@ -97,6 +97,7 @@ export const api = {
   // Leads
   leads: {
     list: (params?: Record<string, any>) => get('/leads', { params }),
+    search: (q: string, limit = 8) => get<any>('/leads', { params: { search: q, limit } }),
     getById: (id: string) => get(`/leads/${id}`),
     getMapData: (params?: Record<string, any>) => get('/leads/map', { params }),
     getBestToday: () => get('/leads/best-today'),
@@ -114,6 +115,16 @@ export const api = {
     getAiSummary: (id: string) => get(`/leads/${id}/ai-summary`),
     checkDuplicates: (id: string) => post(`/leads/${id}/duplicate-check`),
     delete: (id: string) => del(`/leads/${id}`),
+  },
+
+  // Contacts
+  contacts: {
+    list: (params?: Record<string, any>) => get<any>('/contacts', { params }),
+    listByLead: (leadId: string) => get<any>(`/contacts/lead/${leadId}`),
+    getById: (id: string) => get<any>(`/contacts/${id}`),
+    create: (data: any) => post('/contacts', data),
+    update: (id: string, data: any) => patch(`/contacts/${id}`, data),
+    delete: (id: string) => del(`/contacts/${id}`),
   },
 
   // Properties
