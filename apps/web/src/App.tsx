@@ -21,6 +21,9 @@ import { InvoicesPage } from './pages/invoices/InvoicesPage';
 import { MobileFieldApp } from './pages/mobile/MobileFieldApp';
 import { AdminPage } from './pages/admin/AdminPage';
 import { SettingsPage } from './pages/settings/SettingsPage';
+import { NotificationsPage } from './pages/notifications/NotificationsPage';
+import { ContactsPage } from './pages/contacts/ContactsPage';
+import { InstallSchedulePage } from './pages/installs/InstallSchedulePage';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
@@ -74,6 +77,15 @@ export default function App() {
 
         {/* Analytics */}
         <Route path="analytics" element={<AnalyticsPage />} />
+
+        {/* Contacts */}
+        <Route path="contacts" element={<ContactsPage />} />
+
+        {/* Notifications */}
+        <Route path="notifications" element={<NotificationsPage />} />
+
+        {/* Install Schedule */}
+        <Route path="installs" element={<InstallSchedulePage />} />
 
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Route>

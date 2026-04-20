@@ -9,6 +9,7 @@ import {
   ExclamationTriangleIcon, MagnifyingGlassIcon, BellIcon,
   ArrowRightOnRectangleIcon, BuildingStorefrontIcon,
   CursorArrowRippleIcon, ClipboardDocumentListIcon, MapIcon, ShieldCheckIcon,
+  UserGroupIcon, WrenchScrewdriverIcon, PhoneArrowUpRightIcon,
 } from '@heroicons/react/24/outline';
 import { BoltIcon as BoltSolid, PlusSmallIcon } from '@heroicons/react/24/solid';
 import clsx from 'clsx';
@@ -52,41 +53,43 @@ const navSections = [
   {
     label: 'Overview',
     items: [
-      { label: 'Dashboard', path: '/dashboard', icon: HomeIcon },
-      { label: 'Analytics', path: '/analytics', icon: ChartBarIcon },
+      { label: 'Dashboard',        path: '/dashboard',         icon: HomeIcon },
+      { label: 'Analytics',        path: '/analytics',         icon: ChartBarIcon },
     ],
   },
   {
     label: 'Leads & Sales',
     items: [
       { label: 'Lead Intelligence', path: '/lead-intelligence', icon: BeakerIcon },
-      { label: 'All Leads', path: '/leads', icon: UsersIcon },
-      { label: 'Pipeline', path: '/pipeline', icon: BuildingStorefrontIcon },
-      { label: 'Territory Map', path: '/map', icon: MapIcon },
-      { label: 'Appointments', path: '/appointments', icon: CalendarIcon },
-      { label: 'Automations', path: '/automations', icon: BoltIcon },
+      { label: 'All Leads',         path: '/leads',             icon: UsersIcon },
+      { label: 'Contacts',          path: '/contacts',          icon: UserGroupIcon },
+      { label: 'Pipeline',          path: '/pipeline',          icon: BuildingStorefrontIcon },
+      { label: 'Territory Map',     path: '/map',               icon: MapIcon },
+      { label: 'Appointments',      path: '/appointments',      icon: CalendarIcon },
+      { label: 'Automations',       path: '/automations',       icon: BoltIcon },
     ],
   },
   {
     label: 'Field Work',
     items: [
-      { label: 'Field Mode', path: '/field', icon: MapPinIcon, badge: 'MOBILE' },
-      { label: 'Inspections', path: '/inspections', icon: ClipboardDocumentListIcon },
+      { label: 'Field Mode',    path: '/field',        icon: MapPinIcon,              badge: 'MOBILE' },
+      { label: 'Inspections',   path: '/inspections',  icon: ClipboardDocumentListIcon },
     ],
   },
   {
     label: 'Revenue',
     items: [
-      { label: 'Product Catalog', path: '/catalog', icon: BuildingStorefrontIcon },
-      { label: 'Proposals', path: '/proposals', icon: DocumentTextIcon },
-      { label: 'Invoices', path: '/invoices', icon: BanknotesIcon },
+      { label: 'Product Catalog', path: '/catalog',    icon: BuildingStorefrontIcon },
+      { label: 'Proposals',       path: '/proposals',  icon: DocumentTextIcon },
+      { label: 'Invoices',        path: '/invoices',   icon: BanknotesIcon },
+      { label: 'Install Schedule',path: '/installs',   icon: WrenchScrewdriverIcon },
     ],
   },
   {
     label: 'Admin',
     items: [
-      { label: 'Admin Panel', path: '/admin', icon: ShieldCheckIcon },
-      { label: 'Settings', path: '/settings', icon: Cog6ToothIcon },
+      { label: 'Admin Panel',  path: '/admin',    icon: ShieldCheckIcon },
+      { label: 'Settings',     path: '/settings', icon: Cog6ToothIcon },
     ],
   },
 ];
@@ -307,21 +310,19 @@ export function AppLayout() {
 
             {/* Notifications */}
             <div className="relative">
-              <button 
-                onClick={() => setNotificationsOpen(!notificationsOpen)}
+              <Link
+                to="/notifications"
                 className="relative p-2 rounded-lg text-slate-500 hover:text-slate-300 hover:bg-slate-800 transition-colors"
                 aria-label="Notifications"
+                onClick={() => setNotificationsOpen(false)}
               >
                 <BellIcon className="h-5 w-5" />
-                {notifications.some(n => n.unread !== false) && (
-                  <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-brand-500 rounded-full" />
+                {notifications.length > 0 && (
+                  <span className="absolute top-1 right-1 min-w-[16px] h-4 bg-brand-500 rounded-full text-[9px] font-bold text-white flex items-center justify-center px-0.5">
+                    {notifications.length > 9 ? '9+' : notifications.length}
+                  </span>
                 )}
-              </button>
-              <NotificationsDropdown 
-                isOpen={notificationsOpen} 
-                onClose={() => setNotificationsOpen(false)} 
-                notifications={notifications}
-              />
+              </Link>
             </div>
           </div>
         </header>
