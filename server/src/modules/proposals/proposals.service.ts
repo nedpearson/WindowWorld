@@ -204,9 +204,25 @@ export class ProposalsService {
       logger.warn(`Proposal ${id}: no customer email on file for lead ${proposal.leadId}`);
     }
 
-    // SMS: log for now — wire Twilio when ready
+    // SMS: send portal link via Twilio
     if (channel === 'sms' || channel === 'both') {
-      logger.info(`Proposal ${id} SMS queued for lead ${proposal.leadId} (Twilio not yet configured)`);
+      const phone = lead?.contacts?.[0]?.phone || (lead as any)?.phone;
+      if (phone) {
+        try {
+          const { smsService } = await import('../../shared/services/sms.service');
+          const appUrl = process.env.APP_URL || 'https://app.windowworldla.com';
+          const repFirst = rep ? rep.firstName : 'Your rep';
+          await smsService.sendSms(
+            phone,
+            `Hi ${lead.firstName}! ${repFirst} from WindowWorld has sent your window replacement proposal. View & accept it here: ${appUrl}/portal/${id}`,
+          );
+          logger.info(`Proposal ${id} SMS delivered to ${phone}`);
+        } catch (err: any) {
+          logger.warn(`Proposal ${id} SMS failed: ${err.message}`);
+        }
+      } else {
+        logger.warn(`Proposal ${id}: no phone on file for lead ${proposal.leadId} — SMS skipped`);
+      }
     }
 
     return { sent: true, channel, proposalId: id };

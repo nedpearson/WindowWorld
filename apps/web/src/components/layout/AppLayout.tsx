@@ -192,6 +192,20 @@ export function AppLayout() {
       queryClient.invalidateQueries({ queryKey: ['notifications'] });
     });
 
+    // Real-time lead score updates — AI scoring job completed on server
+    socket.on('lead:scored', ({ leadId }: { leadId: string; totalScore: number }) => {
+      queryClient.invalidateQueries({ queryKey: ['leads'] });
+      queryClient.invalidateQueries({ queryKey: ['lead', leadId] });
+      queryClient.invalidateQueries({ queryKey: ['lead-intelligence'] });
+    });
+
+    // Real-time pipeline updates — rep changed a lead status elsewhere
+    socket.on('lead:status-changed', ({ leadId }: { leadId: string }) => {
+      queryClient.invalidateQueries({ queryKey: ['leads'] });
+      queryClient.invalidateQueries({ queryKey: ['pipeline'] });
+      queryClient.invalidateQueries({ queryKey: ['lead', leadId] });
+    });
+
     return () => { socket.disconnect(); };
   }, [queryClient]);
 

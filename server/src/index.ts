@@ -164,7 +164,7 @@ app.use('/uploads', express.static(uploadDir));
 // â”€â”€â”€ API Routes â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const apiV1 = '/api/v1';
 
-app.use(`${apiV1}/auth`, authRouter);
+app.use(`${apiV1}/auth`, authRateLimiter, authRouter);
 app.use(`${apiV1}/users`, usersRouter);
 app.use(`${apiV1}/teams`, organizationsRouter);
 app.use(`${apiV1}/territories`, territoriesRouter);

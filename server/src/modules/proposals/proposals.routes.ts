@@ -10,8 +10,17 @@ const router = Router();
 router.get('/portal/:id', async (req: Request, res: Response) => {
   try {
     const data = await proposalsService.getById(req.params.id as string);
-    // Record view
-    await proposalsService.recordView(req.params.id as string, req.ip);
+
+    // Enforce expiry — reject if past expiresAt
+    if ((data as any).expiresAt && new Date((data as any).expiresAt) < new Date()) {
+      return res.status(410).json({
+        success: false,
+        error: { message: 'This proposal has expired. Please contact your WindowWorld representative.' },
+      });
+    }
+
+    // Record view (increments viewCount, sets firstViewedAt, advances SENT → VIEWED)
+    await proposalsService.recordView(req.params.id as string, req.ip || '');
     res.json({ success: true, data });
   } catch {
     res.status(404).json({ success: false, error: { message: 'Proposal not found or expired' } });
@@ -25,13 +34,26 @@ router.post('/portal/:id/accept', async (req: Request, res: Response) => {
     return res.status(400).json({ success: false, error: { message: 'Signer name is required' } });
   }
   try {
-    // Mark accepted + advance lead to VERBAL_COMMIT (handled in updateStatus)
+    // Check expiry before accepting
+    const proposal = await proposalsService.getById(req.params.id as string);
+    if ((proposal as any).expiresAt && new Date((proposal as any).expiresAt) < new Date()) {
+      return res.status(410).json({ success: false, error: { message: 'This proposal has expired.' } });
+    }
+
+    // Mark accepted + advance lead to VERBAL_COMMIT
     await proposalsService.updateStatus(req.params.id as string, 'ACCEPTED', 'portal-signature');
-    // Store signer name in notes-compatible field
+
+    // Persist signer name + IP for legal audit trail
     await prisma.proposal.update({
       where: { id: req.params.id as string },
-      data: { acceptedAt: new Date() } as any,
+      data: {
+        acceptedAt: new Date(),
+        signedByName: signerName.trim(),
+        signedAt: new Date(),
+        signedByIp: req.ip || (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || 'unknown',
+      } as any,
     });
+
     res.json({ success: true, message: 'Proposal accepted and signed', signerName });
   } catch (err: any) {
     res.status(400).json({ success: false, error: { message: err.message } });

@@ -303,7 +303,9 @@ export async function initializeJobQueues(): Promise<void> {
   if (queuesInitialized) return;
 
   if (!process.env.REDIS_URL) {
-    logger.warn('REDIS_URL not set â€” background jobs running in mock mode');
+    logger.warn('REDIS_URL not set — background jobs running in mock mode');
+    // Appointment reminders don’t need Redis — start the cron regardless
+    startAppointmentReminderCron();
     return;
   }
 
@@ -356,7 +358,79 @@ export async function initializeJobQueues(): Promise<void> {
 
     queuesInitialized = true;
     logger.info('All job queues and workers initialized (lead-scoring, ai-photo, pdf, email, automations, sync)');
+
+    // Start the appointment reminder cron (also works without Redis)
+    startAppointmentReminderCron();
+
   } catch (error: any) {
     logger.error('Failed to initialize job queues:', error.message);
   }
+}
+
+// ── Appointment Reminder SMS Cron ──────────────────────────────────────────
+// Exported so it starts regardless of Redis availability.
+// Sends SMS 24h before upcoming appointments (22-26h window to handle drift).
+export function startAppointmentReminderCron() {
+  const runAppointmentReminders = async () => {
+    try {
+      const { prisma: db } = await import('../shared/services/prisma');
+      const { smsService: sms } = await import('../shared/services/sms.service');
+
+      const now = new Date();
+      const windowStart = new Date(now.getTime() + 22 * 60 * 60 * 1000);
+      const windowEnd   = new Date(now.getTime() + 26 * 60 * 60 * 1000);
+
+      const upcoming = await db.appointment.findMany({
+        where: {
+          scheduledAt: { gte: windowStart, lte: windowEnd },
+          reminderSent: false,
+          status: 'SCHEDULED',
+        },
+        include: {
+          lead: {
+            include: { contacts: { where: { isPrimary: true }, take: 1 } },
+          },
+        },
+      });
+
+      if (upcoming.length > 0) {
+        logger.info(`[reminder-cron] Found ${upcoming.length} appointment(s) needing reminders`);
+      }
+
+      for (const apt of upcoming) {
+        const phone = (apt.lead.contacts[0] as any)?.phone || (apt.lead as any).phone;
+        if (!phone) {
+          logger.warn(`[reminder-cron] No phone for lead ${apt.leadId}, skipping reminder`);
+          continue;
+        }
+
+        const aptDate = new Date(apt.scheduledAt).toLocaleDateString('en-US', {
+          weekday: 'long', month: 'long', day: 'numeric',
+        });
+        const aptTime = new Date(apt.scheduledAt).toLocaleTimeString('en-US', {
+          hour: 'numeric', minute: '2-digit', hour12: true,
+        });
+
+        try {
+          await sms.sendSms(
+            phone,
+            `Hi ${apt.lead.firstName}! Reminder: your WindowWorld appointment is tomorrow, ${aptDate} at ${aptTime}. Questions? Call (225) 555-0100. Reply STOP to opt out.`,
+          );
+          await db.appointment.update({
+            where: { id: apt.id },
+            data: { reminderSent: true },
+          });
+          logger.info(`[reminder-cron] Reminder sent for appointment ${apt.id} -> ${phone}`);
+        } catch (err: any) {
+          logger.error(`[reminder-cron] Failed to send reminder for ${apt.id}: ${err.message}`);
+        }
+      }
+    } catch (err: any) {
+      logger.error(`[reminder-cron] Error: ${err.message}`);
+    }
+  };
+
+  runAppointmentReminders(); // Run immediately on startup
+  setInterval(runAppointmentReminders, 60 * 60 * 1000); // Then every hour
+  logger.info('[reminder-cron] Appointment reminder cron started (runs every hour)');
 }
