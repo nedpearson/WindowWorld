@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   BanknotesIcon, CheckCircleIcon, ClockIcon, CurrencyDollarIcon,
   PencilIcon, ArrowTrendingUpIcon, UserGroupIcon, ChevronDownIcon,
@@ -10,6 +10,7 @@ import {
 import { FireIcon, TrophyIcon } from '@heroicons/react/24/solid';
 import clsx from 'clsx';
 import { api } from '../../api/client';
+import apiClient from '../../api/client';
 
 // ─── Types ────────────────────────────────────────────────
 interface CommissionTier {
@@ -134,9 +135,26 @@ function RepCard({ rep, tiers }: { rep: Rep; tiers: CommissionTier[] }) {
 
 // ─── Page ──────────────────────────────────────────────────
 export function CommissionPage() {
-  const [tiers, setTiers] = useState<CommissionTier[]>(DEFAULT_TIERS);
+  const qc = useQueryClient();
   const [editingTiers, setEditingTiers] = useState(false);
   const [draftTiers, setDraftTiers] = useState<CommissionTier[]>(DEFAULT_TIERS);
+
+  // Load persisted tiers from org.settings — falls back to DEFAULT_TIERS if none saved yet
+  const { data: tiersResp } = useQuery({
+    queryKey: ['commission-tiers'],
+    queryFn: () => apiClient.teams.getCommissionTiers(),
+  });
+  const tiers: CommissionTier[] = (tiersResp as any)?.data ?? DEFAULT_TIERS;
+
+  const { mutate: persistTiers, isPending: isSavingTiers } = useMutation({
+    mutationFn: () => apiClient.teams.updateCommissionTiers(draftTiers),
+    onSuccess: () => {
+      toast.success('Commission tiers saved!');
+      setEditingTiers(false);
+      qc.invalidateQueries({ queryKey: ['commission-tiers'] });
+    },
+    onError: () => toast.error('Failed to save commission tiers'),
+  });
 
   const { data: repsData, isLoading } = useQuery({
     queryKey: ['commissions'],
@@ -150,7 +168,7 @@ export function CommissionPage() {
   const totalPipeline = REPS.reduce((s, r) => s + r.openPipeline, 0);
   const topEarner     = [...REPS].sort((a, b) => b.mtdRevenue - a.mtdRevenue)[0]?.name.split(' ')[0] || '—';
 
-  const saveTiers = () => { setTiers(draftTiers); setEditingTiers(false); toast.success('Commission tiers updated!'); };
+  const saveTiers = () => persistTiers();
 
   if (isLoading) return (
     <div className="p-6 space-y-3">
@@ -209,8 +227,8 @@ export function CommissionPage() {
               </div>
             ))}
           </div>
-          <button onClick={saveTiers} className="btn-primary btn-sm mt-4 flex items-center gap-1.5">
-            <CheckCircleIcon className="h-4 w-4" /> Save Tiers
+          <button onClick={saveTiers} disabled={isSavingTiers} className="btn-primary btn-sm mt-4 flex items-center gap-1.5">
+            <CheckCircleIcon className="h-4 w-4" /> {isSavingTiers ? 'Saving…' : 'Save Tiers'}
           </button>
         </motion.div>
       )}

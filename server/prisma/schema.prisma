@@ -991,12 +991,15 @@ model Proposal {
 // ============================================================
 
 model Invoice {
-  id          String  @id @default(uuid())
-  leadId      String?
-  proposalId  String?
-  createdById String
+  id             String  @id @default(uuid())
+  organizationId String?
+  leadId         String?
+  proposalId     String?
+  createdById    String
 
   invoiceNumber String        @unique
+  grandTotal    Float         @default(0)
+  depositPct    Float         @default(0)
   status        InvoiceStatus @default(DRAFT)
 
   // Totals
@@ -1011,7 +1014,14 @@ model Invoice {
   // Dates
   issuedAt DateTime?
   dueAt    DateTime?
+  dueDate  DateTime?
   paidAt   DateTime?
+
+  // Install scheduling
+  installDate   DateTime?
+  installCrew   String?
+  installStatus String?
+  installNotes  String?
 
   // Payment
   paymentTerms  String?
@@ -1035,6 +1045,7 @@ model Invoice {
 
   @@map("invoices")
 }
+
 
 model InvoiceLineItem {
   id        String @id @default(uuid())

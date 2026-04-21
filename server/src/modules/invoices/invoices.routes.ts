@@ -45,4 +45,76 @@ router.post('/:id/send', auth.repOrAbove, async (req: Request, res: Response) =>
   res.json({ success: true, data });
 });
 
+// GET /invoices/install-schedule — invoices that are contracted and ready for install scheduling
+router.get('/install-schedule', auth.manager, async (req: Request, res: Response) => {
+  const user = (req as AuthenticatedRequest).user;
+  const { prisma } = await import('../../shared/services/prisma');
+  const jobs: any[] = await (prisma.invoice.findMany as any)({
+    where: {
+      organizationId: user.organizationId,
+      status: { in: ['SENT', 'PARTIAL', 'PAID'] },
+      proposalId: { not: null }, // only invoices tied to a proposal
+    },
+    include: {
+      lead: {
+        select: {
+          id: true, firstName: true, lastName: true,
+          address: true, city: true, zip: true, phone: true,
+        },
+      },
+      proposal: {
+        include: {
+          quote: { select: { grandTotal: true, totalWindows: true, lineItems: true } },
+        },
+      },
+      payments: { select: { amount: true, paidAt: true } },
+    },
+    orderBy: { createdAt: 'asc' },
+  } as any);
+
+  // Shape into install job format
+  const formatted = jobs.map((inv: any) => {
+    const lead = inv.lead || {};
+    const quote = inv.proposal?.quote;
+    const totalPaid = (inv.payments || []).reduce((s: number, p: any) => s + p.amount, 0);
+    return {
+      id: inv.id,
+      leadId: lead.id || inv.leadId,
+      customerName: `${lead.firstName || ''} ${lead.lastName || ''}`.trim(),
+      address: lead.address || '',
+      city: lead.city || '',
+      phone: lead.phone || '',
+      windowCount: quote?.totalWindows || 0,
+      series: quote?.lineItems?.[0]?.productName || 'Unknown Series',
+      contractValue: inv.grandTotal,
+      contractDate: inv.createdAt.toISOString().split('T')[0],
+      installDate: inv.installDate || null,
+      crew: inv.installCrew || null,
+      status: inv.installStatus || (inv.status === 'PAID' ? 'COMPLETE' : 'NEEDS_SCHEDULING'),
+      notes: inv.installNotes || inv.notes || null,
+      depositPaid: totalPaid >= (inv.depositAmount || 0),
+      depositAmount: inv.depositAmount || 0,
+      estimatedDays: Math.max(1, Math.ceil((quote?.totalWindows || 0) / 8)),
+    };
+  });
+
+  res.json({ success: true, data: formatted });
+});
+
+// PATCH /invoices/:id/install — set install date, crew, and status
+router.patch('/:id/install', auth.manager, async (req: Request, res: Response) => {
+  const { prisma } = await import('../../shared/services/prisma');
+  const { installDate, crew, installStatus, notes } = req.body;
+  const updated = await prisma.invoice.update({
+    where: { id: req.params.id as string },
+    data: {
+      ...(installDate && { installDate: new Date(installDate) } as any),
+      ...(crew !== undefined && { installCrew: crew } as any),
+      ...(installStatus && { installStatus } as any),
+      ...(notes !== undefined && { installNotes: notes } as any),
+    },
+  });
+  res.json({ success: true, data: updated });
+});
+
 export { router as invoicesRouter };

@@ -159,6 +159,7 @@ export const api = {
   // Openings
   openings: {
     list: (params?: Record<string, any>) => get('/openings', { params }),
+    listByInspection: (inspectionId: string) => get<any>(`/openings?inspectionId=${inspectionId}`),
     getById: (id: string) => get(`/openings/${id}`),
     create: (data: any) => post('/openings', data),
     update: (id: string, data: any) => patch(`/openings/${id}`, data),
@@ -167,6 +168,7 @@ export const api = {
         headers: { 'Content-Type': 'multipart/form-data' },
       }).then((r) => r.data),
   },
+
 
   // Measurements
   measurements: {
@@ -216,7 +218,11 @@ export const api = {
     send: (id: string, data: any) => post(`/invoices/${id}/send`, data),
     recordPayment: (id: string, data: any) => post(`/invoices/${id}/payments`, data),
     generatePdf: (id: string) => post(`/invoices/${id}/generate-pdf`),
+    installSchedule: () => get<any>('/invoices/install-schedule'),
+    updateInstall: (id: string, data: { installDate?: string; crew?: string; installStatus?: string; notes?: string }) =>
+      patch(`/invoices/${id}/install`, data),
   },
+
 
   // Documents
   documents: {
@@ -326,6 +332,8 @@ export const api = {
   teams: {
     me: () => get<any>('/teams/me'),
     update: (data: any) => patch('/teams/me', data),
+    getCommissionTiers: () => get<any>('/teams/me/commission-tiers'),
+    updateCommissionTiers: (tiers: any[]) => patch('/teams/me/commission-tiers', { tiers }),
   },
 
   // Lead Scores

@@ -10,6 +10,8 @@ import {
 } from '@heroicons/react/24/outline';
 import { CheckCircleIcon as CheckSolid } from '@heroicons/react/24/solid';
 import clsx from 'clsx';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import apiClient from '../../api/client';
 
 // ─── Types ────────────────────────────────────────────────
 type InstallStatus = 'NEEDS_SCHEDULING' | 'SCHEDULED' | 'IN_PROGRESS' | 'COMPLETE' | 'ON_HOLD';
@@ -34,17 +36,9 @@ interface InstallJob {
   estimatedDays: number;
 }
 
-// ─── Demo data ────────────────────────────────────────────
+// Crew members loaded from team users — CREWS list is a fallback default
 const CREWS = ['Crew A — Martinez', 'Crew B — Thibodaux', 'Crew C — Williams', 'Crew D — Fontenot'];
 
-const DEMO_JOBS: InstallJob[] = [
-  { id: 'j1', leadId: '1', customerName: 'Michael Trosclair', address: '7824 Old Hammond Hwy', city: 'Baton Rouge', phone: '(225) 555-1003', windowCount: 14, series: 'Series 4000', contractValue: 22400, contractDate: '2026-04-18', status: 'NEEDS_SCHEDULING', depositPaid: true, depositAmount: 11200, estimatedDays: 2, notes: 'Two-story. Need scaffolding for upper floor.' },
-  { id: 'j2', leadId: '3', customerName: 'Robert Comeaux', address: '4821 Scenic Hwy', city: 'Baton Rouge', phone: '(225) 555-0021', windowCount: 10, series: 'Series 3000', contractValue: 14750, contractDate: '2026-04-15', installDate: '2026-04-28', crew: 'Crew A — Martinez', status: 'SCHEDULED', depositPaid: true, depositAmount: 7000, estimatedDays: 1 },
-  { id: 'j3', leadId: 'prev1', customerName: 'David Thibodaux', address: '1212 Stanford Ave', city: 'Baton Rouge', phone: '(225) 555-2231', windowCount: 8, series: 'Series 4000', contractValue: 11200, contractDate: '2026-04-10', installDate: '2026-04-22', crew: 'Crew B — Thibodaux', status: 'IN_PROGRESS', depositPaid: true, depositAmount: 5600, estimatedDays: 1 },
-  { id: 'j4', leadId: 'prev2', customerName: 'Linda Arceneaux', address: '7 Pine Grove Dr', city: 'Prairieville', phone: '(225) 555-4418', windowCount: 12, series: 'Series 6000', contractValue: 19800, contractDate: '2026-04-08', installDate: '2026-04-24', crew: 'Crew C — Williams', status: 'SCHEDULED', depositPaid: true, depositAmount: 9900, estimatedDays: 2 },
-  { id: 'j5', leadId: 'prev3', customerName: 'Bryan Mouton', address: '341 Old Perkins Rd', city: 'Baton Rouge', phone: '(225) 555-8823', windowCount: 6, series: 'Series 3000', contractValue: 7200, contractDate: '2026-04-01', installDate: '2026-04-10', crew: 'Crew A — Martinez', status: 'COMPLETE', depositPaid: true, estimatedDays: 1 },
-  { id: 'j6', leadId: 'prev4', customerName: 'Nancy Cormier', address: '885 Millerville Rd', city: 'Baton Rouge', phone: '(225) 555-3326', windowCount: 9, series: 'Series 4000', contractValue: 13500, contractDate: '2026-04-17', status: 'NEEDS_SCHEDULING', depositPaid: false, estimatedDays: 1, notes: 'Customer wants weekend install only.' },
-];
 
 const STATUS_CONFIG: Record<InstallStatus, { label: string; badge: string; icon: any; dot: string }> = {
   NEEDS_SCHEDULING: { label: 'Needs Scheduling', badge: 'bg-red-500/10 text-red-400 border-red-500/20',    icon: ExclamationTriangleIcon, dot: 'bg-red-400' },
@@ -107,7 +101,11 @@ function ScheduleModal({ job, onClose, onSave }: { job: InstallJob; onClose: () 
 }
 
 // ─── Job Card ──────────────────────────────────────────────
-function JobCard({ job, onSchedule }: { job: InstallJob; onSchedule: (job: InstallJob) => void }) {
+function JobCard({ job, onSchedule, onComplete }: {
+  job: InstallJob;
+  onSchedule: (job: InstallJob) => void;
+  onComplete: (job: InstallJob) => void;
+}) {
   const st = STATUS_CONFIG[job.status];
   const balance = job.contractValue - (job.depositAmount || 0);
 
@@ -172,7 +170,7 @@ function JobCard({ job, onSchedule }: { job: InstallJob; onSchedule: (job: Insta
           </button>
         )}
         {job.status === 'IN_PROGRESS' && (
-          <button onClick={() => toast.success(`${job.customerName} marked as complete!`)} className="btn-sm bg-emerald-600/20 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-600/30 flex items-center gap-1.5 flex-1 justify-center text-xs">
+          <button onClick={() => onComplete(job)} className="btn-sm bg-emerald-600/20 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-600/30 flex items-center gap-1.5 flex-1 justify-center text-xs">
             <CheckCircleIcon className="h-3.5 w-3.5" /> Mark Complete
           </button>
         )}
@@ -186,21 +184,45 @@ function JobCard({ job, onSchedule }: { job: InstallJob; onSchedule: (job: Insta
 
 // ─── Page ──────────────────────────────────────────────────
 export function InstallSchedulePage() {
-  const [jobs, setJobs] = useState<InstallJob[]>(DEMO_JOBS);
+  const qc = useQueryClient();
   const [statusFilter, setStatusFilter] = useState<InstallStatus | ''>('');
   const [scheduleJob, setScheduleJob] = useState<InstallJob | null>(null);
 
+  // Load real contracted invoices from server
+  const { data: scheduleResp, isLoading } = useQuery({
+    queryKey: ['install-schedule'],
+    queryFn: () => apiClient.invoices.installSchedule(),
+    staleTime: 60_000,
+  });
+  const jobs: InstallJob[] = (scheduleResp as any)?.data ?? [];
+
+  const { mutate: updateInstall } = useMutation({
+    mutationFn: (vars: { id: string; payload: any }) =>
+      apiClient.invoices.updateInstall(vars.id, vars.payload),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['install-schedule'] }),
+    onError: () => toast.error('Failed to update — please try again'),
+  });
+
   const handleSchedule = (id: string, date: string, crew: string) => {
-    setJobs(prev => prev.map(j => j.id === id ? { ...j, installDate: date, crew, status: 'SCHEDULED' } : j));
-    toast.success('Install scheduled!');
+    updateInstall(
+      { id, payload: { installDate: date, crew, installStatus: 'SCHEDULED' } },
+      { onSuccess: () => toast.success('Install scheduled!') }
+    );
   };
 
-  const filtered = jobs.filter(j => !statusFilter || j.status === statusFilter);
+  const handleComplete = (job: InstallJob) => {
+    updateInstall(
+      { id: job.id, payload: { installStatus: 'COMPLETE' } },
+      { onSuccess: () => toast.success(`${job.customerName} marked complete!`) }
+    );
+  };
+
+  const filtered = isLoading ? [] : jobs.filter(j => !statusFilter || j.status === statusFilter);
 
   const needsSched = jobs.filter(j => j.status === 'NEEDS_SCHEDULING').length;
-  const scheduled = jobs.filter(j => j.status === 'SCHEDULED').length;
+  const scheduled  = jobs.filter(j => j.status === 'SCHEDULED').length;
   const inProgress = jobs.filter(j => j.status === 'IN_PROGRESS').length;
-  const complete = jobs.filter(j => j.status === 'COMPLETE').length;
+  const complete   = jobs.filter(j => j.status === 'COMPLETE').length;
   const totalValue = jobs.filter(j => j.status !== 'COMPLETE').reduce((s, j) => s + j.contractValue, 0);
 
   return (
@@ -259,13 +281,25 @@ export function InstallSchedulePage() {
 
       {/* Jobs grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
-        {filtered.length === 0 ? (
+        {isLoading ? (
+          [...Array(4)].map((_, i) => <div key={i} className="h-56 bg-slate-800/50 rounded-2xl animate-pulse" />)
+        ) : filtered.length === 0 ? (
           <div className="col-span-3 py-16 text-center">
-            <CheckCircleIcon className="h-10 w-10 text-emerald-600 mx-auto mb-3" />
-            <p className="text-white font-medium text-sm">No jobs in this category</p>
+            {jobs.length === 0 ? (
+              <>
+                <WrenchScrewdriverIcon className="h-10 w-10 text-slate-700 mx-auto mb-3" />
+                <p className="text-slate-400 font-medium text-sm">No contracted jobs yet</p>
+                <p className="text-slate-600 text-xs mt-1">Jobs appear automatically when a proposal is accepted and an invoice is created.</p>
+              </>
+            ) : (
+              <>
+                <CheckCircleIcon className="h-10 w-10 text-emerald-600 mx-auto mb-3" />
+                <p className="text-white font-medium text-sm">No jobs in this category</p>
+              </>
+            )}
           </div>
         ) : (
-          filtered.map(j => <JobCard key={j.id} job={j} onSchedule={setScheduleJob} />)
+          filtered.map(j => <JobCard key={j.id} job={j} onSchedule={setScheduleJob} onComplete={handleComplete} />)
         )}
       </div>
 

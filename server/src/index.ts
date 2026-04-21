@@ -15,6 +15,7 @@ import { errorHandler } from './shared/middleware/errorHandler';
 import { requestId } from './shared/middleware/requestId';
 import { wsService } from './shared/services/websocket.service';
 import { rateLimiter, authRateLimiter } from './shared/middleware/rateLimiter';
+import { prisma } from './shared/services/prisma';
 
 // Module routers
 import { authRouter } from './modules/auth/auth.routes';
@@ -189,7 +190,25 @@ app.use(`${apiV1}/campaigns`, campaignsRouter);
 app.use(`${apiV1}/admin`, adminRouter);
 
 // â”€â”€â”€ Error handler (must be last) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Health check ─────────────────────────────────────────────
+app.get('/health', async (_req, res) => {
+  try {
+    await prisma.$queryRaw`SELECT 1`;
+    res.json({
+      status: 'ok',
+      db: 'connected',
+      uptime: Math.round(process.uptime()),
+      version: process.env.npm_package_version || '1.0.0',
+      env: process.env.NODE_ENV || 'development',
+    });
+  } catch (err: any) {
+    logger.error('[health] DB connectivity check failed:', err.message);
+    res.status(503).json({ status: 'error', db: 'unreachable', message: err.message });
+  }
+});
+
 app.use(errorHandler);
+
 
 // â”€â”€â”€ Start â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 async function start() {
