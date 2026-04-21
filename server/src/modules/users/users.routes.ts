@@ -55,4 +55,23 @@ router.patch('/:id/deactivate', auth.superAdmin, async (req: Request, res: Respo
   res.json({ success: true, message: 'User deactivated' });
 });
 
+// GET /users/me — return the authenticated user's own profile including notif prefs
+router.get('/me', auth.repOrAbove, async (req: Request, res: Response) => {
+  const user = (req as AuthenticatedRequest).user;
+  const data = await usersService.getById(user.id);
+  res.json({ success: true, data });
+});
+
+// PATCH /users/me/preferences — save notification toggles to the DB
+router.patch('/me/preferences', auth.repOrAbove, async (req: Request, res: Response) => {
+  const user = (req as AuthenticatedRequest).user;
+  const { prisma } = await import('../../shared/services/prisma');
+  const updated = await prisma.user.update({
+    where: { id: user.id },
+    data: { notifPreferences: req.body },
+    select: { id: true, notifPreferences: true },
+  });
+  res.json({ success: true, data: updated });
+});
+
 export { router as usersRouter };

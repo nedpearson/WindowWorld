@@ -17,38 +17,50 @@ import { useAppStore } from '../../store/auth.store';
 import { usePWA } from '../../hooks/usePWA';
 import { useVoiceNote } from '../../hooks/useVoiceNote';
 import { haptic } from '../../utils/haptics';
+import { useQuery } from '@tanstack/react-query';
+import apiClient from '../../api/client';
 
 // ─── Types ────────────────────────────────────────────────────
 type FieldTab = 'route' | 'capture' | 'measure' | 'notes';
 type MeasureStep = 'select-opening' | 'enter-width' | 'enter-height' | 'confirm';
 
-// ─── Demo route data ──────────────────────────────────────────
-const TODAY_STOPS = [
-  {
-    id: 'a1', order: 1, status: 'confirmed', type: 'initial-consult',
-    lead: { id: '3', name: 'Robert Comeaux', phone: '(225) 555-1001', address: '4521 Greenwell Springs Rd', city: 'Baton Rouge', zip: '70806', score: 78, isStorm: false },
-    time: '10:00 AM', duration: 90, notes: 'Walk entire home. Homeowner believes 10 windows need replacement.',
-  },
-  {
-    id: 'a2', order: 2, status: 'confirmed', type: 'measurement',
-    lead: { id: '6', name: 'Karen Guidry', phone: '(225) 555-2001', address: '1134 Range Ave', city: 'Denham Springs', zip: '70726', score: 74, isStorm: true },
-    time: '1:30 PM', duration: 60, notes: '6 openings. She believes some are non-standard. Confirm dims carefully.',
-  },
-  {
-    id: 'a3', order: 3, status: 'scheduled', type: 'close',
-    lead: { id: '1', name: 'Michael Trosclair', phone: '(225) 555-1003', address: '7824 Old Hammond Hwy', city: 'Baton Rouge', zip: '70809', score: 91, isStorm: true },
-    time: '3:45 PM', duration: 45, notes: 'Verbal commit. Bring contract + financing docs.',
-  },
-];
+// Normalise a raw appointment from the route API into the stop shape used by StopCard
+function toStop(apt: any, order: number) {
+  const lead = apt.lead || {};
+  return {
+    id: apt.id,
+    order,
+    status: (apt.status || 'scheduled').toLowerCase(),
+    type: (apt.type || 'initial-consult').toLowerCase().replace(/_/g, '-'),
+    lead: {
+      id: lead.id,
+      name: `${lead.firstName || ''} ${lead.lastName || ''}`.trim(),
+      phone: lead.phone || '',
+      address: lead.address || '',
+      city: lead.city || '',
+      zip: lead.zip || '',
+      score: lead.leadScore ?? 0,
+      isStorm: lead.isStormLead ?? false,
+    },
+    time: apt.scheduledAt
+      ? new Date(apt.scheduledAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+      : '',
+    duration: apt.duration || 60,
+    notes: apt.notes || '',
+    // keep the raw inspection list so MeasureTab can load openings
+    inspections: apt.inspections || [],
+  };
+}
 
-const OPENING_TEMPLATES = [
-  { id: 'o1', label: 'Living Room - Front', floor: 'Main', type: 'Double Hung' },
-  { id: 'o2', label: 'Living Room - Side', floor: 'Main', type: 'Double Hung' },
-  { id: 'o3', label: 'Kitchen', floor: 'Main', type: 'Single Hung' },
-  { id: 'o4', label: 'Master Bedroom - E', floor: 'Main', type: 'Double Hung' },
-  { id: 'o5', label: 'Bedroom 2', floor: 'Main', type: 'Double Hung' },
-  { id: 'o6', label: 'Bathroom', floor: 'Main', type: 'Single Hung' },
-];
+// Normalise an opening from the API for the MeasureTab list
+function toOpeningTemplate(o: any) {
+  return {
+    id: o.id,
+    label: o.roomLabel || o.openingId || 'Opening',
+    floor: `Floor ${o.floorLevel ?? 1}`,
+    type: (o.windowType || 'UNKNOWN').replace(/_/g, ' '),
+  };
+}
 
 // ─── PWA Install Banner ───────────────────────────────────────
 function InstallBanner({ onInstall, onDismiss, isIOS }: { onInstall: () => void; onDismiss: () => void; isIOS: boolean }) {
@@ -346,9 +358,27 @@ function CaptureTab({ enqueue }: { enqueue: (type: any, payload: any) => void })
 }
 
 // ─── Guided Measurement Tool ──────────────────────────────────
-function MeasureTab({ enqueue }: { enqueue: (type: any, payload: any) => void }) {
+function MeasureTab({
+  enqueue, stops, activeStopId
+}: {
+  enqueue: (type: any, payload: any) => void;
+  stops: any[];
+  activeStopId: string | null;
+}) {
+  const activeStop = stops.find((s) => s.id === activeStopId);
+  const inspectionId: string | null = activeStop?.inspections?.[0]?.id ?? null;
+
+  // Load real openings from the API for the active stop's inspection
+  const { data: openingsResp, isLoading: openingsLoading } = useQuery({
+    queryKey: ['field-openings', inspectionId],
+    queryFn: () => apiClient.openings.listByInspection(inspectionId!),
+    enabled: !!inspectionId,
+    staleTime: 2 * 60 * 1000,
+  });
+  const OPENING_TEMPLATES = ((openingsResp as any)?.data ?? []).map(toOpeningTemplate);
+
   const [step, setStep] = useState<MeasureStep>('select-opening');
-  const [selectedOpening, setSelectedOpening] = useState<typeof OPENING_TEMPLATES[0] | null>(null);
+  const [selectedOpening, setSelectedOpening] = useState<{ id: string; label: string; floor: string; type: string } | null>(null);
   const [widthInt, setWidthInt] = useState('');
   const [widthFrac, setWidthFrac] = useState('0');
   const [heightInt, setHeightInt] = useState('');
@@ -398,6 +428,27 @@ function MeasureTab({ enqueue }: { enqueue: (type: any, payload: any) => void })
         {step === 'select-opening' && (
           <motion.div key="select" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-3">
             <div className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Select Opening to Measure</div>
+
+            {/* No inspection selected — guide the rep */}
+            {!inspectionId && (
+              <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs text-amber-300">
+                Select an appointment in the Route tab to load its inspection openings.
+              </div>
+            )}
+
+            {/* Inspection selected but no openings yet */}
+            {inspectionId && !openingsLoading && OPENING_TEMPLATES.length === 0 && (
+              <div className="p-4 rounded-xl bg-slate-800/60 border border-slate-700/30 text-xs text-slate-400">
+                No openings found for this inspection. Ask your manager to create them first, or add them from the desktop Inspection page.
+              </div>
+            )}
+
+            {openingsLoading && (
+              <div className="flex items-center justify-center py-8">
+                <div className="w-6 h-6 border-2 border-brand-500/30 border-t-brand-500 rounded-full animate-spin" />
+              </div>
+            )}
+
             {OPENING_TEMPLATES.map((o) => {
               const isSaved = saved.find((s) => s.label === o.label);
               return (
@@ -701,6 +752,19 @@ export function MobileFieldApp() {
   const stormMode = useAppStore((s) => s.stormModeActive);
   const { isInstallable, isInstalled, isUpdateAvailable, isIOS, install, dismissInstall } = usePWA();
 
+  // ─── Real today's route from the server ──────────
+  const { data: routeData, isLoading: routeLoading, refetch: refetchRoute } = useQuery({
+    queryKey: ['field-today-route'],
+    queryFn: () => apiClient.appointments.todayRoute(),
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: true,
+  });
+
+  const rawRoute = (routeData as any)?.data;
+  const TODAY_STOPS = (rawRoute?.appointments ?? []).map((apt: any, idx: number) => toStop(apt, idx + 1));
+  const estimatedMiles = rawRoute?.estimatedMiles ?? 0;
+  const confirmedCount = TODAY_STOPS.filter((s: any) => s.status === 'confirmed').length;
+
   const now = new Date();
   const greeting = now.getHours() < 12 ? 'Good morning' : now.getHours() < 17 ? 'Good afternoon' : 'Good evening';
 
@@ -772,17 +836,22 @@ export function MobileFieldApp() {
 
         {activeTab === 'route' && (
           <div className="px-4 py-3 border-b border-slate-800 bg-gradient-to-r from-slate-900 to-brand-950/20">
-            <div className="text-sm font-semibold text-white">{greeting} — {TODAY_STOPS.length} stops today</div>
+            <div className="text-sm font-semibold text-white">
+              {routeLoading ? 'Loading your route…' : `${greeting} — ${TODAY_STOPS.length} stop${TODAY_STOPS.length !== 1 ? 's' : ''} today`}
+            </div>
             <div className="flex items-center gap-3 mt-1 text-xs text-slate-500">
-              <span>~42 mi estimated</span>
-              <span>·</span>
-              <span>{TODAY_STOPS.filter((s) => s.status === 'confirmed').length} confirmed</span>
+              {estimatedMiles > 0 && <span>~{estimatedMiles} mi estimated</span>}
+              {estimatedMiles > 0 && <span>·</span>}
+              <span>{confirmedCount} confirmed</span>
               {failedCount > 0 && (
                 <span className="text-red-400 ml-auto flex items-center gap-1">
                   <ExclamationCircleIcon className="h-3 w-3" />
                   {failedCount} sync error{failedCount > 1 ? 's' : ''}
                 </span>
               )}
+              <button onClick={() => refetchRoute()} className="ml-auto text-brand-400 flex items-center gap-1">
+                <ArrowPathIcon className="h-3 w-3" /> Refresh
+              </button>
             </div>
           </div>
         )}
@@ -801,14 +870,27 @@ export function MobileFieldApp() {
             >
               {activeTab === 'route' && (
                 <div className="space-y-3">
-                  {TODAY_STOPS.map((stop) => (
-                    <StopCard key={stop.id} stop={stop} isActive={activeStop === stop.id}
-                      onSelect={(s: any) => setActiveStop(activeStop === s.id ? null : s.id)} />
-                  ))}
+                  {routeLoading ? (
+                    <div className="flex flex-col items-center justify-center py-12 gap-3">
+                      <div className="w-8 h-8 border-2 border-brand-500/30 border-t-brand-500 rounded-full animate-spin" />
+                      <div className="text-xs text-slate-500">Loading today’s route…</div>
+                    </div>
+                  ) : TODAY_STOPS.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-12 text-center gap-3">
+                      <MapPinIcon className="h-10 w-10 text-slate-700" />
+                      <div className="text-sm font-medium text-slate-400">No appointments today</div>
+                      <div className="text-xs text-slate-600">Your manager hasn’t scheduled any stops yet.</div>
+                    </div>
+                  ) : (
+                    TODAY_STOPS.map((stop) => (
+                      <StopCard key={stop.id} stop={stop} isActive={activeStop === stop.id}
+                        onSelect={(s: any) => setActiveStop(activeStop === s.id ? null : s.id)} />
+                    ))
+                  )}
                 </div>
               )}
               {activeTab === 'capture' && <CaptureTab enqueue={enqueue} />}
-              {activeTab === 'measure' && <MeasureTab enqueue={enqueue} />}
+              {activeTab === 'measure' && <MeasureTab enqueue={enqueue} stops={TODAY_STOPS} activeStopId={activeStop} />}
               {activeTab === 'notes' && <NotesTab enqueue={enqueue} />}
             </motion.div>
           </AnimatePresence>

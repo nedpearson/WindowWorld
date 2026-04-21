@@ -11,6 +11,7 @@ import {
 import { useAuthStore } from '../../store/auth.store';
 import { useUpdateUser } from '../../api/admin';
 import apiClient from '../../api/client';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 const NOTIF_DEFAULTS = {
   newLead:         true,
@@ -272,24 +273,39 @@ function SecurityTab() {
 
 // ─── Notifications Tab ────────────────────────────────────────
 function NotificationsTab() {
-  const STORAGE_KEY = 'ww_notif_prefs';
-  const [prefs, setPrefs] = useState<Record<NotifKey, boolean>>(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      return saved ? { ...NOTIF_DEFAULTS, ...JSON.parse(saved) } : NOTIF_DEFAULTS;
-    } catch { return NOTIF_DEFAULTS; }
+  const [prefs, setPrefs] = useState<Record<NotifKey, boolean>>(NOTIF_DEFAULTS);
+  const [dirty, setDirty] = useState(false);
+
+  // Load from API on mount (server is source of truth)
+  const { isLoading: prefsLoading } = useQuery({
+    queryKey: ['user-notif-prefs'],
+    queryFn: () => apiClient.users.me(),
+    onSuccess: (res: any) => {
+      const serverPrefs = res?.data?.notifPreferences;
+      if (serverPrefs && Object.keys(serverPrefs).length > 0) {
+        setPrefs((p) => ({ ...p, ...serverPrefs }));
+      } else {
+        // First time — try localStorage migration
+        try {
+          const ls = localStorage.getItem('ww_notif_prefs');
+          if (ls) setPrefs((p) => ({ ...p, ...JSON.parse(ls) }));
+        } catch {}
+      }
+    },
+  } as any);
+
+  const { mutate: savePrefs, isPending: isSaving } = useMutation({
+    mutationFn: () => apiClient.users.updatePreferences(prefs),
+    onSuccess: () => {
+      // Also mirror to localStorage as a fast offline cache
+      localStorage.setItem('ww_notif_prefs', JSON.stringify(prefs));
+      toast.success('Notification preferences saved');
+      setDirty(false);
+    },
+    onError: () => toast.error('Failed to save preferences'),
   });
-  const [saved, setSaved] = useState(false);
 
-  const toggle = (key: NotifKey) => setPrefs((p) => ({ ...p, [key]: !p[key] }));
-
-  const handleSave = () => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(prefs));
-    setSaved(true);
-    toast.success('Notification preferences saved');
-    setTimeout(() => setSaved(false), 3000);
-  };
-
+  const toggle = (key: NotifKey) => { setPrefs((p) => ({ ...p, [key]: !p[key] })); setDirty(true); };
   const categories = [...new Set(Object.values(NOTIF_LABELS).map((v) => v.category))];
 
   return (
@@ -299,29 +315,36 @@ function NotificationsTab() {
         <p className="text-xs text-slate-500 mt-0.5">Choose how and when you receive updates from WindowWorld</p>
       </div>
 
-      {categories.map((cat) => (
-        <div key={cat} className="space-y-1">
-          <div className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3 pb-2 border-b border-slate-800">{cat}</div>
-          {(Object.entries(NOTIF_LABELS) as [NotifKey, typeof NOTIF_LABELS[NotifKey]][])
-            .filter(([, v]) => v.category === cat)
-            .map(([key, meta]) => (
-              <div key={key} className="flex items-center justify-between py-3 hover:bg-slate-800/20 px-3 -mx-3 rounded-lg transition-colors">
-                <div className="flex-1">
-                  <div className="text-sm font-medium text-white">{meta.label}</div>
-                  <div className="text-xs text-slate-500 mt-0.5">{meta.description}</div>
-                </div>
-                <Toggle checked={prefs[key]} onChange={() => toggle(key)} />
-              </div>
-            ))
-          }
+      {prefsLoading ? (
+        <div className="flex items-center gap-2 text-xs text-slate-500 py-4">
+          <div className="w-4 h-4 border-2 border-brand-500/30 border-t-brand-500 rounded-full animate-spin" />
+          Loading preferences…
         </div>
-      ))}
+      ) : (
+        categories.map((cat) => (
+          <div key={cat} className="space-y-1">
+            <div className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3 pb-2 border-b border-slate-800">{cat}</div>
+            {(Object.entries(NOTIF_LABELS) as [NotifKey, typeof NOTIF_LABELS[NotifKey]][])
+              .filter(([, v]) => v.category === cat)
+              .map(([key, meta]) => (
+                <div key={key} className="flex items-center justify-between py-3 hover:bg-slate-800/20 px-3 -mx-3 rounded-lg transition-colors">
+                  <div className="flex-1">
+                    <div className="text-sm font-medium text-white">{meta.label}</div>
+                    <div className="text-xs text-slate-500 mt-0.5">{meta.description}</div>
+                  </div>
+                  <Toggle checked={prefs[key]} onChange={() => toggle(key)} />
+                </div>
+              ))
+            }
+          </div>
+        ))
+      )}
 
       <div className="pt-2 flex items-center gap-3">
-        <button onClick={handleSave} className="btn-primary btn-sm flex items-center gap-2">
-          {saved ? <><CheckIcon className="h-4 w-4" /> Saved!</> : 'Save Preferences'}
+        <button onClick={() => savePrefs()} disabled={!dirty || isSaving} className="btn-primary btn-sm flex items-center gap-2">
+          {isSaving ? 'Saving…' : dirty ? 'Save Preferences' : <><CheckIcon className="h-4 w-4" /> Saved</>}
         </button>
-        <button onClick={() => setPrefs(NOTIF_DEFAULTS)} className="btn-ghost btn-sm text-slate-400">
+        <button onClick={() => { setPrefs(NOTIF_DEFAULTS); setDirty(true); }} className="btn-ghost btn-sm text-slate-400">
           Reset to defaults
         </button>
       </div>
@@ -333,17 +356,45 @@ function NotificationsTab() {
 function OrganizationTab() {
   const user = useAuthStore((s) => s.user);
   const isAdmin = user?.role === 'SUPER_ADMIN' || user?.role === 'OFFICE_ADMIN';
-  const [form, setForm] = useState({
-    name: 'WindowWorld Louisiana',
-    phone: '(225) 555-0100',
-    email: 'admin@windowworldla.com',
-    address: 'Baton Rouge, LA',
-    timezone: 'America/Chicago',
-    website: 'https://windowworld.com',
-  });
-  const set = (k: keyof typeof form, v: string) => setForm((f) => ({ ...f, [k]: v }));
+  const qc = useQueryClient();
 
-  const handleSave = () => toast.success('Organization settings saved');
+  const [form, setForm] = useState({
+    name: '', phone: '', email: '', address: '', timezone: 'America/Chicago', website: '',
+  });
+  const [dirty, setDirty] = useState(false);
+
+  // Load real org data on mount
+  const { isLoading: orgLoading } = useQuery({
+    queryKey: ['org-settings'],
+    queryFn: () => apiClient.teams.me(),
+    enabled: isAdmin,
+    onSuccess: (res: any) => {
+      const org = res?.data;
+      if (org) setForm({
+        name:     org.name     || '',
+        phone:    org.phone    || '',
+        email:    org.email    || '',
+        address:  org.address  || '',
+        timezone: org.timezone || 'America/Chicago',
+        website:  org.website  || '',
+      });
+    },
+  } as any);
+
+  const { mutate: saveOrg, isPending: isSaving } = useMutation({
+    mutationFn: () => apiClient.teams.update(form),
+    onSuccess: () => {
+      toast.success('Organization settings saved');
+      setDirty(false);
+      qc.invalidateQueries({ queryKey: ['org-settings'] });
+    },
+    onError: (err: any) => {
+      toast.error(err?.response?.data?.error?.message || 'Failed to save');
+    },
+  });
+
+  const set = (k: keyof typeof form, v: string) => { setForm((f) => ({ ...f, [k]: v })); setDirty(true); };
+  const handleSave = () => saveOrg();
 
   if (!isAdmin) {
     return (
@@ -423,7 +474,9 @@ function OrganizationTab() {
         </div>
       </div>
 
-      <button onClick={handleSave} className="btn-primary btn-sm">Save Organization Settings</button>
+      <button onClick={handleSave} disabled={!dirty || isSaving} className="btn-primary btn-sm">
+        {isSaving ? 'Saving…' : 'Save Organization Settings'}
+      </button>
     </div>
   );
 }

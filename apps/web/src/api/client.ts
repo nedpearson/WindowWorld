@@ -143,6 +143,7 @@ export const api = {
     update: (id: string, data: any) => patch(`/appointments/${id}`, data),
     updateStatus: (id: string, status: string) =>
       patch(`/appointments/${id}/status`, { status }),
+    todayRoute: () => get<any>('/appointments/route'),
     getRoute: (params?: Record<string, any>) => get('/appointments/route', { params }),
   },
 
@@ -267,8 +268,11 @@ export const api = {
   users: {
     list: (params?: Record<string, any>) => get('/users', { params }),
     getById: (id: string) => get(`/users/${id}`),
+    me: () => get<any>('/users/me'),
     create: (data: any) => post('/users', data),
     update: (id: string, data: any) => patch(`/users/${id}`, data),
+    updatePreferences: (prefs: Record<string, boolean>) =>
+      patch('/users/me/preferences', prefs),
     getLeaderboard: () => get('/users/leaderboard'),
   },
 

@@ -83,7 +83,8 @@ async function executeAction(action: QueuedAction, token: string): Promise<void>
   const headers = {
     'Content-Type': 'application/json',
     'Authorization': `Bearer ${token}`,
-    'X-Device-Id': localStorage.getItem('ww-device-id') || 'unknown',
+    // Key must match the key set in main.tsx: localStorage.setItem('ww_device_id', ...)
+    'X-Device-Id': localStorage.getItem('ww_device_id') || 'unknown',
   };
 
   const base = '/api/v1';
@@ -126,7 +127,8 @@ async function executeAction(action: QueuedAction, token: string): Promise<void>
       break;
     }
     case 'OPENING_CREATE': {
-      const res = await fetch(`${base}/inspections/${action.payload.inspectionId}/openings`, {
+      // Correct endpoint: POST /openings with inspectionId in the body (not a nested route)
+      const res = await fetch(`${base}/openings`, {
         method: 'POST',
         headers,
         body: JSON.stringify(action.payload),
@@ -158,7 +160,8 @@ async function executeAction(action: QueuedAction, token: string): Promise<void>
 export function useOfflineQueue() {
   const [queue, setQueue] = useState<QueuedAction[]>([]);
   const [isSyncing, setIsSyncing] = useState(false);
-  const isOnline = typeof navigator !== 'undefined' ? navigator.onLine : true;
+  // isOnline must be stateful — navigator.onLine is a snapshot and won't trigger re-renders
+  const [isOnline, setIsOnline] = useState(() => (typeof navigator !== 'undefined' ? navigator.onLine : true));
   const syncInProgress = useRef(false);
 
   // Load queue from IndexedDB on mount
@@ -168,13 +171,15 @@ export function useOfflineQueue() {
     });
   }, []);
 
-  // Listen for online/offline events
+  // Listen for online/offline events and update state
   useEffect(() => {
     const handleOnline = () => {
+      setIsOnline(true);
       toast.info('Back online — syncing queued actions…');
       syncNow();
     };
     const handleOffline = () => {
+      setIsOnline(false);
       toast.warning('You are offline — actions will be queued and synced when reconnected');
     };
     window.addEventListener('online', handleOnline);

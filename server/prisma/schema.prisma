@@ -250,6 +250,8 @@ model User {
   role           UserRole  @default(SALES_REP)
   isActive       Boolean   @default(true)
   lastLoginAt    DateTime?
+  // Notification preferences stored as JSON — avoids a separate table for simple toggle sets
+  notifPreferences Json?   @default("{}")
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 
