@@ -4,6 +4,7 @@ import { NotFoundError, AppError } from '../../shared/middleware/errorHandler';
 import { auditService } from '../admin/audit.service';
 import { aiService } from '../ai-analysis/ai.service';
 import { logger } from '../../shared/utils/logger';
+import { leadScoringQueue } from '../../jobs';
 
 interface ListLeadsOptions {
   organizationId: string;
@@ -189,9 +190,21 @@ export class LeadService {
       },
     });
 
-    // Trigger background AI lead scoring
-    // In production this would go through BullMQ
-    logger.info(`Lead created: ${lead.id} â€” queuing AI score`);
+    // Trigger background AI lead scoring via BullMQ (runs GPT-4 Vision scoring)
+    await leadScoringQueue.add('score-new-lead', { leadId: lead.id }, {
+      delay: 3000, // 3s delay so all related data is committed first
+      attempts: 3,
+      backoff: { type: 'exponential', delay: 5000 },
+    });
+    logger.info(`[leads] Created ${lead.id} — AI scoring job enqueued`);
+
+    // Auto-enroll in status-matched campaigns (e.g. new-lead-welcome)
+    try {
+      const { campaignsService } = await import('../campaigns/campaigns.service');
+      await campaignsService.triggerForStatus(lead.id, 'NEW', createdById);
+    } catch (err: any) {
+      logger.warn(`[leads] Campaign auto-enroll failed for ${lead.id}: ${err.message}`);
+    }
 
     return lead;
   }
@@ -257,6 +270,35 @@ export class LeadService {
       oldValues: { status: existing.status } as any,
       newValues: { status, reason } as any,
     });
+
+    // Re-score with AI on meaningful status transitions (async, non-blocking)
+    const scoringStatuses: LeadStatus[] = ['CONTACTED', 'QUALIFIED', 'PROPOSAL_SENT', 'VERBAL_COMMIT', 'SOLD', 'LOST'];
+    if (scoringStatuses.includes(status)) {
+      await leadScoringQueue.add('rescore-on-status', { leadId: id }, {
+        delay: 1000,
+        attempts: 2,
+        backoff: { type: 'fixed', delay: 10000 },
+      });
+    }
+
+    // Auto-enroll in status-matched campaigns (fire and forget)
+    try {
+      const { campaignsService } = await import('../campaigns/campaigns.service');
+      await campaignsService.triggerForStatus(id, status, userId);
+    } catch (err: any) {
+      logger.warn(`[leads] Campaign trigger failed for ${id}/${status}: ${err.message}`);
+    }
+
+    // Broadcast status change to all org members via WebSocket
+    try {
+      const { wsService } = await import('../../shared/services/websocket.service');
+      wsService.notifyOrganization(existing.organizationId, 'lead:status-changed', {
+        leadId: id,
+        oldStatus: existing.status,
+        newStatus: status,
+        updatedBy: userId,
+      });
+    } catch { /* non-fatal */ }
 
     return updated;
   }

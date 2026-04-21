@@ -14,11 +14,35 @@ let _automationQueue: any = null;
 let _syncQueue: any = null;
 let _leadScoringQueue: any = null;
 
-// Mock queue used when Redis is unavailable
+// Mock queue: when Redis is unavailable, run jobs synchronously in-process.
+// This gives full dev/prod parity without needing Redis locally.
 const mockQueue = {
-  add: async (name: string, data: any) => {
-    logger.warn(`[MockQueue] Would enqueue "${name}" â€” Redis unavailable`, { data });
-    return { id: `mock-${Date.now()}` };
+  add: async (name: string, data: any, _opts?: any) => {
+    const id = `sync-${Date.now()}`;
+    logger.warn(`[MockQueue] Redis unavailable — running "${name}" synchronously`);
+
+    // Run asynchronously to not block the current request
+    setImmediate(async () => {
+      try {
+        if (name.startsWith('score') || name === 'rescore-on-status') {
+          await runLeadScoringJob({ data });
+        } else if (name.startsWith('email') || name.startsWith('send-campaign')) {
+          await runEmailJob({ data });
+        } else if (name.startsWith('pdf') || name.startsWith('proposal')) {
+          await runPdfJob({ data });
+        } else if (name.startsWith('campaign-step') || name.startsWith('automation')) {
+          await runAutomationJob({ data });
+        } else if (name.startsWith('ai-photo') || name.startsWith('analyze')) {
+          await runAiPhotoJob({ data });
+        } else {
+          logger.info(`[MockQueue] No handler for job "${name}" — skipped`);
+        }
+      } catch (err: any) {
+        logger.error(`[MockQueue] Sync job "${name}" failed: ${err.message}`);
+      }
+    });
+
+    return { id };
   },
 };
 
@@ -94,6 +118,19 @@ async function runLeadScoringJob(job: any) {
         : scoreData.estimatedRevenueBand === 'medium' ? 4000 : 1500,
     },
   });
+
+  // Notify all org members in real-time so dashboards update without refresh
+  try {
+    const { wsService } = await import('../shared/services/websocket.service');
+    wsService.notifyOrganization(lead.organizationId!, 'lead:scored', {
+      leadId,
+      totalScore: Math.round(scoreData.totalScore),
+      urgencyScore: Math.round(scoreData.urgencyScore),
+      closeProbability: scoreData.closeProbability,
+      recommendedPitchAngle: scoreData.recommendedPitchAngle,
+      estimatedRevenueBand: scoreData.estimatedRevenueBand,
+    });
+  } catch { /* non-fatal — score is already written to DB */ }
 
   logger.info(`[lead-scoring] Score updated for ${leadId}: ${scoreData.totalScore}`);
 }
