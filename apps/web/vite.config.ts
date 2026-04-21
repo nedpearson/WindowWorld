@@ -75,7 +75,7 @@ export default defineConfig({
   build: {
     rollupOptions: {
       output: {
-        // Vite 8 (Rolldown) requires manualChunks as a function, not an object
+        // manualChunks as a function splits vendor chunks for optimal caching
         manualChunks(id: string) {
           if (id.includes('node_modules')) {
             if (id.includes('recharts')) return 'charts';
