@@ -28,10 +28,15 @@ const queryClient = new QueryClient({
   },
 });
 
+const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+if (!GOOGLE_CLIENT_ID || GOOGLE_CLIENT_ID === 'dummy-client-id') {
+  console.warn('[Auth] VITE_GOOGLE_CLIENT_ID is not configured — Google Sign-In will not work.');
+}
+
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <ErrorBoundary>
-      <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID || 'dummy-client-id'}>
+      <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID || 'unconfigured'}>
         <BrowserRouter>
           <QueryClientProvider client={queryClient}>
             <App />
