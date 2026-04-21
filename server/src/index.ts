@@ -8,6 +8,7 @@ import dotenv from 'dotenv';
 import { createServer } from 'http';
 import path from 'path';
 import fs from 'fs';
+import * as Sentry from '@sentry/node';
 
 import { logger } from './shared/utils/logger';
 import { errorHandler } from './shared/middleware/errorHandler';
@@ -62,6 +63,17 @@ if (process.env.NODE_ENV === 'production' && (process.env.JWT_SECRET || '').leng
 const app = express();
 const httpServer = createServer(app);
 
+// ─── Sentry (init before any middleware so it captures all errors) ────────────
+if (process.env.SENTRY_DSN) {
+  Sentry.init({
+    dsn: process.env.SENTRY_DSN,
+    environment: process.env.NODE_ENV || 'development',
+    tracesSampleRate: process.env.NODE_ENV === 'production' ? 0.1 : 0,
+  });
+  app.use(Sentry.expressErrorHandler() as any);
+  logger.info('Sentry error tracking enabled');
+}
+
 const PORT = process.env.PORT || 3001;
 const CORS_ORIGINS = (process.env.CORS_ORIGIN || 'http://localhost:5173')
   .split(',')
@@ -70,12 +82,25 @@ const CORS_ORIGINS = (process.env.CORS_ORIGIN || 'http://localhost:5173')
 // ─── Middleware ──────────────────────────────────────────────────────────────
 // ─── Health check (MUST be first - before HTTPS redirect or any middleware) ─
 // Railway healthcheck sends plain HTTP internally; must respond 200 unconditionally
-app.get('/health', (_req, res) => {
-  res.json({
-    status: 'ok',
+app.get('/health', async (_req, res) => {
+  let dbStatus = 'ok';
+  let dbLatencyMs: number | undefined;
+  try {
+    const { prisma } = await import('./shared/services/prisma');
+    const t = Date.now();
+    await (prisma as any).$queryRaw`SELECT 1`;
+    dbLatencyMs = Date.now() - t;
+  } catch {
+    dbStatus = 'error';
+  }
+
+  const status = dbStatus === 'ok' ? 'ok' : 'degraded';
+  res.status(dbStatus === 'ok' ? 200 : 503).json({
+    status,
     timestamp: new Date().toISOString(),
     version: process.env.npm_package_version || '1.0.0',
     env: process.env.NODE_ENV,
+    db: { status: dbStatus, latencyMs: dbLatencyMs },
   });
 });
 
