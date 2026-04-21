@@ -142,8 +142,10 @@ app.use(cors({
 }));
 
 app.use(compression());
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+// JSON limit is 2mb — file uploads are handled by multer separately (not limited here)
+// 50mb JSON bodies would be a DDoS amplification vector
+app.use(express.json({ limit: '2mb' }));
+app.use(express.urlencoded({ extended: true, limit: '2mb' }));
 app.use(morgan('combined', { stream: { write: (msg) => logger.http(msg.trim()) } }));
 app.use(requestId);
 // Rate limiting — Railway-safe (validate.xForwardedForHeader = false in rateLimiter.ts)
@@ -216,5 +218,34 @@ async function start() {
 }
 
 start();
+
+// ─── Graceful Shutdown ─────────────────────────────────────────────
+// Railway (and Docker) send SIGTERM before killing a container during deploys.
+// We drain in-flight requests, then close DB connections cleanly.
+function shutdown(signal: string) {
+  logger.info(`[${signal}] Graceful shutdown initiated...`);
+
+  // Stop accepting new connections
+  httpServer.close(async () => {
+    logger.info('HTTP server closed, cleaning up...');
+    try {
+      const { prisma } = await import('./shared/services/prisma');
+      await (prisma as any).$disconnect();
+      logger.info('Database connection closed.');
+    } catch (e) {
+      logger.warn('Could not cleanly disconnect Prisma:', e);
+    }
+    process.exit(0);
+  });
+
+  // Force exit after 10s if drain takes too long
+  setTimeout(() => {
+    logger.error('Graceful shutdown timed out after 10s — forcing exit.');
+    process.exit(1);
+  }, 10_000);
+}
+
+process.on('SIGTERM', () => shutdown('SIGTERM'));
+process.on('SIGINT',  () => shutdown('SIGINT'));
 
 export { app, httpServer };

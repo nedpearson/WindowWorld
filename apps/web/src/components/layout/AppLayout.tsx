@@ -17,8 +17,16 @@ import clsx from 'clsx';
 import { io, Socket } from 'socket.io-client';
 import { useEffect, useCallback } from 'react';
 import { GlobalSearch } from '../search/GlobalSearch';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import apiClient from '../../api/client';
 
-function NotificationsDropdown({ isOpen, onClose, notifications }: { isOpen: boolean; onClose: () => void; notifications: any[] }) {
+function NotificationsDropdown({
+  isOpen, onClose, notifications, unreadCount, onMarkAllRead
+}: {
+  isOpen: boolean; onClose: () => void;
+  notifications: any[]; unreadCount: number;
+  onMarkAllRead: () => void;
+}) {
   if (!isOpen) return null;
   const displayNotifs = notifications.length ? notifications : [
     { title: 'No new notifications', desc: 'You are all caught up', time: 'Just now' }
@@ -29,8 +37,17 @@ function NotificationsDropdown({ isOpen, onClose, notifications }: { isOpen: boo
       <div className="fixed inset-0 z-40" onClick={onClose} />
       <div className="absolute top-12 right-0 mt-2 w-80 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl z-50 overflow-hidden text-left">
         <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50 flex justify-between items-center">
-          <h3 className="font-semibold text-slate-800 dark:text-white">Notifications</h3>
-          <button className="text-xs text-brand-600 dark:text-brand-400 font-medium hover:underline">Mark all read</button>
+          <h3 className="font-semibold text-slate-800 dark:text-white">
+            Notifications {unreadCount > 0 && (
+              <span className="ml-1.5 px-1.5 py-0.5 rounded-full bg-brand-500 text-white text-[9px] font-bold">{unreadCount > 99 ? '99+' : unreadCount}</span>
+            )}
+          </h3>
+          {unreadCount > 0 && (
+            <button
+              onClick={onMarkAllRead}
+              className="text-xs text-brand-600 dark:text-brand-400 font-medium hover:underline"
+            >Mark all read</button>
+          )}
         </div>
         <div className="max-h-96 overflow-y-auto">
           {displayNotifs.map((n, i) => (
@@ -135,8 +152,31 @@ export function AppLayout() {
   const syncPending = useAppStore((s) => s.syncPending);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
-  const [notifications, setNotifications] = useState<any[]>([]);
+  const [wsNotifications, setWsNotifications] = useState<any[]>([]);
   const [searchOpen, setSearchOpen] = useState(false);
+  const queryClient = useQueryClient();
+
+  // Fetch notifications from API on mount + every 5 min
+  const { data: notifData } = useQuery({
+    queryKey: ['notifications'],
+    queryFn: () => apiClient.notifications.list(30),
+    staleTime: 60_000,
+    refetchInterval: 5 * 60 * 1000,
+  });
+  const apiNotifications: any[] = (notifData as any)?.data || [];
+  const unreadCount: number = (notifData as any)?.unreadCount || 0;
+
+  const { mutate: markAllRead } = useMutation({
+    mutationFn: () => apiClient.notifications.markAllRead(),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['notifications'] });
+      setWsNotifications([]);
+    },
+  });
+
+  // Merge WebSocket real-time pushes with API notifications (WS first = newest)
+  const notifications = [...wsNotifications, ...apiNotifications].slice(0, 25);
+  const totalUnread = unreadCount + wsNotifications.length;
 
   useEffect(() => {
     const token = localStorage.getItem('ww_token');
@@ -148,13 +188,12 @@ export function AppLayout() {
     });
 
     socket.on('notification', (data) => {
-      setNotifications(prev => [data, ...prev].slice(0, 20)); // Keep max 20
+      setWsNotifications(prev => [data, ...prev].slice(0, 10));
+      queryClient.invalidateQueries({ queryKey: ['notifications'] });
     });
 
-    return () => {
-      socket.disconnect();
-    };
-  }, []);
+    return () => { socket.disconnect(); };
+  }, [queryClient]);
 
   // ⌘K / Ctrl+K global shortcut
   useEffect(() => {
@@ -338,9 +377,9 @@ export function AppLayout() {
                 onClick={() => setNotificationsOpen(false)}
               >
                 <BellIcon className="h-5 w-5" />
-                {notifications.length > 0 && (
+                {totalUnread > 0 && (
                   <span className="absolute top-1 right-1 min-w-[16px] h-4 bg-brand-500 rounded-full text-[9px] font-bold text-white flex items-center justify-center px-0.5">
-                    {notifications.length > 9 ? '9+' : notifications.length}
+                    {totalUnread > 9 ? '9+' : totalUnread}
                   </span>
                 )}
               </Link>

@@ -2,9 +2,10 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { Toaster } from 'sonner';
+import { Toaster, toast } from 'sonner';
 import { GoogleOAuthProvider } from '@react-oauth/google';
 import App from './App';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import './index.css';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -29,24 +30,26 @@ const queryClient = new QueryClient({
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID || 'dummy-client-id'}>
-      <BrowserRouter>
-        <QueryClientProvider client={queryClient}>
-          <App />
-          <Toaster
-            position="top-right"
-            theme="dark"
-            toastOptions={{
-              style: {
-                background: '#1e293b',
-                border: '1px solid rgba(148,163,184,0.1)',
-                color: '#f1f5f9',
-              },
-            }}
-          />
-        </QueryClientProvider>
-      </BrowserRouter>
-    </GoogleOAuthProvider>
+    <ErrorBoundary>
+      <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID || 'dummy-client-id'}>
+        <BrowserRouter>
+          <QueryClientProvider client={queryClient}>
+            <App />
+            <Toaster
+              position="top-right"
+              theme="dark"
+              toastOptions={{
+                style: {
+                  background: '#1e293b',
+                  border: '1px solid rgba(148,163,184,0.1)',
+                  color: '#f1f5f9',
+                },
+              }}
+            />
+          </QueryClientProvider>
+        </BrowserRouter>
+      </GoogleOAuthProvider>
+    </ErrorBoundary>
   </React.StrictMode>
 );
 
@@ -56,15 +59,20 @@ if ('serviceWorker' in navigator && import.meta.env.PROD) {
     navigator.serviceWorker
       .register('/sw.js', { scope: '/' })
       .then((registration) => {
-        console.log('[PWA] Service Worker registered:', registration.scope);
-        // Notify user when a new version is available
         registration.addEventListener('updatefound', () => {
           const newWorker = registration.installing;
           if (!newWorker) return;
           newWorker.addEventListener('statechange', () => {
             if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-              // New content available — show a toast via the global toast
-              console.log('[PWA] New version available. Reload to update.');
+              // New version available — prompt user to reload
+              toast('Update Available', {
+                description: 'A new version of WindowWorld is ready.',
+                duration: Infinity,
+                action: {
+                  label: 'Reload Now',
+                  onClick: () => window.location.reload(),
+                },
+              });
             }
           });
         });

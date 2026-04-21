@@ -307,6 +307,29 @@ export const api = {
     markRead: (id: string) => patch(`/notifications/${id}/read`),
     markAllRead: () => post('/notifications/mark-all-read'),
   },
+
+  // Automations
+  automations: {
+    list: () => get<any>('/automations'),
+    getById: (id: string) => get<any>(`/automations/${id}`),
+    create: (data: any) => post('/automations', data),
+    update: (id: string, data: any) => patch(`/automations/${id}`, data),
+    toggle: (id: string) => post(`/automations/${id}/toggle`),
+    getRuns: (id: string, limit = 20) => get<any>(`/automations/${id}/runs`, { params: { limit } }),
+  },
+
+  // Teams / Organization
+  teams: {
+    me: () => get<any>('/teams/me'),
+    update: (data: any) => patch('/teams/me', data),
+  },
+
+  // Lead Scores
+  leadScores: {
+    getByLead: (leadId: string) => get<any>(`/lead-scores/lead/${leadId}`),
+    getLatest: (leadId: string) => get<any>(`/lead-scores/lead/${leadId}/latest`),
+    override: (leadId: string, data: any) => post(`/lead-scores/lead/${leadId}/override`, data),
+  },
 };
 
 export default apiClient;
