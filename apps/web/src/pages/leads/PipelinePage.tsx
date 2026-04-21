@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { CloudIcon, CurrencyDollarIcon, UserIcon } from '@heroicons/react/24/outline';
+import { CloudIcon } from '@heroicons/react/24/outline';
 import { BoltIcon } from '@heroicons/react/24/solid';
 import { toast } from 'sonner';
 import clsx from 'clsx';
+import { api } from '../../api/client';
 
 const STAGES = [
   { key: 'NEW_LEAD',             label: 'New Lead',           color: 'slate',   dot: 'bg-slate-500' },
@@ -28,35 +29,21 @@ const STAGE_HEADER_COLORS: Record<string, string> = {
   green:  'border-emerald-500/40 bg-emerald-500/10 text-emerald-300',
 };
 
-const DEMO_PIPELINE: Record<string, any[]> = {
-  NEW_LEAD: [
-    { id: '5', name: 'Susan Bourgeois', address: 'Baton Rouge · 70809', score: 62, urgency: 81, est: 4200, isStorm: true, assignee: 'Jake T.' },
-    { id: '9', name: 'Louis Badeaux', address: 'Metairie · 70002', score: 77, urgency: 82, est: 6800, isStorm: true, assignee: 'Jake T.' },
-    { id: '15', name: 'Dale Acosta', address: 'Gonzales · 70737', score: 55, urgency: 48, est: 4100, isStorm: false, assignee: 'Jake T.' },
-  ],
-  ATTEMPTING_CONTACT: [
-    { id: '9b', name: 'Louis Badeaux', address: 'Metairie · 70002', score: 77, urgency: 82, est: 6800, isStorm: true, assignee: 'Jake T.' },
-  ],
-  CONTACTED: [
-    { id: '11', name: 'Brett Fontenot', address: 'Lafayette · 70503', score: 65, urgency: 55, est: 5200, isStorm: false, assignee: 'Jake T.' },
-  ],
-  APPOINTMENT_SET: [
-    { id: '3', name: 'Robert Comeaux', address: 'Baton Rouge · 70806', score: 78, urgency: 72, est: 6500, isStorm: false, assignee: 'Jake T.' },
-  ],
-  INSPECTION_COMPLETE: [
-    { id: '6', name: 'Karen Guidry', address: 'Denham Springs · 70726', score: 74, urgency: 69, est: 7800, isStorm: true, assignee: 'Danielle A.' },
-  ],
-  MEASURING_COMPLETE: [
-    { id: '4', name: 'Angela Mouton', address: 'Prairieville · 70769', score: 82, urgency: 75, est: 8900, isStorm: false, assignee: 'Danielle A.' },
-  ],
-  PROPOSAL_SENT: [
-    { id: '2', name: 'Patricia Landry', address: 'Baton Rouge · 70815', score: 85, urgency: 68, est: 9200, isStorm: false, assignee: 'Jake T.' },
-    { id: '12', name: 'Carol Chauvin', address: 'Slidell · 70458', score: 80, urgency: 62, est: 7400, isStorm: false, assignee: 'Danielle A.' },
-  ],
-  VERBAL_COMMIT: [
-    { id: '1', name: 'Michael Trosclair', address: 'Baton Rouge · 70809', score: 91, urgency: 88, est: 14800, isStorm: true, assignee: 'Jake T.' },
-  ],
-};
+// Map raw Prisma lead → card shape
+function mapToCard(l: any) {
+  return {
+    id: l.id,
+    name: `${l.firstName} ${l.lastName}`,
+    address: `${l.city || ''} · ${l.zip || ''}`,
+    score: l.leadScore || 0,
+    urgency: l.urgencyScore || 0,
+    est: l.estimatedValue || l.estimatedRevenue || 0,
+    isStorm: l.isStormLead,
+    assignee: l.assignedRep
+      ? `${l.assignedRep.firstName} ${l.assignedRep.lastName[0]}.`
+      : '—',
+  };
+}
 
 function LeadCard({ lead, stageKey, onMove }: { lead: any; stageKey: string; onMove: (id: string, newStage: string) => void }) {
   const stageIdx = STAGES.findIndex((s) => s.key === stageKey);
@@ -134,24 +121,60 @@ function LeadCard({ lead, stageKey, onMove }: { lead: any; stageKey: string; onM
 }
 
 export function PipelinePage() {
-  const [pipeline, setPipeline] = useState(DEMO_PIPELINE);
+  const queryClient = useQueryClient();
+
+  const { data: pipelineResp, isLoading } = useQuery({
+    queryKey: ['pipeline'],
+    queryFn: () => api.leads.getPipeline(),
+    staleTime: 30_000,
+  });
+
+  // Optimistic card move: update UI immediately, sync status in background
+  const { mutate: moveCard } = useMutation({
+    mutationFn: ({ id, toStage }: { id: string; toStage: string; fromStage: string }) =>
+      api.leads.updateStatus(id, toStage),
+    onMutate: async ({ id, toStage, fromStage }) => {
+      await queryClient.cancelQueries({ queryKey: ['pipeline'] });
+      const previous = queryClient.getQueryData(['pipeline']);
+      queryClient.setQueryData(['pipeline'], (old: any) => {
+        if (!old?.data) return old;
+        const lead = old.data[fromStage]?.find((l: any) => l.id === id);
+        if (!lead) return old;
+        return {
+          ...old,
+          data: {
+            ...old.data,
+            [fromStage]: (old.data[fromStage] || []).filter((l: any) => l.id !== id),
+            [toStage]: [{ ...lead, status: toStage }, ...(old.data[toStage] || [])],
+          },
+        };
+      });
+      return { previous };
+    },
+    onError: (_err, _vars, ctx) => {
+      queryClient.setQueryData(['pipeline'], ctx?.previous);
+      toast.error('Failed to advance lead — reverted');
+    },
+    onSettled: () => queryClient.invalidateQueries({ queryKey: ['pipeline'] }),
+  });
+
+  const rawPipeline: Record<string, any[]> = (pipelineResp as any)?.data || {};
+
+  // Map all stages to card format
+  const pipeline: Record<string, any[]> = {};
+  STAGES.forEach(s => {
+    pipeline[s.key] = (rawPipeline[s.key] || []).map(mapToCard);
+  });
 
   const handleMove = (leadId: string, fromStage: string, toStage: string) => {
-    setPipeline((prev) => {
-      const lead = prev[fromStage]?.find((l) => l.id === leadId);
-      if (!lead) return prev;
-      return {
-        ...prev,
-        [fromStage]: prev[fromStage].filter((l) => l.id !== leadId),
-        [toStage]: [lead, ...(prev[toStage] || [])],
-      };
-    });
+    moveCard({ id: leadId, toStage, fromStage });
     const toLabel = STAGES.find((s) => s.key === toStage)?.label;
-    toast.success(`Lead moved to ${toLabel}`);
+    toast.success(`Moving to ${toLabel}…`);
   };
 
-  const totalPipelineValue = Object.values(pipeline).flat().reduce((sum, l) => sum + l.est, 0);
-  const totalLeads = Object.values(pipeline).flat().length;
+  const totalPipelineValue = Object.values(rawPipeline).flat()
+    .reduce((sum, l) => sum + (l.estimatedValue || l.estimatedRevenue || 0), 0);
+  const totalLeads = Object.values(rawPipeline).flat().length;
 
   return (
     <div className="h-screen flex flex-col page-transition">
@@ -160,7 +183,7 @@ export function PipelinePage() {
         <div>
           <h1 className="text-xl font-bold text-white">Pipeline</h1>
           <p className="text-slate-500 text-sm mt-0.5">
-            {totalLeads} active leads · ${(totalPipelineValue / 1000).toFixed(0)}K total value
+            {isLoading ? 'Loading…' : `${totalLeads} active leads · $${(totalPipelineValue / 1000).toFixed(0)}K total value`}
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -177,7 +200,8 @@ export function PipelinePage() {
         <div className="flex gap-3 p-4 h-full" style={{ minWidth: `${STAGES.length * 220}px` }}>
           {STAGES.map((stage) => {
             const leads = pipeline[stage.key] || [];
-            const stageValue = leads.reduce((sum, l) => sum + l.est, 0);
+            const stageValue = (rawPipeline[stage.key] || [])
+              .reduce((sum: number, l: any) => sum + (l.estimatedValue || l.estimatedRevenue || 0), 0);
             const headerClass = STAGE_HEADER_COLORS[stage.color];
 
             return (
@@ -198,16 +222,20 @@ export function PipelinePage() {
 
                 {/* Cards */}
                 <div className="flex-1 overflow-y-auto space-y-2 pb-4 no-scrollbar">
-                  {leads.map((lead) => (
-                    <LeadCard
-                      key={lead.id}
-                      lead={lead}
-                      stageKey={stage.key}
-                      onMove={(id, newStage) => handleMove(id, stage.key, newStage)}
-                    />
-                  ))}
+                  {isLoading
+                    ? [...Array(2)].map((_, i) => (
+                        <div key={i} className="h-24 bg-slate-800 rounded-xl animate-pulse" />
+                      ))
+                    : leads.map((lead) => (
+                        <LeadCard
+                          key={lead.id}
+                          lead={lead}
+                          stageKey={stage.key}
+                          onMove={(id, newStage) => handleMove(id, stage.key, newStage)}
+                        />
+                      ))}
 
-                  {leads.length === 0 && (
+                  {!isLoading && leads.length === 0 && (
                     <div className="flex flex-col items-center justify-center py-8 text-slate-700 text-xs">
                       <div className="text-2xl mb-2">·</div>
                       Empty

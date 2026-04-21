@@ -401,6 +401,9 @@ model Lead {
   Inspection   Inspection[]
 
   @@index([organizationId, status])
+  @@index([organizationId, assignedRepId])
+  @@index([organizationId, isStormLead])
+  @@index([organizationId, leadScore])
   @@index([assignedRepId])
   @@index([zip])
   @@index([parish])

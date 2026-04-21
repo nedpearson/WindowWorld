@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
+import { useQuery } from '@tanstack/react-query';
 import {
   CameraIcon, PlusIcon, CheckCircleIcon, ExclamationCircleIcon,
   ArrowLeftIcon, ClipboardDocumentListIcon, HomeIcon,
@@ -10,6 +11,7 @@ import {
 import { BoltIcon } from '@heroicons/react/24/solid';
 import clsx from 'clsx';
 import { useOfflineQueue } from '../../hooks/useOfflineQueue';
+import { api } from '../../api/client';
 
 // Window type options
 const WINDOW_TYPES = ['DOUBLE_HUNG', 'SINGLE_HUNG', 'CASEMENT', 'AWNING', 'SLIDER', 'FIXED', 'BAY', 'BOW', 'GARDEN', 'EGRESS'];
@@ -70,20 +72,51 @@ type DrawerMode = 'none' | 'add-opening' | 'measure-opening' | 'edit-opening';
 export function InspectionPage() {
   const { id } = useParams();
   const { enqueue, pendingCount, isOnline } = useOfflineQueue();
-  const [inspection, setInspection] = useState(DEMO_INSPECTION);
+  const [inspection, setInspection] = useState<any>(null);
   const [drawerMode, setDrawerMode] = useState<DrawerMode>('none');
   const [selectedOpeningId, setSelectedOpeningId] = useState<string | null>(null);
   const [newOpening, setNewOpening] = useState({ roomLabel: '', windowType: 'DOUBLE_HUNG', condition: 'FAIR', floor: 'Main', hasScreen: false, isEgress: false, notes: '' });
   const [measurementInput, setMeasurementInput] = useState({ width: '', widthFrac: '0', height: '', heightFrac: '0' });
 
+  // Fetch real inspection from API
+  const { data: inspData, isLoading, error } = useQuery({
+    queryKey: ['inspection', id],
+    queryFn: () => api.inspections.getById(id!),
+    enabled: !!id,
+    staleTime: 60_000,
+  });
+
+  // Seed local state from API once loaded (mutations go through offline queue)
+  useEffect(() => {
+    const d = (inspData as any)?.data || inspData;
+    if (d) setInspection(d);
+  }, [inspData]);
+
+  if (isLoading) return (
+    <div className="p-6 space-y-4 animate-pulse">
+      <div className="h-6 bg-slate-800 rounded w-40" />
+      <div className="h-40 bg-slate-800 rounded-xl" />
+      <div className="h-64 bg-slate-800 rounded-xl" />
+    </div>
+  );
+
+  if (error || !inspection) return (
+    <div className="p-6 text-center">
+      <p className="text-red-400 font-medium mb-2">Could not load inspection.</p>
+      <p className="text-slate-600 text-sm mb-4">Make sure an inspection exists for this lead.</p>
+      <Link to="/leads" className="btn-secondary btn-sm">Back to Leads</Link>
+    </div>
+  );
+
   const fractions = ['0', '1/8', '1/4', '3/8', '1/2', '5/8', '3/4', '7/8'];
   const fracToDecimal = (f: string) => { if (f === '0') return 0; const [n, d] = f.split('/').map(Number); return n / d; };
 
-  const verifiedCount = inspection.openings.filter((o) => o.measurement?.status === 'VERIFIED_ONSITE').length;
-  const aiCount = inspection.openings.filter((o) => (o.measurement as any)?.isAiEstimated).length;
-  const unmeasuredCount = inspection.openings.filter((o) => !o.measurement).length;
-  const readinessPct = inspection.openings.length > 0
-    ? Math.round((verifiedCount / inspection.openings.length) * 100) : 0;
+  const openings: any[] = inspection?.openings || [];
+  const verifiedCount = openings.filter((o) => o.measurement?.status === 'VERIFIED_ONSITE').length;
+  const aiCount = openings.filter((o) => (o.measurement as any)?.isAiEstimated).length;
+  const unmeasuredCount = openings.filter((o) => !o.measurement).length;
+  const readinessPct = openings.length > 0
+    ? Math.round((verifiedCount / openings.length) * 100) : 0;
 
   const handleAddOpening = async () => {
     if (!newOpening.roomLabel.trim()) {
@@ -93,7 +126,7 @@ export function InspectionPage() {
     const opening = {
       id: `o-${Date.now()}`,
       ...newOpening,
-      sortOrder: inspection.openings.length + 1,
+      sortOrder: openings.length + 1,
       measurement: null,
     };
     setInspection((prev) => ({ ...prev, openings: [...prev.openings, opening] }));
@@ -104,7 +137,7 @@ export function InspectionPage() {
   };
 
   const handleSaveMeasurement = async () => {
-    const opening = inspection.openings.find((o) => o.id === selectedOpeningId);
+    const opening = openings.find((o) => o.id === selectedOpeningId);
     if (!opening) return;
     const finalWidth = parseFloat(measurementInput.width) + fracToDecimal(measurementInput.widthFrac);
     const finalHeight = parseFloat(measurementInput.height) + fracToDecimal(measurementInput.heightFrac);
@@ -181,7 +214,7 @@ export function InspectionPage() {
         <div className="mt-4 pt-4 border-t border-slate-700/50">
           <div className="flex items-center justify-between mb-2">
             <span className="text-xs text-slate-500">Measurement Progress</span>
-            <span className="text-xs text-slate-400">{verifiedCount}/{inspection.openings.length} verified</span>
+            <span className="text-xs text-slate-400">{verifiedCount}/{openings.length} verified</span>
           </div>
           <div className="score-bar h-2">
             <div className="score-bar-fill bg-emerald-500 transition-all duration-500" style={{ width: `${readinessPct}%` }} />
@@ -214,7 +247,7 @@ export function InspectionPage() {
         <div className="flex items-center justify-between p-4 border-b border-slate-700/50">
           <div className="flex items-center gap-2">
             <ClipboardDocumentListIcon className="h-4 w-4 text-slate-500" />
-            <span className="text-sm font-semibold text-white">{inspection.openings.length} Openings</span>
+            <span className="text-sm font-semibold text-white">{openings.length} Openings</span>
           </div>
           <button onClick={() => setDrawerMode('add-opening')} className="btn-primary btn-sm">
             <PlusIcon className="h-4 w-4" /> Add Opening
@@ -222,7 +255,7 @@ export function InspectionPage() {
         </div>
 
         <div className="divide-y divide-slate-700/30">
-          {inspection.openings.map((opening) => {
+          {openings.map((opening) => {
             const meas = opening.measurement;
             const measStatus = meas?.status ? MEAS_STATUS[meas.status] : null;
             const StatusIcon = measStatus?.icon;
@@ -387,7 +420,7 @@ export function InspectionPage() {
 
                 {/* Measure Opening drawer */}
                 {drawerMode === 'measure-opening' && (() => {
-                  const opening = inspection.openings.find((o) => o.id === selectedOpeningId);
+                  const opening = openings.find((o) => o.id === selectedOpeningId);
                   if (!opening) return null;
                   const finalWidth = parseFloat(measurementInput.width || '0') + fracToDecimal(measurementInput.widthFrac);
                   const finalHeight = parseFloat(measurementInput.height || '0') + fracToDecimal(measurementInput.heightFrac);

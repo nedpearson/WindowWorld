@@ -17,7 +17,7 @@ export class ContactsService {
     return prisma.contact.findMany({
       where: { lead: { organizationId }, ...searchWhere },
       include: {
-        lead: { select: { id: true, firstName: true, lastName: true, status: true, estimatedValue: true } },
+        lead: { select: { id: true, firstName: true, lastName: true, status: true, estimatedRevenue: true } },
       },
       orderBy: [{ isPrimary: 'desc' }, { lastName: 'asc' }],
       take: 500,

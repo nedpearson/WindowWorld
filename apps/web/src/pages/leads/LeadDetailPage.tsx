@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   PhoneIcon, EnvelopeIcon, MapPinIcon, CalendarIcon,
   DocumentTextIcon, ClipboardDocumentListIcon, UserIcon,
@@ -279,6 +279,22 @@ export function LeadDetailPage({ isNew = false }: { isNew?: boolean }) {
     queryFn: () => api.leads.getActivities(id!),
     enabled: !!id && activeTab === 'activities',
     staleTime: 60_000,
+  });
+
+  // Log Call mutation — wires the "Log Call" button to real /activities endpoint
+  const queryClient = useQueryClient();
+  const { mutate: logCall, isPending: loggingCall } = useMutation({
+    mutationFn: () => api.leads.logActivity(id!, {
+      type: 'CALL',
+      title: 'Call logged',
+      outcome: 'reached',
+      contactMethod: 'PHONE',
+    }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['lead-activities', id] });
+      toast.success('Call logged!');
+    },
+    onError: () => toast.error('Failed to log call'),
   });
 
   // Normalize API shape to what the component expects
@@ -801,8 +817,8 @@ export function LeadDetailPage({ isNew = false }: { isNew?: boolean }) {
               <div className="flex items-center justify-between">
                 <h2 className="text-sm font-semibold text-white">Activity Timeline</h2>
                 <div className="flex gap-2">
-                  <button onClick={() => toast.info('Log call coming soon')} className="btn-secondary btn-sm">
-                    <PhoneIcon className="h-4 w-4" /> Log Call
+                  <button onClick={() => logCall()} disabled={loggingCall} className="btn-secondary btn-sm">
+                    <PhoneIcon className="h-4 w-4" /> {loggingCall ? 'Logging…' : 'Log Call'}
                   </button>
                   <button onClick={() => setShowNoteBox(true)} className="btn-secondary btn-sm">
                     <ChatBubbleLeftIcon className="h-4 w-4" /> Note

@@ -300,6 +300,13 @@ export const api = {
     commissions: () => get<any>('/analytics/commissions'),
     installedLeads: (limit = 60) => get<any>('/analytics/installed-leads', { params: { limit } }),
   },
+
+  // Notifications
+  notifications: {
+    list: (limit = 50) => get<any>('/notifications', { params: { limit } }),
+    markRead: (id: string) => patch(`/notifications/${id}/read`),
+    markAllRead: () => post('/notifications/mark-all-read'),
+  },
 };
 
 export default apiClient;

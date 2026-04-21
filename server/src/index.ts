@@ -45,6 +45,20 @@ import { initializeJobQueues } from './jobs';
 
 dotenv.config();
 
+// ─── Startup Validation (fail fast, fail loud) ───────────────────
+const REQUIRED_ENV = ['DATABASE_URL', 'JWT_SECRET'];
+const missingEnv = REQUIRED_ENV.filter(k => !process.env[k]);
+if (missingEnv.length) {
+  console.error(`FATAL: Missing required environment variables: ${missingEnv.join(', ')}`);
+  console.error('Set these in your .env file or Railway environment variables.');
+  process.exit(1);
+}
+if (process.env.NODE_ENV === 'production' && (process.env.JWT_SECRET || '').length < 32) {
+  console.error('FATAL: JWT_SECRET must be at least 32 characters in production.');
+  console.error('Generate one with: node -e "console.log(require(\'crypto\').randomBytes(48).toString(\'hex\'))"');
+  process.exit(1);
+}
+
 const app = express();
 const httpServer = createServer(app);
 
@@ -52,7 +66,6 @@ const PORT = process.env.PORT || 3001;
 const CORS_ORIGINS = (process.env.CORS_ORIGIN || 'http://localhost:5173')
   .split(',')
   .map((o) => o.trim());
-
 
 // ─── Middleware ──────────────────────────────────────────────────────────────
 // ─── Health check (MUST be first - before HTTPS redirect or any middleware) ─
@@ -82,6 +95,19 @@ app.use(helmet({
   crossOriginResourcePolicy: { policy: 'cross-origin' },
   // Google OAuth popup requires being able to postMessage back to us
   crossOriginOpenerPolicy: false,
+  contentSecurityPolicy: process.env.NODE_ENV === 'production' ? {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'", 'https://accounts.google.com'],
+      styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
+      fontSrc: ["'self'", 'https://fonts.gstatic.com'],
+      imgSrc: ["'self'", 'data:', 'https:'],
+      connectSrc: ["'self'", 'https://api.openai.com', 'https://identitytoolkit.googleapis.com', 'wss:', 'ws:'],
+      frameSrc: ["'self'", 'https://accounts.google.com'],
+      objectSrc: ["'none'"],
+      upgradeInsecureRequests: [],
+    },
+  } : false, // Disabled in dev to avoid issues with Vite hot reload
 }));
 app.use(cors({
   origin: CORS_ORIGINS,

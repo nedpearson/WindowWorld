@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
+import { useQuery } from '@tanstack/react-query';
 import {
   ArrowLeftIcon, CheckCircleIcon, ExclamationCircleIcon,
   CameraIcon, ChevronLeftIcon, ChevronRightIcon,
@@ -9,6 +10,7 @@ import {
 import { BoltIcon } from '@heroicons/react/24/solid';
 import clsx from 'clsx';
 import { useOfflineQueue } from '../../hooks/useOfflineQueue';
+import { api } from '../../api/client';
 
 const DEMO_OPENING = {
   id: 'o3',
@@ -36,12 +38,44 @@ export function MeasurementPage() {
   const { openingId } = useParams();
   const { enqueue, isOnline, pendingCount } = useOfflineQueue();
 
-  const [opening] = useState(DEMO_OPENING);
-  const [widthInt, setWidthInt] = useState(String(Math.floor(opening.measurement?.finalWidth || 0)));
+  const { data: openingResp, isLoading, error } = useQuery({
+    queryKey: ['opening', openingId],
+    queryFn: () => api.openings.getById(openingId!),
+    enabled: !!openingId,
+    staleTime: 60_000,
+  });
+
+  const opening: any = (openingResp as any)?.data || openingResp || {};
+
+  const [widthInt, setWidthInt] = useState('');
   const [widthFrac, setWidthFrac] = useState('0');
-  const [heightInt, setHeightInt] = useState(String(Math.floor(opening.measurement?.finalHeight || 0)));
+  const [heightInt, setHeightInt] = useState('');
   const [heightFrac, setHeightFrac] = useState('0');
   const [saved, setSaved] = useState(false);
+
+  // Pre-fill from existing measurement once loaded
+  const existingMeas = opening?.measurement;
+  const [prefilledFromApi, setPrefilledFromApi] = useState(false);
+  if (existingMeas && !prefilledFromApi) {
+    setWidthInt(String(Math.floor(existingMeas.finalWidth || 0)));
+    setHeightInt(String(Math.floor(existingMeas.finalHeight || 0)));
+    setPrefilledFromApi(true);
+  }
+
+  if (isLoading) return (
+    <div className="p-6 space-y-4 animate-pulse max-w-lg mx-auto">
+      <div className="h-6 bg-slate-800 rounded w-32" />
+      <div className="h-28 bg-slate-800 rounded-xl" />
+      <div className="h-64 bg-slate-800 rounded-xl" />
+    </div>
+  );
+
+  if (error || !opening?.id) return (
+    <div className="p-6 text-center max-w-lg mx-auto">
+      <p className="text-red-400 font-medium mb-2">Could not load opening.</p>
+      <Link to="/leads" className="btn-secondary btn-sm">Back to Leads</Link>
+    </div>
+  );
 
   const finalWidth = parseFloat(widthInt || '0') + fracToDecimal(widthFrac);
   const finalHeight = parseFloat(heightInt || '0') + fracToDecimal(heightFrac);
@@ -54,7 +88,9 @@ export function MeasurementPage() {
       status: 'VERIFIED_ONSITE',
       isAiEstimated: false,
       measurementMethod: 'FIELD_TAPE',
-      notes: `Field verified — replaced AI estimate of ${opening.measurement?.finalWidth}" × ${opening.measurement?.finalHeight}"`,
+      notes: existingMeas?.isAiEstimated
+        ? `Field verified — replaced AI estimate of ${existingMeas.finalWidth}" × ${existingMeas.finalHeight}"`
+        : 'Field verified measurement',
     });
     setSaved(true);
     toast.success(`Measurement saved: ${finalWidth.toFixed(3)}" × ${finalHeight.toFixed(3)}"`);
@@ -64,7 +100,7 @@ export function MeasurementPage() {
     <div className="p-6 max-w-lg mx-auto space-y-5 page-transition">
       {/* Header */}
       <div className="flex items-center gap-3">
-        <Link to={`/inspections/insp-1`} className="btn-ghost btn-sm">
+        <Link to={`/inspections/${opening.inspectionId || 'back'}`} className="btn-ghost btn-sm">
           <ArrowLeftIcon className="h-4 w-4" /> Inspection
         </Link>
         {!isOnline && <span className="badge badge-red text-[10px] ml-auto">Offline · {pendingCount} queued</span>}
@@ -225,7 +261,7 @@ export function MeasurementPage() {
             <div className="text-sm font-semibold text-emerald-300">Measurement Saved!</div>
             <div className="text-xs text-emerald-500">{isOnline ? 'Synced to server' : 'Saved locally — will sync when online'}</div>
           </div>
-          <Link to={`/inspections/insp-1`} className="ml-auto btn-secondary btn-sm">← Back</Link>
+          <Link to={`/inspections/${opening.inspectionId || 'back'}`} className="ml-auto btn-secondary btn-sm">← Back</Link>
         </motion.div>
       )}
     </div>
