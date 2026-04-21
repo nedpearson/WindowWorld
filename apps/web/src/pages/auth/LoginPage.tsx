@@ -53,7 +53,16 @@ export function LoginPage() {
       navigate('/dashboard');
       toast.success(`Welcome back, ${result.data.user.firstName}!`);
     } catch (err: any) {
-      toast.error(err.response?.data?.error?.message || 'Google Login failed');
+      const msg = err.response?.data?.error?.message || err.message || 'Google Login failed';
+      // Surface actionable messages clearly
+      if (msg.includes('not configured')) {
+        toast.error('Google Sign-In is not configured. Contact your administrator.');
+      } else if (msg.includes('deactivated')) {
+        toast.error('Your account is deactivated. Contact your administrator.');
+      } else {
+        toast.error(msg);
+      }
+      console.error('[Google Login]', msg);
     } finally {
       setLoading(false);
     }
