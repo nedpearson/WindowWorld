@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
+import { useQuery } from '@tanstack/react-query';
 import {
   PhoneIcon, EnvelopeIcon, MapPinIcon, CalendarIcon,
   DocumentTextIcon, ClipboardDocumentListIcon, UserIcon,
@@ -17,6 +18,7 @@ import clsx from 'clsx';
 import { PitchCoachPanel } from '../../components/ai/PitchCoachPanel';
 import { SmsTemplateDrawer } from '../../components/sms/SmsTemplateDrawer';
 import { EmailTemplateDrawer } from '../../components/email/EmailTemplateDrawer';
+import { api } from '../../api/client';
 
 const DEMO_LEAD = {
   id: '1',
@@ -263,8 +265,64 @@ export function LeadDetailPage({ isNew = false }: { isNew?: boolean }) {
   const [emailOpen, setEmailOpen] = useState(false);
   const [recording, setRecording] = useState(false);
 
-  const lead = DEMO_LEAD; // In prod: useQuery({ queryKey: ['lead', id], queryFn: () => api.leads.getById(id!) })
-  const property = lead.property;
+  // Real API fetch
+  const { data: leadResp, isLoading, error } = useQuery({
+    queryKey: ['lead', id],
+    queryFn: () => api.leads.getById(id!),
+    enabled: !!id && id !== 'new',
+    staleTime: 30_000,
+  });
+
+  // Activities fetched separately (lazy, only when tab is open)
+  const { data: activitiesResp } = useQuery({
+    queryKey: ['lead-activities', id],
+    queryFn: () => api.leads.getActivities(id!),
+    enabled: !!id && activeTab === 'activities',
+    staleTime: 60_000,
+  });
+
+  // Normalize API shape to what the component expects
+  const rawLead = (leadResp as any)?.data || leadResp;
+  const property = rawLead?.properties?.[0] || {};
+  const lead = rawLead ? {
+    ...rawLead,
+    // compat shims
+    estimatedRevenue: rawLead.estimatedValue || rawLead.estimatedRevenue || 0,
+    tags: rawLead.tags || [],
+    contacts: rawLead.contacts || [],
+    activities: (activitiesResp as any)?.data || [],
+    notes: rawLead.notes || rawLead.repNotes || '',
+    closeProbability: rawLead.closeProbability || (rawLead.leadScores?.[0]?.closeProbability ?? 0),
+    property: {
+      ...property,
+      openings: property.openings || [],
+      estimatedWindowCount: property.estimatedWindowCount || property.openings?.length || 0,
+      estimatedValue: property.estimatedValue || rawLead.estimatedValue || 0,
+      windowCondition: property.windowCondition || 'UNKNOWN',
+      yearBuilt: property.yearBuilt,
+      squareFootage: property.squareFootage,
+      stories: property.stories,
+      propertyType: property.propertyType || 'single-family',
+    },
+  } : null;
+
+  if (isLoading || !lead) return (
+    <div className="p-6 space-y-4 animate-pulse">
+      <div className="h-8 bg-slate-800 rounded w-48" />
+      <div className="h-40 bg-slate-800 rounded-xl" />
+      <div className="grid grid-cols-3 gap-4">
+        {[1,2,3].map(i => <div key={i} className="h-60 bg-slate-800 rounded-xl" />)}
+      </div>
+    </div>
+  );
+
+  if (error) return (
+    <div className="p-6 text-center">
+      <p className="text-red-400 font-medium">Could not load lead.</p>
+      <button onClick={() => window.history.back()} className="btn-secondary btn-sm mt-3">Go back</button>
+    </div>
+  );
+
   const verifiedCount = property.openings.filter((o) => o.measurement?.status === 'VERIFIED_ONSITE').length;
   const aiEstCount = property.openings.filter((o) => o.measurement?.isAiEstimated).length;
   const unmeasuredCount = property.openings.filter((o) => !o.measurement).length;

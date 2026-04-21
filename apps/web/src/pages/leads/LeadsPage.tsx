@@ -67,22 +67,6 @@ function leadAge(createdAt: string): { days: number; badge: string; color: strin
   return { days, badge: `${days}d`, color: 'text-red-400 font-semibold' };
 }
 
-// ─── DEMO DATA (shown while API wires up) ─────────────────────
-const DEMO_LEADS = [
-  { id: '1', firstName: 'Michael', lastName: 'Trosclair', email: 'mtrosclair@hotmail.com', phone: '(225) 555-1003', address: '7824 Old Hammond Hwy', city: 'Baton Rouge', zip: '70809', parish: 'East Baton Rouge', status: 'VERBAL_COMMIT', leadScore: 91, urgencyScore: 88, isStormLead: true, estimatedRevenue: 14800, source: 'web', assignedRep: { firstName: 'Jake', lastName: 'Thibodaux' }, createdAt: '2026-04-01' },
-  { id: '2', firstName: 'Patricia', lastName: 'Landry', email: 'patricia.landry@yahoo.com', phone: '(225) 555-1002', address: '312 Sherwood Forest Blvd', city: 'Baton Rouge', zip: '70815', parish: 'East Baton Rouge', status: 'PROPOSAL_SENT', leadScore: 85, urgencyScore: 68, isStormLead: false, estimatedRevenue: 9200, source: 'referral', assignedRep: { firstName: 'Jake', lastName: 'Thibodaux' }, createdAt: '2026-04-03' },
-  { id: '3', firstName: 'Robert', lastName: 'Comeaux', email: 'rcomxeaux63@gmail.com', phone: '(225) 555-1001', address: '4521 Greenwell Springs Rd', city: 'Baton Rouge', zip: '70806', parish: 'East Baton Rouge', status: 'APPOINTMENT_SET', leadScore: 78, urgencyScore: 72, isStormLead: false, estimatedRevenue: 6500, source: 'door-knock', assignedRep: { firstName: 'Jake', lastName: 'Thibodaux' }, createdAt: '2026-04-05' },
-  { id: '4', firstName: 'Angela', lastName: 'Mouton', email: 'amouton@gmail.com', phone: '(225) 555-2003', address: '226 Tupelo Dr', city: 'Prairieville', zip: '70769', parish: 'Ascension', status: 'MEASURING_COMPLETE', leadScore: 82, urgencyScore: 75, isStormLead: false, estimatedRevenue: 8900, source: 'referral', assignedRep: { firstName: 'Danielle', lastName: 'Arceneaux' }, createdAt: '2026-04-07' },
-  { id: '5', firstName: 'Susan', lastName: 'Bourgeois', email: 'sbourgeois@att.net', phone: '(225) 555-1004', address: '2207 Jefferson Hwy', city: 'Baton Rouge', zip: '70809', parish: 'East Baton Rouge', status: 'NEW_LEAD', leadScore: 62, urgencyScore: 81, isStormLead: true, estimatedRevenue: 4200, source: 'storm-list', assignedRep: { firstName: 'Jake', lastName: 'Thibodaux' }, createdAt: '2026-04-10' },
-  { id: '6', firstName: 'Karen', lastName: 'Guidry', email: 'karen.guidry@cox.net', phone: '(225) 555-2001', address: '1134 Range Ave', city: 'Denham Springs', zip: '70726', parish: 'Livingston', status: 'INSPECTION_COMPLETE', leadScore: 74, urgencyScore: 69, isStormLead: true, estimatedRevenue: 7800, source: 'neighborhood-canvass', assignedRep: { firstName: 'Danielle', lastName: 'Arceneaux' }, createdAt: '2026-04-08' },
-  { id: '7', firstName: 'Carol', lastName: 'Chauvin', email: 'carolchauvin@gmail.com', phone: '(985) 555-4002', address: '1245 Gause Blvd', city: 'Slidell', zip: '70458', parish: 'St. Tammany', status: 'QUALIFIED', leadScore: 80, urgencyScore: 62, isStormLead: false, estimatedRevenue: 7400, source: 'referral', assignedRep: { firstName: 'Danielle', lastName: 'Arceneaux' }, createdAt: '2026-04-09' },
-  { id: '8', firstName: 'James', lastName: 'Hebert', email: 'jhebert1959@gmail.com', phone: '(225) 555-1005', address: '5316 Perkins Rd', city: 'Baton Rouge', zip: '70808', parish: 'East Baton Rouge', status: 'SOLD', leadScore: 95, urgencyScore: 92, isStormLead: false, estimatedRevenue: 11600, source: 'referral', assignedRep: { firstName: 'Jake', lastName: 'Thibodaux' }, createdAt: '2026-03-15' },
-  { id: '9', firstName: 'Louis', lastName: 'Badeaux', email: 'lbadeaux@cox.net', phone: '(504) 555-4001', address: '3312 Severn Ave', city: 'Metairie', zip: '70002', parish: 'Jefferson', status: 'ATTEMPTING_CONTACT', leadScore: 77, urgencyScore: 82, isStormLead: true, estimatedRevenue: 6800, source: 'storm-list', assignedRep: { firstName: 'Jake', lastName: 'Thibodaux' }, createdAt: '2026-04-12' },
-  { id: '10', firstName: 'David', lastName: 'Trahan', email: 'dtrahan@bellsouth.net', phone: '(225) 555-2002', address: '8843 Burgess Ave', city: 'Denham Springs', zip: '70726', parish: 'Livingston', status: 'FOLLOW_UP', leadScore: 58, urgencyScore: 45, isStormLead: false, estimatedRevenue: 3600, source: 'web', assignedRep: { firstName: 'Danielle', lastName: 'Arceneaux' }, createdAt: '2026-04-04' },
-  { id: '11', firstName: 'Brett', lastName: 'Fontenot', email: 'bfontenot@yahoo.com', phone: '(337) 555-3001', address: '4412 Johnston St', city: 'Lafayette', zip: '70503', parish: 'Lafayette', status: 'CONTACTED', leadScore: 65, urgencyScore: 55, isStormLead: false, estimatedRevenue: 5200, source: 'web', assignedRep: { firstName: 'Jake', lastName: 'Thibodaux' }, createdAt: '2026-04-11' },
-  { id: '12', firstName: 'Monique', lastName: 'Robichaux', email: 'mrobichaux@cox.net', phone: '(225) 555-5002', address: '4319 Sullivan Rd', city: 'Central', zip: '70818', parish: 'East Baton Rouge', status: 'PAID', leadScore: 88, urgencyScore: 80, isStormLead: false, estimatedRevenue: 10400, source: 'referral', assignedRep: { firstName: 'Danielle', lastName: 'Arceneaux' }, createdAt: '2026-03-01' },
-];
-
 export function LeadsPage() {
   const navigate = useNavigate();
   const user = useAuthStore((s) => s.user);
@@ -97,25 +81,32 @@ export function LeadsPage() {
   const [page, setPage] = useState(1);
   const [showFilters, setShowFilters] = useState(false);
 
-  // Filter leads from demo data
-  const filtered = DEMO_LEADS.filter((l) => {
-    if (search && !`${l.firstName} ${l.lastName} ${l.email} ${l.phone} ${l.address}`.toLowerCase().includes(search.toLowerCase())) return false;
-    if (statusFilter && l.status !== statusFilter) return false;
-    if (parishFilter && l.parish !== parishFilter) return false;
-    if (stormFilter && !l.isStormLead) return false;
-    return true;
-  }).sort((a, b) => {
-    const aVal = a[sortBy] ?? 0;
-    const bVal = b[sortBy] ?? 0;
-    return sortDir === 'desc' ? (bVal as number) - (aVal as number) : (aVal as number) - (bVal as number);
+  // Real-time lead list from server — all filters passed as query params
+  const { data: leadsResp, isLoading, isFetching } = useQuery({
+    queryKey: ['leads', { search, statusFilter, parishFilter, stormFilter, sortBy, sortDir, page }],
+    queryFn: () => api.leads.list({
+      search: search || undefined,
+      status: statusFilter || undefined,
+      parish: parishFilter || undefined,
+      isStormLead: stormFilter || undefined,
+      sortBy,
+      sortDir,
+      page,
+      limit: 50,
+    }),
+    placeholderData: (prev) => prev,
+    staleTime: 30_000,
   });
 
+  const leads: any[] = leadsResp?.data || [];
+  const meta = leadsResp?.meta || { total: 0 };
+
+  const filtered = leads; // server-side filtered
   const toggleSort = (col: typeof sortBy) => {
     if (sortBy === col) setSortDir(d => d === 'desc' ? 'asc' : 'desc');
     else { setSortBy(col); setSortDir('desc'); }
   };
-
-  const stormCount = DEMO_LEADS.filter(l => l.isStormLead).length;
+  const stormCount = meta.total; // shown in storm-mode badge
 
   return (
     <div className="p-6 space-y-4 page-transition">
@@ -124,7 +115,8 @@ export function LeadsPage() {
         <div>
           <h1 className="text-xl font-bold text-white">All Leads</h1>
           <p className="text-slate-500 text-sm mt-0.5">
-            {filtered.length} leads · {DEMO_LEADS.filter(l => !['SOLD','LOST','PAID'].includes(l.status)).length} active
+            {meta.total.toLocaleString()} leads
+            {isFetching && <span className="ml-2 text-brand-400 text-xs">Refreshing…</span>}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -280,13 +272,13 @@ export function LeadsPage() {
 
                 <td>
                   <span className="text-sm font-semibold text-slate-200">
-                    ${lead.estimatedRevenue.toLocaleString()}
+                    ${(lead.estimatedValue || lead.estimatedRevenue || 0).toLocaleString()}
                   </span>
                 </td>
 
                 <td>
                   <span className="text-xs text-slate-400">
-                    {lead.assignedRep.firstName} {lead.assignedRep.lastName[0]}.
+                    {lead.assignedRep ? `${lead.assignedRep.firstName} ${lead.assignedRep.lastName[0]}.` : '—'}
                   </span>
                 </td>
 
@@ -307,7 +299,16 @@ export function LeadsPage() {
           </tbody>
         </table>
 
-        {filtered.length === 0 && (
+        {isLoading && (
+          <tbody>{[...Array(6)].map((_, i) => (
+            <tr key={i}>{[...Array(8)].map((_, j) => (
+              <td key={j} className="px-4 py-3">
+                <div className="h-4 bg-slate-800 rounded animate-pulse" style={{ width: `${60 + j * 10}%` }} />
+              </td>
+            ))}</tr>
+          ))}</tbody>
+        )}
+        {!isLoading && filtered.length === 0 && (
           <div className="py-12 text-center">
             <p className="text-slate-500">No leads match your filters.</p>
             <button onClick={() => { setSearch(''); setStatusFilter(''); setParishFilter(''); setStormFilter(false); }} className="btn-ghost btn-sm mt-3">
