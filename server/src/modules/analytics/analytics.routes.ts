@@ -39,4 +39,17 @@ router.get('/funnel', auth.repOrAbove, async (req: Request, res: Response) => {
   res.json({ success: true, data });
 });
 
+router.get('/commissions', auth.manager, async (req: Request, res: Response) => {
+  const user = (req as AuthenticatedRequest).user;
+  const data = await analyticsService.getCommissions(user.organizationId);
+  res.json({ success: true, data });
+});
+
+router.get('/installed-leads', auth.repOrAbove, async (req: Request, res: Response) => {
+  const user = (req as AuthenticatedRequest).user;
+  const limit = parseInt(req.query.limit as string) || 60;
+  const data = await analyticsService.getInstalledLeads(user.organizationId, limit);
+  res.json({ success: true, data });
+});
+
 export { router as analyticsRouter };

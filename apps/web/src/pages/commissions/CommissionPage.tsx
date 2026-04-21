@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
+import { useQuery } from '@tanstack/react-query';
 import {
   BanknotesIcon, CheckCircleIcon, ClockIcon, CurrencyDollarIcon,
   PencilIcon, ArrowTrendingUpIcon, UserGroupIcon, ChevronDownIcon,
@@ -8,6 +9,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { FireIcon, TrophyIcon } from '@heroicons/react/24/solid';
 import clsx from 'clsx';
+import { api } from '../../api/client';
 
 // ─── Types ────────────────────────────────────────────────
 interface CommissionTier {
@@ -44,36 +46,6 @@ const DEFAULT_TIERS: CommissionTier[] = [
   { minRevenue: 25001,  maxRevenue: 50000,  rate: 8,   label: 'Silver',  color: 'text-slate-300' },
   { minRevenue: 50001,  maxRevenue: 75000,  rate: 10,  label: 'Gold',    color: 'text-amber-400' },
   { minRevenue: 75001,  maxRevenue: null,   rate: 12,  label: 'Platinum', color: 'text-purple-400' },
-];
-
-const DEMO_REPS: Rep[] = [
-  {
-    id: 'r1', name: 'Jake Thibodaux', avatar: 'JT',
-    mtdRevenue: 42600, ytdRevenue: 89400, openPipeline: 31200,
-    deals: [
-      { id: 'd1', customer: 'Michael Trosclair', amount: 22400, closedAt: 'Apr 15', repId: 'r1', status: 'PENDING', series: 'Series 4000' },
-      { id: 'd2', customer: 'James Hebert', amount: 11600, closedAt: 'Apr 10', repId: 'r1', status: 'PAID', series: 'Series 6000' },
-      { id: 'd3', customer: 'Robert Comeaux', amount: 8600, closedAt: 'Apr 8', repId: 'r1', status: 'PAID', series: 'Series 3000' },
-      { id: 'd4', customer: 'Patricia Landry (projected)', amount: 9200, closedAt: 'Projected', repId: 'r1', status: 'PROJECTED', series: 'Series 4000' },
-    ],
-  },
-  {
-    id: 'r2', name: 'Danielle Arceneaux', avatar: 'DA',
-    mtdRevenue: 31200, ytdRevenue: 67200, openPipeline: 22800,
-    deals: [
-      { id: 'd5', customer: 'Angela Mouton', amount: 9800, closedAt: 'Apr 14', repId: 'r2', status: 'PENDING', series: 'Series 3000' },
-      { id: 'd6', customer: 'Karen Guidry', amount: 12150, closedAt: 'Apr 9', repId: 'r2', status: 'PAID', series: 'Series 6000' },
-      { id: 'd7', customer: 'Carol Chauvin (projected)', amount: 7400, closedAt: 'Projected', repId: 'r2', status: 'PROJECTED', series: 'Series 4000' },
-    ],
-  },
-  {
-    id: 'r3', name: 'Chad Melancon', avatar: 'CM',
-    mtdRevenue: 18800, ytdRevenue: 28800, openPipeline: 14400,
-    deals: [
-      { id: 'd8', customer: 'Paul Guidry', amount: 10800, closedAt: 'Apr 12', repId: 'r3', status: 'PAID', series: 'Series 4000' },
-      { id: 'd9', customer: 'Linda Arceneaux (projected)', amount: 8000, closedAt: 'Projected', repId: 'r3', status: 'PROJECTED', series: 'Series 3000' },
-    ],
-  },
 ];
 
 function calcCommission(revenue: number, tiers: CommissionTier[]): { earned: number; tier: CommissionTier } {
@@ -166,10 +138,25 @@ export function CommissionPage() {
   const [editingTiers, setEditingTiers] = useState(false);
   const [draftTiers, setDraftTiers] = useState<CommissionTier[]>(DEFAULT_TIERS);
 
-  const totalEarned = DEMO_REPS.reduce((s, r) => s + calcCommission(r.mtdRevenue, tiers).earned, 0);
-  const totalPipeline = DEMO_REPS.reduce((s, r) => s + r.openPipeline, 0);
+  const { data: repsData, isLoading } = useQuery({
+    queryKey: ['commissions'],
+    queryFn: () => api.analytics.commissions().then((r: any) => r.data || []),
+    staleTime: 60_000,
+  });
+
+  const REPS: Rep[] = repsData || [];
+
+  const totalEarned   = REPS.reduce((s, r) => s + calcCommission(r.mtdRevenue, tiers).earned, 0);
+  const totalPipeline = REPS.reduce((s, r) => s + r.openPipeline, 0);
+  const topEarner     = [...REPS].sort((a, b) => b.mtdRevenue - a.mtdRevenue)[0]?.name.split(' ')[0] || '—';
 
   const saveTiers = () => { setTiers(draftTiers); setEditingTiers(false); toast.success('Commission tiers updated!'); };
+
+  if (isLoading) return (
+    <div className="p-6 space-y-3">
+      {[...Array(3)].map((_, i) => <div key={i} className="h-40 bg-slate-800 rounded-xl animate-pulse" />)}
+    </div>
+  );
 
   return (
     <div className="p-6 space-y-5 page-transition">
@@ -193,7 +180,7 @@ export function CommissionPage() {
         {[
           { label: 'Team Commissions MTD', value: `$${totalEarned.toLocaleString('en', { maximumFractionDigits: 0 })}`, color: 'text-emerald-400' },
           { label: 'Open Pipeline', value: `$${(totalPipeline / 1000).toFixed(0)}K`, color: 'text-brand-400' },
-          { label: 'Top Earner', value: DEMO_REPS.sort((a, b) => b.mtdRevenue - a.mtdRevenue)[0].name.split(' ')[0], color: 'text-amber-400' },
+          { label: 'Top Earner', value: topEarner, color: 'text-amber-400' },
           { label: 'Current Avg Tier', value: `${(tiers[1].rate + tiers[2].rate) / 2}%`, color: 'text-purple-400' },
         ].map(s => (
           <div key={s.label} className="card p-4">
@@ -247,11 +234,15 @@ export function CommissionPage() {
       </div>
 
       {/* Rep cards */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        {DEMO_REPS.sort((a, b) => b.mtdRevenue - a.mtdRevenue).map(r => (
-          <RepCard key={r.id} rep={r} tiers={tiers} />
-        ))}
-      </div>
+      {REPS.length === 0 ? (
+        <div className="card p-8 text-center text-slate-500 text-sm">No sales reps with closed deals this month yet.</div>
+      ) : (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          {[...REPS].sort((a, b) => b.mtdRevenue - a.mtdRevenue).map(r => (
+            <RepCard key={r.id} rep={r} tiers={tiers} />
+          ))}
+        </div>
+      )}
     </div>
   );
 }

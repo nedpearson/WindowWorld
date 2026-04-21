@@ -222,6 +222,80 @@ export class AnalyticsService {
       pct: Math.round((s.count / total) * 100),
     }));
   }
+
+  async getCommissions(organizationId: string) {
+    const now = new Date();
+    const mtdStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const ytdStart = new Date(now.getFullYear(), 0, 1);
+    const CLOSED = ['VERBAL_COMMIT', 'ORDER_SUBMITTED', 'IN_PRODUCTION', 'INSTALLED', 'SOLD'] as any[];
+    const ACTIVE  = ['NEW_LEAD', 'ATTEMPTING_CONTACT', 'CONTACTED', 'QUALIFIED', 'APPOINTMENT_SET',
+                     'MEASURING_COMPLETE', 'INSPECTION_COMPLETE', 'PROPOSAL_SENT', 'FOLLOW_UP'] as any[];
+
+    const reps = await prisma.user.findMany({
+      where: { organizationId, role: { in: ['SALES_REP', 'SALES_MANAGER'] as any[] } },
+      select: { id: true, firstName: true, lastName: true },
+    });
+
+    const repData = await Promise.all(reps.map(async (rep) => {
+      const [mtdLeads, ytdLeads, pipelineLeads] = await Promise.all([
+        prisma.lead.findMany({
+          where: { assignedRepId: rep.id, status: { in: CLOSED }, updatedAt: { gte: mtdStart } } as any,
+          include: { quote: { select: { grandTotal: true, total: true } } } as any,
+          orderBy: { updatedAt: 'desc' }, take: 10,
+        }),
+        prisma.lead.findMany({
+          where: { assignedRepId: rep.id, status: { in: CLOSED }, updatedAt: { gte: ytdStart } } as any,
+          select: { estimatedValue: true, estimatedRevenue: true, quote: { select: { grandTotal: true, total: true } } } as any,
+        }),
+        prisma.lead.findMany({
+          where: { assignedRepId: rep.id, status: { in: ACTIVE } } as any,
+          select: { estimatedValue: true, estimatedRevenue: true } as any,
+        }),
+      ]);
+
+      const val = (l: any) => Number((l as any).quote?.grandTotal || (l as any).quote?.total
+        || (l as any).estimatedValue || (l as any).estimatedRevenue || 0);
+
+      const mtdRevenue   = mtdLeads.reduce((s: number, l: any) => s + val(l), 0);
+      const ytdRevenue   = ytdLeads.reduce((s: number, l: any) => s + val(l), 0);
+      const openPipeline = pipelineLeads.reduce((s: number, l: any) => s + val(l), 0);
+
+      const deals = (mtdLeads as any[]).map((l: any) => ({
+        id: l.id,
+        customer: `${l.firstName || ''} ${l.lastName || ''}`.trim() || 'Lead',
+        amount: val(l),
+        closedAt: new Date(l.updatedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+        repId: rep.id,
+        status: ['INSTALLED', 'SOLD'].includes(l.status) ? 'PAID' : 'PENDING',
+        series: (l as any).quote?.series || 'WindowWorld',
+      }));
+
+      return {
+        id: rep.id,
+        name: `${rep.firstName} ${rep.lastName}`,
+        avatar: `${rep.firstName[0]}${rep.lastName[0]}`,
+        mtdRevenue:   Math.round(mtdRevenue   * 100) / 100,
+        ytdRevenue:   Math.round(ytdRevenue   * 100) / 100,
+        openPipeline: Math.round(openPipeline  * 100) / 100,
+        deals,
+      };
+    }));
+
+    return repData.sort((a, b) => b.mtdRevenue - a.mtdRevenue);
+  }
+
+  async getInstalledLeads(organizationId: string, limit = 60) {
+    return prisma.lead.findMany({
+      where: { organizationId, status: { in: ['INSTALLED', 'SOLD'] as any[] } } as any,
+      include: {
+        assignedRep: { select: { id: true, firstName: true, lastName: true } },
+        contacts: { where: { isPrimary: true }, take: 1 },
+        quote: { select: { grandTotal: true, total: true, totalWindows: true } } as any,
+      } as any,
+      orderBy: { updatedAt: 'desc' },
+      take: limit,
+    });
+  }
 }
 
 export const analyticsService = new AnalyticsService();

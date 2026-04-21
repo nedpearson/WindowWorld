@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
+import { useQuery } from '@tanstack/react-query';
 import {
   StarIcon, ChatBubbleLeftIcon, PhoneIcon, EnvelopeIcon,
   CheckCircleIcon, ClockIcon, MapPinIcon,
@@ -9,6 +10,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { StarIcon as StarSolid } from '@heroicons/react/24/solid';
 import clsx from 'clsx';
+import { api } from '../../api/client';
 
 // ─── Types ────────────────────────────────────────────────
 type ReviewStatus = 'PENDING' | 'SENT' | 'RECEIVED' | 'DECLINED';
@@ -35,15 +37,37 @@ interface CompletedJob {
   daysPostInstall: number;
 }
 
-// ─── Demo data ────────────────────────────────────────────
-const DEMO_JOBS: CompletedJob[] = [
-  { id: 'j1', leadId: 'prev1', customerName: 'Bryan Mouton', phone: '(225) 555-8823', email: 'bryan.m@gmail.com', address: '341 Old Perkins Rd', city: 'Baton Rouge', completedDate: '2026-04-10', series: 'Series 3000', windowCount: 6, contractValue: 7200, repName: 'Jake Thibodaux', reviewStatus: 'RECEIVED', reviewRating: 5, referralStatus: 'PROVIDED', referralCount: 1, referralValue: 9400, daysPostInstall: 10 },
-  { id: 'j2', leadId: 'prev2', customerName: 'Sarah Thibodaux', phone: '(225) 555-3341', email: 'sarah.t@outlook.com', address: '1120 Millwood Dr', city: 'Prairieville', completedDate: '2026-04-08', series: 'Series 4000', windowCount: 8, contractValue: 11200, repName: 'Danielle Arceneaux', reviewStatus: 'SENT', referralStatus: 'ASKED', daysPostInstall: 12 },
-  { id: 'j3', leadId: 'prev3', customerName: 'Paul Guidry', phone: '(225) 555-7712', address: '5521 Range Ave', city: 'Denham Springs', completedDate: '2026-04-05', series: 'Series 6000', windowCount: 12, contractValue: 18900, repName: 'Jake Thibodaux', reviewStatus: 'PENDING', referralStatus: 'NOT_ASKED', daysPostInstall: 15 },
-  { id: 'j4', leadId: 'prev4', customerName: 'Kathy Bergeron', phone: '(225) 555-4490', email: 'kbergeron@bellsouth.net', address: '8872 Highland Rd', city: 'Baton Rouge', completedDate: '2026-03-28', series: 'Series 4000', windowCount: 10, contractValue: 14200, repName: 'Chad Melancon', reviewStatus: 'RECEIVED', reviewRating: 4, referralStatus: 'ASKED', daysPostInstall: 23 },
-  { id: 'j5', leadId: 'prev5', customerName: 'Douglas Fontenot', phone: '(225) 555-2287', address: '7 Pin Oak Ct', city: 'Zachary', completedDate: '2026-03-20', series: 'Series 3000', windowCount: 9, contractValue: 10800, repName: 'Chad Melancon', reviewStatus: 'DECLINED', referralStatus: 'ASKED', daysPostInstall: 31 },
-  { id: 'j6', leadId: 'prev6', customerName: 'Cynthia Arceneaux', phone: '(225) 555-5566', email: 'cynthia_arc@icloud.com', address: '2241 Sherwood Forest', city: 'Baton Rouge', completedDate: '2026-04-15', series: 'Series 4000', windowCount: 7, contractValue: 9800, repName: 'Danielle Arceneaux', reviewStatus: 'PENDING', referralStatus: 'NOT_ASKED', daysPostInstall: 5 },
-];
+
+function mapLead(l: any, localStates: Record<string, Partial<CompletedJob>>): CompletedJob {
+  const primary = l.contacts?.[0];
+  const repName = l.assignedRep ? `${l.assignedRep.firstName} ${l.assignedRep.lastName}` : 'Unassigned';
+  const days = Math.max(0, Math.floor((Date.now() - new Date(l.updatedAt || l.createdAt).getTime()) / 86_400_000));
+  const contractValue = Number(l.quote?.grandTotal || l.quote?.total || l.estimatedValue || l.estimatedRevenue || 0);
+  return {
+    id:             l.id,
+    leadId:         l.id,
+    customerName:   primary ? `${primary.firstName} ${primary.lastName}` : `${l.firstName || ''} ${l.lastName || ''}`.trim() || 'Customer',
+    phone:          primary?.phone || l.phone || '',
+    email:          primary?.email || l.email,
+    address:        l.address || '',
+    city:           l.city || '',
+    completedDate:  (l.updatedAt || l.createdAt || '').slice(0, 10),
+    series:         l.quote?.series || l.productInterest || 'Windows',
+    windowCount:    l.quote?.totalWindows || l.openingCount || 0,
+    contractValue,
+    repName,
+    daysPostInstall: days,
+    // local-override fields
+    reviewStatus:   localStates[l.id]?.reviewStatus   ?? 'PENDING',
+    reviewRating:   localStates[l.id]?.reviewRating,
+    referralStatus: localStates[l.id]?.referralStatus ?? 'NOT_ASKED',
+    referralCount:  localStates[l.id]?.referralCount,
+    referralValue:  localStates[l.id]?.referralValue,
+  };
+}
+
+
+
 
 const REVIEW_STATUS: Record<ReviewStatus, { label: string; badge: string }> = {
   PENDING:  { label: 'Not Yet Sent',   badge: 'bg-slate-700 text-slate-400 border-slate-600' },
@@ -179,25 +203,41 @@ function JobRow({ job, onRequestReview, onRequestReferral }: {
   );
 }
 
-// ─── Page ──────────────────────────────────────────────────
+// ─── Page ──────────────────────────────────────────
 export function PostInstallPage() {
-  const [jobs, setJobs] = useState<CompletedJob[]>(DEMO_JOBS);
+  // localStates: tracks review/referral actions on top of the server-fetched list
+  const [localStates, setLocalStates] = useState<Record<string, Partial<CompletedJob>>>({});
   const [modalJob, setModalJob] = useState<CompletedJob | null>(null);
   const [modalType, setModalType] = useState<'REVIEW' | 'REFERRAL'>('REVIEW');
   const [filterRep, setFilterRep] = useState('');
 
+  const { data: rawLeads, isLoading } = useQuery({
+    queryKey: ['installed-leads'],
+    queryFn: () => api.analytics.installedLeads(80).then((r: any) => r.data || []),
+    staleTime: 120_000,
+  });
+
+  const jobs: CompletedJob[] = (rawLeads || []).map((l: any) => mapLead(l, localStates));
+
   const reps = Array.from(new Set(jobs.map(j => j.repName)));
 
   const handleSent = (id: string, type: 'REVIEW' | 'REFERRAL') => {
-    setJobs(prev => prev.map(j => {
-      if (j.id !== id) return j;
-      return type === 'REVIEW'
-        ? { ...j, reviewStatus: 'SENT' as ReviewStatus }
-        : { ...j, referralStatus: 'ASKED' as ReferralStatus };
+    setLocalStates(prev => ({
+      ...prev,
+      [id]: {
+        ...prev[id],
+        ...(type === 'REVIEW' ? { reviewStatus: 'SENT' as ReviewStatus } : { referralStatus: 'ASKED' as ReferralStatus }),
+      },
     }));
   };
 
   const filtered = filterRep ? jobs.filter(j => j.repName === filterRep) : jobs;
+
+  if (isLoading) return (
+    <div className="p-6 space-y-3">
+      {[...Array(4)].map((_, i) => <div key={i} className="h-16 bg-slate-800 rounded-xl animate-pulse" />)}
+    </div>
+  );
 
   const reviewsReceived = jobs.filter(j => j.reviewStatus === 'RECEIVED').length;
   const avgRating = jobs.filter(j => j.reviewRating).reduce((s, j) => s + (j.reviewRating || 0), 0) / (jobs.filter(j => j.reviewRating).length || 1);
