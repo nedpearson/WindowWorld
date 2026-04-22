@@ -253,13 +253,19 @@ export const api = {
     revenue: (params?: Record<string, any>) => get('/analytics/revenue', { params }),
     map: (params?: Record<string, any>) => get('/analytics/map', { params }),
     weather: (params?: Record<string, any>) => get('/analytics/weather-correlation', { params }),
+    summary: (days = 30) => get<any>('/analytics/summary', { params: { days } }),
+    sources: (days = 30) => get<any>('/analytics/sources', { params: { days } }),
+    revenueTrend: (days = 90) => get<any>('/analytics/revenue-trend', { params: { days } }),
+    funnel: (days = 30) => get<any>('/analytics/funnel', { params: { days } }),
+    commissions: () => get<any>('/analytics/commissions'),
+    installedLeads: (limit = 60) => get<any>('/analytics/installed-leads', { params: { limit } }),
   },
 
   // Notifications
   notifications: {
-    list: (params?: Record<string, any>) => get('/notifications', { params }),
+    list: (limit = 50) => get<any>('/notifications', { params: { limit } }),
     markRead: (id: string) => patch(`/notifications/${id}/read`),
-    markAllRead: () => patch('/notifications/read-all'),
+    markAllRead: () => post('/notifications/mark-all-read'),
   },
 
   // Campaigns
@@ -300,23 +306,7 @@ export const api = {
     getHealth: () => get('/admin/health'),
   },
 
-  // Analytics
-  analytics: {
-    summary: (days = 30) => get<any>('/analytics/summary', { params: { days } }),
-    repPerformance: (days = 30) => get<any>('/analytics/rep-performance', { params: { days } }),
-    sources: (days = 30) => get<any>('/analytics/sources', { params: { days } }),
-    revenueTrend: (days = 90) => get<any>('/analytics/revenue-trend', { params: { days } }),
-    funnel: (days = 30) => get<any>('/analytics/funnel', { params: { days } }),
-    commissions: () => get<any>('/analytics/commissions'),
-    installedLeads: (limit = 60) => get<any>('/analytics/installed-leads', { params: { limit } }),
-  },
 
-  // Notifications
-  notifications: {
-    list: (limit = 50) => get<any>('/notifications', { params: { limit } }),
-    markRead: (id: string) => patch(`/notifications/${id}/read`),
-    markAllRead: () => post('/notifications/mark-all-read'),
-  },
 
   // Automations
   automations: {
