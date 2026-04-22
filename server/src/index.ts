@@ -121,20 +121,33 @@ app.use(helmet({
   crossOriginResourcePolicy: { policy: 'cross-origin' },
   // Google OAuth popup requires being able to postMessage back to us
   crossOriginOpenerPolicy: false,
-  contentSecurityPolicy: process.env.NODE_ENV === 'production' ? {
-    directives: {
-      defaultSrc: ["'self'"],
-      scriptSrc: ["'self'", "'unsafe-inline'", 'https://accounts.google.com'],
-      styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
-      fontSrc: ["'self'", 'https://fonts.gstatic.com'],
-      imgSrc: ["'self'", 'data:', 'https:'],
-      connectSrc: ["'self'", 'https://api.openai.com', 'https://identitytoolkit.googleapis.com', 'wss:', 'ws:'],
-      frameSrc: ["'self'", 'https://accounts.google.com'],
-      objectSrc: ["'none'"],
+  contentSecurityPolicy: {
+    directives: process.env.NODE_ENV === 'production' ? {
+      defaultSrc:              ["'self'"],
+      // Remove 'unsafe-inline' — React app is bundled; no inline scripts needed
+      // Google OAuth uses a popup/redirect flow, not inline scripts
+      scriptSrc:               ["'self'", 'https://accounts.google.com'],
+      styleSrc:                ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
+      fontSrc:                 ["'self'", 'https://fonts.gstatic.com'],
+      imgSrc:                  ["'self'", 'data:', 'blob:', 'https:'],
+      connectSrc:              ["'self'", 'https://api.openai.com', 'https://identitytoolkit.googleapis.com', 'wss:', 'ws:'],
+      frameSrc:                ["'self'", 'https://accounts.google.com'],
+      objectSrc:               ["'none'"],
+      baseUri:                 ["'self'"],
+      formAction:              ["'self'"],
       upgradeInsecureRequests: [],
+    } : {
+      // Dev: permissive CSP — allows Vite HMR + devtools, but CSP is still present
+      // (CodeQL flags contentSecurityPolicy: false as a high severity issue)
+      defaultSrc: ["'self'"],
+      scriptSrc:  ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
+      styleSrc:   ["'self'", "'unsafe-inline'"],
+      connectSrc: ["'self'", 'ws:', 'wss:', 'http:', 'https:'],
+      imgSrc:     ["'self'", 'data:', 'blob:'],
     },
-  } : false, // Disabled in dev to avoid issues with Vite hot reload
+  },
 }));
+
 app.use(cors({
   origin: CORS_ORIGINS,
   credentials: true,
