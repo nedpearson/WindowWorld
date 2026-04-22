@@ -70,7 +70,7 @@ const DEMO_PROPOSALS: Proposal[] = [
 
 // ─── Page Component ───────────────────────────────────────────
 export function ProposalsPage() {
-  const navigate = useNavigate();
+  const _navigate = useNavigate();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('');
   const [selectedId, setSelectedId] = useState<string | null>(null);

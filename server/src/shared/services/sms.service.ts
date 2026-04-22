@@ -10,7 +10,7 @@ const client = isTwilioEnabled
 export class SmsService {
   async sendSms(to: string, body: string): Promise<boolean> {
     // Sanitize user-supplied phone number and body before logging (CodeQL: js/log-injection)
-    const safeTo = sanitizeForLog(to);
+    const safeTo: string = String(sanitizeForLog(to));
     if (!isTwilioEnabled || !client) {
       logger.info(`[SMS SIMULATION] To: ${safeTo} | Message: [${body.length} chars]`);
       return true; // Simulate success in dev/test if lacking keys

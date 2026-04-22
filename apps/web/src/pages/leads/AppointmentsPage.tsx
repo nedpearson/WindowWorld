@@ -294,8 +294,7 @@ function AptDetailPanel({ apt, onClose, onEdit }: {
     'installation': 'Installation Check' }[apt.type] || apt.type;
 
   const leadFullName = apt.lead ? `${apt.lead.firstName} ${apt.lead.lastName}` : 'Unknown Lead';
-  const repFullName = apt.createdBy ? `${apt.createdBy.firstName} ${apt.createdBy.lastName}` : 'Unassigned';
-
+  
   return (
     <motion.div
       initial={{ opacity: 0, x: 20 }}

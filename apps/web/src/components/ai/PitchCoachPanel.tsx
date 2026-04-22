@@ -46,7 +46,7 @@ function Section({ label, children, defaultOpen = false }: { label: string; chil
 // ─── AI Lead Summary ──────────────────────────────────────────
 function LeadSummaryWidget({ leadId }: { leadId: string }) {
   const scoreLead = useScoreLead();
-  const { data, isLoading, error, refetch } = useLeadSummary(leadId, true);
+  const { data, isLoading } = useLeadSummary(leadId, true);
 
   const handleRescore = async () => {
     try {

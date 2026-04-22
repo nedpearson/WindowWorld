@@ -142,7 +142,7 @@ export function TerritoryMapPage() {
   const [stormOnly, setStormOnly] = useState(false);
   const [view, setView] = useState<'map' | 'list'>('map');
   const [leads, setLeads] = useState<MapLead[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [_loading, setLoading] = useState(true);
 
   useEffect(() => {
     (apiClient as any).get('/leads/map', { params: { limit: 200 } })

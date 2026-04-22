@@ -49,7 +49,7 @@ const COLUMN_MAP = [
 
 export function CsvImportPage() {
   const [step, setStep] = useState<'upload' | 'preview' | 'done'>('upload');
-  const [fileName, setFileName] = useState('');
+  const [_fileName, setFileName] = useState('');
   const [rows, setRows] = useState<CsvRow[]>([]);
   const [filter, setFilter] = useState<'all' | 'valid' | 'duplicate' | 'error'>('all');
   const [importing, setImporting] = useState(false);

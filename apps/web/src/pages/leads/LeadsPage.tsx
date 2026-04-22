@@ -66,7 +66,7 @@ function leadAge(createdAt: string): { days: number; badge: string; color: strin
 
 export function LeadsPage() {
   const navigate = useNavigate();
-  const user = useAuthStore((s) => s.user);
+  const _user = useAuthStore((s) => s.user);
   const stormMode = useAppStore((s) => s.stormModeActive);
 
   const [search, setSearch] = useState('');
@@ -76,7 +76,7 @@ export function LeadsPage() {
   const [sortBy, setSortBy] = useState<'leadScore' | 'urgencyScore' | 'createdAt' | 'estimatedRevenue'>('leadScore');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
   const [page, setPage] = useState(1);
-  const [showFilters, setShowFilters] = useState(false);
+  const [_showFilters, setShowFilters] = useState(false);
 
   // Real-time lead list from server — all filters passed as query params
   const { data: leadsResp, isLoading, isFetching } = useQuery({

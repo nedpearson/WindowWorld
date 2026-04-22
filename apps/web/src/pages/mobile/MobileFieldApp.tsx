@@ -297,7 +297,7 @@ function CaptureTab({ enqueue }: { enqueue: (type: any, payload: any) => void })
                 {/* cap.label is user text, rendered as attribute value only — not injected as HTML */}
                 <img src={cap.url} alt={String(cap.label).replace(/[<>"'&]/g, '')} className="w-full h-full object-cover" />
                 <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-2">
-                  <div className="text-[11px] text-white font-medium truncate">{cap.label}</div>
+                  <div className="text-[11px] text-white font-medium truncate">{String(cap.label ?? '')}</div>
                 </div>
                 <div className={clsx(
                   'absolute top-2 right-2 w-5 h-5 rounded-full flex items-center justify-center shadow',
@@ -737,7 +737,7 @@ function NotesTab({ enqueue }: { enqueue: (type: any, payload: any) => void }) {
 
 // ─── Main Component ───────────────────────────────────────────
 export function MobileFieldApp() {
-  const navigate = useNavigate();
+  const _navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<FieldTab>('route');
   const [activeStop, setActiveStop] = useState<string | null>(null);
   const { enqueue, pendingCount, isSyncing, syncNow, isOnline, failedCount } = useOfflineQueue();

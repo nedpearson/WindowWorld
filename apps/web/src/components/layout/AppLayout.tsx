@@ -143,8 +143,8 @@ export function AppLayout() {
   const setFinancingMode = useAppStore((s) => s.setFinancingMode);
   const offlineMode = useAppStore((s) => s.offlineMode);
   const syncPending = useAppStore((s) => s.syncPending);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [_mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [_notificationsOpen, setNotificationsOpen] = useState(false);
   const [wsNotifications, setWsNotifications] = useState<any[]>([]);
   const [searchOpen, setSearchOpen] = useState(false);
   const queryClient = useQueryClient();

@@ -357,7 +357,7 @@ function OrganizationTab() {
   const [dirty, setDirty] = useState(false);
 
   // Load real org data on mount
-  const { isLoading: orgLoading } = useQuery({
+  const { isLoading: _orgLoading } = useQuery({
     queryKey: ['org-settings'],
     queryFn: () => apiClient.teams.me(),
     enabled: isAdmin,

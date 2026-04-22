@@ -10,7 +10,6 @@ import {
   ChevronDownIcon, PlusIcon,
   ArrowUpRightIcon, CalculatorIcon,
   ClipboardDocumentCheckIcon, LightBulbIcon } from '@heroicons/react/24/outline';
-import { BoltIcon as BoltSolid } from '@heroicons/react/24/solid';
 import clsx from 'clsx';
 import { PitchCoachPanel } from '../../components/ai/PitchCoachPanel';
 import { SmsTemplateDrawer } from '../../components/sms/SmsTemplateDrawer';

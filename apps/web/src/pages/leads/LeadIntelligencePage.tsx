@@ -48,7 +48,7 @@ function ScoreRing({ score, size = 48 }: { score: number; size?: number }) {
 export function LeadIntelligencePage() {
   const [category, setCategory] = useState('all');
   const [leads, setLeads] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [_loading, setLoading] = useState(true);
 
   useEffect(() => {
     apiClient.leads.list({ sortBy: 'aiScore', sortDir: 'desc', limit: 50 })
@@ -83,7 +83,7 @@ export function LeadIntelligencePage() {
   });
 
   const totalPotential = filtered.reduce((sum, l) => sum + l.est, 0);
-  const avgScore = filtered.length ? Math.round(filtered.reduce((s, l) => s + l.score, 0) / filtered.length) : 0;
+  // avgScore removed (unused)
 
   return (
     <div className="p-6 space-y-5 page-transition">
