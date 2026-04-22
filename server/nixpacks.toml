@@ -1,5 +1,7 @@
 [phases.setup]
-nixPkgs = ["nodejs_20"]
+# Node 22 LTS satisfies Vite 7's requirement: '^20.19.0 || >=22.12.0'
+# Node 20.18.x on Railway does NOT satisfy this — use 22 instead
+nixPkgs = ["nodejs_22"]
 
 [phases.install]
 # Single npm install at monorepo root installs all workspace packages
