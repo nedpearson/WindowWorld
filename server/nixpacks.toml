@@ -1,24 +1,20 @@
 [phases.setup]
-# Node 22 LTS satisfies Vite 7's requirement: '^20.19.0 || >=22.12.0'
-# Node 20.18.x on Railway does NOT satisfy this — use 22 instead
+# Node 22 LTS — required by Prisma and for running node dist/index.js
 nixPkgs = ["nodejs_22"]
 
 [phases.install]
 # Single npm install at monorepo root installs all workspace packages
+# including server/node_modules (Prisma runtime, Express, etc.)
 cmds = [
   "npm install --legacy-peer-deps"
 ]
 
 [phases.build]
 cmds = [
-  # 1. Generate Prisma client (schema lives in server/prisma/)
-  "cd server && npx prisma generate",
-  # 2. Compile TypeScript server to server/dist/
-  "cd server && npx tsc -p tsconfig.json",
-  # 3. Build the React frontend to apps/web/dist/
-  "cd apps/web && npm run build",
-  # 4. Copy built SPA into server/public/ so Express serves it
-  "mkdir -p server/public && cp -r apps/web/dist/. server/public/"
+  # Prisma client must be generated at deploy time (OS-specific native binaries).
+  # server/dist and server/public are pre-built and committed to git — no tsc or
+  # vite build needed here (eliminates build cache skipping issues on Railway).
+  "cd server && npx prisma generate"
 ]
 
 [start]
