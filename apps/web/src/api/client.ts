@@ -346,5 +346,4 @@ export const api = {
 // This allows: import apiClient from './client'; apiClient.leads.list()
 Object.assign(apiClient, api);
 
-export { api };
 export default apiClient as typeof apiClient & typeof api;
