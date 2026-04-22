@@ -2,22 +2,22 @@
 nixPkgs = ["nodejs_20"]
 
 [phases.install]
-# Install server deps, then install web app deps
+# Single npm install at monorepo root installs all workspace packages
 cmds = [
-  "npm install",
-  "cd ../apps/web && npm install"
+  "npm install --legacy-peer-deps"
 ]
 
 [phases.build]
-# 1. Generate Prisma client
-# 2. Compile TypeScript server
-# 3. Build the React frontend
 cmds = [
-  "prisma generate",
-  "npx tsc -p tsconfig.json",
-  "cd ../apps/web && npm run build",
-  "cp -r ../apps/web/dist ./public"
+  # 1. Generate Prisma client (schema lives in server/prisma/)
+  "cd server && npx prisma generate",
+  # 2. Compile TypeScript server to server/dist/
+  "cd server && npx tsc -p tsconfig.json",
+  # 3. Build the React frontend to apps/web/dist/
+  "cd apps/web && npm run build",
+  # 4. Copy built SPA into server/public/ so Express serves it
+  "mkdir -p server/public && cp -r apps/web/dist/. server/public/"
 ]
 
 [start]
-cmd = "prisma db push --accept-data-loss && node dist/index.js"
+cmd = "cd server && npx prisma db push --accept-data-loss && node dist/index.js"
