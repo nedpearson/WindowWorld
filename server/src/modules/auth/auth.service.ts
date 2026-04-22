@@ -129,23 +129,37 @@ export class AuthService {
     };
   }
 
-  async googleLogin(idToken: string): Promise<LoginResult> {
+  async googleLogin(token: string): Promise<LoginResult> {
     if (!process.env.GOOGLE_CLIENT_ID) {
       throw new Error('Google SSO is not configured on the server');
     }
 
-    const ticket = await googleClient.verifyIdToken({
-      idToken,
-      audience: process.env.GOOGLE_CLIENT_ID,
+    // Verify the access_token via Google's userinfo endpoint
+    // (useGoogleLogin with flow='implicit' returns an access_token, not an id_token)
+    const userInfoRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+      headers: { Authorization: `Bearer ${token}` },
     });
-    
-    const payload = ticket.getPayload();
-    if (!payload || !payload.email) {
-      throw new UnauthorizedError('Invalid Google Token payload');
+
+    if (!userInfoRes.ok) {
+      throw new UnauthorizedError('Invalid Google token — could not fetch user info');
     }
 
-    const email = payload.email.toLowerCase().trim();
-    const googleId = payload.sub;
+    const userInfo: {
+      sub: string;
+      email: string;
+      email_verified: boolean;
+      given_name?: string;
+      family_name?: string;
+      picture?: string;
+      name?: string;
+    } = await userInfoRes.json() as any;
+
+    if (!userInfo.email || !userInfo.email_verified) {
+      throw new UnauthorizedError('Google account email not verified');
+    }
+
+    const email = userInfo.email.toLowerCase().trim();
+    const googleId = userInfo.sub;
 
     let user = await prisma.user.findFirst({
       where: {
@@ -179,11 +193,11 @@ export class AuthService {
           email,
           googleId,
           passwordHash: await bcrypt.hash(uuidv4(), 12),
-          firstName: payload.given_name || email.split('@')[0],
-          lastName: payload.family_name || 'User',
+          firstName: userInfo.given_name || email.split('@')[0],
+          lastName: userInfo.family_name || 'User',
           role: 'SUPER_ADMIN',
           organizationId: org.id,
-          avatarUrl: payload.picture ?? null,
+          avatarUrl: userInfo.picture ?? null,
           isActive: true,
         } as any,
       });
@@ -240,7 +254,7 @@ export class AuthService {
         lastName: user.lastName,
         role: user.role,
         organizationId: user.organizationId,
-        avatarUrl: user.avatarUrl || payload.picture || null, // Auto sync picture if missing
+        avatarUrl: user.avatarUrl || userInfo.picture || null, // Auto sync picture if missing
       },
       tokens,
     };

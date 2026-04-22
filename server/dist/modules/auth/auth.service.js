@@ -90,20 +90,24 @@ class AuthService {
             tokens,
         };
     }
-    async googleLogin(idToken) {
+    async googleLogin(token) {
         if (!process.env.GOOGLE_CLIENT_ID) {
             throw new Error('Google SSO is not configured on the server');
         }
-        const ticket = await googleClient.verifyIdToken({
-            idToken,
-            audience: process.env.GOOGLE_CLIENT_ID,
+        // Verify the access_token via Google's userinfo endpoint
+        // (useGoogleLogin with flow='implicit' returns an access_token, not an id_token)
+        const userInfoRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+            headers: { Authorization: `Bearer ${token}` },
         });
-        const payload = ticket.getPayload();
-        if (!payload || !payload.email) {
-            throw new errorHandler_1.UnauthorizedError('Invalid Google Token payload');
+        if (!userInfoRes.ok) {
+            throw new errorHandler_1.UnauthorizedError('Invalid Google token — could not fetch user info');
         }
-        const email = payload.email.toLowerCase().trim();
-        const googleId = payload.sub;
+        const userInfo = await userInfoRes.json();
+        if (!userInfo.email || !userInfo.email_verified) {
+            throw new errorHandler_1.UnauthorizedError('Google account email not verified');
+        }
+        const email = userInfo.email.toLowerCase().trim();
+        const googleId = userInfo.sub;
         let user = await prisma_1.prisma.user.findFirst({
             where: {
                 OR: [{ email }, { googleId }],
@@ -133,11 +137,11 @@ class AuthService {
                     email,
                     googleId,
                     passwordHash: await bcryptjs_1.default.hash((0, uuid_1.v4)(), 12),
-                    firstName: payload.given_name || email.split('@')[0],
-                    lastName: payload.family_name || 'User',
+                    firstName: userInfo.given_name || email.split('@')[0],
+                    lastName: userInfo.family_name || 'User',
                     role: 'SUPER_ADMIN',
                     organizationId: org.id,
-                    avatarUrl: payload.picture ?? null,
+                    avatarUrl: userInfo.picture ?? null,
                     isActive: true,
                 },
             });
@@ -185,7 +189,7 @@ class AuthService {
                 lastName: user.lastName,
                 role: user.role,
                 organizationId: user.organizationId,
-                avatarUrl: user.avatarUrl || payload.picture || null, // Auto sync picture if missing
+                avatarUrl: user.avatarUrl || userInfo.picture || null, // Auto sync picture if missing
             },
             tokens,
         };

@@ -25,7 +25,7 @@ export interface LoginResult {
 }
 export declare class AuthService {
     login(email: string, password: string): Promise<LoginResult>;
-    googleLogin(idToken: string): Promise<LoginResult>;
+    googleLogin(token: string): Promise<LoginResult>;
     refreshTokens(refreshToken: string): Promise<AuthTokens>;
     logout(refreshToken: string, userId: string): Promise<void>;
     logoutAll(userId: string): Promise<void>;
