@@ -1,4 +1,4 @@
-import { Router, Request, Response } from 'express';
+import { Router, Request, Response, NextFunction } from 'express';
 import multer from 'multer';
 import { auth, AuthenticatedRequest } from '../../shared/middleware/auth';
 import { documentsService } from './documents.service';
@@ -7,18 +7,24 @@ import { storageService } from '../../shared/services/storage.service';
 // ─── Multer memory storage for Cloud Upload ───
 const storage = multer.memoryStorage();
 
+const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'application/pdf'];
+
 const upload = multer({
   storage,
   limits: { fileSize: 30 * 1024 * 1024 }, // 30 MB
-  fileFilter: (req, file, cb) => {
-    const allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'application/pdf'];
-    cb(null, allowed.includes(file.mimetype));
+  fileFilter: (_req, file, cb) => {
+    if (ALLOWED_MIME_TYPES.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      // Explicit rejection with a typed MulterError (v2 compatible)
+      cb(new multer.MulterError('LIMIT_UNEXPECTED_FILE', file.fieldname));
+    }
   },
 });
 
 const router = Router();
 
-// GET /api/v1/documents â€” query by leadId/propertyId/openingId/inspectionId/type
+// GET /api/v1/documents – query by leadId/propertyId/openingId/inspectionId/type
 router.get('/', auth.repOrAbove, async (req: Request, res: Response) => {
   const data = await documentsService.list(req.query as any);
   res.json({ success: true, data });
@@ -30,8 +36,21 @@ router.get('/:id', auth.repOrAbove, async (req: Request, res: Response) => {
   res.json({ success: true, data });
 });
 
-// POST /api/v1/documents/upload â€” multipart form upload
-router.post('/upload', auth.repOrAbove, upload.single('file'), async (req: Request, res: Response) => {
+// POST /api/v1/documents/upload – multipart form upload
+router.post('/upload', auth.repOrAbove, (req: Request, res: Response, next: NextFunction) => {
+  upload.single('file')(req, res, (err) => {
+    if (err instanceof multer.MulterError) {
+      const status = err.code === 'LIMIT_FILE_SIZE' ? 413 : 415;
+      res.status(status).json({ success: false, error: { message: err.message, code: err.code } });
+      return;
+    }
+    if (err) {
+      next(err);
+      return;
+    }
+    next();
+  });
+}, async (req: Request, res: Response) => {
   const user = (req as AuthenticatedRequest).user;
   const file = req.file;
 
