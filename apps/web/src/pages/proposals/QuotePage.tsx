@@ -68,9 +68,9 @@ interface LineItem {
 export function QuotePage() {
   const { leadId } = useParams<{ leadId: string }>();
 
-  const [_lead, setLead] = useState(DEMO_LEAD);
+  const [, setLead] = useState(DEMO_LEAD);
   const [rawOpenings, setRawOpenings] = useState(DEMO_OPENINGS);
-  const [_loadingData, setLoadingData] = useState(true);
+  const [, setLoadingData] = useState(true);
 
   useEffect(() => {
     if (!leadId) { setLoadingData(false); return; }

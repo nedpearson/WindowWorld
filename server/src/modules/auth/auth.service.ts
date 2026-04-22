@@ -4,13 +4,11 @@ import { v4 as uuidv4 } from 'uuid';
 import { prisma } from '../../shared/services/prisma';
 import { AppError, UnauthorizedError, NotFoundError } from '../../shared/middleware/errorHandler';
 import { logger } from '../../shared/utils/logger';
-import { OAuth2Client } from 'google-auth-library';
-
-const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+// google-auth-library is retained for potential id_token verification in future;
+// current flow uses fetch to the /oauth2/v3/userinfo endpoint instead.
 
 const JWT_SECRET = process.env.JWT_SECRET || 'CHANGE_THIS_SECRET';
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '7d';
-const JWT_REFRESH_EXPIRES_IN = process.env.JWT_REFRESH_EXPIRES_IN || '30d';
 const SALT_ROUNDS = 12;
 
 export interface TokenPayload {
