@@ -134,65 +134,64 @@ async function main() {
   const [_ned, admin, manager, rep1, rep2, tech, finance] = users;
 
   // ─────────────────────────────────────────────
-  // TERRITORIES
+  // TERRITORIES (skip if already seeded)
   // ─────────────────────────────────────────────
-  const territories = await Promise.all([
-    prisma.territory.create({
-      data: {
-        organizationId: org.id,
-        name: 'Baton Rouge Metro',
-        parishes: ['East Baton Rouge', 'West Baton Rouge'],
-        zipCodes: ['70801', '70802', '70806', '70808', '70810', '70816', '70817', '70818', '70820'],
-        centerLat: 30.4515,
-        centerLng: -91.1871,
-        radiusMiles: 20,
-        users: {
-          create: [
-            { userId: rep1.id, isPrimary: true },
-          ],
+  const existingTerritoryCount = await prisma.territory.count({ where: { organizationId: org.id } });
+  let territories: any[] = [];
+  if (existingTerritoryCount === 0) {
+    territories = await Promise.all([
+      prisma.territory.create({
+        data: {
+          organizationId: org.id,
+          name: 'Baton Rouge Metro',
+          parishes: ['East Baton Rouge', 'West Baton Rouge'],
+          zipCodes: ['70801', '70802', '70806', '70808', '70810', '70816', '70817', '70818', '70820'],
+          centerLat: 30.4515,
+          centerLng: -91.1871,
+          radiusMiles: 20,
+          users: { create: [{ userId: rep1.id, isPrimary: true }] },
         },
-      },
-    }),
-    prisma.territory.create({
-      data: {
-        organizationId: org.id,
-        name: 'Livingston / Denham Springs',
-        parishes: ['Livingston'],
-        zipCodes: ['70726', '70727', '70706', '70769'],
-        centerLat: 30.4883,
-        centerLng: -90.9576,
-        radiusMiles: 25,
-        users: {
-          create: [
-            { userId: rep2.id, isPrimary: true },
-          ],
+      }),
+      prisma.territory.create({
+        data: {
+          organizationId: org.id,
+          name: 'Livingston / Denham Springs',
+          parishes: ['Livingston'],
+          zipCodes: ['70726', '70727', '70706', '70769'],
+          centerLat: 30.4883,
+          centerLng: -90.9576,
+          radiusMiles: 25,
+          users: { create: [{ userId: rep2.id, isPrimary: true }] },
         },
-      },
-    }),
-    prisma.territory.create({
-      data: {
-        organizationId: org.id,
-        name: 'Lafayette Area',
-        parishes: ['Lafayette', 'Iberia'],
-        zipCodes: ['70501', '70503', '70506', '70508'],
-        centerLat: 30.2241,
-        centerLng: -92.0198,
-        radiusMiles: 30,
-      },
-    }),
-    prisma.territory.create({
-      data: {
-        organizationId: org.id,
-        name: 'Greater New Orleans Suburbs',
-        parishes: ['Jefferson', 'St. Tammany', 'St. Bernard'],
-        zipCodes: ['70056', '70062', '70072', '70065', '70433', '70448', '70460'],
-        centerLat: 29.9511,
-        centerLng: -90.0715,
-        radiusMiles: 35,
-      },
-    }),
-  ]);
-  console.log(`✅ Territories: ${territories.map(t => t.name).join(', ')}`);
+      }),
+      prisma.territory.create({
+        data: {
+          organizationId: org.id,
+          name: 'Lafayette Area',
+          parishes: ['Lafayette', 'Iberia'],
+          zipCodes: ['70501', '70503', '70506', '70508'],
+          centerLat: 30.2241,
+          centerLng: -92.0198,
+          radiusMiles: 30,
+        },
+      }),
+      prisma.territory.create({
+        data: {
+          organizationId: org.id,
+          name: 'Greater New Orleans Suburbs',
+          parishes: ['Jefferson', 'St. Tammany', 'St. Bernard'],
+          zipCodes: ['70056', '70062', '70072', '70065', '70433', '70448', '70460'],
+          centerLat: 29.9511,
+          centerLng: -90.0715,
+          radiusMiles: 35,
+        },
+      }),
+    ]);
+    console.log(`✅ Territories: ${territories.map((t: any) => t.name).join(', ')}`);
+  } else {
+    territories = await prisma.territory.findMany({ where: { organizationId: org.id }, orderBy: { createdAt: 'asc' } });
+    console.log(`⏭️  Territories already seeded (${territories.length}), skipping`);
+  }
 
   // ─────────────────────────────────────────────
   // PRODUCTS
@@ -459,302 +458,219 @@ async function main() {
     },
   ];
 
-  const createdLeads = [];
-  for (const ld of leadData) {
-    const { assignedRepId, territoryId, ...rest } = ld;
-    const lead = await prisma.lead.create({
-      data: {
-        ...rest,
-        organizationId: org.id,
-        assignedRepId,
-        territoryId,
-        state: 'Louisiana',
-        tags: ld.isStormLead ? ['storm-2024', 'hurricane-ida-follow'] : [],
-      },
-    });
-    createdLeads.push(lead);
+  // Only create leads if none exist yet
+  const existingLeadCount = await prisma.lead.count({ where: { organizationId: org.id } });
+  let createdLeads: any[] = [];
+  if (existingLeadCount > 0) {
+    createdLeads = await prisma.lead.findMany({ where: { organizationId: org.id }, orderBy: { createdAt: 'asc' }, take: 15 });
+    console.log(`⏭️  Leads already seeded (${createdLeads.length}), skipping`);
+  } else {
+    for (const ld of leadData) {
+      const { assignedRepId, territoryId, ...rest } = ld;
+      const lead = await prisma.lead.create({
+        data: {
+          ...rest,
+          organizationId: org.id,
+          assignedRepId,
+          territoryId,
+          state: 'Louisiana',
+          tags: ld.isStormLead ? ['storm-2024', 'hurricane-ida-follow'] : [],
+        },
+      });
+      createdLeads.push(lead);
+    }
+    console.log(`✅ Leads: ${createdLeads.length} demo leads created`);
   }
-  console.log(`✅ Leads: ${createdLeads.length} demo leads created`);
 
   // ─────────────────────────────────────────────
   // PROPERTIES + OPENINGS for top leads
   // ─────────────────────────────────────────────
-  const lead1 = createdLeads[0]; // Comeaux - Appointment Set
-  const property1 = await prisma.property.create({
-    data: {
-      address: '4521 Greenwell Springs Rd',
-      city: 'Baton Rouge',
-      state: 'Louisiana',
-      zip: '70806',
-      parish: 'East Baton Rouge',
-      lat: 30.4821,
-      lng: -91.1103,
-      yearBuilt: 1978,
-      squareFootage: 1850,
-      stories: 1,
-      propertyType: 'single-family',
-      ownershipType: 'owner-occupied',
-      estimatedValue: 185000,
-      estimatedWindowCount: 12,
-      windowCondition: ConditionRating.FAIR,
-      stormExposure: 'medium',
-      leads: { connect: [{ id: lead1.id }] },
-    },
-  });
-
-  // Create openings for this property
-  const windowTypes = [
-    { floorLevel: 1, roomLabel: 'Living Room - Front', windowType: WindowType.DOUBLE_HUNG, condition: ConditionRating.POOR },
-    { floorLevel: 1, roomLabel: 'Living Room - Side', windowType: WindowType.DOUBLE_HUNG, condition: ConditionRating.POOR },
-    { floorLevel: 1, roomLabel: 'Kitchen', windowType: WindowType.SINGLE_HUNG, condition: ConditionRating.FAIR },
-    { floorLevel: 1, roomLabel: 'Master Bedroom - E', windowType: WindowType.DOUBLE_HUNG, condition: ConditionRating.FAIR },
-    { floorLevel: 1, roomLabel: 'Master Bedroom - S', windowType: WindowType.DOUBLE_HUNG, condition: ConditionRating.POOR },
-    { floorLevel: 1, roomLabel: 'Bedroom 2', windowType: WindowType.DOUBLE_HUNG, condition: ConditionRating.FAIR },
-    { floorLevel: 1, roomLabel: 'Bedroom 3', windowType: WindowType.DOUBLE_HUNG, condition: ConditionRating.FAIR },
-    { floorLevel: 1, roomLabel: 'Bathroom', windowType: WindowType.SINGLE_HUNG, condition: ConditionRating.GOOD },
-    { floorLevel: 1, roomLabel: 'Den', windowType: WindowType.PICTURE, condition: ConditionRating.POOR },
-  ];
-
-  for (let i = 0; i < windowTypes.length; i++) {
-    const wt = windowTypes[i];
-    const opening = await prisma.opening.create({
+  // PROPERTIES + OPENINGS (skip if already seeded)
+  // ─────────────────────────────────────────────
+  const existingPropertyCount = await prisma.property.count();
+  if (createdLeads.length > 0 && existingPropertyCount === 0) {
+    const lead1 = createdLeads[0];
+    const property1 = await prisma.property.create({
       data: {
-        propertyId: property1.id,
-        openingId: `${wt.roomLabel.toLowerCase().replace(/[\s-]+/g, '-')}-${i + 1}`,
-        roomLabel: wt.roomLabel,
-        floorLevel: wt.floorLevel,
-        windowType: wt.windowType,
-        frameMaterial: FrameMaterial.ALUMINUM,
-        condition: wt.condition,
-        hasCondensation: wt.condition === ConditionRating.POOR,
-        hasSealFailure: wt.condition === ConditionRating.POOR,
-        requiresLadder: false,
-        sortOrder: i,
+        address: '4521 Greenwell Springs Rd',
+        city: 'Baton Rouge', state: 'Louisiana', zip: '70806', parish: 'East Baton Rouge',
+        lat: 30.4821, lng: -91.1103, yearBuilt: 1978, squareFootage: 1850, stories: 1,
+        propertyType: 'single-family', ownershipType: 'owner-occupied',
+        estimatedValue: 185000, estimatedWindowCount: 12,
+        windowCondition: ConditionRating.FAIR, stormExposure: 'medium',
+        leads: { connect: [{ id: lead1.id }] },
       },
     });
-
-    // Add measurements to some openings
-    if (i < 5) {
-      await prisma.measurement.create({
+    const windowTypes = [
+      { floorLevel: 1, roomLabel: 'Living Room - Front', windowType: WindowType.DOUBLE_HUNG, condition: ConditionRating.POOR },
+      { floorLevel: 1, roomLabel: 'Living Room - Side', windowType: WindowType.DOUBLE_HUNG, condition: ConditionRating.POOR },
+      { floorLevel: 1, roomLabel: 'Kitchen', windowType: WindowType.SINGLE_HUNG, condition: ConditionRating.FAIR },
+      { floorLevel: 1, roomLabel: 'Master Bedroom - E', windowType: WindowType.DOUBLE_HUNG, condition: ConditionRating.FAIR },
+      { floorLevel: 1, roomLabel: 'Master Bedroom - S', windowType: WindowType.DOUBLE_HUNG, condition: ConditionRating.POOR },
+      { floorLevel: 1, roomLabel: 'Bedroom 2', windowType: WindowType.DOUBLE_HUNG, condition: ConditionRating.FAIR },
+      { floorLevel: 1, roomLabel: 'Bedroom 3', windowType: WindowType.DOUBLE_HUNG, condition: ConditionRating.FAIR },
+      { floorLevel: 1, roomLabel: 'Bathroom', windowType: WindowType.SINGLE_HUNG, condition: ConditionRating.GOOD },
+      { floorLevel: 1, roomLabel: 'Den', windowType: WindowType.PICTURE, condition: ConditionRating.POOR },
+    ];
+    for (let i = 0; i < windowTypes.length; i++) {
+      const wt = windowTypes[i];
+      const opening = await prisma.opening.create({
         data: {
-          openingId: opening.id,
-          widthHigh: 36.0,
-          widthMid: 35.875,
-          widthLow: 35.75,
-          heightLeft: 48.0,
-          heightMid: 47.875,
-          heightRight: 47.75,
-          finalWidth: 35.75,
-          finalHeight: 47.75,
-          depth: 3.5,
-          jambDepth: 4.0,
-          sillCondition: wt.condition === ConditionRating.POOR ? 'deteriorated' : 'good',
-          isSquare: true,
-          status: i < 3 ? 'VERIFIED_ONSITE' : 'ESTIMATED',
-          confidenceScore: i < 3 ? 0.95 : 0.72,
-          captureMethod: i < 3 ? 'manual' : 'guided',
-          isAiEstimated: i >= 3,
-          aiEstimateConfidence: i >= 3 ? 0.65 : undefined,
+          propertyId: property1.id,
+          openingId: `${wt.roomLabel.toLowerCase().replace(/[\s-]+/g, '-')}-${i + 1}`,
+          roomLabel: wt.roomLabel, floorLevel: wt.floorLevel,
+          windowType: wt.windowType, frameMaterial: FrameMaterial.ALUMINUM,
+          condition: wt.condition,
+          hasCondensation: wt.condition === ConditionRating.POOR,
+          hasSealFailure: wt.condition === ConditionRating.POOR,
+          requiresLadder: false, sortOrder: i,
+        },
+      });
+      if (i < 5) {
+        await prisma.measurement.create({
+          data: {
+            openingId: opening.id, widthHigh: 36.0, widthMid: 35.875, widthLow: 35.75,
+            heightLeft: 48.0, heightMid: 47.875, heightRight: 47.75,
+            finalWidth: 35.75, finalHeight: 47.75, depth: 3.5, jambDepth: 4.0,
+            sillCondition: wt.condition === ConditionRating.POOR ? 'deteriorated' : 'good',
+            isSquare: true, status: i < 3 ? 'VERIFIED_ONSITE' : 'ESTIMATED',
+            confidenceScore: i < 3 ? 0.95 : 0.72, captureMethod: i < 3 ? 'manual' : 'guided',
+            isAiEstimated: i >= 3, aiEstimateConfidence: i >= 3 ? 0.65 : undefined,
+          },
+        });
+      }
+    }
+    console.log(`✅ Property + Openings created for ${lead1.firstName} ${lead1.lastName}`);
+  } else {
+    console.log(`⏭️  Properties already seeded, skipping`);
+  }
+
+
+  // ─────────────────────────────────────────────
+  // APPOINTMENTS (skip if already seeded)
+  // ─────────────────────────────────────────────
+  const existingApptCount = await prisma.appointment.count();
+  if (createdLeads.length > 0 && existingApptCount === 0) {
+    const appointmentLead = createdLeads[0];
+    await prisma.appointment.create({
+      data: {
+        leadId: appointmentLead.id,
+        createdById: rep1.id,
+        title: 'Initial Window Consultation',
+        type: 'initial-consult',
+        status: 'CONFIRMED',
+        scheduledAt: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000),
+        duration: 90,
+        address: appointmentLead.address!,
+        lat: appointmentLead.lat,
+        lng: appointmentLead.lng,
+        notes: 'Homeowner confirmed availability. Has 10 windows, interested in full replacement.',
+      },
+    });
+    console.log(`✅ Appointment created`);
+  } else {
+    console.log(`⏭️  Appointments already seeded, skipping`);
+  }
+
+
+  // ─────────────────────────────────────────────
+  // STORM EVENT (skip if already seeded)
+  // ─────────────────────────────────────────────
+  const existingStormCount = await prisma.stormEvent.count();
+  if (existingStormCount === 0) {
+    await prisma.stormEvent.create({
+      data: {
+        name: 'Severe Hailstorm - East Baton Rouge',
+        type: 'hail', severity: 'moderate',
+        affectedParishes: ['East Baton Rouge', 'Livingston'],
+        affectedZips: ['70806', '70815', '70726', '70706'],
+        centerLat: 30.4515, centerLng: -91.1200, radiusMiles: 15,
+        dataSource: 'NOAA',
+        occurredAt: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000),
+        isActive: true,
+        notes: 'Quarter-size hail reported. Multiple reports of window damage and broken seals.',
+      },
+    });
+    console.log(`✅ Storm event created`);
+  } else {
+    console.log(`⏭️  Storm event already seeded, skipping`);
+  }
+
+
+  // ─────────────────────────────────────────────
+  // ACTIVITIES (skip if already seeded)
+  // ─────────────────────────────────────────────
+  const existingActivityCount = await prisma.activity.count();
+  if (createdLeads.length > 0 && existingActivityCount === 0) {
+    for (const lead of createdLeads.slice(0, 5)) {
+      await prisma.activity.create({
+        data: {
+          leadId: lead.id, userId: rep1.id, type: 'CALL',
+          title: 'Initial outreach call',
+          description: 'Called to introduce WindowWorld and discuss energy costs. Homeowner interested.',
+          outcome: 'interested', contactMethod: 'PHONE', duration: 8,
+          occurredAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
         },
       });
     }
+    console.log(`✅ Activities created`);
+  } else {
+    console.log(`⏭️  Activities already seeded, skipping`);
   }
-  console.log(`✅ Property + Openings created for ${lead1.firstName} ${lead1.lastName}`);
+
 
   // ─────────────────────────────────────────────
-  // APPOINTMENTS
+  // AUTOMATION RULES (skip if already seeded)
   // ─────────────────────────────────────────────
-  const appointmentLead = createdLeads[0];
-  await prisma.appointment.create({
-    data: {
-      leadId: appointmentLead.id,
-      createdById: rep1.id,
-      title: 'Initial Window Consultation',
-      type: 'initial-consult',
-      status: 'CONFIRMED',
-      scheduledAt: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000), // 2 days from now
-      duration: 90,
-      address: appointmentLead.address!,
-      lat: appointmentLead.lat,
-      lng: appointmentLead.lng,
-      notes: 'Homeowner confirmed availability. Has 10 windows, interested in full replacement. Wife will also be present.',
-    },
-  });
-  console.log(`✅ Appointment created`);
+  const existingAutomationCount = await prisma.automation.count();
+  if (existingAutomationCount === 0) {
+    await Promise.all([
+      prisma.automation.create({ data: { name: 'Stale Lead Follow-Up — 7 Days', description: 'Send follow-up task when lead has no contact for 7 days', trigger: 'NO_CONTACT_DAYS', conditions: { noContactDays: 7, statusNotIn: ['SOLD', 'LOST', 'PAID'] }, actions: [{ type: 'CREATE_TASK', title: 'Re-engage stale lead', priority: 'high' }, { type: 'SEND_NOTIFICATION', message: 'Lead has gone 7 days without contact' }], isActive: true, delayMinutes: 0 } }),
+      prisma.automation.create({ data: { name: 'Appointment Reminder — 24 Hours', description: 'Send appointment reminder to homeowner 24 hours before', trigger: 'APPOINTMENT_SET', conditions: { hoursUntilAppointment: 24 }, actions: [{ type: 'SEND_EMAIL', template: 'appointment-reminder' }, { type: 'SEND_SMS', message: 'Reminder: Your window consultation is tomorrow.' }], isActive: true, delayMinutes: 0 } }),
+      prisma.automation.create({ data: { name: 'Proposal Follow-Up — 3 Days', description: 'Follow up 3 days after proposal is sent if no response', trigger: 'PROPOSAL_SENT', conditions: { daysAfterSend: 3, noResponse: true }, actions: [{ type: 'CREATE_TASK', title: 'Follow up on sent proposal', priority: 'high' }, { type: 'SEND_EMAIL', template: 'proposal-followup' }], isActive: true, delayMinutes: 3 * 24 * 60 } }),
+      prisma.automation.create({ data: { name: 'Storm Opportunity Alert', description: 'Notify managers when a storm event affects leads in territory', trigger: 'STORM_EVENT', conditions: {}, actions: [{ type: 'SEND_NOTIFICATION', message: 'Storm event detected — activating storm opportunity mode' }, { type: 'UPDATE_LEAD_FLAGS', setStormLead: true }], isActive: true, delayMinutes: 0 } }),
+    ]);
+    console.log(`✅ Automation rules created`);
+  } else {
+    console.log(`⏭️  Automations already seeded, skipping`);
+  }
+
 
   // ─────────────────────────────────────────────
-  // STORM EVENT
+  // TEMPLATES (skip if already seeded)
   // ─────────────────────────────────────────────
-  await prisma.stormEvent.create({
-    data: {
-      name: 'Severe Hailstorm - East Baton Rouge',
-      type: 'hail',
-      severity: 'moderate',
-      affectedParishes: ['East Baton Rouge', 'Livingston'],
-      affectedZips: ['70806', '70815', '70726', '70706'],
-      centerLat: 30.4515,
-      centerLng: -91.1200,
-      radiusMiles: 15,
-      dataSource: 'NOAA',
-      occurredAt: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000), // 14 days ago
-      isActive: true,
-      notes: 'Quarter-size hail reported. Multiple reports of window damage and broken seals.',
-    },
-  });
-  console.log(`✅ Storm event created`);
+  const existingTemplateCount = await prisma.template.count({ where: { organizationId: org.id } });
+  if (existingTemplateCount === 0) {
+    await Promise.all([
+      prisma.template.create({ data: { organizationId: org.id, type: 'email', name: 'Appointment Reminder', subject: 'Your Window Consultation Tomorrow — {{appointment_time}}', bodyHtml: '<p>Hi {{first_name}},</p><p>Just a reminder that your window consultation is scheduled for <strong>{{appointment_datetime}}</strong>.</p><p>Your consultant {{rep_name}} will arrive at {{address}}.</p><p>If you need to reschedule, please call {{company_phone}}.</p>', variables: ['first_name', 'appointment_datetime', 'appointment_time', 'rep_name', 'address', 'company_phone'], isDefault: true } }),
+      prisma.template.create({ data: { organizationId: org.id, type: 'proposal', name: 'Standard Window Replacement Proposal', brandingMode: 'windowworld-compatible', bodyHtml: '<div class="proposal">{{proposal_content}}</div>', variables: ['customer_name', 'property_address', 'total_windows', 'quote_total', 'rep_name', 'valid_until'], isDefault: true } }),
+      prisma.template.create({ data: { organizationId: org.id, type: 'email', name: 'Proposal Follow-Up', subject: '{{first_name}}, Did You Have a Chance to Review Your Window Proposal?', bodyHtml: '<p>Hi {{first_name}},</p><p>I wanted to follow up on the window replacement proposal I sent over {{days_ago}} days ago.</p><p>I know decisions like this take time. Do you have any questions I can answer?</p>', variables: ['first_name', 'days_ago', 'install_window', 'rep_name', 'rep_phone'], isDefault: true } }),
+    ]);
+    console.log(`✅ Email/Proposal templates created`);
+  } else {
+    console.log(`⏭️  Templates already seeded, skipping`);
+  }
 
   // ─────────────────────────────────────────────
-  // ACTIVITIES
+  // CAMPAIGNS (skip if already seeded)
   // ─────────────────────────────────────────────
-  for (const lead of createdLeads.slice(0, 5)) {
-    await prisma.activity.create({
+  const existingCampaignCount = await prisma.campaign.count({ where: { organizationId: org.id } });
+  if (existingCampaignCount === 0) {
+    await prisma.campaign.create({
       data: {
-        leadId: lead.id,
-        userId: rep1.id,
-        type: 'CALL',
-        title: 'Initial outreach call',
-        description: 'Called to introduce WindowWorld and discuss energy costs. Homeowner interested.',
-        outcome: 'interested',
-        contactMethod: 'PHONE',
-        duration: 8,
-        occurredAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
+        organizationId: org.id, name: 'Summer 2025 Storm Follow-Up — BR Metro',
+        type: 'storm-opportunity', status: 'active', isStormCampaign: true,
+        targetParishes: ['East Baton Rouge', 'Livingston'], targetZips: ['70806', '70815', '70726'],
+        targetLeadStatus: ['NEW_LEAD', 'ATTEMPTING_CONTACT', 'CONTACTED'],
+        leadCount: 47, contactedCount: 23, appointmentCount: 8, closeCount: 3,
+        revenue: 41200, startDate: new Date(Date.now() - 21 * 24 * 60 * 60 * 1000),
       },
     });
+    console.log(`✅ Campaign created`);
+  } else {
+    console.log(`⏭️  Campaign already seeded, skipping`);
   }
-  console.log(`✅ Activities created`);
 
-  // ─────────────────────────────────────────────
-  // AUTOMATION RULES
-  // ─────────────────────────────────────────────
-  await Promise.all([
-    prisma.automation.create({
-      data: {
-        name: 'Stale Lead Follow-Up — 7 Days',
-        description: 'Send follow-up task when lead has no contact for 7 days',
-        trigger: 'NO_CONTACT_DAYS',
-        conditions: { noContactDays: 7, statusNotIn: ['SOLD', 'LOST', 'PAID'] },
-        actions: [
-          { type: 'CREATE_TASK', title: 'Re-engage stale lead', priority: 'high' },
-          { type: 'SEND_NOTIFICATION', message: 'Lead has gone 7 days without contact' },
-        ],
-        isActive: true,
-        delayMinutes: 0,
-      },
-    }),
-    prisma.automation.create({
-      data: {
-        name: 'Appointment Reminder — 24 Hours',
-        description: 'Send appointment reminder to homeowner 24 hours before',
-        trigger: 'APPOINTMENT_SET',
-        conditions: { hoursUntilAppointment: 24 },
-        actions: [
-          { type: 'SEND_EMAIL', template: 'appointment-reminder' },
-          { type: 'SEND_SMS', message: 'Reminder: Your window consultation is tomorrow.' },
-        ],
-        isActive: true,
-        delayMinutes: 0,
-      },
-    }),
-    prisma.automation.create({
-      data: {
-        name: 'Proposal Follow-Up — 3 Days',
-        description: 'Follow up 3 days after proposal is sent if no response',
-        trigger: 'PROPOSAL_SENT',
-        conditions: { daysAfterSend: 3, noResponse: true },
-        actions: [
-          { type: 'CREATE_TASK', title: 'Follow up on sent proposal', priority: 'high' },
-          { type: 'SEND_EMAIL', template: 'proposal-followup' },
-        ],
-        isActive: true,
-        delayMinutes: 3 * 24 * 60,
-      },
-    }),
-    prisma.automation.create({
-      data: {
-        name: 'Storm Opportunity Alert',
-        description: 'Notify managers when a storm event affects leads in territory',
-        trigger: 'STORM_EVENT',
-        conditions: {},
-        actions: [
-          { type: 'SEND_NOTIFICATION', message: 'Storm event detected — activating storm opportunity mode' },
-          { type: 'UPDATE_LEAD_FLAGS', setStormLead: true },
-        ],
-        isActive: true,
-        delayMinutes: 0,
-      },
-    }),
-  ]);
-  console.log(`✅ Automation rules created`);
-
-  // ─────────────────────────────────────────────
-  // TEMPLATES
-  // ─────────────────────────────────────────────
-  await Promise.all([
-    prisma.template.create({
-      data: {
-        organizationId: org.id,
-        type: 'email',
-        name: 'Appointment Reminder',
-        subject: 'Your Window Consultation Tomorrow — {{appointment_time}}',
-        bodyHtml: `<p>Hi {{first_name}},</p>
-<p>Just a reminder that your window consultation is scheduled for <strong>{{appointment_datetime}}</strong>.</p>
-<p>Your consultant {{rep_name}} will arrive at {{address}}.</p>
-<p>If you need to reschedule, please call {{company_phone}}.</p>
-<p>We look forward to helping you improve your home's comfort and efficiency!</p>`,
-        variables: ['first_name', 'appointment_datetime', 'appointment_time', 'rep_name', 'address', 'company_phone'],
-        isDefault: true,
-      },
-    }),
-    prisma.template.create({
-      data: {
-        organizationId: org.id,
-        type: 'proposal',
-        name: 'Standard Window Replacement Proposal',
-        brandingMode: 'windowworld-compatible',
-        bodyHtml: `<div class="proposal">{{proposal_content}}</div>`,
-        variables: ['customer_name', 'property_address', 'total_windows', 'quote_total', 'rep_name', 'valid_until'],
-        isDefault: true,
-      },
-    }),
-    prisma.template.create({
-      data: {
-        organizationId: org.id,
-        type: 'email',
-        name: 'Proposal Follow-Up',
-        subject: '{{first_name}}, Did You Have a Chance to Review Your Window Proposal?',
-        bodyHtml: `<p>Hi {{first_name}},</p>
-<p>I wanted to follow up on the window replacement proposal I sent over {{days_ago}} days ago.</p>
-<p>I know decisions like this take time. Do you have any questions I can answer?</p>
-<p>We're currently scheduling installations for {{install_window}}. If you'd like to lock in your spot, I'm happy to help.</p>`,
-        variables: ['first_name', 'days_ago', 'install_window', 'rep_name', 'rep_phone'],
-        isDefault: true,
-      },
-    }),
-  ]);
-  console.log(`✅ Email/Proposal templates created`);
-
-  // ─────────────────────────────────────────────
-  // CAMPAIGNS
-  // ─────────────────────────────────────────────
-  await prisma.campaign.create({
-    data: {
-      organizationId: org.id,
-      name: 'Summer 2025 Storm Follow-Up — BR Metro',
-      type: 'storm-opportunity',
-      status: 'active',
-      isStormCampaign: true,
-      targetParishes: ['East Baton Rouge', 'Livingston'],
-      targetZips: ['70806', '70815', '70726'],
-      targetLeadStatus: ['NEW_LEAD', 'ATTEMPTING_CONTACT', 'CONTACTED'],
-      leadCount: 47,
-      contactedCount: 23,
-      appointmentCount: 8,
-      closeCount: 3,
-      revenue: 41200,
-      startDate: new Date(Date.now() - 21 * 24 * 60 * 60 * 1000),
-    },
-  });
-  console.log(`✅ Campaign created`);
 
   console.log('\n🎉 Seed complete! Demo credentials:');
   console.log('   nedpearson@gmail.com        / 1Pearson2 (Super Admin — Ned Pearson [OWNER])');
