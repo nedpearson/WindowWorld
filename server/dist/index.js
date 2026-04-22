@@ -53,6 +53,7 @@ const errorHandler_1 = require("./shared/middleware/errorHandler");
 const requestId_1 = require("./shared/middleware/requestId");
 const websocket_service_1 = require("./shared/services/websocket.service");
 const rateLimiter_1 = require("./shared/middleware/rateLimiter");
+const prisma_1 = require("./shared/services/prisma");
 // Module routers
 const auth_routes_1 = require("./modules/auth/auth.routes");
 const users_routes_1 = require("./modules/users/users.routes");
@@ -80,7 +81,7 @@ const admin_routes_1 = require("./modules/admin/admin.routes");
 // Background jobs
 const jobs_1 = require("./jobs");
 dotenv_1.default.config();
-// ─── Startup Validation (fail fast, fail loud) ───────────────────
+// â”€â”€â”€ Startup Validation (fail fast, fail loud) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const REQUIRED_ENV = ['DATABASE_URL', 'JWT_SECRET'];
 const missingEnv = REQUIRED_ENV.filter(k => !process.env[k]);
 if (missingEnv.length) {
@@ -97,7 +98,7 @@ const app = (0, express_1.default)();
 exports.app = app;
 const httpServer = (0, http_1.createServer)(app);
 exports.httpServer = httpServer;
-// ─── Sentry (init before any middleware so it captures all errors) ────────────
+// â”€â”€â”€ Sentry (init before any middleware so it captures all errors) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 if (process.env.SENTRY_DSN) {
     Sentry.init({
         dsn: process.env.SENTRY_DSN,
@@ -111,8 +112,8 @@ const PORT = process.env.PORT || 3001;
 const CORS_ORIGINS = (process.env.CORS_ORIGIN || 'http://localhost:5173')
     .split(',')
     .map((o) => o.trim());
-// ─── Middleware ──────────────────────────────────────────────────────────────
-// ─── Health check (MUST be first - before HTTPS redirect or any middleware) ─
+// â”€â”€â”€ Middleware â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// â”€â”€â”€ Health check (MUST be first - before HTTPS redirect or any middleware) â”€
 // Railway healthcheck sends plain HTTP internally; must respond 200 unconditionally
 app.get('/health', async (_req, res) => {
     let dbStatus = 'ok';
@@ -170,7 +171,7 @@ app.use((0, helmet_1.default)({
             formAction: ["'self'", 'https://accounts.google.com'],
             upgradeInsecureRequests: [],
         } : {
-            // Dev: permissive CSP — allows Vite HMR + devtools, but CSP is still present
+            // Dev: permissive CSP â€” allows Vite HMR + devtools, but CSP is still present
             // (CodeQL flags contentSecurityPolicy: false as a high severity issue)
             defaultSrc: ["'self'"],
             scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
@@ -187,22 +188,22 @@ app.use((0, cors_1.default)({
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Request-Id', 'X-Device-Id'],
 }));
 app.use((0, compression_1.default)());
-// JSON limit is 2mb — file uploads are handled by multer separately (not limited here)
+// JSON limit is 2mb â€” file uploads are handled by multer separately (not limited here)
 // 50mb JSON bodies would be a DDoS amplification vector
 app.use(express_1.default.json({ limit: '2mb' }));
 app.use(express_1.default.urlencoded({ extended: true, limit: '2mb' }));
 app.use((0, morgan_1.default)('combined', { stream: { write: (msg) => logger_1.logger.http(msg.trim()) } }));
 app.use(requestId_1.requestId);
-// Rate limiting — Railway-safe (validate.xForwardedForHeader = false in rateLimiter.ts)
+// Rate limiting â€” Railway-safe (validate.xForwardedForHeader = false in rateLimiter.ts)
 app.use(rateLimiter_1.rateLimiter);
-// ─────────────────────────────────────────────────────────────────────────────
-// ─── Static file serving (uploads) ───────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// â”€â”€â”€ Static file serving (uploads) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const uploadDir = process.env.UPLOAD_DIR || path_1.default.join(process.cwd(), 'uploads');
 if (!fs_1.default.existsSync(uploadDir)) {
     fs_1.default.mkdirSync(uploadDir, { recursive: true });
 }
 app.use('/uploads', express_1.default.static(uploadDir));
-// â”€â”€â”€ API Routes â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ API Routes Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 const apiV1 = '/api/v1';
 app.use(`${apiV1}/auth`, rateLimiter_1.authRateLimiter, auth_routes_1.authRouter);
 app.use(`${apiV1}/users`, users_routes_1.usersRouter);
@@ -228,7 +229,7 @@ app.use(`${apiV1}/analytics`, analytics_routes_1.analyticsRouter);
 app.use(`${apiV1}/notifications`, notifications_routes_1.notificationsRouter);
 app.use(`${apiV1}/campaigns`, campaigns_routes_1.campaignsRouter);
 app.use(`${apiV1}/admin`, admin_routes_1.adminRouter);
-// ─── SPA – serve built React app ─────────────────────────────────────────────
+// â”€â”€â”€ SPA â€“ serve built React app â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // Must come AFTER all /api/ routes so they take priority.
 // In production the frontend is built into ./public by the nixpacks build step.
 const webDistPath = path_1.default.join(__dirname, '..', 'public');
@@ -239,17 +240,17 @@ if (fs_1.default.existsSync(webDistPath)) {
         immutable: true,
         index: false,
     }));
-    // SPA fallback — all remaining GETs serve index.html (client-side routing)
+    // SPA fallback â€” all remaining GETs serve index.html (client-side routing)
     app.get('*', (_req, res) => {
         res.sendFile(path_1.default.join(webDistPath, 'index.html'));
     });
     logger_1.logger.info(`[SPA] Serving React app from ${webDistPath}`);
 }
 else {
-    logger_1.logger.warn('[SPA] No built frontend found at ./public — SPA serving skipped (dev or separate web service)');
+    logger_1.logger.warn('[SPA] No built frontend found at ./public â€” SPA serving skipped (dev or separate web service)');
 }
 app.use(errorHandler_1.errorHandler);
-// â”€â”€â”€ Start â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ Start Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 async function start() {
     try {
         // Initialize background job queues
@@ -258,7 +259,31 @@ async function start() {
             logger_1.logger.info('Background job queues initialized');
         }
         else {
-            logger_1.logger.warn('REDIS_URL not set â€” background jobs disabled');
+            logger_1.logger.warn('REDIS_URL not set Ã¢â‚¬â€ background jobs disabled');
+        }
+        // ── Ensure all seeded admin accounts are active on every boot ──────────
+        // Safety net: activate seed accounts that may have isActive=false from
+        // a failed/partial seed, Google SSO auto-provision, or older migration.
+        try {
+            const seedEmails = [
+                'nedpearson@gmail.com',
+                'admin@windowworldla.com',
+                'manager@windowworldla.com',
+                'rep1@windowworldla.com',
+                'rep2@windowworldla.com',
+                'tech@windowworldla.com',
+                'finance@windowworldla.com',
+            ];
+            const activateResult = await prisma_1.prisma.user.updateMany({
+                where: { email: { in: seedEmails } },
+                data: { isActive: true },
+            });
+            if (activateResult.count > 0) {
+                logger_1.logger.info([Startup], Activated + "" + $, { activateResult, : .count } + "" + seed, user, account(s));
+            }
+        }
+        catch (activateErr) {
+            logger_1.logger.warn('[Startup] Could not activate seed accounts:', activateErr);
         }
         // Initialize WebSocket integration
         websocket_service_1.wsService.initialize(httpServer, CORS_ORIGINS);
@@ -275,7 +300,7 @@ async function start() {
     }
 }
 start();
-// ─── Graceful Shutdown ─────────────────────────────────────────────
+// â”€â”€â”€ Graceful Shutdown â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // Railway (and Docker) send SIGTERM before killing a container during deploys.
 // We drain in-flight requests, then close DB connections cleanly.
 function shutdown(signal) {
@@ -295,7 +320,7 @@ function shutdown(signal) {
     });
     // Force exit after 10s if drain takes too long
     setTimeout(() => {
-        logger_1.logger.error('Graceful shutdown timed out after 10s — forcing exit.');
+        logger_1.logger.error('Graceful shutdown timed out after 10s â€” forcing exit.');
         process.exit(1);
     }, 10_000);
 }
