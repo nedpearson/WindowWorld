@@ -32,6 +32,33 @@ export interface QuoteTotals {
 }
 
 export class QuotesService {
+  async list(options: {
+    organizationId: string;
+    leadId?: string;
+    status?: string;
+    page: number;
+    limit: number;
+  }) {
+    const where: any = {
+      lead: { organizationId: options.organizationId },
+      ...(options.leadId && { leadId: options.leadId }),
+      ...(options.status && { status: options.status }),
+    };
+    const [total, data] = await Promise.all([
+      prisma.quote.count({ where }),
+      prisma.quote.findMany({
+        where,
+        skip: (options.page - 1) * options.limit,
+        take: options.limit,
+        orderBy: { createdAt: 'desc' },
+        include: {
+          lead: { select: { id: true, firstName: true, lastName: true, address: true } },
+        } as any,
+      }),
+    ]);
+    return { data, meta: { total, page: options.page, limit: options.limit, totalPages: Math.ceil(total / options.limit) } };
+  }
+
   async getById(id: string) {
     const quote = await prisma.quote.findUnique({
       where: { id },

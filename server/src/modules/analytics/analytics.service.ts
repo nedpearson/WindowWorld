@@ -296,6 +296,91 @@ export class AnalyticsService {
       take: limit,
     });
   }
+
+  async getMapData(organizationId: string, periodDays = 90) {
+    const since = new Date();
+    since.setDate(since.getDate() - periodDays);
+
+    const leads = await prisma.lead.findMany({
+      where: { organizationId, createdAt: { gte: since } },
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        address: true,
+        city: true,
+        state: true,
+        zip: true,
+        lat: true,
+        lng: true,
+        status: true,
+        source: true,
+        leadScore: true,
+        estimatedRevenue: true,
+        assignedRepId: true,
+        createdAt: true,
+      } as any,
+    });
+
+    // Group by zip code for heatmap overlay
+    const byZip = leads.reduce((acc: Record<string, any>, lead: any) => {
+      const zip = lead.zip || 'UNKNOWN';
+      if (!acc[zip]) acc[zip] = { zip, count: 0, closed: 0, leads: [] };
+      acc[zip].count++;
+      if (['VERBAL_COMMIT', 'CONTRACTED', 'INSTALLED', 'PAID'].includes(lead.status)) {
+        acc[zip].closed++;
+      }
+      // Only include first 5 leads per zip for performance
+      if (acc[zip].leads.length < 5) acc[zip].leads.push(lead);
+      return acc;
+    }, {});
+
+    return {
+      leads: leads.filter((l: any) => l.lat && l.lng), // only those with geocoords
+      zipSummary: Object.values(byZip).sort((a: any, b: any) => b.count - a.count),
+      total: leads.length,
+      period: { days: periodDays, since },
+    };
+  }
+
+  async getWeatherCorrelation(organizationId: string, periodDays = 90) {
+    const since = new Date();
+    since.setDate(since.getDate() - periodDays);
+
+    const [stormEvents, leads] = await Promise.all([
+      (prisma as any).stormEvent?.findMany({
+        where: { organizationId, occurredAt: { gte: since } },
+        orderBy: { occurredAt: 'asc' },
+      }).catch(() => [] as any[]) ?? [],
+      prisma.lead.findMany({
+        where: { organizationId, createdAt: { gte: since } },
+        select: { id: true, createdAt: true, source: true, status: true },
+        orderBy: { createdAt: 'asc' },
+      }),
+    ]);
+
+    // Group leads by week
+    const leadsByWeek: Record<string, number> = {};
+    (leads as any[]).forEach((l) => {
+      const weekStart = new Date(l.createdAt);
+      weekStart.setDate(weekStart.getDate() - weekStart.getDay());
+      const key = weekStart.toISOString().split('T')[0];
+      leadsByWeek[key] = (leadsByWeek[key] || 0) + 1;
+    });
+
+    // Storm-sourced leads
+    const stormSourced = (leads as any[]).filter((l) =>
+      ['STORM', 'HAIL', 'WIND_DAMAGE', 'INSURANCE_CLAIM'].includes(l.source)
+    ).length;
+
+    return {
+      weeklyLeadCounts: Object.entries(leadsByWeek).map(([week, count]) => ({ week, count })),
+      stormEvents: stormEvents || [],
+      stormSourcedLeads: stormSourced,
+      stormSourceRate: leads.length > 0 ? Math.round((stormSourced / leads.length) * 10000) / 100 : 0,
+      period: { days: periodDays, since },
+    };
+  }
 }
 
 export const analyticsService = new AnalyticsService();

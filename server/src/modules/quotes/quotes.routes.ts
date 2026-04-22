@@ -4,6 +4,20 @@ import { quotesService } from './quotes.service';
 
 const router = Router();
 
+// GET /api/v1/quotes — list all quotes for the org (with optional leadId filter)
+router.get('/', auth.repOrAbove, async (req: Request, res: Response) => {
+  const user = (req as AuthenticatedRequest).user;
+  const { leadId, status, page = '1', limit = '20' } = req.query as Record<string, string>;
+  const data = await quotesService.list({
+    organizationId: user.organizationId,
+    leadId,
+    status,
+    page: parseInt(page),
+    limit: parseInt(limit),
+  });
+  res.json({ success: true, ...data });
+});
+
 router.get('/lead/:leadId', auth.repOrAbove, async (req: Request, res: Response) => {
   const data = await quotesService.listForLead(req.params.leadId as string);
   res.json({ success: true, data });

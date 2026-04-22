@@ -45,6 +45,34 @@ router.post('/:id/send', auth.repOrAbove, async (req: Request, res: Response) =>
   res.json({ success: true, data });
 });
 
+// POST /api/v1/invoices/:id/generate-pdf — queue PDF generation for an invoice
+router.post('/:id/generate-pdf', auth.repOrAbove, async (req: Request, res: Response) => {
+  const user = (req as AuthenticatedRequest).user;
+  const id = req.params.id as string;
+
+  const invoice = await invoicesService.getById(id);
+
+  const { pdfQueue } = await import('../../jobs');
+  const { prisma: db } = await import('../../shared/services/prisma');
+
+  // Mark as generating
+  await db.invoice.update({ where: { id }, data: { pdfStatus: 'GENERATING' } as any });
+
+  try {
+    const job = await pdfQueue.add('generate-invoice-pdf', {
+      invoiceId: id,
+      invoiceNumber: (invoice as any).invoiceNumber,
+      leadId: invoice.leadId,
+      generatedById: user.id,
+    });
+
+    res.json({ success: true, data: { queued: true, invoiceId: id, jobId: job.id } });
+  } catch (err: any) {
+    await db.invoice.update({ where: { id }, data: { pdfStatus: 'FAILED' } as any });
+    throw err;
+  }
+});
+
 // GET /invoices/install-schedule — invoices that are contracted and ready for install scheduling
 router.get('/install-schedule', auth.manager, async (req: Request, res: Response) => {
   const user = (req as AuthenticatedRequest).user;

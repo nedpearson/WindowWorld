@@ -102,6 +102,39 @@ router.post('/:id/send', auth.repOrAbove, async (req: Request, res: Response) =>
   res.json({ success: true, data });
 });
 
+// POST /api/v1/proposals/:id/sign — internal rep-side signing (e.g. in-person tablet sign)
+router.post('/:id/sign', auth.repOrAbove, async (req: Request, res: Response) => {
+  const { signerName, signerIp } = req.body;
+  if (!signerName?.trim()) {
+    return res.status(400).json({ success: false, error: { message: 'signerName is required' } });
+  }
+
+  const proposal = await proposalsService.getById(req.params.id as string);
+
+  // Check expiry
+  if ((proposal as any).expiresAt && new Date((proposal as any).expiresAt) < new Date()) {
+    return res.status(410).json({ success: false, error: { message: 'Proposal has expired' } });
+  }
+
+  // Advance status to ACCEPTED (service handles lead advancement)
+  if (!['ACCEPTED', 'CONTRACTED'].includes(proposal.status as string)) {
+    await proposalsService.updateStatus(req.params.id as string, 'ACCEPTED', (req as AuthenticatedRequest).user.id);
+  }
+
+  // Persist signature metadata
+  const updated = await prisma.proposal.update({
+    where: { id: req.params.id as string },
+    data: {
+      signedByName: signerName.trim(),
+      signedAt: new Date(),
+      acceptedAt: (proposal as any).acceptedAt || new Date(),
+      signedByIp: signerIp || req.ip || (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || 'internal',
+    } as any,
+  });
+
+  res.json({ success: true, data: updated, message: 'Proposal signed successfully' });
+});
+
 router.patch('/:id/status', auth.repOrAbove, async (req: Request, res: Response) => {
   const user = (req as AuthenticatedRequest).user;
   const data = await proposalsService.updateStatus((req.params.id as string), req.body.status, user.id);

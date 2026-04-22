@@ -115,6 +115,7 @@ export const api = {
     getAiSummary: (id: string) => get(`/leads/${id}/ai-summary`),
     checkDuplicates: (id: string) => post(`/leads/${id}/duplicate-check`),
     delete: (id: string) => del(`/leads/${id}`),
+    bulkImport: (leads: any[]) => post('/leads/bulk-import', { leads }),
   },
 
   // Contacts
@@ -255,8 +256,8 @@ export const api = {
     dashboard: (params?: Record<string, any>) => get('/analytics/dashboard', { params }),
     pipeline: (params?: Record<string, any>) => get('/analytics/pipeline', { params }),
     repPerformance: (params?: Record<string, any>) => get('/analytics/rep-performance', { params }),
-    leadSources: (params?: Record<string, any>) => get('/analytics/lead-sources', { params }),
-    revenue: (params?: Record<string, any>) => get('/analytics/revenue', { params }),
+    leadSources: (params?: Record<string, any>) => get('/analytics/lead-sources', { params }),  // server has both /lead-sources and /sources
+    revenue: (params?: Record<string, any>) => get('/analytics/revenue-trend', { params }),  // fixed: was /analytics/revenue, server has /analytics/revenue-trend
     map: (params?: Record<string, any>) => get('/analytics/map', { params }),
     weather: (params?: Record<string, any>) => get('/analytics/weather-correlation', { params }),
     summary: (days = 30) => get<any>('/analytics/summary', { params: { days } }),

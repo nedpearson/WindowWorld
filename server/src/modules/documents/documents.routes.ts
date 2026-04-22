@@ -36,6 +36,20 @@ router.get('/:id', auth.repOrAbove, async (req: Request, res: Response) => {
   res.json({ success: true, data });
 });
 
+// GET /api/v1/documents/:id/url — returns the document's view URL (pre-signed if S3, direct if local)
+router.get('/:id/url', auth.repOrAbove, async (req: Request, res: Response) => {
+  const doc = await documentsService.getById(req.params.id as string);
+  // For local files, return the static path; for S3 the URL is already stored
+  const url = doc.url;
+  res.json({ success: true, data: { url, documentId: doc.id, filename: doc.originalName } });
+});
+
+// POST /api/v1/documents/:id/analyze-window — manually trigger AI window analysis on an existing document
+router.post('/:id/analyze-window', auth.repOrAbove, async (req: Request, res: Response) => {
+  const result = await documentsService.retriggerAiAnalysis(req.params.id as string);
+  res.json({ success: true, data: result });
+});
+
 // POST /api/v1/documents/upload – multipart form upload
 router.post('/upload', auth.repOrAbove, (req: Request, res: Response, next: NextFunction) => {
   upload.single('file')(req, res, (err) => {
@@ -82,7 +96,7 @@ router.post('/upload', auth.repOrAbove, (req: Request, res: Response, next: Next
   res.status(201).json({ success: true, data: doc });
 });
 
-// POST /api/v1/documents/:id/retrigger-ai
+// POST /api/v1/documents/:id/retrigger-ai — alias kept for backwards compatibility
 router.post('/:id/retrigger-ai', auth.repOrAbove, async (req: Request, res: Response) => {
   const result = await documentsService.retriggerAiAnalysis((req.params.id as string));
   res.json({ success: true, data: result });

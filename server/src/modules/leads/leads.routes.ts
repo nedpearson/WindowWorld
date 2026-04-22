@@ -235,4 +235,84 @@ router.delete('/:id', auth.manager, async (req: Request, res: Response) => {
   res.json({ success: true, message: 'Lead deleted' });
 });
 
+// POST /api/v1/leads/bulk-import — CSV/JSON bulk lead import (manager only)
+router.post('/bulk-import', auth.manager, async (req: Request, res: Response) => {
+  const user = (req as AuthenticatedRequest).user;
+  const { leads: rawLeads } = req.body;
+
+  if (!Array.isArray(rawLeads) || rawLeads.length === 0) {
+    return res.status(400).json({ success: false, error: { message: 'leads must be a non-empty array' } });
+  }
+  if (rawLeads.length > 500) {
+    return res.status(413).json({ success: false, error: { message: 'Maximum 500 leads per import batch' } });
+  }
+
+  const results: { success: string[]; skipped: { row: number; reason: string }[]; failed: { row: number; reason: string }[] } = {
+    success: [],
+    skipped: [],
+    failed: [],
+  };
+
+  for (let i = 0; i < rawLeads.length; i++) {
+    const row = rawLeads[i];
+
+    // At minimum we need some identifying info
+    if (!row.firstName && !row.lastName && !row.phone && !row.email && !row.address) {
+      results.failed.push({ row: i + 1, reason: 'Row has no usable data (need firstName, lastName, phone, email, or address)' });
+      continue;
+    }
+
+    try {
+      // Basic dedup: skip if a lead with same phone or email already exists in this org
+      if (row.phone || row.email) {
+        const { prisma: db } = await import('../../shared/services/prisma');
+        const existing = await db.lead.findFirst({
+          where: {
+            organizationId: user.organizationId,
+            OR: [
+              ...(row.phone ? [{ phone: row.phone }] : []),
+              ...(row.email ? [{ email: row.email }] : []),
+            ],
+          },
+        });
+        if (existing) {
+          results.skipped.push({ row: i + 1, reason: `Duplicate: lead with this phone/email already exists (id: ${existing.id})` });
+          continue;
+        }
+      }
+
+      const lead = await leadService.create({
+        firstName: row.firstName || '',
+        lastName: row.lastName || '',
+        email: row.email,
+        phone: row.phone,
+        address: row.address,
+        city: row.city,
+        state: row.state || 'LA',
+        zip: row.zip,
+        parish: row.parish,
+        source: row.source || 'CSV_IMPORT',
+        notes: row.notes,
+        organizationId: user.organizationId,
+        assignedRepId: row.assignedRepId || user.id,
+        createdById: user.id,
+      });
+
+      results.success.push(lead.id);
+    } catch (err: any) {
+      results.failed.push({ row: i + 1, reason: err.message });
+    }
+  }
+
+  res.status(207).json({
+    success: true,
+    data: {
+      imported: results.success.length,
+      skipped: results.skipped.length,
+      failed: results.failed.length,
+      details: results,
+    },
+  });
+});
+
 export { router as leadsRouter };
