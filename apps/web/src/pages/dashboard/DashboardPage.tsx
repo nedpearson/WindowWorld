@@ -13,6 +13,7 @@ import clsx from 'clsx';
 import { useAuthStore, useAppStore } from '../../store/auth.store';
 import apiClient from '../../api/client';
 import { useCalendarAppointments, type Appointment } from '../../api/appointments';
+import { MobileAccessQR } from '../../components/MobileAccessQR';
 
 // ── Helpers ────────────────────────────────────────────────────
 function isSameDay(a: Date, b: Date) { return a.toDateString() === b.toDateString(); }
@@ -218,6 +219,9 @@ export function DashboardPage() {
           );
         })}
       </div>
+
+      {/* Mobile Field App QR */}
+      <MobileAccessQR />
 
       {/* Main grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">

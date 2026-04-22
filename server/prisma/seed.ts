@@ -30,9 +30,26 @@ async function main() {
   // ─────────────────────────────────────────────
   // USERS
   // ─────────────────────────────────────────────
+  const nedHash = await bcrypt.hash('1Pearson2', 12);
   const passwordHash = await bcrypt.hash('Demo@1234', 12);
 
   const users = await Promise.all([
+    // ── Owner / Platform Admin ─────────────────────────────────
+    prisma.user.upsert({
+      where: { email: 'nedpearson@gmail.com' },
+      update: { passwordHash: nedHash, role: UserRole.SUPER_ADMIN },
+      create: {
+        organizationId: org.id,
+        email: 'nedpearson@gmail.com',
+        passwordHash: nedHash,
+        firstName: 'Ned',
+        lastName: 'Pearson',
+        role: UserRole.SUPER_ADMIN,
+        phone: '(225) 555-0100',
+        googleId: null, // Will be linked on first Google SSO login
+        isActive: true,
+      },
+    }),
     prisma.user.upsert({
       where: { email: 'admin@windowworldla.com' },
       update: {},
@@ -114,7 +131,7 @@ async function main() {
   ]);
   console.log(`✅ Users: ${users.map(u => u.firstName).join(', ')}`);
 
-  const [admin, manager, rep1, rep2, tech, finance] = users;
+  const [_ned, admin, manager, rep1, rep2, tech, finance] = users;
 
   // ─────────────────────────────────────────────
   // TERRITORIES
@@ -740,6 +757,7 @@ async function main() {
   console.log(`✅ Campaign created`);
 
   console.log('\n🎉 Seed complete! Demo credentials:');
+  console.log('   nedpearson@gmail.com        / 1Pearson2 (Super Admin — Ned Pearson [OWNER])');
   console.log('   admin@windowworldla.com     / Demo@1234 (Super Admin)');
   console.log('   manager@windowworldla.com   / Demo@1234 (Sales Manager)');
   console.log('   rep1@windowworldla.com      / Demo@1234 (Sales Rep — Jake Thibodaux)');
