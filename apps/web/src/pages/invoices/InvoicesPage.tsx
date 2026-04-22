@@ -4,10 +4,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import {
   BanknotesIcon, PlusIcon, MagnifyingGlassIcon,
-  CheckCircleIcon, ClockIcon, ExclamationTriangleIcon,
-  XMarkIcon, ArrowDownTrayIcon, ChevronDownIcon,
-  ChevronRightIcon, CreditCardIcon,
-} from '@heroicons/react/24/outline';
+  CheckCircleIcon, ExclamationTriangleIcon, ArrowDownTrayIcon, ChevronDownIcon,
+  ChevronRightIcon, CreditCardIcon } from '@heroicons/react/24/outline';
 import clsx from 'clsx';
 import { useInvoices, useRecordPayment, type Invoice } from '../../api/proposals';
 
@@ -28,8 +26,7 @@ const STATUS_STYLES: Record<string, { badge: string; label: string; icon?: any }
   PAID:        { badge: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/25', label: 'Paid' },
   OVERDUE:     { badge: 'bg-red-500/15 text-red-400 border-red-500/25',           label: 'Overdue' },
   CANCELLED:   { badge: 'bg-slate-800 text-slate-500 border-slate-700',           label: 'Cancelled' },
-  WRITTEN_OFF: { badge: 'bg-red-900/30 text-red-500 border-red-800',              label: 'Written Off' },
-};
+  WRITTEN_OFF: { badge: 'bg-red-900/30 text-red-500 border-red-800',              label: 'Written Off' } };
 
 const PAYMENT_METHODS = ['CASH', 'CHECK', 'CARD', 'BANK_TRANSFER', 'FINANCING', 'OTHER'];
 
@@ -43,8 +40,7 @@ const DEMO_INVOICES: Invoice[] = [
     totalPaid: 6720, balance: 15680, isOverdue: false, completionPct: 30,
     payments: [{ id: 'pmt1', amount: 6720, method: 'CHECK', paidAt: '2026-04-18T10:00:00Z', notes: '30% deposit at signing' }],
     proposal: { id: 'p2', title: 'Storm Replacement — Michael Trosclair' },
-    createdBy: { id: 'u1', firstName: 'Jake', lastName: 'Thibodaux' },
-  },
+    createdBy: { id: 'u1', firstName: 'Jake', lastName: 'Thibodaux' } },
   {
     id: 'inv2', proposalId: 'p1', leadId: '3', organizationId: 'org1',
     invoiceNumber: 'INV-2026-002', status: 'DRAFT',
@@ -53,8 +49,7 @@ const DEMO_INVOICES: Invoice[] = [
     totalPaid: 0, balance: 14750, isOverdue: false, completionPct: 0,
     payments: [],
     proposal: { id: 'p1', title: 'Full Home — Robert Comeaux' },
-    createdBy: { id: 'u1', firstName: 'Jake', lastName: 'Thibodaux' },
-  },
+    createdBy: { id: 'u1', firstName: 'Jake', lastName: 'Thibodaux' } },
 ];
 
 // ─── Payment Modal ────────────────────────────────────────────
@@ -273,8 +268,7 @@ export function InvoicesPage() {
 
   const { data: apiData, isLoading } = useInvoices({
     status: statusFilter || undefined,
-    overdueOnly: overdueOnly || undefined,
-  });
+    overdueOnly: overdueOnly || undefined });
 
   const invoices: Invoice[] = apiData?.data?.length ? apiData.data : DEMO_INVOICES;
 

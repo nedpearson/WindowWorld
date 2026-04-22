@@ -1,13 +1,10 @@
 import { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { toast } from 'sonner';
 import { useQuery } from '@tanstack/react-query';
 import {
-  ArrowLeftIcon, CheckCircleIcon, ExclamationCircleIcon,
-  CameraIcon, ChevronLeftIcon, ChevronRightIcon,
-} from '@heroicons/react/24/outline';
-import { BoltIcon } from '@heroicons/react/24/solid';
+  ArrowLeftIcon, CheckCircleIcon, ExclamationCircleIcon } from '@heroicons/react/24/outline';
 import clsx from 'clsx';
 import { useOfflineQueue } from '../../hooks/useOfflineQueue';
 import { api } from '../../api/client';
@@ -27,9 +24,7 @@ const DEMO_OPENING = {
     finalHeight: 36.0,
     status: 'ESTIMATED',
     isAiEstimated: true,
-    aiConfidenceScore: 0.78,
-  },
-};
+    aiConfidenceScore: 0.78 } };
 
 const fractions = ['0', '1/8', '1/4', '3/8', '1/2', '5/8', '3/4', '7/8'];
 const fracToDecimal = (f: string) => { if (f === '0') return 0; const [n, d] = f.split('/').map(Number); return n / d; };
@@ -42,8 +37,7 @@ export function MeasurementPage() {
     queryKey: ['opening', openingId],
     queryFn: () => api.openings.getById(openingId!),
     enabled: !!openingId,
-    staleTime: 60_000,
-  });
+    staleTime: 60_000 });
 
   const opening: any = (openingResp as any)?.data || openingResp || {};
 
@@ -90,8 +84,7 @@ export function MeasurementPage() {
       measurementMethod: 'FIELD_TAPE',
       notes: existingMeas?.isAiEstimated
         ? `Field verified — replaced AI estimate of ${existingMeas.finalWidth}" × ${existingMeas.finalHeight}"`
-        : 'Field verified measurement',
-    });
+        : 'Field verified measurement' });
     setSaved(true);
     toast.success(`Measurement saved: ${finalWidth.toFixed(3)}" × ${finalHeight.toFixed(3)}"`);
   };

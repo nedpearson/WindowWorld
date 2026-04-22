@@ -3,7 +3,7 @@ import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { v4 as uuidv4 } from 'uuid';
 import path from 'path';
 import fs from 'fs/promises';
-import { logger } from '../utils/logger';
+import { logger, sanitizeForLog } from '../utils/logger';
 
 const isS3Enabled = !!process.env.S3_BUCKET_NAME;
 
@@ -104,7 +104,7 @@ export class StorageService {
         await fs.unlink(localPath);
       } catch (err: any) {
         if (err.code !== 'ENOENT') {
-          logger.warn(`Failed to delete local file: ${String(err.message).slice(0, 200)}`);
+          logger.warn(`Failed to delete local file: ${sanitizeForLog(err.message)}`);
         }
       }
     }

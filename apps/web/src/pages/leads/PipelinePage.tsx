@@ -26,8 +26,7 @@ const STAGE_HEADER_COLORS: Record<string, string> = {
   indigo: 'border-indigo-500/40 bg-indigo-500/10 text-indigo-300',
   purple: 'border-purple-500/40 bg-purple-500/10 text-purple-300',
   violet: 'border-violet-500/40 bg-violet-500/10 text-violet-300',
-  green:  'border-emerald-500/40 bg-emerald-500/10 text-emerald-300',
-};
+  green:  'border-emerald-500/40 bg-emerald-500/10 text-emerald-300'};
 
 // Map raw Prisma lead → card shape
 function mapToCard(l: any) {
@@ -41,8 +40,7 @@ function mapToCard(l: any) {
     isStorm: l.isStormLead,
     assignee: l.assignedRep
       ? `${l.assignedRep.firstName} ${l.assignedRep.lastName[0]}.`
-      : '—',
-  };
+      : '—'};
 }
 
 function LeadCard({ lead, stageKey, onMove }: { lead: any; stageKey: string; onMove: (id: string, newStage: string) => void }) {
@@ -78,8 +76,7 @@ function LeadCard({ lead, stageKey, onMove }: { lead: any; stageKey: string; onM
           <div className="score-bar">
             <div className="score-bar-fill" style={{
               width: `${lead.score}%`,
-              background: lead.score >= 80 ? '#10b981' : lead.score >= 60 ? '#3b82f6' : '#f59e0b',
-            }} />
+              background: lead.score >= 80 ? '#10b981' : lead.score >= 60 ? '#3b82f6' : '#f59e0b'}} />
           </div>
         </div>
         <div className="flex-1">
@@ -89,8 +86,7 @@ function LeadCard({ lead, stageKey, onMove }: { lead: any; stageKey: string; onM
           <div className="score-bar">
             <div className="score-bar-fill" style={{
               width: `${lead.urgency}%`,
-              background: lead.urgency >= 80 ? '#ef4444' : lead.urgency >= 60 ? '#f59e0b' : '#64748b',
-            }} />
+              background: lead.urgency >= 80 ? '#ef4444' : lead.urgency >= 60 ? '#f59e0b' : '#64748b'}} />
           </div>
         </div>
       </div>
@@ -126,8 +122,7 @@ export function PipelinePage() {
   const { data: pipelineResp, isLoading } = useQuery({
     queryKey: ['pipeline'],
     queryFn: () => api.leads.getPipeline(),
-    staleTime: 30_000,
-  });
+    staleTime: 30_000});
 
   // Optimistic card move: update UI immediately, sync status in background
   const { mutate: moveCard } = useMutation({
@@ -145,9 +140,7 @@ export function PipelinePage() {
           data: {
             ...old.data,
             [fromStage]: (old.data[fromStage] || []).filter((l: any) => l.id !== id),
-            [toStage]: [{ ...lead, status: toStage }, ...(old.data[toStage] || [])],
-          },
-        };
+            [toStage]: [{ ...lead, status: toStage }, ...(old.data[toStage] || [])]}};
       });
       return { previous };
     },
@@ -155,8 +148,7 @@ export function PipelinePage() {
       queryClient.setQueryData(['pipeline'], ctx?.previous);
       toast.error('Failed to advance lead — reverted');
     },
-    onSettled: () => queryClient.invalidateQueries({ queryKey: ['pipeline'] }),
-  });
+    onSettled: () => queryClient.invalidateQueries({ queryKey: ['pipeline'] })});
 
   const rawPipeline: Record<string, any[]> = (pipelineResp as any)?.data || {};
 

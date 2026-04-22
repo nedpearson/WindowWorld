@@ -1,13 +1,10 @@
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { toast } from 'sonner';
 import { useQuery } from '@tanstack/react-query';
 import {
-  ChartBarIcon, UserGroupIcon, ArrowTrendingUpIcon, ArrowTrendingDownIcon,
-  StarIcon, ClockIcon, PhoneIcon, DocumentTextIcon,
-  BanknotesIcon, FunnelIcon, SparklesIcon, ExclamationTriangleIcon,
-  CheckCircleIcon, BoltIcon, LockClosedIcon,
-} from '@heroicons/react/24/outline';
+  ChartBarIcon,
+  StarIcon, SparklesIcon, ExclamationTriangleIcon,
+  CheckCircleIcon, LockClosedIcon } from '@heroicons/react/24/outline';
 import { StarIcon as StarSolid, FireIcon } from '@heroicons/react/24/solid';
 import clsx from 'clsx';
 import { useAuthStore } from '../../store/auth.store';
@@ -84,14 +81,12 @@ function mapRepToMetric(r: any): RepMetric {
     weeklyTrend,
     strengths: strengths.slice(0, 3),
     improvements: improvements.slice(0, 3),
-    coachingTip: tip,
-  };
+    coachingTip: tip };
 }
 
 const TEAM_AVG = {
   contactRate: 74, appointmentRate: 50, showRate: 84, proposalRate: 74,
-  closeRate: 43, avgDealSize: 12200, followUpCompliance: 82, responseTime: 2.5,
-};
+  closeRate: 43, avgDealSize: 12200, followUpCompliance: 82, responseTime: 2.5 };
 
 // ─── Mini sparkline ────────────────────────────────────────
 function Sparkline({ data, color = '#3b82f6' }: { data: number[]; color?: string }) {
@@ -265,8 +260,7 @@ export function CoachingPage() {
     queryKey: ['rep-performance-coaching'],
     queryFn: () => api.analytics.repPerformance(30).then((r: any) => (r.data || []).map(mapRepToMetric)),
     staleTime: 120_000,
-    enabled: isManager,
-  });
+    enabled: isManager });
 
   const REPS: RepMetric[] = repData || [];
 

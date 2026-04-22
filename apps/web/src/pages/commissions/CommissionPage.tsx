@@ -1,13 +1,10 @@
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
-  BanknotesIcon, CheckCircleIcon, ClockIcon, CurrencyDollarIcon,
-  PencilIcon, ArrowTrendingUpIcon, UserGroupIcon, ChevronDownIcon,
-  SparklesIcon,
-} from '@heroicons/react/24/outline';
-import { FireIcon, TrophyIcon } from '@heroicons/react/24/solid';
+  BanknotesIcon, CheckCircleIcon,
+  PencilIcon, ChevronDownIcon } from '@heroicons/react/24/outline';
 import clsx from 'clsx';
 import { api } from '../../api/client';
 import apiClient from '../../api/client';
@@ -142,8 +139,7 @@ export function CommissionPage() {
   // Load persisted tiers from org.settings — falls back to DEFAULT_TIERS if none saved yet
   const { data: tiersResp } = useQuery({
     queryKey: ['commission-tiers'],
-    queryFn: () => apiClient.teams.getCommissionTiers(),
-  });
+    queryFn: () => apiClient.teams.getCommissionTiers() });
   const tiers: CommissionTier[] = (tiersResp as any)?.data ?? DEFAULT_TIERS;
 
   const { mutate: persistTiers, isPending: isSavingTiers } = useMutation({
@@ -153,14 +149,12 @@ export function CommissionPage() {
       setEditingTiers(false);
       qc.invalidateQueries({ queryKey: ['commission-tiers'] });
     },
-    onError: () => toast.error('Failed to save commission tiers'),
-  });
+    onError: () => toast.error('Failed to save commission tiers') });
 
   const { data: repsData, isLoading } = useQuery({
     queryKey: ['commissions'],
     queryFn: () => api.analytics.commissions().then((r: any) => r.data || []),
-    staleTime: 60_000,
-  });
+    staleTime: 60_000 });
 
   const REPS: Rep[] = repsData || [];
 

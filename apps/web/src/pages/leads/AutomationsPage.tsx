@@ -5,20 +5,14 @@ import { toast } from 'sonner';
 import {
   BoltIcon as BoltOutline,
   PlayIcon,
-  PauseIcon,
   XMarkIcon,
   PlusIcon,
-  MagnifyingGlassIcon,
   CheckCircleIcon,
   ClockIcon,
   EnvelopeIcon,
   ChatBubbleLeftRightIcon,
   UserGroupIcon,
-  ArrowPathIcon,
-  ChevronDownIcon,
-  ChevronRightIcon,
-  ExclamationTriangleIcon,
-} from '@heroicons/react/24/outline';
+  ChevronDownIcon } from '@heroicons/react/24/outline';
 import { BoltIcon, SparklesIcon } from '@heroicons/react/24/solid';
 import clsx from 'clsx';
 import {
@@ -27,8 +21,7 @@ import {
   useEnrollLead,
   useUnenrollLead,
   type CampaignTemplate,
-  type CampaignEnrollment,
-} from '../../api/automations';
+  type CampaignEnrollment } from '../../api/automations';
 
 // ─── Types ────────────────────────────────────────────────────
 const TEMPLATE_COLORS: Record<string, string> = {
@@ -36,15 +29,13 @@ const TEMPLATE_COLORS: Record<string, string> = {
   'proposal-sent-followup':'from-purple-500 to-violet-500',
   'storm-lead-urgency':    'from-amber-500 to-orange-500',
   'post-install-review':   'from-emerald-500 to-green-500',
-  'no-answer-sequence':    'from-slate-500 to-slate-600',
-};
+  'no-answer-sequence':    'from-slate-500 to-slate-600' };
 const TEMPLATE_ICONS: Record<string, string> = {
   'new-lead-welcome':      '👋',
   'proposal-sent-followup':'📋',
   'storm-lead-urgency':    '⚡',
   'post-install-review':   '⭐',
-  'no-answer-sequence':    '📵',
-};
+  'no-answer-sequence':    '📵' };
 
 function formatDelay(hours: number): string {
   if (hours === 0) return 'Immediately';
@@ -166,8 +157,7 @@ function EnrollmentRow({ enrollment }: { enrollment: CampaignEnrollment }) {
     ACTIVE: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/25',
     COMPLETED: 'bg-slate-700 text-slate-400 border-slate-600',
     PAUSED: 'bg-amber-500/15 text-amber-400 border-amber-500/25',
-    UNSUBSCRIBED: 'bg-red-500/15 text-red-400 border-red-500/25',
-  };
+    UNSUBSCRIBED: 'bg-red-500/15 text-red-400 border-red-500/25' };
 
   const handleUnenroll = async () => {
     try {

@@ -223,8 +223,8 @@ export class InvoicesService {
       }
     } catch (err: any) {
       // Non-fatal — invoice status is already updated
-      const { logger } = await import('../../shared/utils/logger');
-      logger.warn(`[invoice] Email send failed for ${id}: ${err.message}`);
+      const { logger, sanitizeForLog } = await import('../../shared/utils/logger');
+      logger.warn(`[invoice] Email send failed for ${id}: ${sanitizeForLog(err.message)}`);
     }
 
     return updated;

@@ -1,13 +1,11 @@
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import { useQuery } from '@tanstack/react-query';
 import {
   StarIcon, ChatBubbleLeftIcon, PhoneIcon, EnvelopeIcon,
-  CheckCircleIcon, ClockIcon, MapPinIcon,
-  ArrowTopRightOnSquareIcon, GiftIcon, XMarkIcon,
-} from '@heroicons/react/24/outline';
+  ArrowTopRightOnSquareIcon, GiftIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import { StarIcon as StarSolid } from '@heroicons/react/24/solid';
 import clsx from 'clsx';
 import { api } from '../../api/client';
@@ -62,8 +60,7 @@ function mapLead(l: any, localStates: Record<string, Partial<CompletedJob>>): Co
     reviewRating:   localStates[l.id]?.reviewRating,
     referralStatus: localStates[l.id]?.referralStatus ?? 'NOT_ASKED',
     referralCount:  localStates[l.id]?.referralCount,
-    referralValue:  localStates[l.id]?.referralValue,
-  };
+    referralValue:  localStates[l.id]?.referralValue };
 }
 
 
@@ -73,15 +70,13 @@ const REVIEW_STATUS: Record<ReviewStatus, { label: string; badge: string }> = {
   PENDING:  { label: 'Not Yet Sent',   badge: 'bg-slate-700 text-slate-400 border-slate-600' },
   SENT:     { label: 'Request Sent',   badge: 'bg-blue-500/10 text-blue-400 border-blue-500/20' },
   RECEIVED: { label: 'Review Left ✓',  badge: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' },
-  DECLINED: { label: 'Declined',       badge: 'bg-slate-700 text-slate-500 border-slate-600' },
-};
+  DECLINED: { label: 'Declined',       badge: 'bg-slate-700 text-slate-500 border-slate-600' } };
 
 const REFERRAL_STATUS: Record<ReferralStatus, { label: string; badge: string }> = {
   NOT_ASKED:  { label: 'Not Asked',     badge: 'bg-red-500/10 text-red-400 border-red-500/20' },
   ASKED:      { label: 'Asked',          badge: 'bg-amber-500/10 text-amber-400 border-amber-500/20' },
   PROVIDED:   { label: 'Referral Given', badge: 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20' },
-  CONVERTED:  { label: 'Converted ✓',   badge: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' },
-};
+  CONVERTED:  { label: 'Converted ✓',   badge: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' } };
 
 const GOOGLE_REVIEW_URL = 'https://g.page/windowworldla/review';
 
@@ -214,8 +209,7 @@ export function PostInstallPage() {
   const { data: rawLeads, isLoading } = useQuery({
     queryKey: ['installed-leads'],
     queryFn: () => api.analytics.installedLeads(80).then((r: any) => r.data || []),
-    staleTime: 120_000,
-  });
+    staleTime: 120_000 });
 
   const jobs: CompletedJob[] = (rawLeads || []).map((l: any) => mapLead(l, localStates));
 
@@ -226,9 +220,7 @@ export function PostInstallPage() {
       ...prev,
       [id]: {
         ...prev[id],
-        ...(type === 'REVIEW' ? { reviewStatus: 'SENT' as ReviewStatus } : { referralStatus: 'ASKED' as ReferralStatus }),
-      },
-    }));
+        ...(type === 'REVIEW' ? { reviewStatus: 'SENT' as ReviewStatus } : { referralStatus: 'ASKED' as ReferralStatus }) } }));
   };
 
   const filtered = filterRep ? jobs.filter(j => j.repName === filterRep) : jobs;

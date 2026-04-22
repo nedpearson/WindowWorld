@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
@@ -8,8 +8,7 @@ import {
   ArrowPathIcon, ChevronRightIcon, ChevronLeftIcon,
   WifiIcon, XMarkIcon, MicrophoneIcon, ListBulletIcon,
   ClipboardDocumentListIcon, ChatBubbleLeftIcon,
-  ArrowDownTrayIcon, BellAlertIcon, SignalSlashIcon,
-} from '@heroicons/react/24/outline';
+  ArrowDownTrayIcon, BellAlertIcon, SignalSlashIcon } from '@heroicons/react/24/outline';
 import { BoltIcon, CloudIcon, SignalIcon } from '@heroicons/react/24/solid';
 import clsx from 'clsx';
 import { useOfflineQueue } from '../../hooks/useOfflineQueue';
@@ -40,16 +39,14 @@ function toStop(apt: any, order: number) {
       city: lead.city || '',
       zip: lead.zip || '',
       score: lead.leadScore ?? 0,
-      isStorm: lead.isStormLead ?? false,
-    },
+      isStorm: lead.isStormLead ?? false },
     time: apt.scheduledAt
       ? new Date(apt.scheduledAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
       : '',
     duration: apt.duration || 60,
     notes: apt.notes || '',
     // keep the raw inspection list so MeasureTab can load openings
-    inspections: apt.inspections || [],
-  };
+    inspections: apt.inspections || [] };
 }
 
 // Normalise an opening from the API for the MeasureTab list
@@ -58,8 +55,7 @@ function toOpeningTemplate(o: any) {
     id: o.id,
     label: o.roomLabel || o.openingId || 'Opening',
     floor: `Floor ${o.floorLevel ?? 1}`,
-    type: (o.windowType || 'UNKNOWN').replace(/_/g, ' '),
-  };
+    type: (o.windowType || 'UNKNOWN').replace(/_/g, ' ') };
 }
 
 // ─── PWA Install Banner ───────────────────────────────────────
@@ -151,8 +147,7 @@ function StopCard({ stop, isActive, onSelect }: any) {
     'initial-consult': 'border-l-blue-500',
     'measurement': 'border-l-cyan-500',
     'close': 'border-l-emerald-500',
-    'follow-up': 'border-l-amber-500',
-  };
+    'follow-up': 'border-l-amber-500' };
 
   return (
     <motion.div
@@ -258,8 +253,7 @@ function CaptureTab({ enqueue }: { enqueue: (type: any, payload: any) => void })
       filename: pendingFile.name,
       label: selectedLabel,
       size: pendingFile.size,
-      mimeType: pendingFile.type,
-    });
+      mimeType: pendingFile.type });
 
     toast.success(navigator.onLine ? 'Photo queued for upload' : 'Photo saved — will upload when online');
 
@@ -375,8 +369,7 @@ function MeasureTab({
     queryKey: ['field-openings', inspectionId],
     queryFn: () => apiClient.openings.listByInspection(inspectionId!),
     enabled: !!inspectionId,
-    staleTime: 2 * 60 * 1000,
-  });
+    staleTime: 2 * 60 * 1000 });
   const OPENING_TEMPLATES = ((openingsResp as any)?.data ?? []).map(toOpeningTemplate);
 
   const [step, setStep] = useState<MeasureStep>('select-opening');
@@ -411,8 +404,7 @@ function MeasureTab({
       status: 'REVIEWED',
       isAiEstimated: false,
       measurementMethod: 'FIELD_TAPE',
-      notes: 'Field-measured via MobileFieldApp',
-    });
+      notes: 'Field-measured via MobileFieldApp' });
 
     toast.success(`Saved: ${selectedOpening.label} — ${dims}`);
     setStep('select-opening');
@@ -607,8 +599,7 @@ function NotesTab({ enqueue }: { enqueue: (type: any, payload: any) => void }) {
   const [saved, setSaved] = useState<Array<{ text: string; time: string; via: 'voice' | 'text' }>>([]);
 
   const { isListening, isSupported: voiceSupported, transcript, interimTranscript, start: startVoice, stop: stopVoice, error: voiceError, clear: clearVoice } = useVoiceNote({
-    onResult: (text) => setNote(text),
-  });
+    onResult: (text) => setNote(text) });
 
   // Sync voice transcript to note field
   useEffect(() => { if (transcript) setNote(transcript); }, [transcript]);
@@ -621,8 +612,7 @@ function NotesTab({ enqueue }: { enqueue: (type: any, payload: any) => void }) {
     await enqueue('NOTE_CREATE', {
       leadId: TODAY_STOPS[0]?.lead.id,
       content: text,
-      source: 'MOBILE_FIELD_APP',
-    });
+      source: 'MOBILE_FIELD_APP' });
     setSaved((prev) => [{ text, time: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }), via }, ...prev]);
     setNote('');
     clearVoice();
@@ -759,8 +749,7 @@ export function MobileFieldApp() {
     queryKey: ['field-today-route'],
     queryFn: () => apiClient.appointments.todayRoute(),
     staleTime: 5 * 60 * 1000,
-    refetchOnWindowFocus: true,
-  });
+    refetchOnWindowFocus: true });
 
   const rawRoute = (routeData as any)?.data;
   const TODAY_STOPS = (rawRoute?.appointments ?? []).map((apt: any, idx: number) => toStop(apt, idx + 1));

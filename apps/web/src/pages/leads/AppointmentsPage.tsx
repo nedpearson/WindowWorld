@@ -6,16 +6,14 @@ import {
   CalendarIcon, MapPinIcon, PhoneIcon, ClockIcon,
   CheckCircleIcon, XMarkIcon, ArrowPathIcon,
   ChevronLeftIcon, ChevronRightIcon, PlusIcon,
-  ChatBubbleLeftIcon, UserCircleIcon, FunnelIcon,
-  ListBulletIcon, Squares2X2Icon, MapIcon,
-} from '@heroicons/react/24/outline';
+  ChatBubbleLeftIcon, UserCircleIcon,
+  ListBulletIcon, Squares2X2Icon, MapIcon } from '@heroicons/react/24/outline';
 import { BoltIcon } from '@heroicons/react/24/solid';
 import clsx from 'clsx';
 import {
   useCalendarAppointments,
   useUpdateAppointmentStatus,
-  type Appointment,
-} from '../../api/appointments';
+  type Appointment } from '../../api/appointments';
 import { BookAppointmentDrawer } from '../../components/scheduling/BookAppointmentDrawer';
 
 // ─── Constants ────────────────────────────────────────────────
@@ -31,8 +29,7 @@ const STATUS_STYLES: Record<string, { badge: string; label: string }> = {
   IN_PROGRESS: { badge: 'bg-yellow-500/15 text-yellow-400 border-yellow-500/25', label: 'In Progress' },
   COMPLETED:   { badge: 'bg-slate-600 text-slate-400 border-slate-500/25',     label: 'Completed' },
   CANCELLED:   { badge: 'bg-red-500/15 text-red-400 border-red-500/25',        label: 'Cancelled' },
-  NO_SHOW:     { badge: 'bg-red-500/15 text-red-400 border-red-500/25',        label: 'No Show' },
-};
+  NO_SHOW:     { badge: 'bg-red-500/15 text-red-400 border-red-500/25',        label: 'No Show' } };
 
 const TYPE_STRIPE: Record<string, string> = {
   'initial-consult': 'border-l-blue-500',
@@ -40,8 +37,7 @@ const TYPE_STRIPE: Record<string, string> = {
   'proposal':        'border-l-purple-500',
   'close':           'border-l-emerald-500',
   'follow-up':       'border-l-amber-500',
-  'installation':    'border-l-orange-500',
-};
+  'installation':    'border-l-orange-500' };
 
 const TYPE_DOT: Record<string, string> = {
   'initial-consult': 'bg-blue-500',
@@ -49,8 +45,7 @@ const TYPE_DOT: Record<string, string> = {
   'proposal':        'bg-purple-500',
   'close':           'bg-emerald-500',
   'follow-up':       'bg-amber-500',
-  'installation':    'bg-orange-500',
-};
+  'installation':    'bg-orange-500' };
 
 // ─── Helpers ──────────────────────────────────────────────────
 function formatTime(dateStr: string) {
@@ -296,8 +291,7 @@ function AptDetailPanel({ apt, onClose, onEdit }: {
     'proposal': 'Proposal Presentation',
     'close': 'Contract Signing',
     'follow-up': 'Follow-Up',
-    'installation': 'Installation Check',
-  }[apt.type] || apt.type;
+    'installation': 'Installation Check' }[apt.type] || apt.type;
 
   const leadFullName = apt.lead ? `${apt.lead.firstName} ${apt.lead.lastName}` : 'Unknown Lead';
   const repFullName = apt.createdBy ? `${apt.createdBy.firstName} ${apt.createdBy.lastName}` : 'Unassigned';

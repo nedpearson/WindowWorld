@@ -5,17 +5,15 @@ import { motion } from 'framer-motion';
 import {
   HomeIcon, UsersIcon, MapPinIcon, CalendarIcon, ChartBarIcon,
   DocumentTextIcon, BanknotesIcon, BeakerIcon, Cog6ToothIcon,
-  XMarkIcon, BoltIcon, CloudIcon, WifiIcon,
+  XMarkIcon, BoltIcon, CloudIcon,
   ExclamationTriangleIcon, MagnifyingGlassIcon, BellIcon,
-  ArrowRightOnRectangleIcon, BuildingStorefrontIcon,
-  CursorArrowRippleIcon, ClipboardDocumentListIcon, MapIcon, ShieldCheckIcon,
+  ArrowRightOnRectangleIcon, BuildingStorefrontIcon, ClipboardDocumentListIcon, MapIcon, ShieldCheckIcon,
   UserGroupIcon, WrenchScrewdriverIcon, StarIcon, AcademicCapIcon,
-  ArrowUpTrayIcon, CurrencyDollarIcon,
-} from '@heroicons/react/24/outline';
-import { BoltIcon as BoltSolid, PlusSmallIcon } from '@heroicons/react/24/solid';
+  ArrowUpTrayIcon, CurrencyDollarIcon } from '@heroicons/react/24/outline';
+import { BoltIcon as BoltSolid} from '@heroicons/react/24/solid';
 import clsx from 'clsx';
 import { io, Socket } from 'socket.io-client';
-import { useEffect, useCallback } from 'react';
+import { useEffect} from 'react';
 import { GlobalSearch } from '../search/GlobalSearch';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import apiClient from '../../api/client';
@@ -75,8 +73,7 @@ const navSections = [
       { label: 'Dashboard',        path: '/dashboard',         icon: HomeIcon },
       { label: 'Analytics',        path: '/analytics',         icon: ChartBarIcon },
       { label: 'Rep Coaching',     path: '/coaching',          icon: AcademicCapIcon },
-    ],
-  },
+    ] },
   {
     label: 'Leads & Sales',
     items: [
@@ -88,15 +85,13 @@ const navSections = [
       { label: 'Territory Map',     path: '/map',               icon: MapIcon },
       { label: 'Appointments',      path: '/appointments',      icon: CalendarIcon },
       { label: 'Automations',       path: '/automations',       icon: BoltIcon },
-    ],
-  },
+    ] },
   {
     label: 'Field Work',
     items: [
       { label: 'Field Mode',    path: '/field',        icon: MapPinIcon,              badge: 'MOBILE' },
       { label: 'Inspections',   path: '/inspections',  icon: ClipboardDocumentListIcon },
-    ],
-  },
+    ] },
   {
     label: 'Revenue',
     items: [
@@ -107,15 +102,13 @@ const navSections = [
       { label: 'Commissions',        path: '/commissions',          icon: CurrencyDollarIcon },
       { label: 'Install Schedule',   path: '/installs',             icon: WrenchScrewdriverIcon },
       { label: 'Reviews & Referrals',path: '/installs/post-install', icon: StarIcon },
-    ],
-  },
+    ] },
   {
     label: 'Admin',
     items: [
       { label: 'Admin Panel',  path: '/admin',    icon: ShieldCheckIcon },
       { label: 'Settings',     path: '/settings', icon: Cog6ToothIcon },
-    ],
-  },
+    ] },
 ];
 
 function NavItem({ item, active }: { item: any; active: boolean }) {
@@ -161,8 +154,7 @@ export function AppLayout() {
     queryKey: ['notifications'],
     queryFn: () => apiClient.notifications.list(30),
     staleTime: 60_000,
-    refetchInterval: 5 * 60 * 1000,
-  });
+    refetchInterval: 5 * 60 * 1000 });
   const apiNotifications: any[] = (notifData as any)?.data || [];
   const unreadCount: number = (notifData as any)?.unreadCount || 0;
 
@@ -171,8 +163,7 @@ export function AppLayout() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['notifications'] });
       setWsNotifications([]);
-    },
-  });
+    } });
 
   // Merge WebSocket real-time pushes with API notifications (WS first = newest)
   const notifications = [...wsNotifications, ...apiNotifications].slice(0, 25);
@@ -184,8 +175,7 @@ export function AppLayout() {
 
     const socket: Socket = io(import.meta.env.VITE_API_URL || 'http://localhost:3001', {
       auth: { token },
-      transports: ['websocket'],
-    });
+      transports: ['websocket'] });
 
     socket.on('notification', (data) => {
       setWsNotifications(prev => [data, ...prev].slice(0, 10));

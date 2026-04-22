@@ -1,19 +1,13 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  CurrencyDollarIcon, UsersIcon, ChartBarIcon,
-  TrophyIcon, ArrowTrendingUpIcon, ArrowTrendingDownIcon,
-  CalendarIcon, FunnelIcon, ClockIcon,
-  CheckCircleIcon, ExclamationCircleIcon, BuildingStorefrontIcon,
-  DocumentTextIcon, BanknotesIcon,
-} from '@heroicons/react/24/outline';
-import { BoltIcon } from '@heroicons/react/24/solid';
+  CurrencyDollarIcon, UsersIcon,
+  TrophyIcon,
+  CheckCircleIcon, BuildingStorefrontIcon,
+  DocumentTextIcon, BanknotesIcon } from '@heroicons/react/24/outline';
 import clsx from 'clsx';
-import {
-  LineChart, Line, AreaChart, Area, BarChart, Bar,
-  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell,
-} from 'recharts';
+import { AreaChart, Area, BarChart, Bar,
+  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import apiClient from '../../api/client';
 
 type Period = '7d' | '30d' | '90d';
@@ -24,8 +18,7 @@ const PERIOD_DAYS: Record<Period, number> = { '7d': 7, '30d': 30, '90d': 90 };
 // ── Fallback shapes so UI never breaks ─────────────────────────
 const EMPTY_DASHBOARD = {
   kpis: { mtdRevenue: 0, newLeads: 0, closeRate: 0, avgDealSize: 0, proposalsSent: 0, arOutstanding: 0 },
-  revenueRaw: [] as any[], funnelRaw: [] as any[], recentWins: [] as any[],
-};
+  revenueRaw: [] as any[], funnelRaw: [] as any[], recentWins: [] as any[] };
 
 function formatK(n: number) { return n >= 1000 ? `$${(n / 1000).toFixed(0)}K` : `$${n}`; }
 

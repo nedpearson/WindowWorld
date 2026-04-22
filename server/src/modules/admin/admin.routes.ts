@@ -1,7 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { auth, AuthenticatedRequest } from '../../shared/middleware/auth';
 import { usersService } from '../users/users.service';
-import { auditService } from './audit.service';
 import { prisma } from '../../shared/services/prisma';
 import { logger } from '../../shared/utils/logger';
 

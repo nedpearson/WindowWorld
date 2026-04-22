@@ -3,13 +3,11 @@ import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import {
-  PhoneIcon, EnvelopeIcon, CalendarIcon, BanknotesIcon,
+  PhoneIcon, CalendarIcon, BanknotesIcon,
   ArrowTrendingUpIcon, BoltIcon, CloudIcon,
-  MapPinIcon, ClockIcon, ArrowUpIcon,
-  ExclamationTriangleIcon, CheckCircleIcon, ChevronRightIcon,
+  MapPinIcon, CheckCircleIcon, ChevronRightIcon,
   ChatBubbleLeftIcon, DocumentTextIcon,
-  SparklesIcon, ArrowPathIcon, XMarkIcon, CurrencyDollarIcon, CalendarDaysIcon,
-} from '@heroicons/react/24/outline';
+  SparklesIcon, XMarkIcon, CurrencyDollarIcon, CalendarDaysIcon } from '@heroicons/react/24/outline';
 import { BoltIcon as BoltSolid, FireIcon as FireSolid } from '@heroicons/react/24/solid';
 import clsx from 'clsx';
 import { useAuthStore, useAppStore } from '../../store/auth.store';
@@ -47,8 +45,7 @@ const TYPE_COLOR: Record<string, string> = {
   'proposal': 'border-l-purple-500',
   'close': 'border-l-emerald-500',
   'follow-up': 'border-l-amber-500',
-  'installation': 'border-l-orange-500',
-};
+  'installation': 'border-l-orange-500' };
 
 function ApptCard({ appt }: { appt: Appointment }) {
   const [dismissed, setDismissed] = useState(false);
@@ -209,8 +206,7 @@ export function DashboardPage() {
             blue:   { g: 'from-brand-600/20 to-brand-800/10 border-brand-600/20', ic: 'text-brand-400 bg-brand-500/15' },
             green:  { g: 'from-emerald-600/20 to-emerald-800/10 border-emerald-600/20', ic: 'text-emerald-400 bg-emerald-500/15' },
             purple: { g: 'from-purple-600/20 to-purple-800/10 border-purple-600/20', ic: 'text-purple-400 bg-purple-500/15' },
-            amber:  { g: 'from-amber-600/20 to-amber-800/10 border-amber-600/20', ic: 'text-amber-400 bg-amber-500/15' },
-          };
+            amber:  { g: 'from-amber-600/20 to-amber-800/10 border-amber-600/20', ic: 'text-amber-400 bg-amber-500/15' } };
           const c = cMap[s.color];
           return (
             <div key={s.label} className={`card p-5 bg-gradient-to-br ${c.g}`}>

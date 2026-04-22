@@ -251,7 +251,7 @@ export class CampaignsService {
     // Schedule first step immediately
     await this.scheduleNextStep(leadId, campaignTemplateKey, 1, lead);
 
-    logger.info(`Lead ${leadId} enrolled in campaign: ${campaignTemplateKey}`);
+    logger.info(`Lead ${leadId} enrolled in campaign: ${sanitizeForLog(campaignTemplateKey)}`);
     return { enrolled: true, enrollmentId: enrollment.id };
   }
 

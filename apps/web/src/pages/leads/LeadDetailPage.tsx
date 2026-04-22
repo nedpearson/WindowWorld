@@ -4,16 +4,13 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
-  PhoneIcon, EnvelopeIcon, MapPinIcon, CalendarIcon,
-  DocumentTextIcon, ClipboardDocumentListIcon, UserIcon,
-  PencilIcon, ArrowLeftIcon, BoltIcon, CloudIcon,
-  ChatBubbleLeftIcon, ClockIcon, CheckCircleIcon,
+  PhoneIcon, EnvelopeIcon, MapPinIcon, CalendarIcon, ClipboardDocumentListIcon, UserIcon, ArrowLeftIcon, BoltIcon, CloudIcon,
+  ChatBubbleLeftIcon, CheckCircleIcon,
   ExclamationCircleIcon, HomeIcon, CurrencyDollarIcon,
-  ChevronDownIcon, PlusIcon, ChevronRightIcon,
-  ArrowUpRightIcon, SparklesIcon, CalculatorIcon,
-  ClipboardDocumentCheckIcon, LightBulbIcon, XMarkIcon,
-} from '@heroicons/react/24/outline';
-import { BoltIcon as BoltSolid, StarIcon } from '@heroicons/react/24/solid';
+  ChevronDownIcon, PlusIcon,
+  ArrowUpRightIcon, CalculatorIcon,
+  ClipboardDocumentCheckIcon, LightBulbIcon } from '@heroicons/react/24/outline';
+import { BoltIcon as BoltSolid } from '@heroicons/react/24/solid';
 import clsx from 'clsx';
 import { PitchCoachPanel } from '../../components/ai/PitchCoachPanel';
 import { SmsTemplateDrawer } from '../../components/sms/SmsTemplateDrawer';
@@ -30,8 +27,7 @@ const ACTIVITY_ICONS: Record<string, any> = {
   MEETING: CalendarIcon,
   APPOINTMENT_SET: CalendarIcon,
   NOTE: ChatBubbleLeftIcon,
-  TASK: CheckCircleIcon,
-};
+  TASK: CheckCircleIcon };
 
 const ACTIVITY_COLORS: Record<string, string> = {
   CALL: 'bg-brand-500/15 text-brand-400',
@@ -39,18 +35,15 @@ const ACTIVITY_COLORS: Record<string, string> = {
   TEXT: 'bg-emerald-500/15 text-emerald-400',
   MEETING: 'bg-amber-500/15 text-amber-400',
   APPOINTMENT_SET: 'bg-cyan-500/15 text-cyan-400',
-  NOTE: 'bg-slate-600/30 text-slate-400',
-};
+  NOTE: 'bg-slate-600/30 text-slate-400' };
 
 const COND_COLORS: Record<string, string> = {
-  EXCELLENT: 'badge-green', GOOD: 'badge-blue', FAIR: 'badge-yellow', POOR: 'badge-red', CRITICAL: 'badge-red',
-};
+  EXCELLENT: 'badge-green', GOOD: 'badge-blue', FAIR: 'badge-yellow', POOR: 'badge-red', CRITICAL: 'badge-red' };
 
 const MEAS_STATUS_LABELS: Record<string, { label: string; class: string }> = {
   VERIFIED_ONSITE: { label: 'Verified', class: 'ai-verified-label' },
   ESTIMATED: { label: 'AI Est.', class: 'ai-estimated-label' },
-  APPROVED_FOR_ORDER: { label: 'Order Ready', class: 'ai-verified-label' },
-};
+  APPROVED_FOR_ORDER: { label: 'Order Ready', class: 'ai-verified-label' } };
 
 type Tab = 'overview' | 'openings' | 'activities' | 'ai-coach' | 'financing';
 
@@ -80,28 +73,23 @@ const OBJECTION_SCRIPTS: { objection: string; response: string; close: string }[
   {
     objection: 'I need to think about it',
     response: "I completely understand — it's a big decision. Most homeowners tell me the same thing. What specific part are you still weighing? The investment, the timing, or the product itself?",
-    close: "If I could show you that this pays for itself in energy savings within 8 years, would that make the decision easier?",
-  },
+    close: "If I could show you that this pays for itself in energy savings within 8 years, would that make the decision easier?" },
   {
     objection: 'The price is too high',
     response: "I hear you — windows are a real investment. Let me show you two things: first, the monthly financing option that puts this at $82/month, and second, the average $400-600/year in utility savings that comes with double-pane vinyl.",
-    close: "Would it make sense to look at what the windows actually cost per month versus what you're spending today on drafts and energy loss?",
-  },
+    close: "Would it make sense to look at what the windows actually cost per month versus what you're spending today on drafts and energy loss?" },
   {
     objection: 'I want to get more quotes',
     response: "That's smart — you should compare. Most competitors will show a lower sticker price but charge extra for installation, grilles, and warranty upgrades. Let me show you exactly what's included in ours so you can compare apples to apples.",
-    close: "We're typically 10-15% higher than budget contractors but we come with a lifetime warranty and a crew that's been doing this for 20 years in Louisiana.",
-  },
+    close: "We're typically 10-15% higher than budget contractors but we come with a lifetime warranty and a crew that's been doing this for 20 years in Louisiana." },
   {
     objection: 'My spouse isn\'t here',
     response: "No problem at all — I can leave the proposal and come back when it works for both of you. Or if it's easier, I can do a quick 10-minute video call with your spouse right now so they have the same information.",
-    close: "When would be a good time for me to come back when you're both available?",
-  },
+    close: "When would be a good time for me to come back when you're both available?" },
   {
     objection: 'We\'re not ready right now',
     response: "I understand, there's never a perfect time. I'll tell you though — the current pricing on the Series 4000 is locked for the next 30 days, and our install calendar for May is filling up fast.",
-    close: "If I could hold a spot for you and you could cancel with no penalty, would it be worth reserving?",
-  },
+    close: "If I could hold a spot for you and you could cancel with no penalty, would it be worth reserving?" },
 ];
 
 function FinancingCalculator({ estimatedRevenue }: { estimatedRevenue: number }) {
@@ -216,16 +204,14 @@ export function LeadDetailPage({ isNew = false }: { isNew?: boolean }) {
     queryKey: ['lead', id],
     queryFn: () => api.leads.getById(id!),
     enabled: !!id && id !== 'new',
-    staleTime: 30_000,
-  });
+    staleTime: 30_000 });
 
   // Activities fetched separately (lazy, only when tab is open)
   const { data: activitiesResp } = useQuery({
     queryKey: ['lead-activities', id],
     queryFn: () => api.leads.getActivities(id!),
     enabled: !!id && activeTab === 'activities',
-    staleTime: 60_000,
-  });
+    staleTime: 60_000 });
 
   // Log Call mutation — wires the "Log Call" button to real /activities endpoint
   const queryClient = useQueryClient();
@@ -234,14 +220,12 @@ export function LeadDetailPage({ isNew = false }: { isNew?: boolean }) {
       type: 'CALL',
       title: 'Call logged',
       outcome: 'reached',
-      contactMethod: 'PHONE',
-    }),
+      contactMethod: 'PHONE' }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['lead-activities', id] });
       toast.success('Call logged!');
     },
-    onError: () => toast.error('Failed to log call'),
-  });
+    onError: () => toast.error('Failed to log call') });
 
   // Normalize API shape to what the component expects
   const rawLead = (leadResp as any)?.data || leadResp;
@@ -264,9 +248,7 @@ export function LeadDetailPage({ isNew = false }: { isNew?: boolean }) {
       yearBuilt: property.yearBuilt,
       squareFootage: property.squareFootage,
       stories: property.stories,
-      propertyType: property.propertyType || 'single-family',
-    },
-  } : null;
+      propertyType: property.propertyType || 'single-family' } } : null;
 
   if (isLoading || !lead) return (
     <div className="p-6 space-y-4 animate-pulse">

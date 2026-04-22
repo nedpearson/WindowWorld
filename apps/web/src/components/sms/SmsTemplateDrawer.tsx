@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import {
   XMarkIcon, ChatBubbleLeftIcon, ClipboardDocumentIcon,
-  PaperAirplaneIcon, ChevronDownIcon, MagnifyingGlassIcon,
+  PaperAirplaneIcon, MagnifyingGlassIcon,
 } from '@heroicons/react/24/outline';
 import { CheckCircleIcon } from '@heroicons/react/24/solid';
 import clsx from 'clsx';

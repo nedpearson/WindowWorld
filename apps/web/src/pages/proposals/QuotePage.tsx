@@ -1,12 +1,9 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
-import {
-  PlusIcon, TrashIcon, CheckCircleIcon, ExclamationCircleIcon,
-  PencilIcon, DocumentTextIcon, ArrowLeftIcon, CurrencyDollarIcon,
-  BoltIcon as BoltOutline, ChevronDownIcon,
-} from '@heroicons/react/24/outline';
+import { CheckCircleIcon, ExclamationCircleIcon, DocumentTextIcon, ArrowLeftIcon,
+  BoltIcon as BoltOutline } from '@heroicons/react/24/outline';
 import { BoltIcon } from '@heroicons/react/24/solid';
 import clsx from 'clsx';
 import apiClient from '../../api/client';
@@ -14,8 +11,7 @@ import apiClient from '../../api/client';
 // ── Fallback demo data (shown while API loads) ──────────────────────────────
 const DEMO_LEAD = {
   id: 'demo', firstName: 'Loading', lastName: '…',
-  address: '', city: '', zip: '', phone: '',
-};
+  address: '', city: '', zip: '', phone: '' };
 
 const DEMO_OPENINGS = [
   { id: 'o1', roomLabel: 'Living Room - Front', windowType: 'DOUBLE_HUNG', width: 35.75, height: 47.75, measureStatus: 'VERIFIED_ONSITE', isAiEstimated: false },
@@ -98,8 +94,7 @@ export function QuotePage() {
             height: o.roughHeight ?? o.height ?? 48,
             measureStatus: o.measureStatus ?? 'ESTIMATED',
             isAiEstimated: o.isAiEstimated ?? o.measureSource === 'AI',
-            aiConfidence: o.aiConfidence,
-          })));
+            aiConfidence: o.aiConfidence })));
         }
       }
     }).finally(() => setLoadingData(false));
@@ -129,8 +124,7 @@ export function QuotePage() {
       lineTotal: calcWindowPrice('SERIES_4000', o.width, o.height) + 75,
       isAiEstimated: o.isAiEstimated,
       aiConfidence: (o as any).aiConfidence,
-      measureStatus: o.measureStatus,
-    })));
+      measureStatus: o.measureStatus })));
   }, [rawOpenings]);
 
   const updateLineItem = (id: string, updates: Partial<LineItem>) => {

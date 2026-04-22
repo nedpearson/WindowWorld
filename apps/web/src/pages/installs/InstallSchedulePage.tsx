@@ -1,13 +1,11 @@
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import {
-  CalendarIcon, ClipboardDocumentListIcon, UserGroupIcon,
+  CalendarIcon,
   CheckCircleIcon, ClockIcon, MapPinIcon, PhoneIcon,
-  PlusIcon, WrenchScrewdriverIcon, ExclamationTriangleIcon,
-  ArrowRightIcon, ChevronLeftIcon, ChevronRightIcon,
-} from '@heroicons/react/24/outline';
+  PlusIcon, WrenchScrewdriverIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline';
 import { CheckCircleIcon as CheckSolid } from '@heroicons/react/24/solid';
 import clsx from 'clsx';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -45,8 +43,7 @@ const STATUS_CONFIG: Record<InstallStatus, { label: string; badge: string; icon:
   SCHEDULED:        { label: 'Scheduled',         badge: 'bg-blue-500/10 text-blue-400 border-blue-500/20',  icon: CalendarIcon,            dot: 'bg-blue-400' },
   IN_PROGRESS:      { label: 'In Progress',        badge: 'bg-amber-500/10 text-amber-400 border-amber-500/20', icon: WrenchScrewdriverIcon,  dot: 'bg-amber-400' },
   COMPLETE:         { label: 'Complete',           badge: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20', icon: CheckSolid,      dot: 'bg-emerald-400' },
-  ON_HOLD:          { label: 'On Hold',            badge: 'bg-slate-700 text-slate-400 border-slate-600',    icon: ClockIcon,               dot: 'bg-slate-400' },
-};
+  ON_HOLD:          { label: 'On Hold',            badge: 'bg-slate-700 text-slate-400 border-slate-600',    icon: ClockIcon,               dot: 'bg-slate-400' } };
 
 // ─── Schedule Modal ────────────────────────────────────────
 function ScheduleModal({ job, onClose, onSave }: { job: InstallJob; onClose: () => void; onSave: (id: string, date: string, crew: string) => void }) {
@@ -115,8 +112,7 @@ function JobCard({ job, onSchedule, onComplete }: {
       'border-l-blue-500': job.status === 'SCHEDULED',
       'border-l-amber-500': job.status === 'IN_PROGRESS',
       'border-l-emerald-500': job.status === 'COMPLETE',
-      'border-l-slate-600': job.status === 'ON_HOLD',
-    })}>
+      'border-l-slate-600': job.status === 'ON_HOLD' })}>
       <div className="flex items-start justify-between gap-2 mb-3">
         <div>
           <div className="flex items-center gap-2 flex-wrap">
@@ -192,16 +188,14 @@ export function InstallSchedulePage() {
   const { data: scheduleResp, isLoading } = useQuery({
     queryKey: ['install-schedule'],
     queryFn: () => apiClient.invoices.installSchedule(),
-    staleTime: 60_000,
-  });
+    staleTime: 60_000 });
   const jobs: InstallJob[] = (scheduleResp as any)?.data ?? [];
 
   const { mutate: updateInstall } = useMutation({
     mutationFn: (vars: { id: string; payload: any }) =>
       apiClient.invoices.updateInstall(vars.id, vars.payload),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['install-schedule'] }),
-    onError: () => toast.error('Failed to update — please try again'),
-  });
+    onError: () => toast.error('Failed to update — please try again') });
 
   const handleSchedule = (id: string, date: string, crew: string) => {
     updateInstall(

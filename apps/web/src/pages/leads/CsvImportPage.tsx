@@ -1,12 +1,10 @@
 import { useState, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { toast } from 'sonner';
 import {
-  ArrowUpTrayIcon, DocumentIcon, XMarkIcon, CheckCircleIcon,
-  ExclamationTriangleIcon, ArrowPathIcon, TableCellsIcon,
-  UserPlusIcon, MagnifyingGlassIcon,
-} from '@heroicons/react/24/outline';
+  ArrowUpTrayIcon, DocumentIcon, CheckCircleIcon, ArrowPathIcon, TableCellsIcon,
+  UserPlusIcon } from '@heroicons/react/24/outline';
 import clsx from 'clsx';
 import apiClient from '../../api/client';
 

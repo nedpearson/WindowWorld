@@ -2,12 +2,9 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
-import {
-  DocumentTextIcon, PlusIcon, MagnifyingGlassIcon,
-  CheckCircleIcon, ClockIcon, EyeIcon, PaperAirplaneIcon,
-  ArrowDownTrayIcon, XMarkIcon, FunnelIcon, ChevronRightIcon,
-} from '@heroicons/react/24/outline';
-import { BoltIcon } from '@heroicons/react/24/solid';
+import { PlusIcon, MagnifyingGlassIcon,
+  CheckCircleIcon, EyeIcon, PaperAirplaneIcon,
+  ArrowDownTrayIcon, XMarkIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
 import clsx from 'clsx';
 import { useProposals, useUpdateProposalStatus, type Proposal } from '../../api/proposals';
 
@@ -21,15 +18,13 @@ const STATUS_STYLES: Record<string, { badge: string; label: string; icon?: any }
   DECLINED:   { badge: 'bg-red-500/15 text-red-400 border-red-500/25',          label: 'Declined' },
   REVISED:    { badge: 'bg-amber-500/15 text-amber-400 border-amber-500/25',    label: 'Revised' },
   CONTRACTED: { badge: 'bg-emerald-600/20 text-emerald-300 border-emerald-500/30', label: 'Contracted' },
-  ARCHIVED:   { badge: 'bg-slate-800 text-slate-500 border-slate-700',          label: 'Archived' },
-};
+  ARCHIVED:   { badge: 'bg-slate-800 text-slate-500 border-slate-700',          label: 'Archived' } };
 
 const PDF_STATUS: Record<string, string> = {
   PENDING:    'text-slate-500',
   GENERATING: 'text-amber-400 animate-pulse',
   READY:      'text-emerald-400',
-  FAILED:     'text-red-400',
-};
+  FAILED:     'text-red-400' };
 
 function formatCurrency(n?: number) {
   if (!n) return '—';
@@ -49,32 +44,28 @@ const DEMO_PROPOSALS: Proposal[] = [
     createdAt: '2026-04-18T12:00:00Z', sentAt: '2026-04-18T14:00:00Z', firstViewedAt: '2026-04-18T15:30:00Z',
     lead: { id: '3', firstName: 'Robert', lastName: 'Comeaux', address: '4521 Greenwell Springs Rd', city: 'Baton Rouge', zip: '70806', phone: '(225) 555-1001' },
     quote: { id: 'q1', grandTotal: 14750, subtotal: 15500, discountPct: 5, discountAmount: 750, totalWindows: 10 },
-    createdBy: { id: 'u1', firstName: 'Jake', lastName: 'Thibodaux', phone: '(225) 555-9000', email: 'jake@windowworldla.com' },
-  },
+    createdBy: { id: 'u1', firstName: 'Jake', lastName: 'Thibodaux', phone: '(225) 555-9000', email: 'jake@windowworldla.com' } },
   {
     id: 'p2', leadId: '1', title: 'Storm Replacement — Michael Trosclair',
     status: 'ACCEPTED', pdfStatus: 'READY', validDays: 30, viewCount: 7,
     createdAt: '2026-04-17T10:00:00Z', sentAt: '2026-04-17T11:00:00Z', acceptedAt: '2026-04-18T09:15:00Z',
     lead: { id: '1', firstName: 'Michael', lastName: 'Trosclair', address: '7824 Old Hammond Hwy', city: 'Baton Rouge', zip: '70809', phone: '(225) 555-1003' },
     quote: { id: 'q2', grandTotal: 22400, totalWindows: 14 },
-    createdBy: { id: 'u1', firstName: 'Jake', lastName: 'Thibodaux' },
-  },
+    createdBy: { id: 'u1', firstName: 'Jake', lastName: 'Thibodaux' } },
   {
     id: 'p3', leadId: '6', title: 'Series 4000 — Karen Guidry',
     status: 'DRAFT', pdfStatus: 'PENDING', validDays: 30, viewCount: 0,
     createdAt: '2026-04-19T08:00:00Z',
     lead: { id: '6', firstName: 'Karen', lastName: 'Guidry', address: '1134 Range Ave', city: 'Denham Springs', zip: '70726' },
     quote: { id: 'q3', grandTotal: 8200, totalWindows: 6 },
-    createdBy: { id: 'u2', firstName: 'Chad', lastName: 'Melancon' },
-  },
+    createdBy: { id: 'u2', firstName: 'Chad', lastName: 'Melancon' } },
   {
     id: 'p4', leadId: '4', title: 'Master Suite Upgrade — Angela Mouton',
     status: 'VIEWED', pdfStatus: 'READY', validDays: 30, viewCount: 2,
     createdAt: '2026-04-16T14:00:00Z', sentAt: '2026-04-16T15:00:00Z', firstViewedAt: '2026-04-17T10:30:00Z',
     lead: { id: '4', firstName: 'Angela', lastName: 'Mouton', address: '226 Tupelo Dr', city: 'Prairieville', zip: '70769' },
     quote: { id: 'q4', grandTotal: 5900, totalWindows: 4 },
-    createdBy: { id: 'u3', firstName: 'Danielle', lastName: 'Arceneaux' },
-  },
+    createdBy: { id: 'u3', firstName: 'Danielle', lastName: 'Arceneaux' } },
 ];
 
 // ─── Page Component ───────────────────────────────────────────

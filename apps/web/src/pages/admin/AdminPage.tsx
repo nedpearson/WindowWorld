@@ -5,17 +5,14 @@ import clsx from 'clsx';
 import {
   UsersIcon, ShieldCheckIcon, TrophyIcon,
   PlusIcon, MagnifyingGlassIcon, XMarkIcon,
-  ArrowPathIcon, ClockIcon, ExclamationTriangleIcon,
-  CheckCircleIcon, UserMinusIcon, UserPlusIcon,
-  ChevronDownIcon, ChevronUpIcon,
-} from '@heroicons/react/24/outline';
+  ArrowPathIcon, ClockIcon, UserMinusIcon,
+  ChevronDownIcon, ChevronUpIcon } from '@heroicons/react/24/outline';
 import { ShieldCheckIcon as ShieldSolid, TrophyIcon as TrophySolid } from '@heroicons/react/24/solid';
 import {
   useAdminUsers, useCreateUser, useUpdateUser,
   useDeactivateUser, useReactivateUser, useAuditLog,
   useLeaderboard, useOrgStats,
-  type AdminUser, type AuditLog, type LeaderboardEntry,
-} from '../../api/admin';
+  type AdminUser, type AuditLog, type LeaderboardEntry } from '../../api/admin';
 import { useAuthStore } from '../../store/auth.store';
 
 // ─── Role definitions (must match Prisma UserRole enum) ───────
@@ -35,8 +32,7 @@ const ROLE_LABELS: Record<string, string> = {
   FIELD_MEASURE_TECH:  'Field Tech',
   OFFICE_ADMIN:        'Office Admin',
   FINANCE_BILLING:     'Finance',
-  READ_ONLY_ANALYST:   'Analyst',
-};
+  READ_ONLY_ANALYST:   'Analyst' };
 
 const ROLE_COLORS: Record<string, string> = {
   SUPER_ADMIN:        'bg-red-500/15 text-red-400 border-red-500/25',
@@ -45,8 +41,7 @@ const ROLE_COLORS: Record<string, string> = {
   FIELD_MEASURE_TECH: 'bg-amber-500/15 text-amber-400 border-amber-500/25',
   OFFICE_ADMIN:       'bg-cyan-500/15 text-cyan-400 border-cyan-500/25',
   FINANCE_BILLING:    'bg-emerald-500/15 text-emerald-400 border-emerald-500/25',
-  READ_ONLY_ANALYST:  'bg-slate-600/30 text-slate-400 border-slate-600/30',
-};
+  READ_ONLY_ANALYST:  'bg-slate-600/30 text-slate-400 border-slate-600/30' };
 
 const ACTION_COLORS: Record<string, string> = {
   create:     'text-emerald-400',
@@ -56,13 +51,11 @@ const ACTION_COLORS: Record<string, string> = {
   reactivate: 'text-emerald-400',
   send:       'text-purple-400',
   approve:    'text-cyan-400',
-  login:      'text-slate-400',
-};
+  login:      'text-slate-400' };
 
 // ─── Confirm Deactivate Dialog ────────────────────────────────
 function ConfirmDialog({
-  user, onConfirm, onCancel, isPending,
-}: {
+  user, onConfirm, onCancel, isPending }: {
   user: AdminUser; onConfirm: () => void; onCancel: () => void; isPending: boolean;
 }) {
   return (
@@ -96,8 +89,7 @@ function AddUserModal({ onClose }: { onClose: () => void }) {
   const createUser = useCreateUser();
   const [form, setForm] = useState({
     firstName: '', lastName: '', email: '', phone: '',
-    role: 'SALES_REP' as UserRoleEnum, password: '',
-  });
+    role: 'SALES_REP' as UserRoleEnum, password: '' });
   const set = (k: keyof typeof form, v: string) => setForm((f) => ({ ...f, [k]: v }));
 
   const handleSubmit = async () => {
@@ -316,8 +308,7 @@ function UserRow({ user, currentUserId }: { user: AdminUser; currentUserId?: str
 function AuditRow({ log }: { log: AuditLog }) {
   const [expanded, setExpanded] = useState(false);
   const timeStr = new Date(log.occurredAt).toLocaleString('en-US', {
-    month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit',
-  });
+    month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
   const hasChanges = log.newValues && Object.keys(log.newValues).length > 0;
 
   return (
@@ -358,8 +349,7 @@ function AuditRow({ log }: { log: AuditLog }) {
 
 // ─── Leaderboard ──────────────────────────────────────────────
 function LeaderboardPanel({
-  period, setPeriod,
-}: { period: 'week' | 'month' | 'quarter'; setPeriod: (p: 'week' | 'month' | 'quarter') => void }) {
+  period, setPeriod }: { period: 'week' | 'month' | 'quarter'; setPeriod: (p: 'week' | 'month' | 'quarter') => void }) {
   const { data: entries = [], isLoading } = useLeaderboard(period);
   const maxRevenue = Math.max(...entries.map((e) => e.revenue), 1);
   const medals = ['🥇', '🥈', '🥉'];
@@ -469,11 +459,9 @@ export function AdminPage() {
 
   const { data: apiUsers, isLoading: usersLoading, refetch: refetchUsers } = useAdminUsers({
     search: userSearch, role: roleFilter || undefined,
-    isActive: showInactive ? undefined : true,
-  });
+    isActive: showInactive ? undefined : true });
   const { data: auditData, refetch: refetchAudit } = useAuditLog({
-    entityType: auditEntityFilter || undefined, limit: 100,
-  });
+    entityType: auditEntityFilter || undefined, limit: 100 });
   const { data: statsData } = useOrgStats();
 
   const users = apiUsers || [];

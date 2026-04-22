@@ -3,9 +3,8 @@ import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
 import {
-  BoltIcon, CalculatorIcon, ChatBubbleLeftIcon,
-  ClipboardDocumentIcon, ArrowRightIcon, CheckCircleIcon, SparklesIcon,
-} from '@heroicons/react/24/outline';
+  BoltIcon, ChatBubbleLeftIcon,
+  ClipboardDocumentIcon, ArrowRightIcon, CheckCircleIcon, SparklesIcon } from '@heroicons/react/24/outline';
 import clsx from 'clsx';
 import { SmsTemplateDrawer } from '../../components/sms/SmsTemplateDrawer';
 

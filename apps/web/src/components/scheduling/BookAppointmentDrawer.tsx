@@ -2,9 +2,7 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import {
-  XMarkIcon, CalendarIcon, ClockIcon, MapPinIcon,
-  UserIcon, DocumentTextIcon, ChevronDownIcon,
-} from '@heroicons/react/24/outline';
+  XMarkIcon, CalendarIcon, ClockIcon, MapPinIcon, DocumentTextIcon } from '@heroicons/react/24/outline';
 import { CheckCircleIcon } from '@heroicons/react/24/solid';
 import clsx from 'clsx';
 import { useCreateAppointment, useUpdateAppointment } from '../../api/appointments';
@@ -45,8 +43,7 @@ function formatISODate(date: Date): string {
 
 // ─── Component ────────────────────────────────────────────────
 export function BookAppointmentDrawer({
-  isOpen, onClose, initialDate, initialTime, leadId, leadName, leadAddress, editAppointment,
-}: BookAppointmentDrawerProps) {
+  isOpen, onClose, initialDate, initialTime, leadId, leadName, leadAddress, editAppointment }: BookAppointmentDrawerProps) {
   const isEditing = !!editAppointment;
   const createMutation = useCreateAppointment();
   const updateMutation = useUpdateAppointment();
@@ -64,8 +61,7 @@ export function BookAppointmentDrawer({
       : initialTime || '09:00',
     duration: editAppointment?.duration || 90,
     address: editAppointment?.address || leadAddress || '',
-    notes: editAppointment?.notes || '',
-  });
+    notes: editAppointment?.notes || '' });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -77,8 +73,7 @@ export function BookAppointmentDrawer({
         setForm((f) => ({
           ...f,
           title: leadName ? `${type.label} — ${leadName}` : type.label,
-          duration: type.duration,
-        }));
+          duration: type.duration }));
       }
     }
   }, [form.type, leadName]);
@@ -120,8 +115,7 @@ export function BookAppointmentDrawer({
       endAt: endTime,
       duration: form.duration,
       address: form.address || undefined,
-      notes: form.notes || undefined,
-    };
+      notes: form.notes || undefined };
 
     try {
       if (isEditing) {

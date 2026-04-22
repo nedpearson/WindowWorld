@@ -4,10 +4,8 @@ import { useQuery } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import {
-  CheckCircleIcon, DocumentTextIcon, PhoneIcon, EnvelopeIcon,
-  HomeIcon, ShieldCheckIcon, XMarkIcon,
-  ChevronDownIcon, SparklesIcon,
-} from '@heroicons/react/24/outline';
+  CheckCircleIcon, DocumentTextIcon, PhoneIcon, EnvelopeIcon, ShieldCheckIcon, XMarkIcon,
+  ChevronDownIcon, SparklesIcon } from '@heroicons/react/24/outline';
 import { CheckCircleIcon as CheckSolid } from '@heroicons/react/24/solid';
 import clsx from 'clsx';
 
@@ -24,8 +22,7 @@ async function acceptProposal(id: string, signerName: string) {
   const res = await fetch(`${API_BASE}/proposals/portal/${id}/accept`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ signerName }),
-  });
+    body: JSON.stringify({ signerName }) });
   if (!res.ok) throw new Error('Failed to accept proposal');
   return res.json();
 }
@@ -88,8 +85,7 @@ export function HomeownerPortalPage() {
     queryFn: () => fetchPortalProposal(id!),
     enabled: !!id,
     retry: 1,
-    staleTime: 5 * 60_000,
-  });
+    staleTime: 5 * 60_000 });
 
   const handleAccept = async (signerName: string) => {
     try {

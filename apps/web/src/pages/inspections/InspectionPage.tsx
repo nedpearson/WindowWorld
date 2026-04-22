@@ -3,12 +3,9 @@ import { useParams, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import { useQuery } from '@tanstack/react-query';
-import {
-  CameraIcon, PlusIcon, CheckCircleIcon, ExclamationCircleIcon,
-  ArrowLeftIcon, ClipboardDocumentListIcon, HomeIcon,
-  MapPinIcon, PhoneIcon, PencilIcon,
-} from '@heroicons/react/24/outline';
-import { BoltIcon } from '@heroicons/react/24/solid';
+import { PlusIcon, CheckCircleIcon, ExclamationCircleIcon,
+  ArrowLeftIcon, ClipboardDocumentListIcon,
+  MapPinIcon, PhoneIcon, PencilIcon } from '@heroicons/react/24/outline';
 import clsx from 'clsx';
 import { useOfflineQueue } from '../../hooks/useOfflineQueue';
 import { api } from '../../api/client';
@@ -18,15 +15,13 @@ const WINDOW_TYPES = ['DOUBLE_HUNG', 'SINGLE_HUNG', 'CASEMENT', 'AWNING', 'SLIDE
 const CONDITIONS = ['EXCELLENT', 'GOOD', 'FAIR', 'POOR', 'CRITICAL'];
 
 const COND_COLORS: Record<string, string> = {
-  EXCELLENT: 'badge-green', GOOD: 'badge-blue', FAIR: 'badge-yellow', POOR: 'badge-red', CRITICAL: 'badge-red',
-};
+  EXCELLENT: 'badge-green', GOOD: 'badge-blue', FAIR: 'badge-yellow', POOR: 'badge-red', CRITICAL: 'badge-red' };
 
 const MEAS_STATUS: Record<string, { label: string; color: string; icon: any }> = {
   VERIFIED_ONSITE: { label: 'Verified Onsite', color: 'text-emerald-400', icon: CheckCircleIcon },
   REVIEWED: { label: 'Reviewed', color: 'text-blue-400', icon: CheckCircleIcon },
   ESTIMATED: { label: 'Estimated (AI)', color: 'text-amber-400', icon: ExclamationCircleIcon },
-  APPROVED_FOR_ORDER: { label: 'Order Ready', color: 'text-emerald-400', icon: CheckCircleIcon },
-};
+  APPROVED_FOR_ORDER: { label: 'Order Ready', color: 'text-emerald-400', icon: CheckCircleIcon } };
 
 // Demo inspection data
 const DEMO_INSPECTION = {
@@ -37,35 +32,26 @@ const DEMO_INSPECTION = {
   lead: {
     id: '3', firstName: 'Robert', lastName: 'Comeaux',
     address: '4521 Greenwell Springs Rd', city: 'Baton Rouge', zip: '70806',
-    phone: '(225) 555-1001',
-  },
+    phone: '(225) 555-1001' },
   property: {
     yearBuilt: 1982, propertyType: 'single-family',
-    squareFootage: 1900, stories: 1,
-  },
+    squareFootage: 1900, stories: 1 },
   inspectedBy: { firstName: 'Jake', lastName: 'Thibodaux' },
   notes: 'Homeowner confirmed all windows single pane original. Several showing fogging.',
   openings: [
     { id: 'o1', roomLabel: 'Living Room - Front', windowType: 'DOUBLE_HUNG', condition: 'POOR', sortOrder: 1, floor: 'Main', hasScreen: true, isEgress: false,
-      measurement: { finalWidth: 35.75, finalHeight: 47.75, status: 'VERIFIED_ONSITE', isAiEstimated: false, measuredById: 'u1' },
-    },
+      measurement: { finalWidth: 35.75, finalHeight: 47.75, status: 'VERIFIED_ONSITE', isAiEstimated: false, measuredById: 'u1' } },
     { id: 'o2', roomLabel: 'Living Room - Side', windowType: 'DOUBLE_HUNG', condition: 'POOR', sortOrder: 2, floor: 'Main', hasScreen: true, isEgress: false,
-      measurement: { finalWidth: 35.875, finalHeight: 47.75, status: 'VERIFIED_ONSITE', isAiEstimated: false, measuredById: 'u1' },
-    },
+      measurement: { finalWidth: 35.875, finalHeight: 47.75, status: 'VERIFIED_ONSITE', isAiEstimated: false, measuredById: 'u1' } },
     { id: 'o3', roomLabel: 'Kitchen', windowType: 'SINGLE_HUNG', condition: 'FAIR', sortOrder: 3, floor: 'Main', hasScreen: false, isEgress: false,
-      measurement: { finalWidth: 28.0, finalHeight: 36.0, status: 'ESTIMATED', isAiEstimated: true, aiConfidenceScore: 0.78 },
-    },
+      measurement: { finalWidth: 28.0, finalHeight: 36.0, status: 'ESTIMATED', isAiEstimated: true, aiConfidenceScore: 0.78 } },
     { id: 'o4', roomLabel: 'Master Bedroom - E', windowType: 'DOUBLE_HUNG', condition: 'FAIR', sortOrder: 4, floor: 'Main', hasScreen: true, isEgress: true,
-      measurement: null,
-    },
+      measurement: null },
     { id: 'o5', roomLabel: 'Master Bedroom - S', windowType: 'DOUBLE_HUNG', condition: 'POOR', sortOrder: 5, floor: 'Main', hasScreen: true, isEgress: false,
-      measurement: null,
-    },
+      measurement: null },
     { id: 'o6', roomLabel: 'Bedroom 2', windowType: 'DOUBLE_HUNG', condition: 'FAIR', sortOrder: 6, floor: 'Main', hasScreen: true, isEgress: false,
-      measurement: null,
-    },
-  ],
-};
+      measurement: null },
+  ] };
 
 type DrawerMode = 'none' | 'add-opening' | 'measure-opening' | 'edit-opening';
 
@@ -83,8 +69,7 @@ export function InspectionPage() {
     queryKey: ['inspection', id],
     queryFn: () => api.inspections.getById(id!),
     enabled: !!id,
-    staleTime: 60_000,
-  });
+    staleTime: 60_000 });
 
   // Seed local state from API once loaded (mutations go through offline queue)
   useEffect(() => {
@@ -127,8 +112,7 @@ export function InspectionPage() {
       id: `o-${Date.now()}`,
       ...newOpening,
       sortOrder: openings.length + 1,
-      measurement: null,
-    };
+      measurement: null };
     setInspection((prev) => ({ ...prev, openings: [...prev.openings, opening] }));
     await enqueue('OPENING_CREATE', { inspectionId: inspection.id, ...newOpening });
     toast.success(`Opening added: ${newOpening.roomLabel}`);
@@ -150,16 +134,14 @@ export function InspectionPage() {
     const measurement = { finalWidth, finalHeight, status: 'VERIFIED_ONSITE', isAiEstimated: false } as any;
     setInspection((prev) => ({
       ...prev,
-      openings: prev.openings.map((o) => o.id === selectedOpeningId ? { ...o, measurement } : o),
-    }));
+      openings: prev.openings.map((o) => o.id === selectedOpeningId ? { ...o, measurement } : o) }));
 
     await enqueue('MEASUREMENT_SAVE', {
       openingId: selectedOpeningId,
       finalWidth, finalHeight,
       status: 'VERIFIED_ONSITE',
       isAiEstimated: false,
-      measurementMethod: 'FIELD_TAPE',
-    });
+      measurementMethod: 'FIELD_TAPE' });
 
     toast.success(`Measurement saved: ${finalWidth.toFixed(3)}" × ${finalHeight.toFixed(3)}"`);
     setDrawerMode('none');

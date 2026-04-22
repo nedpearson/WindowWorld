@@ -6,9 +6,7 @@ import { useQuery } from '@tanstack/react-query';
 import {
   MagnifyingGlassIcon, PhoneIcon, EnvelopeIcon,
   ChatBubbleLeftIcon, PlusIcon, UserIcon,
-  HomeIcon, UsersIcon, StarIcon,
-  FunnelIcon, ArrowsUpDownIcon,
-} from '@heroicons/react/24/outline';
+  HomeIcon, UsersIcon, StarIcon, ArrowsUpDownIcon } from '@heroicons/react/24/outline';
 import { StarIcon as StarSolid } from '@heroicons/react/24/solid';
 import clsx from 'clsx';
 import { api } from '../../api/client';
@@ -52,8 +50,7 @@ function mapContact(c: any): Contact {
     leadStatus: c.lead?.status || 'UNKNOWN',
     leadValue: c.lead?.estimatedValue ? Number(c.lead.estimatedValue) : undefined,
     isPrimary: c.isPrimary ?? true,
-    isStarred: false,
-  };
+    isStarred: false };
 }
 
 const ROLE_CONFIG: Record<string, { label: string; class: string }> = {
@@ -61,15 +58,13 @@ const ROLE_CONFIG: Record<string, { label: string; class: string }> = {
   SPOUSE:           { label: 'Spouse',   class: 'bg-purple-500/10 text-purple-400 border-purple-500/20' },
   PROPERTY_MANAGER: { label: 'Manager',  class: 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20' },
   REFERRAL:         { label: 'Referral', class: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' },
-  OTHER:            { label: 'Other',    class: 'bg-slate-700 text-slate-400 border-slate-600' },
-};
+  OTHER:            { label: 'Other',    class: 'bg-slate-700 text-slate-400 border-slate-600' } };
 
 const STATUS_LABELS: Record<string, string> = {
   NEW_LEAD: 'New Lead', ATTEMPTING_CONTACT: 'Contacting', CONTACTED: 'Contacted',
   QUALIFIED: 'Qualified', APPOINTMENT_SET: 'Appt Set', MEASURING_COMPLETE: 'Measured',
   PROPOSAL_SENT: 'Proposal Sent', FOLLOW_UP: 'Follow-Up', VERBAL_COMMIT: 'Verbal Commit',
-  SOLD: 'Sold',
-};
+  SOLD: 'Sold' };
 
 function ContactCard({ contact, onStar }: { contact: Contact; onStar: (id: string) => void }) {
   const roleCfg = ROLE_CONFIG[contact.role];
@@ -140,13 +135,11 @@ export function ContactsPage() {
   const { data: rawData, isLoading } = useQuery({
     queryKey: ['contacts-list'],
     queryFn: () => api.contacts.list().then((r: any) => (r.data || []).map(mapContact)),
-    staleTime: 60_000,
-  });
+    staleTime: 60_000 });
 
   const contacts: Contact[] = (rawData || []).map((c: Contact) => ({
     ...c,
-    isStarred: starredIds.has(c.id),
-  }));
+    isStarred: starredIds.has(c.id) }));
 
   const toggleStar = (id: string) => setStarredIds(prev => {
     const next = new Set(prev);

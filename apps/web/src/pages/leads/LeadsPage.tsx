@@ -1,13 +1,11 @@
 import { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { toast } from 'sonner';
 import {
-  PlusIcon, MagnifyingGlassIcon, FunnelIcon, CloudIcon,
-  MapPinIcon, UserIcon, PhoneIcon, EnvelopeIcon,
-  ChevronUpDownIcon, ArrowPathIcon, EllipsisHorizontalIcon,
-} from '@heroicons/react/24/outline';
+  PlusIcon, MagnifyingGlassIcon, CloudIcon,
+  MapPinIcon,
+  ChevronUpDownIcon, ArrowPathIcon, EllipsisHorizontalIcon } from '@heroicons/react/24/outline';
 import { BoltIcon } from '@heroicons/react/24/solid';
 import { api } from '../../api/client';
 import { useAuthStore, useAppStore } from '../../store/auth.store';
@@ -32,8 +30,7 @@ const STATUS_COLOR: Record<string, string> = {
   INSTALLED: 'badge-green',
   PAID: 'badge-green',
   LOST: 'badge-red',
-  NURTURE: 'badge-slate',
-};
+  NURTURE: 'badge-slate' };
 
 const ALL_STATUSES = [
   'NEW_LEAD', 'ATTEMPTING_CONTACT', 'CONTACTED', 'QUALIFIED',
@@ -92,11 +89,9 @@ export function LeadsPage() {
       sortBy,
       sortDir,
       page,
-      limit: 50,
-    }),
+      limit: 50 }),
     placeholderData: (prev) => prev,
-    staleTime: 30_000,
-  });
+    staleTime: 30_000 });
 
   const leads: any[] = leadsResp?.data || [];
   const meta = leadsResp?.meta || { total: 0 };

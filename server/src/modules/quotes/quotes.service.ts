@@ -90,7 +90,7 @@ export class QuotesService {
     notes?: string;
   }) {
     const { leadId, propertyId, productSeriesId, globalOptions = [], discountPct = 0,
-      financingOptionId, createdById, organizationId, notes } = params;
+      financingOptionId: _financingOptionId, createdById: _createdById, organizationId: _organizationId, notes: _notes } = params;
 
     // Load all approved/verified openings for the property
     const openings = await prisma.opening.findMany({

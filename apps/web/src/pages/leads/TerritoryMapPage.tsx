@@ -2,9 +2,8 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
-  MapPinIcon, CloudIcon, FunnelIcon, MagnifyingGlassIcon,
-  ListBulletIcon, AdjustmentsHorizontalIcon,
-} from '@heroicons/react/24/outline';
+  MapPinIcon, CloudIcon,
+  ListBulletIcon } from '@heroicons/react/24/outline';
 import clsx from 'clsx';
 import apiClient from '../../api/client';
 
@@ -21,8 +20,7 @@ const STATUS_COLOR_DOT: Record<string, string> = {
   APPOINTMENT_SET: '#06b6d4', INSPECTION_COMPLETE: '#06b6d4', MEASURING_COMPLETE: '#06b6d4',
   QUALIFIED: '#3b82f6', CONTACTED: '#3b82f6',
   NEW_LEAD: '#64748b', ATTEMPTING_CONTACT: '#f59e0b',
-  LOST: '#ef4444',
-};
+  LOST: '#ef4444' };
 
 // ─── SVG map component ─────────────────────────────────────────
 function SimpleLeadsMap({ leads, selected, onSelect }: {
@@ -162,8 +160,7 @@ export function TerritoryMapPage() {
           est: l.estimatedValue ?? 0,
           lat: l.lat ?? l.latitude ?? 30.45,
           lng: l.lng ?? l.longitude ?? -91.18,
-          parish: l.parish ?? l.county ?? l.city ?? 'Unknown',
-        })));
+          parish: l.parish ?? l.county ?? l.city ?? 'Unknown' })));
       })
       .catch(() => {})
       .finally(() => setLoading(false));

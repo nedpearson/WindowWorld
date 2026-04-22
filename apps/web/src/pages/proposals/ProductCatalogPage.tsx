@@ -1,11 +1,9 @@
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import {
-  CheckCircleIcon, XMarkIcon, InformationCircleIcon,
-  CurrencyDollarIcon, ChevronDownIcon, ChevronUpIcon,
-} from '@heroicons/react/24/outline';
+  CheckCircleIcon, ChevronDownIcon, ChevronUpIcon } from '@heroicons/react/24/outline';
 import { BoltIcon } from '@heroicons/react/24/solid';
 import clsx from 'clsx';
 
@@ -42,8 +40,7 @@ const OPTIONS = [
 
 const SERIES_BADGE_COLORS: Record<string, string> = {
   POPULAR: 'bg-brand-600 text-white',
-  HURRICANE: 'bg-purple-600 text-white',
-};
+  HURRICANE: 'bg-purple-600 text-white' };
 
 const CARD_ACCENT: Record<string, string> = {
   slate: 'border-t-slate-500',
@@ -51,8 +48,7 @@ const CARD_ACCENT: Record<string, string> = {
   brand: 'border-t-brand-500',
   purple: 'border-t-purple-500',
   cyan: 'border-t-cyan-500',
-  amber: 'border-t-amber-500',
-};
+  amber: 'border-t-amber-500' };
 
 type View = 'catalog' | 'options' | 'compare';
 
@@ -98,8 +94,7 @@ export function ProductCatalogPage() {
 
     const includedOpts: Record<string, string[]> = {
       LOW_E: ['SERIES_3000', 'SERIES_4000', 'SERIES_6000'], ARGON_FILL: ['SERIES_4000', 'SERIES_6000'], IMPACT: ['SERIES_6000'],
-      SCREEN_STANDARD: ['SERIES_2000', 'SERIES_3000', 'SERIES_4000', 'SERIES_6000', 'SERIES_CASEMENT', 'SERIES_AWNING', 'SERIES_SLIDER'],
-    };
+      SCREEN_STANDARD: ['SERIES_2000', 'SERIES_3000', 'SERIES_4000', 'SERIES_6000', 'SERIES_CASEMENT', 'SERIES_AWNING', 'SERIES_SLIDER'] };
 
     let extras = 75; // install
     for (const optId of selectedOptions) {

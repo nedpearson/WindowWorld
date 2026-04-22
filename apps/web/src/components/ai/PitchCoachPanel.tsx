@@ -7,9 +7,8 @@ import {
   ArrowPathIcon,
   ExclamationTriangleIcon,
   PhoneIcon,
-  ChatBubbleLeftIcon,
-} from '@heroicons/react/24/outline';
-import { SparklesIcon, BoltIcon } from '@heroicons/react/24/solid';
+  ChatBubbleLeftIcon } from '@heroicons/react/24/outline';
+import { SparklesIcon } from '@heroicons/react/24/solid';
 import clsx from 'clsx';
 import { usePitchCoach, useLeadSummary, useScoreLead } from '../../api/automations';
 

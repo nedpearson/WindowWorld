@@ -2,11 +2,8 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
-  BoltIcon as BoltOutline, CloudIcon, FireIcon,
-  TrophyIcon, ClockIcon, CurrencyDollarIcon,
-  FunnelIcon, ChevronRightIcon, ArrowPathIcon,
-} from '@heroicons/react/24/outline';
-import { BoltIcon as BoltSolid, StarIcon } from '@heroicons/react/24/solid';
+  BoltIcon as BoltOutline, CloudIcon, FireIcon, ClockIcon, CurrencyDollarIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
+import { BoltIcon as BoltSolid } from '@heroicons/react/24/solid';
 import clsx from 'clsx';
 import apiClient from '../../api/client';
 
@@ -19,8 +16,7 @@ const PITCH_ANGLE_LABELS: Record<string, { label: string; color: string }> = {
   INSURANCE_STORM:  { label: 'Storm / Insurance', color: 'badge-storm' },
   ENERGY_SAVINGS:   { label: 'Energy Savings', color: 'badge-blue' },
   CONSULTATIVE:     { label: 'Consultative', color: 'badge-green' },
-  BUDGET_CONSCIOUS: { label: 'Budget', color: 'badge-slate' },
-};
+  BUDGET_CONSCIOUS: { label: 'Budget', color: 'badge-slate' } };
 
 const CATEGORIES = [
   { key: 'all', label: 'All Leads', icon: BoltSolid },
@@ -72,8 +68,7 @@ export function LeadIntelligencePage() {
           est: l.estimatedValue ?? 0,
           signals: l.aiSignals ?? l.signals ?? [],
           pitchAngle: l.pitchAngle ?? 'CONSULTATIVE',
-          stuckDays: l.stuckDays ?? 0,
-        })));
+          stuckDays: l.stuckDays ?? 0 })));
       })
       .catch(() => {})
       .finally(() => setLoading(false));
@@ -207,8 +202,7 @@ export function LeadIntelligencePage() {
                         <div className="score-bar">
                           <div className="score-bar-fill" style={{
                             width: `${val}%`,
-                            background: val >= 80 ? '#10b981' : val >= 60 ? '#3b82f6' : val >= 40 ? '#f59e0b' : '#64748b',
-                          }} />
+                            background: val >= 80 ? '#10b981' : val >= 60 ? '#3b82f6' : val >= 40 ? '#f59e0b' : '#64748b' }} />
                         </div>
                       </div>
                     ))}

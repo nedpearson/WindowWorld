@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
 import clsx from 'clsx';
@@ -6,8 +6,7 @@ import {
   UserCircleIcon, BellIcon, ShieldCheckIcon, CreditCardIcon,
   BuildingOfficeIcon, LockClosedIcon, KeyIcon, CheckIcon,
   EyeIcon, EyeSlashIcon, ComputerDesktopIcon, DevicePhoneMobileIcon,
-  ArrowRightOnRectangleIcon, ClockIcon, GlobeAltIcon,
-} from '@heroicons/react/24/outline';
+  ArrowRightOnRectangleIcon, ClockIcon, GlobeAltIcon } from '@heroicons/react/24/outline';
 import { useAuthStore } from '../../store/auth.store';
 import { useUpdateUser } from '../../api/admin';
 import apiClient from '../../api/client';
@@ -21,8 +20,7 @@ const NOTIF_DEFAULTS = {
   appointmentReminder: true,
   teamActivity:    false,
   systemUpdates:   true,
-  weeklyReport:    false,
-};
+  weeklyReport:    false };
 
 type NotifKey = keyof typeof NOTIF_DEFAULTS;
 const NOTIF_LABELS: Record<NotifKey, { label: string; description: string; category: string }> = {
@@ -33,8 +31,7 @@ const NOTIF_LABELS: Record<NotifKey, { label: string; description: string; categ
   appointmentReminder: { label: 'Appointment Reminder',    description: '1 hour before a scheduled appointment',     category: 'Calendar' },
   teamActivity:        { label: 'Team Activity Feed',       description: 'Updates from team members in your org',     category: 'Team' },
   systemUpdates:       { label: 'System Alerts',            description: 'Critical system and security notifications', category: 'System' },
-  weeklyReport:        { label: 'Weekly Performance Report', description: 'Your weekly summary every Monday morning', category: 'Reports' },
-};
+  weeklyReport:        { label: 'Weekly Performance Report', description: 'Your weekly summary every Monday morning', category: 'Reports' } };
 
 // ─── Toggle Switch ─────────────────────────────────────────────
 function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
@@ -61,8 +58,7 @@ function ProfileTab() {
   const [form, setForm] = useState({
     firstName: user?.firstName || '',
     lastName:  user?.lastName  || '',
-    phone:     user?.phone     || '',
-  });
+    phone:     user?.phone     || '' });
   const [dirty, setDirty] = useState(false);
 
   const set = (k: keyof typeof form, v: string) => {
@@ -291,8 +287,7 @@ function NotificationsTab() {
           if (ls) setPrefs((p) => ({ ...p, ...JSON.parse(ls) }));
         } catch {}
       }
-    },
-  } as any);
+    } } as any);
 
   const { mutate: savePrefs, isPending: isSaving } = useMutation({
     mutationFn: () => apiClient.users.updatePreferences(prefs),
@@ -302,8 +297,7 @@ function NotificationsTab() {
       toast.success('Notification preferences saved');
       setDirty(false);
     },
-    onError: () => toast.error('Failed to save preferences'),
-  });
+    onError: () => toast.error('Failed to save preferences') });
 
   const toggle = (key: NotifKey) => { setPrefs((p) => ({ ...p, [key]: !p[key] })); setDirty(true); };
   const categories = [...new Set(Object.values(NOTIF_LABELS).map((v) => v.category))];
@@ -359,8 +353,7 @@ function OrganizationTab() {
   const qc = useQueryClient();
 
   const [form, setForm] = useState({
-    name: '', phone: '', email: '', address: '', timezone: 'America/Chicago', website: '',
-  });
+    name: '', phone: '', email: '', address: '', timezone: 'America/Chicago', website: '' });
   const [dirty, setDirty] = useState(false);
 
   // Load real org data on mount
@@ -376,10 +369,8 @@ function OrganizationTab() {
         email:    org.email    || '',
         address:  org.address  || '',
         timezone: org.timezone || 'America/Chicago',
-        website:  org.website  || '',
-      });
-    },
-  } as any);
+        website:  org.website  || '' });
+    } } as any);
 
   const { mutate: saveOrg, isPending: isSaving } = useMutation({
     mutationFn: () => apiClient.teams.update(form),
@@ -390,8 +381,7 @@ function OrganizationTab() {
     },
     onError: (err: any) => {
       toast.error(err?.response?.data?.error?.message || 'Failed to save');
-    },
-  });
+    } });
 
   const set = (k: keyof typeof form, v: string) => { setForm((f) => ({ ...f, [k]: v })); setDirty(true); };
   const handleSave = () => saveOrg();

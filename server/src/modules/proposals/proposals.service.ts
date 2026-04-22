@@ -118,7 +118,7 @@ export class ProposalsService {
         address: (proposal as any).lead?.address,
       });
 
-      logger.info(`PDF generation queued for proposal ${id}, job ${job.id}`);
+      logger.info(`PDF generation queued for proposal ${sanitizeForLog(id)}, job ${job.id}`);
 
       return { queued: true, proposalId: id, jobId: job.id };
     } catch (err) {
@@ -199,9 +199,9 @@ export class ProposalsService {
         expiresAt: (proposal as any).expiresAt,
         pdfUrl: (proposal as any).pdfUrl,
       });
-      logger.info(`Proposal ${id} email ${result.success ? 'delivered' : 'failed'}: provider=${result.provider}`);
+      logger.info(`Proposal ${sanitizeForLog(id)} email ${result.success ? 'delivered' : 'failed'}: provider=${result.provider}`);
     } else if (channel === 'email' || channel === 'both') {
-      logger.warn(`Proposal ${id}: no customer email on file for lead ${proposal.leadId}`);
+      logger.warn(`Proposal ${sanitizeForLog(id)}: no customer email on file for lead ${proposal.leadId}`);
     }
 
     // SMS: send portal link via Twilio
@@ -221,7 +221,7 @@ export class ProposalsService {
           logger.warn(`Proposal ${id} SMS failed: ${sanitizeForLog(err.message)}`);
         }
       } else {
-        logger.warn(`Proposal ${id}: no phone on file for lead ${proposal.leadId} — SMS skipped`);
+        logger.warn(`Proposal ${sanitizeForLog(id)}: no phone on file for lead ${proposal.leadId} — SMS skipped`);
       }
     }
 

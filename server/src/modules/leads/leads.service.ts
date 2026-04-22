@@ -3,7 +3,7 @@ import { prisma } from '../../shared/services/prisma';
 import { NotFoundError } from '../../shared/middleware/errorHandler';
 import { auditService } from '../admin/audit.service';
 import { aiService } from '../ai-analysis/ai.service';
-import { logger } from '../../shared/utils/logger';
+import { logger, sanitizeForLog } from '../../shared/utils/logger';
 import { leadScoringQueue } from '../../jobs';
 
 interface ListLeadsOptions {
@@ -211,7 +211,7 @@ export class LeadService {
       const { campaignsService } = await import('../campaigns/campaigns.service');
       await campaignsService.triggerForStatus(lead.id, 'NEW', createdById);
     } catch (err: any) {
-      logger.warn(`[leads] Campaign auto-enroll failed for ${lead.id}: ${err.message}`);
+      logger.warn(`[leads] Campaign auto-enroll failed for ${lead.id}: ${sanitizeForLog(err.message)}`);
     }
 
     return lead;
@@ -294,7 +294,7 @@ export class LeadService {
       const { campaignsService } = await import('../campaigns/campaigns.service');
       await campaignsService.triggerForStatus(id, status, userId);
     } catch (err: any) {
-      logger.warn(`[leads] Campaign trigger failed for ${id}/${status}: ${err.message}`);
+      logger.warn(`[leads] Campaign trigger failed for ${id}/${sanitizeForLog(status)}: ${sanitizeForLog(err.message)}`);
     }
 
     // Broadcast status change to all org members via WebSocket

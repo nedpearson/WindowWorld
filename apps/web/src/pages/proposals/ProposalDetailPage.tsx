@@ -4,10 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import {
   ArrowLeftIcon, DocumentTextIcon, PaperAirplaneIcon,
-  CheckCircleIcon, XMarkIcon, ArrowDownTrayIcon, ArrowPathIcon,
-  ClockIcon, EyeIcon, MapPinIcon, PhoneIcon, UserCircleIcon,
-  DocumentDuplicateIcon, BanknotesIcon, ChevronDownIcon,
-} from '@heroicons/react/24/outline';
+  CheckCircleIcon, XMarkIcon, ArrowDownTrayIcon, ArrowPathIcon, EyeIcon, PhoneIcon, UserCircleIcon, BanknotesIcon } from '@heroicons/react/24/outline';
 import { BoltIcon, CheckBadgeIcon } from '@heroicons/react/24/solid';
 import clsx from 'clsx';
 import { useProposal, useGeneratePdf, useUpdateProposalStatus, useSendProposal, useCreateInvoiceFromProposal, type Proposal } from '../../api/proposals';
@@ -47,8 +44,7 @@ We are committed to completing your project with zero surprises — no hidden fe
     id: '3', firstName: 'Robert', lastName: 'Comeaux',
     address: '4521 Greenwell Springs Rd', city: 'Baton Rouge', zip: '70806',
     phone: '(225) 555-1001',
-    assignedRep: { id: 'u1', firstName: 'Jake', lastName: 'Thibodaux', phone: '(225) 555-9000', email: 'jake@windowworldla.com' },
-  },
+    assignedRep: { id: 'u1', firstName: 'Jake', lastName: 'Thibodaux', phone: '(225) 555-9000', email: 'jake@windowworldla.com' } },
   quote: {
     id: 'q1', grandTotal: 14750, subtotal: 15500,
     discountPct: 5, discountAmount: 750, taxAmount: 0, totalWindows: 10,
@@ -62,10 +58,8 @@ We are committed to completing your project with zero surprises — no hidden fe
       { roomLabel: 'Bedroom 3', windowType: 'DOUBLE_HUNG', productName: 'Series 4000', widthInches: 28, heightInches: 48, quantity: 1, unitPrice: 1050, lineTotal: 1050, isAiEstimated: true },
       { roomLabel: 'Bathroom', windowType: 'SINGLE_HUNG', productName: 'Series 2000', widthInches: 24, heightInches: 36, quantity: 1, unitPrice: 750, lineTotal: 750, isAiEstimated: false },
       { roomLabel: 'Garage', windowType: 'AWNING', productName: 'Series 6000', widthInches: 36, heightInches: 24, quantity: 1, unitPrice: 1350, lineTotal: 1350, isAiEstimated: false },
-    ],
-  },
-  createdBy: { id: 'u1', firstName: 'Jake', lastName: 'Thibodaux', phone: '(225) 555-9000', email: 'jake@windowworldla.com' },
-};
+    ] },
+  createdBy: { id: 'u1', firstName: 'Jake', lastName: 'Thibodaux', phone: '(225) 555-9000', email: 'jake@windowworldla.com' } };
 
 // ─── Timeline ─────────────────────────────────────────────────
 function StatusTimeline({ proposal }: { proposal: Proposal }) {
@@ -219,8 +213,7 @@ export function ProposalDetailPage() {
       const invoice = await createInvoice.mutateAsync({
         proposalId: proposal.id,
         leadId: proposal.leadId,
-        depositPct: 30,
-      });
+        depositPct: 30 });
       toast.success('Invoice created successfully');
       navigate('/invoices');
     } catch {
@@ -255,8 +248,7 @@ export function ProposalDetailPage() {
               'bg-purple-500/15 text-purple-400 border-purple-500/25': proposal.status === 'SENT',
               'bg-cyan-500/15 text-cyan-400 border-cyan-500/25': proposal.status === 'VIEWED',
               'bg-emerald-500/15 text-emerald-400 border-emerald-500/25': proposal.status === 'ACCEPTED',
-              'bg-red-500/15 text-red-400 border-red-500/25': proposal.status === 'DECLINED',
-            })}>
+              'bg-red-500/15 text-red-400 border-red-500/25': proposal.status === 'DECLINED' })}>
               {proposal.status}
             </span>
             {proposal.viewCount ? (
