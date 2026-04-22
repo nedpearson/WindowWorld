@@ -37,7 +37,7 @@ async function main() {
     // ── Owner / Platform Admin ─────────────────────────────────
     prisma.user.upsert({
       where: { email: 'nedpearson@gmail.com' },
-      update: { passwordHash: nedHash, role: UserRole.SUPER_ADMIN },
+      update: { passwordHash: nedHash, role: UserRole.SUPER_ADMIN, isActive: true },
       create: {
         organizationId: org.id,
         email: 'nedpearson@gmail.com',
@@ -46,13 +46,12 @@ async function main() {
         lastName: 'Pearson',
         role: UserRole.SUPER_ADMIN,
         phone: '(225) 555-0100',
-        googleId: null, // Will be linked on first Google SSO login
         isActive: true,
       },
     }),
     prisma.user.upsert({
       where: { email: 'admin@windowworldla.com' },
-      update: {},
+      update: { passwordHash, isActive: true },
       create: {
         organizationId: org.id,
         email: 'admin@windowworldla.com',
@@ -65,7 +64,7 @@ async function main() {
     }),
     prisma.user.upsert({
       where: { email: 'manager@windowworldla.com' },
-      update: {},
+      update: { passwordHash, isActive: true },
       create: {
         organizationId: org.id,
         email: 'manager@windowworldla.com',
@@ -78,7 +77,7 @@ async function main() {
     }),
     prisma.user.upsert({
       where: { email: 'rep1@windowworldla.com' },
-      update: {},
+      update: { passwordHash, isActive: true },
       create: {
         organizationId: org.id,
         email: 'rep1@windowworldla.com',
@@ -91,7 +90,7 @@ async function main() {
     }),
     prisma.user.upsert({
       where: { email: 'rep2@windowworldla.com' },
-      update: {},
+      update: { passwordHash, isActive: true },
       create: {
         organizationId: org.id,
         email: 'rep2@windowworldla.com',
@@ -104,7 +103,7 @@ async function main() {
     }),
     prisma.user.upsert({
       where: { email: 'tech@windowworldla.com' },
-      update: {},
+      update: { passwordHash, isActive: true },
       create: {
         organizationId: org.id,
         email: 'tech@windowworldla.com',
@@ -117,7 +116,7 @@ async function main() {
     }),
     prisma.user.upsert({
       where: { email: 'finance@windowworldla.com' },
-      update: {},
+      update: { passwordHash, isActive: true },
       create: {
         organizationId: org.id,
         email: 'finance@windowworldla.com',
