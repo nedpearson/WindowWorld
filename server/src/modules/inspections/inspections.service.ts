@@ -1,5 +1,5 @@
 import { prisma } from '../../shared/services/prisma';
-import { NotFoundError, AppError } from '../../shared/middleware/errorHandler';
+import { NotFoundError } from '../../shared/middleware/errorHandler';
 import { auditService } from '../admin/audit.service';
 
 export class InspectionsService {

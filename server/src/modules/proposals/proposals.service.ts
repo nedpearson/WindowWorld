@@ -216,9 +216,9 @@ export class ProposalsService {
             phone,
             `Hi ${lead.firstName}! ${repFirst} from WindowWorld has sent your window replacement proposal. View & accept it here: ${appUrl}/portal/${id}`,
           );
-          logger.info(`Proposal ${id} SMS delivered to ${phone}`);
+          logger.info(`Proposal ${id} SMS delivered to ${sanitizeForLog(phone)}`);
         } catch (err: any) {
-          logger.warn(`Proposal ${id} SMS failed: ${err.message}`);
+          logger.warn(`Proposal ${id} SMS failed: ${sanitizeForLog(err.message)}`);
         }
       } else {
         logger.warn(`Proposal ${id}: no phone on file for lead ${proposal.leadId} — SMS skipped`);

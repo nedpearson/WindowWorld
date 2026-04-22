@@ -1,9 +1,9 @@
 import { Prisma, LeadStatus } from '@prisma/client';
 import { prisma } from '../../shared/services/prisma';
-import { NotFoundError, AppError } from '../../shared/middleware/errorHandler';
+import { NotFoundError } from '../../shared/middleware/errorHandler';
 import { auditService } from '../admin/audit.service';
 import { aiService } from '../ai-analysis/ai.service';
-import { logger, sanitizeForLog } from '../../shared/utils/logger';
+import { logger } from '../../shared/utils/logger';
 import { leadScoringQueue } from '../../jobs';
 
 interface ListLeadsOptions {

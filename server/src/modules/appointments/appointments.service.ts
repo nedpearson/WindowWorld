@@ -1,7 +1,6 @@
 import { Prisma, AppointmentStatus } from '@prisma/client';
 import { prisma } from '../../shared/services/prisma';
 import { NotFoundError } from '../../shared/middleware/errorHandler';
-import { auditService } from '../admin/audit.service';
 import { logger } from '../../shared/utils/logger';
 
 export class AppointmentsService {

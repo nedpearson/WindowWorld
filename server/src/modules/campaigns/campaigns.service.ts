@@ -302,7 +302,7 @@ export class CampaignsService {
             leadId,
             type: 'campaign',
           });
-          logger.info(`Campaign email queued: ${emailTemplateKey} â†’ ${toEmail}`);
+          logger.info(`Campaign email queued: ${emailTemplateKey} -> ${sanitizeForLog(toEmail)}`);
         }
       }
     }
@@ -386,7 +386,7 @@ export class CampaignsService {
       try {
         await this.enroll(leadId, key, enrolledById);
       } catch (err: any) {
-        logger.warn(`Auto-enroll campaign failed for ${leadId}/${key}: ${err.message}`);
+        logger.warn(`Auto-enroll campaign failed for ${leadId}/${sanitizeForLog(key)}: ${sanitizeForLog(err.message)}`);
       }
     }
 

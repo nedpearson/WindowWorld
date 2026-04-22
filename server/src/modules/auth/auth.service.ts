@@ -1,9 +1,9 @@
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import { v4 as uuidv4 } from 'uuid';
 import { prisma } from '../../shared/services/prisma';
 import { AppError, UnauthorizedError, NotFoundError } from '../../shared/middleware/errorHandler';
 import { logger } from '../../shared/utils/logger';
-import { v4 as uuidv4 } from 'uuid';
 import { OAuth2Client } from 'google-auth-library';
 
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);

@@ -1,8 +1,8 @@
 import { Router, Request, Response } from 'express';
-import { body, query, param, validationResult } from 'express-validator';
+import { body, query, validationResult } from 'express-validator';
 import { auth, AuthenticatedRequest } from '../../shared/middleware/auth';
 import { leadService } from './leads.service';
-import { ValidationError, NotFoundError } from '../../shared/middleware/errorHandler';
+import { ValidationError } from '../../shared/middleware/errorHandler';
 
 const router = Router();
 
