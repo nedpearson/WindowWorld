@@ -279,7 +279,7 @@ async function start() {
                 data: { isActive: true },
             });
             if (activateResult.count > 0) {
-                logger_1.logger.info([Startup], Activated + "" + $, { activateResult, : .count } + "" + seed, user, account(s));
+                logger_1.logger.info(`[Startup] Activated ${activateResult.count} seed user account(s)`);
             }
         }
         catch (activateErr) {

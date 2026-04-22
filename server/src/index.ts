@@ -262,7 +262,7 @@ async function start() {
         data: { isActive: true },
       });
       if (activateResult.count > 0) {
-        logger.info([Startup] Activated +""+${activateResult.count}+""+ seed user account(s));
+        logger.info(`[Startup] Activated ${activateResult.count} seed user account(s)`);
       }
     } catch (activateErr) {
       logger.warn('[Startup] Could not activate seed accounts:', activateErr);
@@ -314,4 +314,5 @@ process.on('SIGTERM', () => shutdown('SIGTERM'));
 process.on('SIGINT',  () => shutdown('SIGINT'));
 
 export { app, httpServer };
+
 
