@@ -1,4 +1,4 @@
-﻿import 'express-async-errors';
+import 'express-async-errors';
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
@@ -107,7 +107,10 @@ app.get('/health', async (_req, res) => {
 
 
 // Force HTTPS in production
-app.enable('trust proxy');
+// Railway sits behind exactly 1 reverse-proxy hop.
+// Setting to `1` (not `true`) satisfies express-rate-limit's trust-proxy validator
+// and prevents attackers from spoofing X-Forwarded-For to bypass rate limits.
+app.set('trust proxy', 1);
 app.use((req, res, next) => {
   if (process.env.NODE_ENV === 'production'
     && req.headers['x-forwarded-proto'] !== 'https'

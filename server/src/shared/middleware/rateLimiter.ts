@@ -22,7 +22,7 @@ export const authRateLimiter = rateLimit({
   max: 20,                   // Stricter for auth endpoints
   standardHeaders: true,
   legacyHeaders: false,
-  validate: { xForwardedForHeader: false }, // Railway runs behind a proxy
+  validate: { xForwardedForHeader: false }, // Railway runs behind a proxy; trust proxy is set to 1 at app level
   message: {
     success: false,
     error: {
@@ -32,3 +32,4 @@ export const authRateLimiter = rateLimit({
     },
   },
 });
+
