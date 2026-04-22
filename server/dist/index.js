@@ -152,17 +152,22 @@ app.use((0, helmet_1.default)({
     contentSecurityPolicy: {
         directives: process.env.NODE_ENV === 'production' ? {
             defaultSrc: ["'self'"],
-            // Remove 'unsafe-inline' — React app is bundled; no inline scripts needed
-            // Google OAuth uses a popup/redirect flow, not inline scripts
-            scriptSrc: ["'self'", 'https://accounts.google.com'],
-            styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
+            // Google Sign-In (GSI) requires accounts.google.com for scripts, styles, frames
+            // and googleapis.com / googleusercontent.com for token verification + avatars
+            scriptSrc: ["'self'", 'https://accounts.google.com', 'https://apis.google.com'],
+            styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com', 'https://accounts.google.com'],
             fontSrc: ["'self'", 'https://fonts.gstatic.com'],
-            imgSrc: ["'self'", 'data:', 'blob:', 'https:'],
-            connectSrc: ["'self'", 'https://api.openai.com', 'https://identitytoolkit.googleapis.com', 'wss:', 'ws:'],
+            imgSrc: ["'self'", 'data:', 'blob:', 'https:', 'https://lh3.googleusercontent.com'],
+            connectSrc: ["'self'",
+                'https://api.openai.com',
+                'https://accounts.google.com',
+                'https://oauth2.googleapis.com',
+                'https://identitytoolkit.googleapis.com',
+                'wss:', 'ws:'],
             frameSrc: ["'self'", 'https://accounts.google.com'],
             objectSrc: ["'none'"],
             baseUri: ["'self'"],
-            formAction: ["'self'"],
+            formAction: ["'self'", 'https://accounts.google.com'],
             upgradeInsecureRequests: [],
         } : {
             // Dev: permissive CSP — allows Vite HMR + devtools, but CSP is still present

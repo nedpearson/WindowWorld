@@ -1,5 +1,5 @@
-[phases.setup]
-# Node 22 LTS — required by Prisma and for running node dist/index.js
+﻿[phases.setup]
+# Node 22 LTS -- required by Prisma and for running node dist/index.js
 nixPkgs = ["nodejs_22"]
 
 [phases.install]
@@ -12,10 +12,11 @@ cmds = [
 [phases.build]
 cmds = [
   # Prisma client must be generated at deploy time (OS-specific native binaries).
-  # server/dist and server/public are pre-built and committed to git — no tsc or
+  # server/dist and server/public are pre-built and committed to git -- no tsc or
   # vite build needed here (eliminates build cache skipping issues on Railway).
   "cd server && npx prisma generate"
 ]
 
 [start]
-cmd = "cd server && npx prisma db push --accept-data-loss && node dist/index.js"
+# db push applies schema changes, db seed creates demo users (idempotent upserts)
+cmd = "cd server && npx prisma db push --accept-data-loss && npx prisma db seed && node dist/index.js"
