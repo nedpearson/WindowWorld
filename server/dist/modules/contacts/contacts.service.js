@@ -5,6 +5,24 @@ const prisma_1 = require("../../shared/services/prisma");
 const errorHandler_1 = require("../../shared/middleware/errorHandler");
 const audit_service_1 = require("../admin/audit.service");
 class ContactsService {
+    async listForOrg(organizationId, search) {
+        const searchWhere = search ? {
+            OR: [
+                { firstName: { contains: search, mode: 'insensitive' } },
+                { lastName: { contains: search, mode: 'insensitive' } },
+                { phone: { contains: search } },
+                { email: { contains: search, mode: 'insensitive' } },
+            ],
+        } : {};
+        return prisma_1.prisma.contact.findMany({
+            where: { lead: { organizationId }, ...searchWhere },
+            include: {
+                lead: { select: { id: true, firstName: true, lastName: true, status: true, estimatedRevenue: true } },
+            },
+            orderBy: [{ isPrimary: 'desc' }, { lastName: 'asc' }],
+            take: 500,
+        });
+    }
     async listByLead(leadId, organizationId) {
         // Verify lead belongs to org
         const lead = await prisma_1.prisma.lead.findFirst({ where: { id: leadId, organizationId } });

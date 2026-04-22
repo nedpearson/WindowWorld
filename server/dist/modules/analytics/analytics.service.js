@@ -198,6 +198,147 @@ class AnalyticsService {
             pct: Math.round((s.count / total) * 100),
         }));
     }
+    async getCommissions(organizationId) {
+        const now = new Date();
+        const mtdStart = new Date(now.getFullYear(), now.getMonth(), 1);
+        const ytdStart = new Date(now.getFullYear(), 0, 1);
+        const CLOSED = ['VERBAL_COMMIT', 'ORDER_SUBMITTED', 'IN_PRODUCTION', 'INSTALLED', 'SOLD'];
+        const ACTIVE = ['NEW_LEAD', 'ATTEMPTING_CONTACT', 'CONTACTED', 'QUALIFIED', 'APPOINTMENT_SET',
+            'MEASURING_COMPLETE', 'INSPECTION_COMPLETE', 'PROPOSAL_SENT', 'FOLLOW_UP'];
+        const reps = await prisma_1.prisma.user.findMany({
+            where: { organizationId, role: { in: ['SALES_REP', 'SALES_MANAGER'] } },
+            select: { id: true, firstName: true, lastName: true },
+        });
+        const repData = await Promise.all(reps.map(async (rep) => {
+            const [mtdLeads, ytdLeads, pipelineLeads] = await Promise.all([
+                prisma_1.prisma.lead.findMany({
+                    where: { assignedRepId: rep.id, status: { in: CLOSED }, updatedAt: { gte: mtdStart } },
+                    include: { quote: { select: { grandTotal: true, total: true } } },
+                    orderBy: { updatedAt: 'desc' }, take: 10,
+                }),
+                prisma_1.prisma.lead.findMany({
+                    where: { assignedRepId: rep.id, status: { in: CLOSED }, updatedAt: { gte: ytdStart } },
+                    select: { estimatedValue: true, estimatedRevenue: true, quote: { select: { grandTotal: true, total: true } } },
+                }),
+                prisma_1.prisma.lead.findMany({
+                    where: { assignedRepId: rep.id, status: { in: ACTIVE } },
+                    select: { estimatedValue: true, estimatedRevenue: true },
+                }),
+            ]);
+            const val = (l) => Number(l.quote?.grandTotal || l.quote?.total
+                || l.estimatedValue || l.estimatedRevenue || 0);
+            const mtdRevenue = mtdLeads.reduce((s, l) => s + val(l), 0);
+            const ytdRevenue = ytdLeads.reduce((s, l) => s + val(l), 0);
+            const openPipeline = pipelineLeads.reduce((s, l) => s + val(l), 0);
+            const deals = mtdLeads.map((l) => ({
+                id: l.id,
+                customer: `${l.firstName || ''} ${l.lastName || ''}`.trim() || 'Lead',
+                amount: val(l),
+                closedAt: new Date(l.updatedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+                repId: rep.id,
+                status: ['INSTALLED', 'SOLD'].includes(l.status) ? 'PAID' : 'PENDING',
+                series: l.quote?.series || 'WindowWorld',
+            }));
+            return {
+                id: rep.id,
+                name: `${rep.firstName} ${rep.lastName}`,
+                avatar: `${rep.firstName[0]}${rep.lastName[0]}`,
+                mtdRevenue: Math.round(mtdRevenue * 100) / 100,
+                ytdRevenue: Math.round(ytdRevenue * 100) / 100,
+                openPipeline: Math.round(openPipeline * 100) / 100,
+                deals,
+            };
+        }));
+        return repData.sort((a, b) => b.mtdRevenue - a.mtdRevenue);
+    }
+    async getInstalledLeads(organizationId, limit = 60) {
+        return prisma_1.prisma.lead.findMany({
+            where: { organizationId, status: { in: ['INSTALLED', 'SOLD'] } },
+            include: {
+                assignedRep: { select: { id: true, firstName: true, lastName: true } },
+                contacts: { where: { isPrimary: true }, take: 1 },
+                quote: { select: { grandTotal: true, total: true, totalWindows: true } },
+            },
+            orderBy: { updatedAt: 'desc' },
+            take: limit,
+        });
+    }
+    async getMapData(organizationId, periodDays = 90) {
+        const since = new Date();
+        since.setDate(since.getDate() - periodDays);
+        const leads = await prisma_1.prisma.lead.findMany({
+            where: { organizationId, createdAt: { gte: since } },
+            select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                address: true,
+                city: true,
+                state: true,
+                zip: true,
+                lat: true,
+                lng: true,
+                status: true,
+                source: true,
+                leadScore: true,
+                estimatedRevenue: true,
+                assignedRepId: true,
+                createdAt: true,
+            },
+        });
+        // Group by zip code for heatmap overlay
+        const byZip = leads.reduce((acc, lead) => {
+            const zip = lead.zip || 'UNKNOWN';
+            if (!acc[zip])
+                acc[zip] = { zip, count: 0, closed: 0, leads: [] };
+            acc[zip].count++;
+            if (['VERBAL_COMMIT', 'CONTRACTED', 'INSTALLED', 'PAID'].includes(lead.status)) {
+                acc[zip].closed++;
+            }
+            // Only include first 5 leads per zip for performance
+            if (acc[zip].leads.length < 5)
+                acc[zip].leads.push(lead);
+            return acc;
+        }, {});
+        return {
+            leads: leads.filter((l) => l.lat && l.lng), // only those with geocoords
+            zipSummary: Object.values(byZip).sort((a, b) => b.count - a.count),
+            total: leads.length,
+            period: { days: periodDays, since },
+        };
+    }
+    async getWeatherCorrelation(organizationId, periodDays = 90) {
+        const since = new Date();
+        since.setDate(since.getDate() - periodDays);
+        const [stormEvents, leads] = await Promise.all([
+            prisma_1.prisma.stormEvent?.findMany({
+                where: { organizationId, occurredAt: { gte: since } },
+                orderBy: { occurredAt: 'asc' },
+            }).catch(() => []) ?? [],
+            prisma_1.prisma.lead.findMany({
+                where: { organizationId, createdAt: { gte: since } },
+                select: { id: true, createdAt: true, source: true, status: true },
+                orderBy: { createdAt: 'asc' },
+            }),
+        ]);
+        // Group leads by week
+        const leadsByWeek = {};
+        leads.forEach((l) => {
+            const weekStart = new Date(l.createdAt);
+            weekStart.setDate(weekStart.getDate() - weekStart.getDay());
+            const key = weekStart.toISOString().split('T')[0];
+            leadsByWeek[key] = (leadsByWeek[key] || 0) + 1;
+        });
+        // Storm-sourced leads
+        const stormSourced = leads.filter((l) => ['STORM', 'HAIL', 'WIND_DAMAGE', 'INSURANCE_CLAIM'].includes(l.source)).length;
+        return {
+            weeklyLeadCounts: Object.entries(leadsByWeek).map(([week, count]) => ({ week, count })),
+            stormEvents: stormEvents || [],
+            stormSourcedLeads: stormSourced,
+            stormSourceRate: leads.length > 0 ? Math.round((stormSourced / leads.length) * 10000) / 100 : 0,
+            period: { days: periodDays, since },
+        };
+    }
 }
 exports.AnalyticsService = AnalyticsService;
 exports.analyticsService = new AnalyticsService();

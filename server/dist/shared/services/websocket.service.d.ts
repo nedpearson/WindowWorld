@@ -8,9 +8,12 @@ export declare class WebSocketService {
      */
     notifyUser(userId: string, eventName: string, data: any): void;
     /**
-     * Push an event to everyone in a specific organization
+     * Push an event to everyone in a specific organization.
+     * Alias: broadcastToOrg()
      */
     notifyOrganization(organizationId: string, eventName: string, data: any): void;
+    /** Convenience alias — same as notifyOrganization */
+    broadcastToOrg(organizationId: string, eventName: string, data: any): void;
 }
 export declare const wsService: WebSocketService;
 //# sourceMappingURL=websocket.service.d.ts.map

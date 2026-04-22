@@ -6,6 +6,19 @@ const auth_1 = require("../../shared/middleware/auth");
 const quotes_service_1 = require("./quotes.service");
 const router = (0, express_1.Router)();
 exports.quotesRouter = router;
+// GET /api/v1/quotes — list all quotes for the org (with optional leadId filter)
+router.get('/', auth_1.auth.repOrAbove, async (req, res) => {
+    const user = req.user;
+    const { leadId, status, page = '1', limit = '20' } = req.query;
+    const data = await quotes_service_1.quotesService.list({
+        organizationId: user.organizationId,
+        leadId,
+        status,
+        page: parseInt(page),
+        limit: parseInt(limit),
+    });
+    res.json({ success: true, ...data });
+});
 router.get('/lead/:leadId', auth_1.auth.repOrAbove, async (req, res) => {
     const data = await quotes_service_1.quotesService.listForLead(req.params.leadId);
     res.json({ success: true, data });

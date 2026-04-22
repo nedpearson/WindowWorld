@@ -22,7 +22,6 @@ export declare class ProposalsService {
                 status: string;
                 notes: string | null;
                 leadId: string;
-                total: number;
                 createdById: string | null;
                 validUntil: Date | null;
                 subtotal: number;
@@ -31,6 +30,7 @@ export declare class ProposalsService {
                 discountPercent: number;
                 taxRate: number;
                 taxAmount: number;
+                total: number;
                 financingApplied: boolean;
                 financingPlan: string | null;
                 financingMonths: number | null;
@@ -51,7 +51,6 @@ export declare class ProposalsService {
                 status: string;
                 notes: string | null;
                 leadId: string;
-                total: number;
                 createdById: string | null;
                 validUntil: Date | null;
                 subtotal: number;
@@ -60,6 +59,7 @@ export declare class ProposalsService {
                 discountPercent: number;
                 taxRate: number;
                 taxAmount: number;
+                total: number;
                 financingApplied: boolean;
                 financingPlan: string | null;
                 financingMonths: number | null;
@@ -87,12 +87,13 @@ export declare class ProposalsService {
             status: import(".prisma/client").$Enums.ProposalStatus;
             notes: string | null;
             leadId: string;
+            customerName: string | null;
+            pdfUrl: string | null;
+            title: string | null;
             createdById: string;
             quoteId: string | null;
-            title: string | null;
             templateId: string | null;
             brandingMode: string | null;
-            customerName: string | null;
             customerEmail: string | null;
             propertyAddress: string | null;
             coverNote: string | null;
@@ -106,7 +107,6 @@ export declare class ProposalsService {
             signedAt: Date | null;
             signedByName: string | null;
             signedByIp: string | null;
-            pdfUrl: string | null;
             pdfGeneratedAt: Date | null;
             aiCustomerNote: string | null;
             aiRepNotes: string | null;
@@ -201,7 +201,6 @@ export declare class ProposalsService {
             status: string;
             notes: string | null;
             leadId: string;
-            total: number;
             createdById: string | null;
             validUntil: Date | null;
             subtotal: number;
@@ -210,6 +209,7 @@ export declare class ProposalsService {
             discountPercent: number;
             taxRate: number;
             taxAmount: number;
+            total: number;
             financingApplied: boolean;
             financingPlan: string | null;
             financingMonths: number | null;
@@ -239,12 +239,13 @@ export declare class ProposalsService {
         status: import(".prisma/client").$Enums.ProposalStatus;
         notes: string | null;
         leadId: string;
+        customerName: string | null;
+        pdfUrl: string | null;
+        title: string | null;
         createdById: string;
         quoteId: string | null;
-        title: string | null;
         templateId: string | null;
         brandingMode: string | null;
-        customerName: string | null;
         customerEmail: string | null;
         propertyAddress: string | null;
         coverNote: string | null;
@@ -258,7 +259,6 @@ export declare class ProposalsService {
         signedAt: Date | null;
         signedByName: string | null;
         signedByIp: string | null;
-        pdfUrl: string | null;
         pdfGeneratedAt: Date | null;
         aiCustomerNote: string | null;
         aiRepNotes: string | null;
@@ -288,7 +288,6 @@ export declare class ProposalsService {
             status: string;
             notes: string | null;
             leadId: string;
-            total: number;
             createdById: string | null;
             validUntil: Date | null;
             subtotal: number;
@@ -297,6 +296,7 @@ export declare class ProposalsService {
             discountPercent: number;
             taxRate: number;
             taxAmount: number;
+            total: number;
             financingApplied: boolean;
             financingPlan: string | null;
             financingMonths: number | null;
@@ -317,7 +317,6 @@ export declare class ProposalsService {
             status: string;
             notes: string | null;
             leadId: string;
-            total: number;
             createdById: string | null;
             validUntil: Date | null;
             subtotal: number;
@@ -326,6 +325,7 @@ export declare class ProposalsService {
             discountPercent: number;
             taxRate: number;
             taxAmount: number;
+            total: number;
             financingApplied: boolean;
             financingPlan: string | null;
             financingMonths: number | null;
@@ -348,12 +348,13 @@ export declare class ProposalsService {
         status: import(".prisma/client").$Enums.ProposalStatus;
         notes: string | null;
         leadId: string;
+        customerName: string | null;
+        pdfUrl: string | null;
+        title: string | null;
         createdById: string;
         quoteId: string | null;
-        title: string | null;
         templateId: string | null;
         brandingMode: string | null;
-        customerName: string | null;
         customerEmail: string | null;
         propertyAddress: string | null;
         coverNote: string | null;
@@ -367,7 +368,6 @@ export declare class ProposalsService {
         signedAt: Date | null;
         signedByName: string | null;
         signedByIp: string | null;
-        pdfUrl: string | null;
         pdfGeneratedAt: Date | null;
         aiCustomerNote: string | null;
         aiRepNotes: string | null;
@@ -387,12 +387,13 @@ export declare class ProposalsService {
         status: import(".prisma/client").$Enums.ProposalStatus;
         notes: string | null;
         leadId: string;
+        customerName: string | null;
+        pdfUrl: string | null;
+        title: string | null;
         createdById: string;
         quoteId: string | null;
-        title: string | null;
         templateId: string | null;
         brandingMode: string | null;
-        customerName: string | null;
         customerEmail: string | null;
         propertyAddress: string | null;
         coverNote: string | null;
@@ -406,7 +407,6 @@ export declare class ProposalsService {
         signedAt: Date | null;
         signedByName: string | null;
         signedByIp: string | null;
-        pdfUrl: string | null;
         pdfGeneratedAt: Date | null;
         aiCustomerNote: string | null;
         aiRepNotes: string | null;

@@ -4,6 +4,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.logger = void 0;
+exports.sanitizeForLog = sanitizeForLog;
 const winston_1 = __importDefault(require("winston"));
 const { combine, timestamp, printf, colorize, errors } = winston_1.default.format;
 const logFormat = printf(({ level, message, timestamp, stack, ...meta }) => {
@@ -34,4 +35,18 @@ exports.logger.add(new winston_1.default.transports.Console({
     level: 'http',
     silent: process.env.NODE_ENV === 'test',
 }));
+/**
+ * Sanitize a user-supplied string before embedding in log messages.
+ * Prevents log injection by stripping newlines, carriage returns, and
+ * other control characters that could be used to forge log entries.
+ * (CodeQL: js/log-injection)
+ */
+function sanitizeForLog(value) {
+    if (value === null || value === undefined)
+        return '';
+    return String(value)
+        .replace(/[\r\n\t]/g, ' ') // newlines → space (blocks log injection)
+        .replace(/[\x00-\x1f\x7f]/g, '') // strip other control chars
+        .slice(0, 200); // cap length
+}
 //# sourceMappingURL=logger.js.map

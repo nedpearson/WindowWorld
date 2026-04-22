@@ -1,4 +1,37 @@
 "use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
@@ -14,10 +47,12 @@ const dotenv_1 = __importDefault(require("dotenv"));
 const http_1 = require("http");
 const path_1 = __importDefault(require("path"));
 const fs_1 = __importDefault(require("fs"));
+const Sentry = __importStar(require("@sentry/node"));
 const logger_1 = require("./shared/utils/logger");
 const errorHandler_1 = require("./shared/middleware/errorHandler");
 const requestId_1 = require("./shared/middleware/requestId");
 const websocket_service_1 = require("./shared/services/websocket.service");
+const rateLimiter_1 = require("./shared/middleware/rateLimiter");
 // Module routers
 const auth_routes_1 = require("./modules/auth/auth.routes");
 const users_routes_1 = require("./modules/users/users.routes");
@@ -45,10 +80,33 @@ const admin_routes_1 = require("./modules/admin/admin.routes");
 // Background jobs
 const jobs_1 = require("./jobs");
 dotenv_1.default.config();
+// ─── Startup Validation (fail fast, fail loud) ───────────────────
+const REQUIRED_ENV = ['DATABASE_URL', 'JWT_SECRET'];
+const missingEnv = REQUIRED_ENV.filter(k => !process.env[k]);
+if (missingEnv.length) {
+    console.error(`FATAL: Missing required environment variables: ${missingEnv.join(', ')}`);
+    console.error('Set these in your .env file or Railway environment variables.');
+    process.exit(1);
+}
+if (process.env.NODE_ENV === 'production' && (process.env.JWT_SECRET || '').length < 32) {
+    console.error('FATAL: JWT_SECRET must be at least 32 characters in production.');
+    console.error('Generate one with: node -e "console.log(require(\'crypto\').randomBytes(48).toString(\'hex\'))"');
+    process.exit(1);
+}
 const app = (0, express_1.default)();
 exports.app = app;
 const httpServer = (0, http_1.createServer)(app);
 exports.httpServer = httpServer;
+// ─── Sentry (init before any middleware so it captures all errors) ────────────
+if (process.env.SENTRY_DSN) {
+    Sentry.init({
+        dsn: process.env.SENTRY_DSN,
+        environment: process.env.NODE_ENV || 'development',
+        tracesSampleRate: process.env.NODE_ENV === 'production' ? 0.1 : 0,
+    });
+    app.use(Sentry.expressErrorHandler());
+    logger_1.logger.info('Sentry error tracking enabled');
+}
 const PORT = process.env.PORT || 3001;
 const CORS_ORIGINS = (process.env.CORS_ORIGIN || 'http://localhost:5173')
     .split(',')
@@ -56,12 +114,25 @@ const CORS_ORIGINS = (process.env.CORS_ORIGIN || 'http://localhost:5173')
 // ─── Middleware ──────────────────────────────────────────────────────────────
 // ─── Health check (MUST be first - before HTTPS redirect or any middleware) ─
 // Railway healthcheck sends plain HTTP internally; must respond 200 unconditionally
-app.get('/health', (_req, res) => {
-    res.json({
-        status: 'ok',
+app.get('/health', async (_req, res) => {
+    let dbStatus = 'ok';
+    let dbLatencyMs;
+    try {
+        const { prisma } = await Promise.resolve().then(() => __importStar(require('./shared/services/prisma')));
+        const t = Date.now();
+        await prisma.$queryRaw `SELECT 1`;
+        dbLatencyMs = Date.now() - t;
+    }
+    catch {
+        dbStatus = 'error';
+    }
+    const status = dbStatus === 'ok' ? 'ok' : 'degraded';
+    res.status(dbStatus === 'ok' ? 200 : 503).json({
+        status,
         timestamp: new Date().toISOString(),
         version: process.env.npm_package_version || '1.0.0',
         env: process.env.NODE_ENV,
+        db: { status: dbStatus, latencyMs: dbLatencyMs },
     });
 });
 // Force HTTPS in production
@@ -78,6 +149,31 @@ app.use((0, helmet_1.default)({
     crossOriginResourcePolicy: { policy: 'cross-origin' },
     // Google OAuth popup requires being able to postMessage back to us
     crossOriginOpenerPolicy: false,
+    contentSecurityPolicy: {
+        directives: process.env.NODE_ENV === 'production' ? {
+            defaultSrc: ["'self'"],
+            // Remove 'unsafe-inline' — React app is bundled; no inline scripts needed
+            // Google OAuth uses a popup/redirect flow, not inline scripts
+            scriptSrc: ["'self'", 'https://accounts.google.com'],
+            styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
+            fontSrc: ["'self'", 'https://fonts.gstatic.com'],
+            imgSrc: ["'self'", 'data:', 'blob:', 'https:'],
+            connectSrc: ["'self'", 'https://api.openai.com', 'https://identitytoolkit.googleapis.com', 'wss:', 'ws:'],
+            frameSrc: ["'self'", 'https://accounts.google.com'],
+            objectSrc: ["'none'"],
+            baseUri: ["'self'"],
+            formAction: ["'self'"],
+            upgradeInsecureRequests: [],
+        } : {
+            // Dev: permissive CSP — allows Vite HMR + devtools, but CSP is still present
+            // (CodeQL flags contentSecurityPolicy: false as a high severity issue)
+            defaultSrc: ["'self'"],
+            scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
+            styleSrc: ["'self'", "'unsafe-inline'"],
+            connectSrc: ["'self'", 'ws:', 'wss:', 'http:', 'https:'],
+            imgSrc: ["'self'", 'data:', 'blob:'],
+        },
+    },
 }));
 app.use((0, cors_1.default)({
     origin: CORS_ORIGINS,
@@ -86,12 +182,14 @@ app.use((0, cors_1.default)({
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Request-Id', 'X-Device-Id'],
 }));
 app.use((0, compression_1.default)());
-app.use(express_1.default.json({ limit: '50mb' }));
-app.use(express_1.default.urlencoded({ extended: true, limit: '50mb' }));
+// JSON limit is 2mb — file uploads are handled by multer separately (not limited here)
+// 50mb JSON bodies would be a DDoS amplification vector
+app.use(express_1.default.json({ limit: '2mb' }));
+app.use(express_1.default.urlencoded({ extended: true, limit: '2mb' }));
 app.use((0, morgan_1.default)('combined', { stream: { write: (msg) => logger_1.logger.http(msg.trim()) } }));
 app.use(requestId_1.requestId);
-// Rate limiting disabled temporarily - Railway proxy causes ERR_ERL_UNEXPECTED_X_FORWARDED_FOR
-// app.use(rateLimiter);
+// Rate limiting — Railway-safe (validate.xForwardedForHeader = false in rateLimiter.ts)
+app.use(rateLimiter_1.rateLimiter);
 // ─────────────────────────────────────────────────────────────────────────────
 // ─── Static file serving (uploads) ───────────────────────────────────────────
 const uploadDir = process.env.UPLOAD_DIR || path_1.default.join(process.cwd(), 'uploads');
@@ -101,7 +199,7 @@ if (!fs_1.default.existsSync(uploadDir)) {
 app.use('/uploads', express_1.default.static(uploadDir));
 // â”€â”€â”€ API Routes â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const apiV1 = '/api/v1';
-app.use(`${apiV1}/auth`, auth_routes_1.authRouter);
+app.use(`${apiV1}/auth`, rateLimiter_1.authRateLimiter, auth_routes_1.authRouter);
 app.use(`${apiV1}/users`, users_routes_1.usersRouter);
 app.use(`${apiV1}/teams`, organizations_routes_1.organizationsRouter);
 app.use(`${apiV1}/territories`, territories_routes_1.territoriesRouter);
@@ -125,7 +223,26 @@ app.use(`${apiV1}/analytics`, analytics_routes_1.analyticsRouter);
 app.use(`${apiV1}/notifications`, notifications_routes_1.notificationsRouter);
 app.use(`${apiV1}/campaigns`, campaigns_routes_1.campaignsRouter);
 app.use(`${apiV1}/admin`, admin_routes_1.adminRouter);
-// â”€â”€â”€ Error handler (must be last) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── SPA – serve built React app ─────────────────────────────────────────────
+// Must come AFTER all /api/ routes so they take priority.
+// In production the frontend is built into ./public by the nixpacks build step.
+const webDistPath = path_1.default.join(__dirname, '..', 'public');
+if (fs_1.default.existsSync(webDistPath)) {
+    // Serve hashed static assets with long-lived immutable cache headers
+    app.use(express_1.default.static(webDistPath, {
+        maxAge: '1y',
+        immutable: true,
+        index: false,
+    }));
+    // SPA fallback — all remaining GETs serve index.html (client-side routing)
+    app.get('*', (_req, res) => {
+        res.sendFile(path_1.default.join(webDistPath, 'index.html'));
+    });
+    logger_1.logger.info(`[SPA] Serving React app from ${webDistPath}`);
+}
+else {
+    logger_1.logger.warn('[SPA] No built frontend found at ./public — SPA serving skipped (dev or separate web service)');
+}
 app.use(errorHandler_1.errorHandler);
 // â”€â”€â”€ Start â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 async function start() {
@@ -153,4 +270,30 @@ async function start() {
     }
 }
 start();
+// ─── Graceful Shutdown ─────────────────────────────────────────────
+// Railway (and Docker) send SIGTERM before killing a container during deploys.
+// We drain in-flight requests, then close DB connections cleanly.
+function shutdown(signal) {
+    logger_1.logger.info(`[${signal}] Graceful shutdown initiated...`);
+    // Stop accepting new connections
+    httpServer.close(async () => {
+        logger_1.logger.info('HTTP server closed, cleaning up...');
+        try {
+            const { prisma } = await Promise.resolve().then(() => __importStar(require('./shared/services/prisma')));
+            await prisma.$disconnect();
+            logger_1.logger.info('Database connection closed.');
+        }
+        catch (e) {
+            logger_1.logger.warn('Could not cleanly disconnect Prisma:', e);
+        }
+        process.exit(0);
+    });
+    // Force exit after 10s if drain takes too long
+    setTimeout(() => {
+        logger_1.logger.error('Graceful shutdown timed out after 10s — forcing exit.');
+        process.exit(1);
+    }, 10_000);
+}
+process.on('SIGTERM', () => shutdown('SIGTERM'));
+process.on('SIGINT', () => shutdown('SIGINT'));
 //# sourceMappingURL=index.js.map

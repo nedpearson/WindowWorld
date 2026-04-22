@@ -101,17 +101,17 @@ export declare class PropertiesService {
             status: string;
             notes: string | null;
             leadId: string;
-            internalNotes: string | null;
             appointmentId: string | null;
             propertyId: string | null;
-            aiConfidence: number | null;
+            completedAt: Date | null;
+            internalNotes: string | null;
             inspectedById: string | null;
             totalOpenings: number | null;
             visitSummary: string | null;
             complexityRating: string | null;
             aiSummary: string | null;
+            aiConfidence: number | null;
             startedAt: Date | null;
-            completedAt: Date | null;
         })[];
         openings: ({
             measurement: {
@@ -160,18 +160,17 @@ export declare class PropertiesService {
                 leadId: string | null;
                 inspectionId: string | null;
                 openingId: string | null;
-                floorLevel: number | null;
+                url: string | null;
                 proposalId: string | null;
                 invoiceId: string | null;
                 propertyId: string | null;
-                roomLabel: string | null;
-                aiAnalysisId: string | null;
                 originalName: string | null;
                 mimeType: string | null;
                 sizeBytes: number | null;
                 storageKey: string;
-                url: string | null;
                 urlExpiresAt: Date | null;
+                roomLabel: string | null;
+                floorLevel: number | null;
                 captureNotes: string | null;
                 capturedAt: Date | null;
                 capturedByDeviceId: string | null;
@@ -180,6 +179,7 @@ export declare class PropertiesService {
                 jobId: string | null;
                 isProcessed: boolean;
                 processedAt: Date | null;
+                aiAnalysisId: string | null;
                 uploadedById: string | null;
                 syncStatus: import(".prisma/client").$Enums.SyncStatus;
                 offlineId: string | null;
@@ -232,10 +232,12 @@ export declare class PropertiesService {
             hasSealFailure: boolean;
             inspectionId: string | null;
             openingId: string | null;
-            sortOrder: number;
-            floorLevel: number | null;
             propertyId: string | null;
             roomLabel: string | null;
+            floorLevel: number | null;
+            aiAnalysisId: string | null;
+            aiConfidence: number | null;
+            sortOrder: number;
             windowType: import(".prisma/client").$Enums.WindowType;
             frameMaterial: import(".prisma/client").$Enums.FrameMaterial;
             condition: import(".prisma/client").$Enums.ConditionRating;
@@ -246,9 +248,7 @@ export declare class PropertiesService {
             requiresLadder: boolean;
             ladderHeight: number | null;
             aiWindowType: import(".prisma/client").$Enums.WindowType | null;
-            aiConfidence: number | null;
             aiNotes: string | null;
-            aiAnalysisId: string | null;
             recommendedProductId: string | null;
             gridPattern: string | null;
             colorFinish: string | null;

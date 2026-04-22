@@ -217,8 +217,8 @@ class InvoicesService {
         }
         catch (err) {
             // Non-fatal — invoice status is already updated
-            const { logger } = await Promise.resolve().then(() => __importStar(require('../../shared/utils/logger')));
-            logger.warn(`[invoice] Email send failed for ${id}: ${err.message}`);
+            const { logger, sanitizeForLog } = await Promise.resolve().then(() => __importStar(require('../../shared/utils/logger')));
+            logger.warn(`[invoice] Email send failed for ${id}: ${sanitizeForLog(err.message)}`);
         }
         return updated;
     }

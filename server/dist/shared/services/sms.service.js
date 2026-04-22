@@ -12,8 +12,10 @@ const client = isTwilioEnabled
     : null;
 class SmsService {
     async sendSms(to, body) {
+        // Sanitize user-supplied phone number and body before logging (CodeQL: js/log-injection)
+        const safeTo = String((0, logger_1.sanitizeForLog)(to));
         if (!isTwilioEnabled || !client) {
-            logger_1.logger.info(`[SMS SIMULATION] To: ${to} | Message: ${body}`);
+            logger_1.logger.info(`[SMS SIMULATION] To: ${safeTo} | Message: [${body.length} chars]`);
             return true; // Simulate success in dev/test if lacking keys
         }
         try {
@@ -22,11 +24,11 @@ class SmsService {
                 from: process.env.TWILIO_PHONE_NUMBER,
                 to,
             });
-            logger_1.logger.info(`SMS sent to ${to}: ${body.substring(0, 30)}...`);
+            logger_1.logger.info(`SMS sent to ${safeTo}: [${body.length} chars]`);
             return true;
         }
         catch (error) {
-            logger_1.logger.error(`Failed to send SMS to ${to}: ${error.message}`);
+            logger_1.logger.error(`Failed to send SMS to ${safeTo}: ${(0, logger_1.sanitizeForLog)(error.message)}`);
             return false;
         }
     }

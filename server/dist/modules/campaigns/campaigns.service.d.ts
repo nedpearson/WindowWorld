@@ -230,12 +230,12 @@ export declare class CampaignsService {
         status: string;
         stormEventId: string | null;
         notes: string | null;
+        leadCount: number;
         type: string;
         targetParishes: string[];
         targetZips: string[];
         targetLeadStatus: string[];
         isStormCampaign: boolean;
-        leadCount: number;
         contactedCount: number;
         appointmentCount: number;
         closeCount: number;

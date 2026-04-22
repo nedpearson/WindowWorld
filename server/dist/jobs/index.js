@@ -40,6 +40,7 @@ var __importStar = (this && this.__importStar) || (function () {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.leadScoringQueue = exports.syncQueue = exports.automationQueue = exports.aiQueue = exports.emailQueue = exports.pdfQueue = void 0;
 exports.initializeJobQueues = initializeJobQueues;
+exports.startAppointmentReminderCron = startAppointmentReminderCron;
 const logger_1 = require("../shared/utils/logger");
 // â”€â”€ Lazy queue singletons â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 let _pdfQueue = null;
@@ -48,11 +49,39 @@ let _aiQueue = null;
 let _automationQueue = null;
 let _syncQueue = null;
 let _leadScoringQueue = null;
-// Mock queue used when Redis is unavailable
+// Mock queue: when Redis is unavailable, run jobs synchronously in-process.
+// This gives full dev/prod parity without needing Redis locally.
 const mockQueue = {
-    add: async (name, data) => {
-        logger_1.logger.warn(`[MockQueue] Would enqueue "${name}" â€” Redis unavailable`, { data });
-        return { id: `mock-${Date.now()}` };
+    add: async (name, data, _opts) => {
+        const id = `sync-${Date.now()}`;
+        logger_1.logger.warn(`[MockQueue] Redis unavailable — running "${name}" synchronously`);
+        // Run asynchronously to not block the current request
+        setImmediate(async () => {
+            try {
+                if (name.startsWith('score') || name === 'rescore-on-status') {
+                    await runLeadScoringJob({ data });
+                }
+                else if (name.startsWith('email') || name.startsWith('send-campaign')) {
+                    await runEmailJob({ data });
+                }
+                else if (name.startsWith('pdf') || name.startsWith('proposal')) {
+                    await runPdfJob({ data });
+                }
+                else if (name.startsWith('campaign-step') || name.startsWith('automation')) {
+                    await runAutomationJob({ data });
+                }
+                else if (name.startsWith('ai-photo') || name.startsWith('analyze')) {
+                    await runAiPhotoJob({ data });
+                }
+                else {
+                    logger_1.logger.info(`[MockQueue] No handler for job "${name}" — skipped`);
+                }
+            }
+            catch (err) {
+                logger_1.logger.error(`[MockQueue] Sync job "${name}" failed: ${err.message}`);
+            }
+        });
+        return { id };
     },
 };
 exports.pdfQueue = new Proxy({}, {
@@ -123,6 +152,19 @@ async function runLeadScoringJob(job) {
                     : scoreData.estimatedRevenueBand === 'medium' ? 4000 : 1500,
         },
     });
+    // Notify all org members in real-time so dashboards update without refresh
+    try {
+        const { wsService } = await Promise.resolve().then(() => __importStar(require('../shared/services/websocket.service')));
+        wsService.notifyOrganization(lead.organizationId, 'lead:scored', {
+            leadId,
+            totalScore: Math.round(scoreData.totalScore),
+            urgencyScore: Math.round(scoreData.urgencyScore),
+            closeProbability: scoreData.closeProbability,
+            recommendedPitchAngle: scoreData.recommendedPitchAngle,
+            estimatedRevenueBand: scoreData.estimatedRevenueBand,
+        });
+    }
+    catch { /* non-fatal — score is already written to DB */ }
     logger_1.logger.info(`[lead-scoring] Score updated for ${leadId}: ${scoreData.totalScore}`);
 }
 async function runAiPhotoJob(job) {
@@ -270,7 +312,9 @@ async function initializeJobQueues() {
     if (queuesInitialized)
         return;
     if (!process.env.REDIS_URL) {
-        logger_1.logger.warn('REDIS_URL not set â€” background jobs running in mock mode');
+        logger_1.logger.warn('REDIS_URL not set — background jobs running in mock mode');
+        // Appointment reminders don’t need Redis — start the cron regardless
+        startAppointmentReminderCron();
         return;
     }
     try {
@@ -316,9 +360,70 @@ async function initializeJobQueues() {
         });
         queuesInitialized = true;
         logger_1.logger.info('All job queues and workers initialized (lead-scoring, ai-photo, pdf, email, automations, sync)');
+        // Start the appointment reminder cron (also works without Redis)
+        startAppointmentReminderCron();
     }
     catch (error) {
         logger_1.logger.error('Failed to initialize job queues:', error.message);
     }
+}
+// ── Appointment Reminder SMS Cron ──────────────────────────────────────────
+// Exported so it starts regardless of Redis availability.
+// Sends SMS 24h before upcoming appointments (22-26h window to handle drift).
+function startAppointmentReminderCron() {
+    const runAppointmentReminders = async () => {
+        try {
+            const { prisma: db } = await Promise.resolve().then(() => __importStar(require('../shared/services/prisma')));
+            const { smsService: sms } = await Promise.resolve().then(() => __importStar(require('../shared/services/sms.service')));
+            const now = new Date();
+            const windowStart = new Date(now.getTime() + 22 * 60 * 60 * 1000);
+            const windowEnd = new Date(now.getTime() + 26 * 60 * 60 * 1000);
+            const upcoming = await db.appointment.findMany({
+                where: {
+                    scheduledAt: { gte: windowStart, lte: windowEnd },
+                    reminderSent: false,
+                    status: 'SCHEDULED',
+                },
+                include: {
+                    lead: {
+                        include: { contacts: { where: { isPrimary: true }, take: 1 } },
+                    },
+                },
+            });
+            if (upcoming.length > 0) {
+                logger_1.logger.info(`[reminder-cron] Found ${upcoming.length} appointment(s) needing reminders`);
+            }
+            for (const apt of upcoming) {
+                const phone = apt.lead.contacts[0]?.phone || apt.lead.phone;
+                if (!phone) {
+                    logger_1.logger.warn(`[reminder-cron] No phone for lead ${apt.leadId}, skipping reminder`);
+                    continue;
+                }
+                const aptDate = new Date(apt.scheduledAt).toLocaleDateString('en-US', {
+                    weekday: 'long', month: 'long', day: 'numeric',
+                });
+                const aptTime = new Date(apt.scheduledAt).toLocaleTimeString('en-US', {
+                    hour: 'numeric', minute: '2-digit', hour12: true,
+                });
+                try {
+                    await sms.sendSms(phone, `Hi ${apt.lead.firstName}! Reminder: your WindowWorld appointment is tomorrow, ${aptDate} at ${aptTime}. Questions? Call (225) 555-0100. Reply STOP to opt out.`);
+                    await db.appointment.update({
+                        where: { id: apt.id },
+                        data: { reminderSent: true },
+                    });
+                    logger_1.logger.info(`[reminder-cron] Reminder sent for appointment ${apt.id} -> ${phone}`);
+                }
+                catch (err) {
+                    logger_1.logger.error(`[reminder-cron] Failed to send reminder for ${apt.id}: ${err.message}`);
+                }
+            }
+        }
+        catch (err) {
+            logger_1.logger.error(`[reminder-cron] Error: ${err.message}`);
+        }
+    };
+    runAppointmentReminders(); // Run immediately on startup
+    setInterval(runAppointmentReminders, 60 * 60 * 1000); // Then every hour
+    logger_1.logger.info('[reminder-cron] Appointment reminder cron started (runs every hour)');
 }
 //# sourceMappingURL=index.js.map

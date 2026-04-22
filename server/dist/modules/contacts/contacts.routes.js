@@ -17,6 +17,13 @@ function validate(req) {
         throw new errorHandler_1.ValidationError('Validation failed', map);
     }
 }
+// GET /api/v1/contacts — list all contacts for org (with optional search)
+router.get('/', auth_1.auth.repOrAbove, async (req, res) => {
+    const user = req.user;
+    const { search } = req.query;
+    const data = await contacts_service_1.contactsService.listForOrg(user.organizationId, search);
+    res.json({ success: true, data });
+});
 // GET /api/v1/contacts/lead/:leadId
 router.get('/lead/:leadId', auth_1.auth.repOrAbove, async (req, res) => {
     const user = req.user;

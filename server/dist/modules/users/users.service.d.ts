@@ -109,6 +109,7 @@ export declare class UsersService {
         role: import(".prisma/client").$Enums.UserRole;
         isActive: boolean;
         lastLoginAt: Date | null;
+        notifPreferences: import("@prisma/client/runtime/library").JsonValue | null;
         createdAt: Date;
         updatedAt: Date;
     }>;

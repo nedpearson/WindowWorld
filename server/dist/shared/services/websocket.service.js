@@ -69,12 +69,17 @@ class WebSocketService {
         }
     }
     /**
-     * Push an event to everyone in a specific organization
+     * Push an event to everyone in a specific organization.
+     * Alias: broadcastToOrg()
      */
     notifyOrganization(organizationId, eventName, data) {
         if (!this.io)
             return;
         this.io.to(`org_${organizationId}`).emit(eventName, data);
+    }
+    /** Convenience alias — same as notifyOrganization */
+    broadcastToOrg(organizationId, eventName, data) {
+        this.notifyOrganization(organizationId, eventName, data);
     }
 }
 exports.WebSocketService = WebSocketService;

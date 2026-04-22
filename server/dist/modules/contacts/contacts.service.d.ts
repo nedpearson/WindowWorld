@@ -1,4 +1,34 @@
 export declare class ContactsService {
+    listForOrg(organizationId: string, search?: string): Promise<({
+        lead: {
+            id: string;
+            firstName: string | null;
+            lastName: string | null;
+            status: import(".prisma/client").$Enums.LeadStatus;
+            estimatedRevenue: number | null;
+        } | null;
+    } & {
+        id: string;
+        email: string | null;
+        firstName: string;
+        lastName: string;
+        phone: string | null;
+        createdAt: Date;
+        updatedAt: Date;
+        phone2: string | null;
+        notes: string | null;
+        tags: string[];
+        isPrimary: boolean;
+        leadId: string | null;
+        propertyId: string | null;
+        isOwner: boolean;
+        isSpouse: boolean;
+        preferredContactMethod: import(".prisma/client").$Enums.ContactMethod | null;
+        bestTimeToContact: string | null;
+        doNotCall: boolean;
+        doNotEmail: boolean;
+        doNotText: boolean;
+    })[]>;
     listByLead(leadId: string, organizationId: string): Promise<{
         id: string;
         email: string | null;

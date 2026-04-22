@@ -10,4 +10,5 @@ export declare const automationQueue: any;
 export declare const syncQueue: any;
 export declare const leadScoringQueue: any;
 export declare function initializeJobQueues(): Promise<void>;
+export declare function startAppointmentReminderCron(): void;
 //# sourceMappingURL=index.d.ts.map

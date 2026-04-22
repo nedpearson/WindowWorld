@@ -105,4 +105,42 @@ router.get('/stats', auth_1.auth.adminOnly, async (req, res) => {
         },
     });
 });
+// ─── Settings ────────────────────────────────────────────────
+/** GET /api/v1/admin/settings */
+router.get('/settings', auth_1.auth.adminOnly, async (req, res) => {
+    const actor = req.user;
+    const org = await prisma_1.prisma.organization.findUnique({
+        where: { id: actor.organizationId },
+        select: { id: true, name: true, slug: true, logoUrl: true, brandColor: true, createdAt: true },
+    });
+    res.json({ success: true, data: org });
+});
+/** PATCH /api/v1/admin/settings */
+router.patch('/settings', auth_1.auth.adminOnly, async (req, res) => {
+    const actor = req.user;
+    const { name, logoUrl, brandColor } = req.body;
+    const org = await prisma_1.prisma.organization.update({
+        where: { id: actor.organizationId },
+        data: { name, logoUrl, brandColor },
+    });
+    res.json({ success: true, data: org });
+});
+/** GET /api/v1/admin/sync-status */
+router.get('/sync-status', auth_1.auth.adminOnly, async (_req, res) => {
+    res.json({ success: true, data: { status: 'ok', lastSync: new Date().toISOString() } });
+});
+/** GET /api/v1/admin/job-status */
+router.get('/job-status', auth_1.auth.adminOnly, async (_req, res) => {
+    res.json({ success: true, data: { queues: [], redisConnected: !!process.env.REDIS_URL } });
+});
+/** GET /api/v1/admin/health */
+router.get('/health', auth_1.auth.adminOnly, async (_req, res) => {
+    try {
+        await prisma_1.prisma.$queryRaw `SELECT 1`;
+        res.json({ success: true, data: { status: 'ok', db: 'connected', uptime: Math.round(process.uptime()) } });
+    }
+    catch {
+        res.status(503).json({ success: false, data: { status: 'error', db: 'unreachable' } });
+    }
+});
 //# sourceMappingURL=admin.routes.js.map

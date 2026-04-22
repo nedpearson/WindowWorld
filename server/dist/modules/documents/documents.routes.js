@@ -11,17 +11,23 @@ const documents_service_1 = require("./documents.service");
 const storage_service_1 = require("../../shared/services/storage.service");
 // ─── Multer memory storage for Cloud Upload ───
 const storage = multer_1.default.memoryStorage();
+const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'application/pdf'];
 const upload = (0, multer_1.default)({
     storage,
     limits: { fileSize: 30 * 1024 * 1024 }, // 30 MB
-    fileFilter: (req, file, cb) => {
-        const allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'application/pdf'];
-        cb(null, allowed.includes(file.mimetype));
+    fileFilter: (_req, file, cb) => {
+        if (ALLOWED_MIME_TYPES.includes(file.mimetype)) {
+            cb(null, true);
+        }
+        else {
+            // Explicit rejection with a typed MulterError (v2 compatible)
+            cb(new multer_1.default.MulterError('LIMIT_UNEXPECTED_FILE', file.fieldname));
+        }
     },
 });
 const router = (0, express_1.Router)();
 exports.documentsRouter = router;
-// GET /api/v1/documents â€” query by leadId/propertyId/openingId/inspectionId/type
+// GET /api/v1/documents – query by leadId/propertyId/openingId/inspectionId/type
 router.get('/', auth_1.auth.repOrAbove, async (req, res) => {
     const data = await documents_service_1.documentsService.list(req.query);
     res.json({ success: true, data });
@@ -31,8 +37,33 @@ router.get('/:id', auth_1.auth.repOrAbove, async (req, res) => {
     const data = await documents_service_1.documentsService.getById(req.params.id);
     res.json({ success: true, data });
 });
-// POST /api/v1/documents/upload â€” multipart form upload
-router.post('/upload', auth_1.auth.repOrAbove, upload.single('file'), async (req, res) => {
+// GET /api/v1/documents/:id/url — returns the document's view URL (pre-signed if S3, direct if local)
+router.get('/:id/url', auth_1.auth.repOrAbove, async (req, res) => {
+    const doc = await documents_service_1.documentsService.getById(req.params.id);
+    // For local files, return the static path; for S3 the URL is already stored
+    const url = doc.url;
+    res.json({ success: true, data: { url, documentId: doc.id, filename: doc.originalName } });
+});
+// POST /api/v1/documents/:id/analyze-window — manually trigger AI window analysis on an existing document
+router.post('/:id/analyze-window', auth_1.auth.repOrAbove, async (req, res) => {
+    const result = await documents_service_1.documentsService.retriggerAiAnalysis(req.params.id);
+    res.json({ success: true, data: result });
+});
+// POST /api/v1/documents/upload – multipart form upload
+router.post('/upload', auth_1.auth.repOrAbove, (req, res, next) => {
+    upload.single('file')(req, res, (err) => {
+        if (err instanceof multer_1.default.MulterError) {
+            const status = err.code === 'LIMIT_FILE_SIZE' ? 413 : 415;
+            res.status(status).json({ success: false, error: { message: err.message, code: err.code } });
+            return;
+        }
+        if (err) {
+            next(err);
+            return;
+        }
+        next();
+    });
+}, async (req, res) => {
     const user = req.user;
     const file = req.file;
     if (!file) {
@@ -58,7 +89,7 @@ router.post('/upload', auth_1.auth.repOrAbove, upload.single('file'), async (req
     });
     res.status(201).json({ success: true, data: doc });
 });
-// POST /api/v1/documents/:id/retrigger-ai
+// POST /api/v1/documents/:id/retrigger-ai — alias kept for backwards compatibility
 router.post('/:id/retrigger-ai', auth_1.auth.repOrAbove, async (req, res) => {
     const result = await documents_service_1.documentsService.retriggerAiAnalysis(req.params.id);
     res.json({ success: true, data: result });

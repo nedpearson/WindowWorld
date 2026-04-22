@@ -268,7 +268,7 @@ class CampaignsService {
         });
         // Schedule first step immediately
         await this.scheduleNextStep(leadId, campaignTemplateKey, 1, lead);
-        logger_1.logger.info(`Lead ${leadId} enrolled in campaign: ${campaignTemplateKey}`);
+        logger_1.logger.info(`Lead ${leadId} enrolled in campaign: ${(0, logger_1.sanitizeForLog)(campaignTemplateKey)}`);
         return { enrolled: true, enrollmentId: enrollment.id };
     }
     async executeStep(params) {
@@ -318,7 +318,7 @@ class CampaignsService {
                         leadId,
                         type: 'campaign',
                     });
-                    logger_1.logger.info(`Campaign email queued: ${emailTemplateKey} â†’ ${toEmail}`);
+                    logger_1.logger.info(`Campaign email queued: ${emailTemplateKey} -> ${(0, logger_1.sanitizeForLog)(toEmail)}`);
                 }
             }
         }
@@ -396,7 +396,7 @@ class CampaignsService {
                 await this.enroll(leadId, key, enrolledById);
             }
             catch (err) {
-                logger_1.logger.warn(`Auto-enroll campaign failed for ${leadId}/${key}: ${err.message}`);
+                logger_1.logger.warn(`Auto-enroll campaign failed for ${leadId}/${(0, logger_1.sanitizeForLog)(key)}: ${(0, logger_1.sanitizeForLog)(err.message)}`);
             }
         }
         return { triggered: matching };

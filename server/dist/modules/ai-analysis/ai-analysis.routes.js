@@ -7,8 +7,87 @@ const ai_service_1 = require("./ai.service");
 const jobs_1 = require("../../jobs");
 const prisma_1 = require("../../shared/services/prisma");
 const logger_1 = require("../../shared/utils/logger");
+const errorHandler_1 = require("../../shared/middleware/errorHandler");
 const router = (0, express_1.Router)();
 exports.aiAnalysisRouter = router;
+// ─── AI Analysis CRUD (used by client aiAnalysis.* namespace) ─────────────
+/**
+ * GET /api/v1/ai-analysis/lead/:leadId
+ * Get all AI analyses for a lead (across all documents/openings).
+ */
+router.get('/lead/:leadId', auth_1.auth.repOrAbove, async (req, res) => {
+    const { leadId } = req.params;
+    const data = await prisma_1.prisma.aiAnalysis.findMany({
+        where: { leadId: leadId },
+        orderBy: { createdAt: 'desc' },
+        include: {
+            document: { select: { id: true, originalName: true, url: true, type: true } },
+        },
+    });
+    res.json({ success: true, data });
+});
+/**
+ * GET /api/v1/ai-analysis/inspection/:inspectionId
+ * Get all AI analyses for a specific inspection.
+ */
+router.get('/inspection/:inspectionId', auth_1.auth.repOrAbove, async (req, res) => {
+    const { inspectionId } = req.params;
+    const data = await prisma_1.prisma.aiAnalysis.findMany({
+        where: { inspectionId: inspectionId },
+        orderBy: { createdAt: 'desc' },
+        include: {
+            document: { select: { id: true, originalName: true, url: true, type: true } },
+        },
+    });
+    res.json({ success: true, data });
+});
+/**
+ * PATCH /api/v1/ai-analysis/:id/override
+ * Allow a rep or manager to override AI analysis results (e.g. correct window type, dimensions).
+ */
+router.patch('/:id/override', auth_1.auth.repOrAbove, async (req, res) => {
+    const { id } = req.params;
+    const { override } = req.body;
+    const existing = await prisma_1.prisma.aiAnalysis.findUnique({ where: { id: id } });
+    if (!existing)
+        throw new errorHandler_1.NotFoundError('AI Analysis');
+    const updated = await prisma_1.prisma.aiAnalysis.update({
+        where: { id: id },
+        data: {
+            humanOverride: override,
+            overriddenAt: new Date(),
+            overriddenById: req.user.id,
+        },
+    });
+    res.json({ success: true, data: updated });
+});
+/**
+ * POST /api/v1/ai-analysis/:id/retry
+ * Re-trigger AI analysis for a specific analysis record (re-queues the document).
+ */
+router.post('/:id/retry', auth_1.auth.repOrAbove, async (req, res) => {
+    const { id } = req.params;
+    const analysis = await prisma_1.prisma.aiAnalysis.findUnique({
+        where: { id: id },
+        include: { document: true },
+    });
+    if (!analysis)
+        throw new errorHandler_1.NotFoundError('AI Analysis');
+    // Reset status and re-queue
+    await prisma_1.prisma.aiAnalysis.update({
+        where: { id: id },
+        data: { status: 'PENDING', error: null, completedAt: null },
+    });
+    const job = await jobs_1.aiQueue.add('retry-ai-analysis', {
+        analysisId: id,
+        documentId: analysis.documentId,
+        openingId: analysis.openingId,
+        leadId: analysis.leadId,
+        imagePath: analysis.document?.url,
+    });
+    res.json({ success: true, data: { queued: true, analysisId: id, jobId: job.id } });
+});
+// ─── AI Feature Routes (pitch coach, lead scoring, lead summary) ─────────
 /**
  * GET /api/v1/ai/pitch-coach/:leadId
  * Generate a personalised pitch script for a lead using AI.

@@ -1,4 +1,37 @@
 "use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.leadService = exports.LeadService = void 0;
 const prisma_1 = require("../../shared/services/prisma");
@@ -6,6 +39,7 @@ const errorHandler_1 = require("../../shared/middleware/errorHandler");
 const audit_service_1 = require("../admin/audit.service");
 const ai_service_1 = require("../ai-analysis/ai.service");
 const logger_1 = require("../../shared/utils/logger");
+const jobs_1 = require("../../jobs");
 class LeadService {
     async list(options) {
         const { organizationId, page, limit, status, search, parish, zip, assignedRepId, territoryId, isStormLead, minScore, maxScore, source, sortBy = 'createdAt', sortDir = 'desc', restrictToRepId, } = options;
@@ -34,8 +68,14 @@ class LeadService {
                 ],
             }),
         };
+        // Allowlist sortBy to prevent remote property injection (CodeQL: js/remote-property-injection)
+        const ALLOWED_SORT_FIELDS = new Set([
+            'createdAt', 'updatedAt', 'firstName', 'lastName', 'leadScore',
+            'urgencyScore', 'lastContactedAt', 'nextFollowUpAt', 'status', 'source',
+        ]);
+        const safeSortBy = ALLOWED_SORT_FIELDS.has(sortBy) ? sortBy : 'createdAt';
         const orderBy = {
-            [sortBy]: sortDir,
+            [safeSortBy]: sortDir,
         };
         const [total, data] = await Promise.all([
             prisma_1.prisma.lead.count({ where }),
@@ -151,9 +191,21 @@ class LeadService {
                 isAutomatic: true,
             },
         });
-        // Trigger background AI lead scoring
-        // In production this would go through BullMQ
-        logger_1.logger.info(`Lead created: ${lead.id} â€” queuing AI score`);
+        // Trigger background AI lead scoring via BullMQ (runs GPT-4 Vision scoring)
+        await jobs_1.leadScoringQueue.add('score-new-lead', { leadId: lead.id }, {
+            delay: 3000, // 3s delay so all related data is committed first
+            attempts: 3,
+            backoff: { type: 'exponential', delay: 5000 },
+        });
+        logger_1.logger.info(`[leads] Created ${lead.id} — AI scoring job enqueued`);
+        // Auto-enroll in status-matched campaigns (e.g. new-lead-welcome)
+        try {
+            const { campaignsService } = await Promise.resolve().then(() => __importStar(require('../campaigns/campaigns.service')));
+            await campaignsService.triggerForStatus(lead.id, 'NEW', createdById);
+        }
+        catch (err) {
+            logger_1.logger.warn(`[leads] Campaign auto-enroll failed for ${lead.id}: ${(0, logger_1.sanitizeForLog)(err.message)}`);
+        }
         return lead;
     }
     async update(id, organizationId, data, userId) {
@@ -204,6 +256,34 @@ class LeadService {
             oldValues: { status: existing.status },
             newValues: { status, reason },
         });
+        // Re-score with AI on meaningful status transitions (async, non-blocking)
+        const scoringStatuses = ['CONTACTED', 'QUALIFIED', 'PROPOSAL_SENT', 'VERBAL_COMMIT', 'SOLD', 'LOST'];
+        if (scoringStatuses.includes(status)) {
+            await jobs_1.leadScoringQueue.add('rescore-on-status', { leadId: id }, {
+                delay: 1000,
+                attempts: 2,
+                backoff: { type: 'fixed', delay: 10000 },
+            });
+        }
+        // Auto-enroll in status-matched campaigns (fire and forget)
+        try {
+            const { campaignsService } = await Promise.resolve().then(() => __importStar(require('../campaigns/campaigns.service')));
+            await campaignsService.triggerForStatus(id, status, userId);
+        }
+        catch (err) {
+            logger_1.logger.warn(`[leads] Campaign trigger failed for ${id}/${(0, logger_1.sanitizeForLog)(status)}: ${(0, logger_1.sanitizeForLog)(err.message)}`);
+        }
+        // Broadcast status change to all org members via WebSocket
+        try {
+            const { wsService } = await Promise.resolve().then(() => __importStar(require('../../shared/services/websocket.service')));
+            wsService.notifyOrganization(existing.organizationId, 'lead:status-changed', {
+                leadId: id,
+                oldStatus: existing.status,
+                newStatus: status,
+                updatedBy: userId,
+            });
+        }
+        catch { /* non-fatal */ }
         return updated;
     }
     async assign(id, organizationId, repId, managerId) {

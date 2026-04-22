@@ -6,6 +6,26 @@ const errorHandler_1 = require("../../shared/middleware/errorHandler");
 const products_service_1 = require("../products/products.service");
 const audit_service_1 = require("../admin/audit.service");
 class QuotesService {
+    async list(options) {
+        const where = {
+            lead: { organizationId: options.organizationId },
+            ...(options.leadId && { leadId: options.leadId }),
+            ...(options.status && { status: options.status }),
+        };
+        const [total, data] = await Promise.all([
+            prisma_1.prisma.quote.count({ where }),
+            prisma_1.prisma.quote.findMany({
+                where,
+                skip: (options.page - 1) * options.limit,
+                take: options.limit,
+                orderBy: { createdAt: 'desc' },
+                include: {
+                    lead: { select: { id: true, firstName: true, lastName: true, address: true } },
+                },
+            }),
+        ]);
+        return { data, meta: { total, page: options.page, limit: options.limit, totalPages: Math.ceil(total / options.limit) } };
+    }
     async getById(id) {
         const quote = await prisma_1.prisma.quote.findUnique({
             where: { id },
@@ -25,7 +45,7 @@ class QuotesService {
         });
     }
     async buildFromOpenings(params) {
-        const { leadId, propertyId, productSeriesId, globalOptions = [], discountPct = 0, financingOptionId, createdById, organizationId, notes } = params;
+        const { leadId, propertyId, productSeriesId, globalOptions = [], discountPct = 0, financingOptionId: _financingOptionId, createdById: _createdById, organizationId: _organizationId, notes: _notes } = params;
         // Load all approved/verified openings for the property
         const openings = await prisma_1.prisma.opening.findMany({
             where: { propertyId },

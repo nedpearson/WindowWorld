@@ -126,7 +126,7 @@ class ProposalsService {
                 leadName: `${proposal.lead?.firstName} ${proposal.lead?.lastName}`,
                 address: proposal.lead?.address,
             });
-            logger_1.logger.info(`PDF generation queued for proposal ${id}, job ${job.id}`);
+            logger_1.logger.info(`PDF generation queued for proposal ${(0, logger_1.sanitizeForLog)(id)}, job ${job.id}`);
             return { queued: true, proposalId: id, jobId: job.id };
         }
         catch (err) {
@@ -198,14 +198,29 @@ class ProposalsService {
                 expiresAt: proposal.expiresAt,
                 pdfUrl: proposal.pdfUrl,
             });
-            logger_1.logger.info(`Proposal ${id} email ${result.success ? 'delivered' : 'failed'}: provider=${result.provider}`);
+            logger_1.logger.info(`Proposal ${(0, logger_1.sanitizeForLog)(id)} email ${result.success ? 'delivered' : 'failed'}: provider=${result.provider}`);
         }
         else if (channel === 'email' || channel === 'both') {
-            logger_1.logger.warn(`Proposal ${id}: no customer email on file for lead ${proposal.leadId}`);
+            logger_1.logger.warn(`Proposal ${(0, logger_1.sanitizeForLog)(id)}: no customer email on file for lead ${proposal.leadId}`);
         }
-        // SMS: log for now — wire Twilio when ready
+        // SMS: send portal link via Twilio
         if (channel === 'sms' || channel === 'both') {
-            logger_1.logger.info(`Proposal ${id} SMS queued for lead ${proposal.leadId} (Twilio not yet configured)`);
+            const phone = lead?.contacts?.[0]?.phone || lead?.phone;
+            if (phone) {
+                try {
+                    const { smsService } = await Promise.resolve().then(() => __importStar(require('../../shared/services/sms.service')));
+                    const appUrl = process.env.APP_URL || 'https://app.windowworldla.com';
+                    const repFirst = rep ? rep.firstName : 'Your rep';
+                    await smsService.sendSms(phone, `Hi ${lead.firstName}! ${repFirst} from WindowWorld has sent your window replacement proposal. View & accept it here: ${appUrl}/portal/${id}`);
+                    logger_1.logger.info(`Proposal ${(0, logger_1.sanitizeForLog)(id)} SMS delivered to ${(0, logger_1.sanitizeForLog)(phone)}`);
+                }
+                catch (err) {
+                    logger_1.logger.warn(`Proposal ${(0, logger_1.sanitizeForLog)(id)} SMS failed: ${(0, logger_1.sanitizeForLog)(err.message)}`);
+                }
+            }
+            else {
+                logger_1.logger.warn(`Proposal ${(0, logger_1.sanitizeForLog)(id)}: no phone on file for lead ${proposal.leadId} — SMS skipped`);
+            }
         }
         return { sent: true, channel, proposalId: id };
     }

@@ -95,7 +95,7 @@ IMPORTANT RULES:
 6. Financing options are important for many customers
 
 You respond ONLY in valid JSON format.`;
-const MEASUREMENT_ANALYSIS_SYSTEM = `You are an AI measurement assistant for window replacement.
+const _MEASUREMENT_ANALYSIS_SYSTEM = `You are an AI measurement assistant for window replacement.
 You help analyze photos to estimate window dimensions using visual reference clues.
 
 CRITICAL RULES:
@@ -381,7 +381,7 @@ Return JSON:
     async generatePitchCoach(lead) {
         const score = lead.latestScore;
         const property = (lead.properties || [])[0];
-        const contact = (lead.contacts || [])[0];
+        // const contact = (lead.contacts || [])[0]; // reserved for future coaching context
         const prompt = `You are an expert window sales coach for WindowWorld Louisiana, a premium replacement window company.
 Generate a personalized pitch coaching script for this specific lead.
 
