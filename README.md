@@ -110,7 +110,7 @@ Each module is independently maintainable with its own routes, services, and typ
 
 ### Prerequisites
 
-- Node.js 18+
+- Node.js 22+ (required by Vite 7)
 - PostgreSQL 15+
 - Redis (for background jobs)
 
@@ -147,10 +147,13 @@ See `.env.example` for all required environment variables.
 Key variables:
 - `DATABASE_URL` — PostgreSQL connection string
 - `REDIS_URL` — Redis for BullMQ jobs
-- `JWT_SECRET` — Auth token signing
+- `JWT_SECRET` — Auth token signing (min 32 chars in production)
 - `OPENAI_API_KEY` — AI inference
-- `AWS_S3_BUCKET` — File storage
+- `S3_BUCKET_NAME` — File storage (Cloudflare R2 / AWS S3 compatible)
 - `RESEND_API_KEY` — Transactional email
+- `TWILIO_ACCOUNT_SID` / `TWILIO_AUTH_TOKEN` — SMS
+- `VITE_API_URL` — Frontend API base URL (set in `apps/web/.env.local`)
+- `VITE_GOOGLE_CLIENT_ID` — Google OAuth (frontend)
 
 ---
 

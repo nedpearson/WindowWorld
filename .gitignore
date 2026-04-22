@@ -3,14 +3,30 @@ node_modules/
 apps/web/dist/
 apps/mobile/dist/
 build/
+
+# Environment files — never commit real secrets
 .env
 .env.local
+.env.*.local
+**/.env
+**/.env.local
+**/.env.*.local
+
+# Logs
 *.log
+logs/
+tmp/
+
+# Upload directories (local disk fallback)
 uploads/
+tmp/pdfs/
+
+# Build artifacts and caches
 .cache/
 coverage/
 .nyc_output/
 *.tsbuildinfo
+
 # Workspace-level lock files are stale in an npm workspace monorepo.
 # Only the root package-lock.json is canonical.
 apps/web/package-lock.json
