@@ -82,6 +82,7 @@ export default function App() {
 
           {/* Inspections */}
           <Route path="inspections/:id" element={<InspectionPage />} />
+          <Route path="inspections" element={<Navigate to="/leads" replace />} />
           <Route path="measurements/:openingId" element={<MeasurementPage />} />
 
           {/* Product catalog & quoting */}

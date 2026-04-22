@@ -1,24 +1,16 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
   BoltIcon as BoltOutline, CloudIcon, FireIcon,
   TrophyIcon, ClockIcon, CurrencyDollarIcon,
-  FunnelIcon, ChevronRightIcon,
+  FunnelIcon, ChevronRightIcon, ArrowPathIcon,
 } from '@heroicons/react/24/outline';
 import { BoltIcon as BoltSolid, StarIcon } from '@heroicons/react/24/solid';
 import clsx from 'clsx';
+import apiClient from '../../api/client';
 
-const INTELLIGENCE_LEADS = [
-  { id: '1', name: 'Michael Trosclair', city: 'Baton Rouge', parish: 'East Baton Rouge', score: 91, urgency: 88, closePct: 87, financingPct: 62, status: 'VERBAL_COMMIT', isStorm: true, est: 14800, signals: ['Storm damage signals', 'High energy bills reported', 'Verbal commit pending', 'Product selected'], pitchAngle: 'PREMIUM_VALUE', stuckDays: 3 },
-  { id: '8', name: 'James Hebert', city: 'Baton Rouge', parish: 'East Baton Rouge', score: 95, urgency: 92, closePct: 95, financingPct: 30, status: 'SOLD', isStorm: false, est: 11600, signals: ['Referral lead', 'Cash buyer', 'Previously closed'], pitchAngle: 'CONSULTATIVE', stuckDays: 0 },
-  { id: '2', name: 'Patricia Landry', city: 'Baton Rouge', parish: 'East Baton Rouge', score: 85, urgency: 68, closePct: 65, financingPct: 55, status: 'PROPOSAL_SENT', isStorm: false, est: 9200, signals: ['Proposal opened 3× (est.)', '3 days since proposal', 'No response yet'], pitchAngle: 'FINANCING_FIRST', stuckDays: 3 },
-  { id: '4', name: 'Angela Mouton', city: 'Prairieville', parish: 'Ascension', score: 82, urgency: 75, closePct: 70, financingPct: 70, status: 'MEASURING_COMPLETE', isStorm: false, est: 8900, signals: ['Measurements verified', 'Ready to quote', 'Financing preferred'], pitchAngle: 'FINANCING_FIRST', stuckDays: 2 },
-  { id: '7', name: 'Carol Chauvin', city: 'Slidell', parish: 'St. Tammany', score: 80, urgency: 62, closePct: 60, financingPct: 45, status: 'QUALIFIED', isStorm: false, est: 7400, signals: ['Referral from closed customer', 'Quality-focused buyer', 'Appointment not yet scheduled'], pitchAngle: 'PREMIUM_VALUE', stuckDays: 5 },
-  { id: '6', name: 'Karen Guidry', city: 'Denham Springs', parish: 'Livingston', score: 74, urgency: 69, closePct: 55, financingPct: 65, status: 'INSPECTION_COMPLETE', isStorm: true, est: 7800, signals: ['Storm-affected', 'Inspection done', 'Awaiting proposal'], pitchAngle: 'INSURANCE_STORM', stuckDays: 4 },
-  { id: '9', name: 'Louis Badeaux', city: 'Metairie', parish: 'Jefferson', score: 77, urgency: 82, closePct: 50, financingPct: 72, status: 'ATTEMPTING_CONTACT', isStorm: true, est: 6800, signals: ['Storm-affected', 'Multiple contact attempts', 'High urgency score'], pitchAngle: 'URGENCY_BASED', stuckDays: 7 },
-  { id: '3', name: 'Robert Comeaux', city: 'Baton Rouge', parish: 'East Baton Rouge', score: 78, urgency: 72, closePct: 68, financingPct: 48, status: 'APPOINTMENT_SET', isStorm: false, est: 6500, signals: ['Appointment confirmed', 'Door knock lead', 'Older home (1978)'], pitchAngle: 'ENERGY_SAVINGS', stuckDays: 0 },
-];
+
 
 const PITCH_ANGLE_LABELS: Record<string, { label: string; color: string }> = {
   PREMIUM_VALUE:    { label: 'Premium Value', color: 'badge-purple' },
@@ -31,11 +23,11 @@ const PITCH_ANGLE_LABELS: Record<string, { label: string; color: string }> = {
 };
 
 const CATEGORIES = [
-  { key: 'all', label: 'All Leads', icon: BoltSolid, color: 'brand' },
-  { key: 'storm', label: 'Storm Leads', icon: CloudIcon, color: 'purple' },
-  { key: 'hot', label: 'Hot (Score 80+)', icon: FireIcon, color: 'red' },
-  { key: 'stuck', label: 'Stuck (5+ days)', icon: ClockIcon, color: 'amber' },
-  { key: 'high-value', label: 'High Value ($8K+)', icon: CurrencyDollarIcon, color: 'emerald' },
+  { key: 'all', label: 'All Leads', icon: BoltSolid },
+  { key: 'storm', label: 'Storm Leads', icon: CloudIcon },
+  { key: 'hot', label: 'Hot (Score 80+)', icon: FireIcon },
+  { key: 'stuck', label: 'Stuck (5+ days)', icon: ClockIcon },
+  { key: 'high-value', label: 'High Value ($8K+)', icon: CurrencyDollarIcon },
 ];
 
 function ScoreRing({ score, size = 48 }: { score: number; size?: number }) {
@@ -59,8 +51,35 @@ function ScoreRing({ score, size = 48 }: { score: number; size?: number }) {
 
 export function LeadIntelligencePage() {
   const [category, setCategory] = useState('all');
+  const [leads, setLeads] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const filtered = INTELLIGENCE_LEADS.filter((lead) => {
+  useEffect(() => {
+    apiClient.leads.list({ sortBy: 'aiScore', sortDir: 'desc', limit: 50 })
+      .then((d: any) => {
+        const raw: any[] = d?.data ?? d?.leads ?? [];
+        setLeads(raw.map((l: any) => ({
+          id: l.id,
+          name: `${l.firstName} ${l.lastName}`,
+          city: l.city ?? '',
+          parish: l.parish ?? l.county ?? l.city ?? '',
+          score: l.aiScore ?? 50,
+          urgency: l.urgencyScore ?? l.urgency ?? 50,
+          closePct: l.closeProbability ?? l.closePct ?? 50,
+          financingPct: l.financingLikelihood ?? l.financingPct ?? 30,
+          status: l.status,
+          isStorm: l.isStormLead ?? false,
+          est: l.estimatedValue ?? 0,
+          signals: l.aiSignals ?? l.signals ?? [],
+          pitchAngle: l.pitchAngle ?? 'CONSULTATIVE',
+          stuckDays: l.stuckDays ?? 0,
+        })));
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
+
+  const filtered = leads.filter((lead) => {
     if (category === 'storm') return lead.isStorm;
     if (category === 'hot') return lead.score >= 80;
     if (category === 'stuck') return lead.stuckDays >= 5;
@@ -110,11 +129,11 @@ export function LeadIntelligencePage() {
             <Icon className="h-4 w-4" />
             {label}
             <span className="text-[10px] text-slate-600 bg-slate-800 px-1.5 rounded-full">
-              {key === 'all' ? INTELLIGENCE_LEADS.length :
-               key === 'storm' ? INTELLIGENCE_LEADS.filter(l => l.isStorm).length :
-               key === 'hot' ? INTELLIGENCE_LEADS.filter(l => l.score >= 80).length :
-               key === 'stuck' ? INTELLIGENCE_LEADS.filter(l => l.stuckDays >= 5).length :
-               INTELLIGENCE_LEADS.filter(l => l.est >= 8000).length}
+              {key === 'all' ? leads.length :
+               key === 'storm' ? leads.filter(l => l.isStorm).length :
+               key === 'hot' ? leads.filter(l => l.score >= 80).length :
+               key === 'stuck' ? leads.filter(l => l.stuckDays >= 5).length :
+               leads.filter(l => l.est >= 8000).length}
             </span>
           </button>
         ))}

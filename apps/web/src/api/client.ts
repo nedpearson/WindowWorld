@@ -115,7 +115,7 @@ export const api = {
     getAiSummary: (id: string) => get(`/leads/${id}/ai-summary`),
     checkDuplicates: (id: string) => post(`/leads/${id}/duplicate-check`),
     delete: (id: string) => del(`/leads/${id}`),
-    bulkImport: (leads: any[]) => post('/leads/bulk-import', { leads }),
+    bulkImport: (payload: { leads: any[]; [key: string]: any }) => post('/leads/bulk-import', payload),
   },
 
   // Contacts
@@ -342,4 +342,9 @@ export const api = {
   },
 };
 
-export default apiClient;
+// ─── Attach api namespaces directly onto the axios instance ──
+// This allows: import apiClient from './client'; apiClient.leads.list()
+Object.assign(apiClient, api);
+
+export { api };
+export default apiClient as typeof apiClient & typeof api;

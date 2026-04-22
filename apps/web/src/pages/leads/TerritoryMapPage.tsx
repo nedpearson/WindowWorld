@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
@@ -6,20 +6,14 @@ import {
   ListBulletIcon, AdjustmentsHorizontalIcon,
 } from '@heroicons/react/24/outline';
 import clsx from 'clsx';
+import apiClient from '../../api/client';
 
-// ─── Lead data with coords ────────────────────────────────────
-const MAP_LEADS = [
-  { id: '1', name: 'Michael Trosclair', address: '7824 Old Hammond Hwy', city: 'Baton Rouge', status: 'VERBAL_COMMIT', score: 91, urgency: 88, isStorm: true, est: 14800, lat: 30.4156, lng: -91.0634, parish: 'East Baton Rouge' },
-  { id: '2', name: 'Patricia Landry', address: '312 Sherwood Forest Blvd', city: 'Baton Rouge', status: 'PROPOSAL_SENT', score: 85, urgency: 68, isStorm: false, est: 9200, lat: 30.4442, lng: -91.0892, parish: 'East Baton Rouge' },
-  { id: '3', name: 'Robert Comeaux', address: '4521 Greenwell Springs Rd', city: 'Baton Rouge', status: 'APPOINTMENT_SET', score: 78, urgency: 72, isStorm: false, est: 6500, lat: 30.4821, lng: -91.1103, parish: 'East Baton Rouge' },
-  { id: '5', name: 'Susan Bourgeois', address: '2207 Jefferson Hwy', city: 'Baton Rouge', status: 'NEW_LEAD', score: 62, urgency: 81, isStorm: true, est: 4200, lat: 30.4058, lng: -91.1341, parish: 'East Baton Rouge' },
-  { id: '6', name: 'Karen Guidry', address: '1134 Range Ave', city: 'Denham Springs', status: 'INSPECTION_COMPLETE', score: 74, urgency: 69, isStorm: true, est: 7800, lat: 30.4875, lng: -90.9427, parish: 'Livingston' },
-  { id: '4', name: 'Angela Mouton', address: '226 Tupelo Dr', city: 'Prairieville', status: 'MEASURING_COMPLETE', score: 82, urgency: 75, isStorm: false, est: 8900, lat: 30.2998, lng: -90.9871, parish: 'Ascension' },
-  { id: '9', name: 'Louis Badeaux', address: '3312 Severn Ave', city: 'Metairie', status: 'ATTEMPTING_CONTACT', score: 77, urgency: 82, isStorm: true, est: 6800, lat: 29.9975, lng: -90.1612, parish: 'Jefferson' },
-  { id: '12', name: 'Carol Chauvin', address: '1245 Gause Blvd', city: 'Slidell', status: 'QUALIFIED', score: 80, urgency: 62, isStorm: false, est: 7400, lat: 30.2743, lng: -89.7813, parish: 'St. Tammany' },
-  { id: '11', name: 'Brett Fontenot', address: '4412 Johnston St', city: 'Lafayette', status: 'CONTACTED', score: 65, urgency: 55, isStorm: false, est: 5200, lat: 30.2073, lng: -92.0513, parish: 'Lafayette' },
-  { id: '8', name: 'James Hebert', address: '5316 Perkins Rd', city: 'Baton Rouge', status: 'SOLD', score: 95, urgency: 92, isStorm: false, est: 11600, lat: 30.3912, lng: -91.1045, parish: 'East Baton Rouge' },
-];
+// ─── Types ────────────────────────────────────────────────────
+interface MapLead {
+  id: string; name: string; address: string; city: string;
+  status: string; score: number; urgency: number;
+  isStorm: boolean; est: number; lat: number; lng: number; parish: string;
+}
 
 const STATUS_COLOR_DOT: Record<string, string> = {
   VERBAL_COMMIT: '#10b981', SOLD: '#10b981', PAID: '#10b981',
@@ -30,9 +24,9 @@ const STATUS_COLOR_DOT: Record<string, string> = {
   LOST: '#ef4444',
 };
 
-// Simple SVG-based map fallback (full Leaflet integration in Phase 3)
+// ─── SVG map component ─────────────────────────────────────────
 function SimpleLeadsMap({ leads, selected, onSelect }: {
-  leads: typeof MAP_LEADS;
+  leads: MapLead[];
   selected: string | null;
   onSelect: (id: string) => void;
 }) {
@@ -149,9 +143,34 @@ export function TerritoryMapPage() {
   const [parishFilter, setParishFilter] = useState('');
   const [stormOnly, setStormOnly] = useState(false);
   const [view, setView] = useState<'map' | 'list'>('map');
+  const [leads, setLeads] = useState<MapLead[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const parishes = [...new Set(MAP_LEADS.map((l) => l.parish))].sort();
-  const filtered = MAP_LEADS.filter((l) => {
+  useEffect(() => {
+    (apiClient as any).get('/leads/map', { params: { limit: 200 } })
+      .then((r: any) => {
+        const raw: any[] = r.data?.leads ?? r.data?.data ?? [];
+        setLeads(raw.map((l: any) => ({
+          id: l.id,
+          name: `${l.firstName} ${l.lastName}`,
+          address: l.address ?? '',
+          city: l.city ?? '',
+          status: l.status,
+          score: l.aiScore ?? l.score ?? 50,
+          urgency: l.urgency ?? 50,
+          isStorm: l.isStormLead ?? false,
+          est: l.estimatedValue ?? 0,
+          lat: l.lat ?? l.latitude ?? 30.45,
+          lng: l.lng ?? l.longitude ?? -91.18,
+          parish: l.parish ?? l.county ?? l.city ?? 'Unknown',
+        })));
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
+
+  const parishes = [...new Set(leads.map((l) => l.parish))].sort();
+  const filtered = leads.filter((l) => {
     if (parishFilter && l.parish !== parishFilter) return false;
     if (stormOnly && !l.isStorm) return false;
     return true;

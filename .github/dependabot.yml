@@ -1,0 +1,36 @@
+version: 2
+updates:
+  # ── Root workspace (npm) ─────────────────────────────────────────────────────
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "America/Chicago"
+    open-pull-requests-limit: 5
+    groups:
+      # Group all minor + patch updates to reduce PR noise
+      patch-updates:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
+    ignore:
+      # serialize-javascript 7.0.5 is the latest available — no fix exists yet.
+      # Pinned via root overrides. Dismiss these until a patched version ships.
+      - dependency-name: "serialize-javascript"
+        versions: ["7.0.5"]
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"
+
+  # ── GitHub Actions ────────────────────────────────────────────────────────────
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "America/Chicago"
+    open-pull-requests-limit: 3
+    commit-message:
+      prefix: "ci(deps)"

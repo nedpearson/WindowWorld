@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
@@ -9,24 +9,16 @@ import {
 } from '@heroicons/react/24/outline';
 import { BoltIcon } from '@heroicons/react/24/solid';
 import clsx from 'clsx';
+import apiClient from '../../api/client';
 
-// ── Demo data ──────────────────────────────────────────────────
+// ── Fallback demo data (shown while API loads) ──────────────────────────────
 const DEMO_LEAD = {
-  id: '1', firstName: 'Michael', lastName: 'Trosclair',
-  address: '7824 Old Hammond Hwy', city: 'Baton Rouge', zip: '70809',
-  phone: '(225) 555-1003',
+  id: 'demo', firstName: 'Loading', lastName: '…',
+  address: '', city: '', zip: '', phone: '',
 };
 
 const DEMO_OPENINGS = [
   { id: 'o1', roomLabel: 'Living Room - Front', windowType: 'DOUBLE_HUNG', width: 35.75, height: 47.75, measureStatus: 'VERIFIED_ONSITE', isAiEstimated: false },
-  { id: 'o2', roomLabel: 'Living Room - Side', windowType: 'DOUBLE_HUNG', width: 35.875, height: 47.75, measureStatus: 'VERIFIED_ONSITE', isAiEstimated: false },
-  { id: 'o3', roomLabel: 'Kitchen', windowType: 'SINGLE_HUNG', width: 28.0, height: 36.0, measureStatus: 'ESTIMATED', isAiEstimated: true, aiConfidence: 0.78 },
-  { id: 'o4', roomLabel: 'Master Bedroom - E', windowType: 'DOUBLE_HUNG', width: 35.75, height: 47.75, measureStatus: 'VERIFIED_ONSITE', isAiEstimated: false },
-  { id: 'o5', roomLabel: 'Master Bedroom - S', windowType: 'DOUBLE_HUNG', width: 35.75, height: 47.75, measureStatus: 'VERIFIED_ONSITE', isAiEstimated: false },
-  { id: 'o6', roomLabel: 'Bedroom 2', windowType: 'DOUBLE_HUNG', width: 35.75, height: 47.75, measureStatus: 'VERIFIED_ONSITE', isAiEstimated: false },
-  { id: 'o7', roomLabel: 'Bathroom', windowType: 'SINGLE_HUNG', width: 24.0, height: 30.0, measureStatus: 'VERIFIED_ONSITE', isAiEstimated: false },
-  { id: 'o8', roomLabel: 'Dining Room', windowType: 'DOUBLE_HUNG', width: 35.75, height: 47.75, measureStatus: 'VERIFIED_ONSITE', isAiEstimated: false },
-  { id: 'o9', roomLabel: 'Garage Door Side', windowType: 'SINGLE_HUNG', width: 28.0, height: 36.0, measureStatus: 'VERIFIED_ONSITE', isAiEstimated: false },
 ];
 
 const SERIES_OPTIONS = [
@@ -80,14 +72,50 @@ interface LineItem {
 export function QuotePage() {
   const { leadId } = useParams<{ leadId: string }>();
 
+  const [lead, setLead] = useState(DEMO_LEAD);
+  const [rawOpenings, setRawOpenings] = useState(DEMO_OPENINGS);
+  const [loadingData, setLoadingData] = useState(true);
+
+  useEffect(() => {
+    if (!leadId) { setLoadingData(false); return; }
+    Promise.allSettled([
+      (apiClient as any).leads.getById(leadId),
+      (apiClient as any).openings.list({ leadId, limit: 100 }),
+    ]).then(([leadRes, openingsRes]) => {
+      if (leadRes.status === 'fulfilled') {
+        const l = (leadRes.value as any)?.data ?? leadRes.value;
+        setLead({ id: l.id, firstName: l.firstName, lastName: l.lastName,
+          address: l.address ?? '', city: l.city ?? '', zip: l.zip ?? '', phone: l.phone ?? '' });
+      }
+      if (openingsRes.status === 'fulfilled') {
+        const raw: any[] = (openingsRes.value as any)?.data ?? [];
+        if (raw.length > 0) {
+          setRawOpenings(raw.map((o: any) => ({
+            id: o.id,
+            roomLabel: o.roomLabel ?? o.label ?? 'Opening',
+            windowType: o.windowType ?? 'DOUBLE_HUNG',
+            width: o.roughWidth ?? o.width ?? 36,
+            height: o.roughHeight ?? o.height ?? 48,
+            measureStatus: o.measureStatus ?? 'ESTIMATED',
+            isAiEstimated: o.isAiEstimated ?? o.measureSource === 'AI',
+            aiConfidence: o.aiConfidence,
+          })));
+        }
+      }
+    }).finally(() => setLoadingData(false));
+  }, [leadId]);
+
   const [globalSeries, setGlobalSeries] = useState('SERIES_4000');
   const [discountPct, setDiscountPct] = useState(0);
   const [financingId, setFinancingId] = useState('NONE');
   const [showSendModal, setShowSendModal] = useState(false);
   const [saved, setSaved] = useState(false);
 
-  const [lineItems, setLineItems] = useState<LineItem[]>(() =>
-    DEMO_OPENINGS.map((o) => ({
+  const [lineItems, setLineItems] = useState<LineItem[]>([]);
+
+  // Re-init line items whenever openings load
+  useEffect(() => {
+    setLineItems(rawOpenings.map((o) => ({
       openingId: o.id,
       selected: true,
       roomLabel: o.roomLabel,
@@ -97,13 +125,13 @@ export function QuotePage() {
       seriesId: 'SERIES_4000',
       quantity: 1,
       unitPrice: calcWindowPrice('SERIES_4000', o.width, o.height),
-      extraOptions: 75, // $75 install per window
+      extraOptions: 75,
       lineTotal: calcWindowPrice('SERIES_4000', o.width, o.height) + 75,
       isAiEstimated: o.isAiEstimated,
-      aiConfidence: o.aiConfidence,
+      aiConfidence: (o as any).aiConfidence,
       measureStatus: o.measureStatus,
-    }))
-  );
+    })));
+  }, [rawOpenings]);
 
   const updateLineItem = (id: string, updates: Partial<LineItem>) => {
     setLineItems((prev) => prev.map((item) => {

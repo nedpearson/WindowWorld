@@ -20,62 +20,8 @@ import { SmsTemplateDrawer } from '../../components/sms/SmsTemplateDrawer';
 import { EmailTemplateDrawer } from '../../components/email/EmailTemplateDrawer';
 import { api } from '../../api/client';
 
-const DEMO_LEAD = {
-  id: '1',
-  firstName: 'Michael', lastName: 'Trosclair',
-  email: 'mtrosclair@hotmail.com', phone: '(225) 555-1003', phone2: null,
-  address: '7824 Old Hammond Hwy', city: 'Baton Rouge', state: 'Louisiana', zip: '70809',
-  parish: 'East Baton Rouge',
-  lat: 30.4156, lng: -91.0634,
-  status: 'VERBAL_COMMIT',
-  source: 'web',
-  leadScore: 91, urgencyScore: 88,
-  closeProbability: 0.87,
-  estimatedRevenue: 14800,
-  isStormLead: true,
-  tags: ['storm-2024', 'hurricane-ida-follow', 'vinyl-preferred'],
-  lastContactedAt: '2026-04-15T14:30:00Z',
-  nextFollowUpAt: '2026-04-20T10:00:00Z',
-  createdAt: '2026-04-01',
-  notes: 'Homeowner is motivated. Has had condensation on most windows for 2 years. Husband does construction so he wants quality. Wife handles finances.',
-  assignedRep: { id: 'rep1', firstName: 'Jake', lastName: 'Thibodaux', phone: '(225) 555-0103' },
-  contacts: [
-    { id: 'c1', firstName: 'Michael', lastName: 'Trosclair', phone: '(225) 555-1003', email: 'mtrosclair@hotmail.com', isPrimary: true, isOwner: true, notes: 'Decision maker. Call after 5pm.' },
-    { id: 'c2', firstName: 'Jennifer', lastName: 'Trosclair', phone: '(225) 555-1099', email: null, isPrimary: false, isSpouse: true, notes: 'Handles budgeting. Prefers text.' },
-  ],
-  property: {
-    id: 'p1', address: '7824 Old Hammond Hwy', city: 'Baton Rouge', zip: '70809',
-    yearBuilt: 1979, squareFootage: 2100, stories: 1, propertyType: 'single-family',
-    estimatedValue: 245000, estimatedWindowCount: 12, windowCondition: 'POOR',
-    openings: [
-      { id: 'o1', roomLabel: 'Living Room - Front', windowType: 'DOUBLE_HUNG', condition: 'POOR', measurement: { finalWidth: 35.75, finalHeight: 47.75, status: 'VERIFIED_ONSITE' } },
-      { id: 'o2', roomLabel: 'Living Room - Side', windowType: 'DOUBLE_HUNG', condition: 'POOR', measurement: { finalWidth: 35.875, finalHeight: 47.75, status: 'VERIFIED_ONSITE' } },
-      { id: 'o3', roomLabel: 'Kitchen', windowType: 'SINGLE_HUNG', condition: 'FAIR', measurement: { finalWidth: 28.0, finalHeight: 36.0, status: 'ESTIMATED', isAiEstimated: true } },
-      { id: 'o4', roomLabel: 'Master Bedroom - E', windowType: 'DOUBLE_HUNG', condition: 'FAIR', measurement: null },
-      { id: 'o5', roomLabel: 'Master Bedroom - S', windowType: 'DOUBLE_HUNG', condition: 'POOR', measurement: null },
-      { id: 'o6', roomLabel: 'Bedroom 2', windowType: 'DOUBLE_HUNG', condition: 'FAIR', measurement: null },
-    ],
-  },
-  activities: [
-    { id: 'a1', type: 'CALL', title: 'Initial outreach call', description: 'Called to introduce WindowWorld. Homeowner very interested — mentioned high energy bills and condensation on windows for 2 years.', outcome: 'interested', duration: 12, occurredAt: '2026-04-01T10:00:00Z' },
-    { id: 'a2', type: 'TEXT', title: 'Follow-up text sent', description: 'Sent intro text with window savings calculator link.', occurredAt: '2026-04-03T09:15:00Z' },
-    { id: 'a3', type: 'APPOINTMENT_SET', title: 'Appointment confirmed', description: 'Scheduled initial consultation for April 8 at 2pm.', occurredAt: '2026-04-05T14:30:00Z' },
-    { id: 'a4', type: 'MEETING', title: 'In-home consultation', description: 'Met with Michael and Jennifer. Walked entire home. Identified all 9 windows for replacement. Both very engaged. Strong buying signals.', outcome: 'very-interested', duration: 90, occurredAt: '2026-04-08T14:00:00Z' },
-    { id: 'a5', type: 'CALL', title: 'Proposal follow-up call', description: 'Reviewed proposal numbers. Michael asked about Series 4000 upgrade. Jennifer leaning toward financing option. Need final numbers.', duration: 22, occurredAt: '2026-04-12T16:00:00Z' },
-    { id: 'a6', type: 'EMAIL', title: 'Revised proposal sent', description: 'Sent updated proposal with Series 4000 upgrade option and 18-month same-as-cash financing breakdown.', occurredAt: '2026-04-14T11:00:00Z' },
-    { id: 'a7', type: 'CALL', title: 'Verbal commit confirmed', description: 'Michael confirmed they want to move forward with Series 4000 on 9 windows. Will sign at install scheduling call.', outcome: 'verbal-commit', duration: 18, occurredAt: '2026-04-15T14:30:00Z' },
-  ],
-  aiPitch: {
-    recommendedPitchAngle: 'PREMIUM_VALUE',
-    opener: 'Michael, given what you\'ve described about the condensation and your construction background — you know exactly what quality looks like. Let\'s talk about what\'s right for this home.',
-    closingAsk: 'What would it take to get your install scheduled this week?',
-    nextBestAction: 'Call to schedule signing and install date — this lead is at verbal commit.',
-    estimatedCloseProbability: 0.87,
-    financingPitch: 'At $82/month for 18 months same-as-cash, the energy savings often offset 40-60% of the payment.',
-    urgencyDrivers: ['Series 4000 pricing locked for 30 days', 'Install slots filling for May'],
-    confidenceScore: 0.91,
-  },
-};
+
+
 
 const ACTIVITY_ICONS: Record<string, any> = {
   CALL: PhoneIcon,

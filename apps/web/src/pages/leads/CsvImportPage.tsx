@@ -8,6 +8,7 @@ import {
   UserPlusIcon, MagnifyingGlassIcon,
 } from '@heroicons/react/24/outline';
 import clsx from 'clsx';
+import apiClient from '../../api/client';
 
 // ─── Types ────────────────────────────────────────────────
 interface CsvRow {
@@ -70,15 +71,23 @@ export function CsvImportPage() {
     if (file) handleFileSelect(file);
   };
 
-  const handleImport = () => {
-    const validCount = rows.filter(r => r._status === 'valid').length;
+  const handleImport = async () => {
+    const validRows = rows.filter((r) => r._status === 'valid');
+    if (validRows.length === 0) return;
     setImporting(true);
-    setTimeout(() => {
-      setImporting(false);
-      setImported(validCount);
+    try {
+      const result: any = await apiClient.leads.bulkImport({ leads: validRows });
+      const imported = result?.imported ?? validRows.length;
+      const skipped = result?.skipped ?? 0;
+      const failed = result?.failed ?? 0;
+      setImported(imported);
       setStep('done');
-      toast.success(`${validCount} leads imported successfully!`);
-    }, 1500);
+      toast.success(`${imported} leads imported!${skipped > 0 ? ` ${skipped} duplicates skipped.` : ''}${failed > 0 ? ` ${failed} failed.` : ''}`);
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message ?? 'Import failed — please try again');
+    } finally {
+      setImporting(false);
+    }
   };
 
   const filtered = rows.filter(r => filter === 'all' || r._status === filter);
