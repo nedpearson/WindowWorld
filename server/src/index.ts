@@ -189,23 +189,27 @@ app.use(`${apiV1}/notifications`, notificationsRouter);
 app.use(`${apiV1}/campaigns`, campaignsRouter);
 app.use(`${apiV1}/admin`, adminRouter);
 
-// â”€â”€â”€ Error handler (must be last) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// ─── Health check ─────────────────────────────────────────────
-app.get('/health', async (_req, res) => {
-  try {
-    await prisma.$queryRaw`SELECT 1`;
-    res.json({
-      status: 'ok',
-      db: 'connected',
-      uptime: Math.round(process.uptime()),
-      version: process.env.npm_package_version || '1.0.0',
-      env: process.env.NODE_ENV || 'development',
-    });
-  } catch (err: any) {
-    logger.error('[health] DB connectivity check failed:', err.message);
-    res.status(503).json({ status: 'error', db: 'unreachable', message: err.message });
-  }
-});
+// ─── SPA – serve built React app ─────────────────────────────────────────────
+// Must come AFTER all /api/ routes so they take priority.
+// In production the frontend is built into ./public by the nixpacks build step.
+const webDistPath = path.join(__dirname, '..', 'public');
+if (fs.existsSync(webDistPath)) {
+  // Serve hashed static assets with long-lived immutable cache headers
+  app.use(
+    express.static(webDistPath, {
+      maxAge: '1y',
+      immutable: true,
+      index: false,
+    })
+  );
+  // SPA fallback — all remaining GETs serve index.html (client-side routing)
+  app.get('*', (_req, res) => {
+    res.sendFile(path.join(webDistPath, 'index.html'));
+  });
+  logger.info(`[SPA] Serving React app from ${webDistPath}`);
+} else {
+  logger.warn('[SPA] No built frontend found at ./public — SPA serving skipped (dev or separate web service)');
+}
 
 app.use(errorHandler);
 

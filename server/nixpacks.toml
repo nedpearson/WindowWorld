@@ -2,10 +2,22 @@
 nixPkgs = ["nodejs_20"]
 
 [phases.install]
-cmds = ["npm install"]
+# Install server deps, then install web app deps
+cmds = [
+  "npm install",
+  "cd ../apps/web && npm install"
+]
 
 [phases.build]
-cmds = ["prisma generate"]
+# 1. Generate Prisma client
+# 2. Compile TypeScript server
+# 3. Build the React frontend
+cmds = [
+  "prisma generate",
+  "npx tsc -p tsconfig.json",
+  "cd ../apps/web && npm run build",
+  "cp -r ../apps/web/dist ./public"
+]
 
 [start]
 cmd = "prisma db push --accept-data-loss && node dist/index.js"
