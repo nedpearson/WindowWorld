@@ -1,6 +1,6 @@
 import { prisma } from '../../shared/services/prisma';
 import { emailQueue } from '../../jobs';
-import { logger } from '../../shared/utils/logger';
+import { logger, sanitizeForLog } from '../../shared/utils/logger';
 import { smsService } from '../../shared/services/sms.service';
 
 // â”€â”€ Campaign Templates â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -395,3 +395,4 @@ export class CampaignsService {
 }
 
 export const campaignsService = new CampaignsService();
+

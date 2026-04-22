@@ -1,5 +1,5 @@
 import twilio from 'twilio';
-import { logger } from '../utils/logger';
+import { logger, sanitizeForLog } from '../utils/logger';
 
 const isTwilioEnabled = !!(process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN && process.env.TWILIO_PHONE_NUMBER);
 
@@ -9,8 +9,10 @@ const client = isTwilioEnabled
 
 export class SmsService {
   async sendSms(to: string, body: string): Promise<boolean> {
+    // Sanitize user-supplied phone number and body before logging (CodeQL: js/log-injection)
+    const safeTo = sanitizeForLog(to);
     if (!isTwilioEnabled || !client) {
-      logger.info(`[SMS SIMULATION] To: ${to} | Message: ${body}`);
+      logger.info(`[SMS SIMULATION] To: ${safeTo} | Message: [${body.length} chars]`);
       return true; // Simulate success in dev/test if lacking keys
     }
 
@@ -20,10 +22,10 @@ export class SmsService {
         from: process.env.TWILIO_PHONE_NUMBER,
         to,
       });
-      logger.info(`SMS sent to ${to}: ${body.substring(0, 30)}...`);
+      logger.info(`SMS sent to ${safeTo}: [${body.length} chars]`);
       return true;
     } catch (error: any) {
-      logger.error(`Failed to send SMS to ${to}: ${error.message}`);
+      logger.error(`Failed to send SMS to ${safeTo}: ${sanitizeForLog(error.message)}`);
       return false;
     }
   }

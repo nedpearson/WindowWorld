@@ -157,7 +157,7 @@ function WeekView({ appointments, onClickSlot, onClickApt }: {
                         onClick={(e) => { e.stopPropagation(); onClickApt(apt); }}
                         className={clsx(
                           'text-[10px] p-1.5 rounded-md mb-0.5 cursor-pointer border-l-2 leading-tight',
-                          TYPE_STRIPE[apt.type]?.replace('border-l-', 'border-l-') || 'border-l-slate-500',
+                          TYPE_STRIPE[apt.type] || 'border-l-slate-500',
                           apt.status === 'CANCELLED' ? 'opacity-40 bg-slate-800' : 'bg-slate-800 hover:bg-slate-700'
                         )}
                       >

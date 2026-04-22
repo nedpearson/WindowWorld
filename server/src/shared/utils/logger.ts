@@ -36,3 +36,17 @@ logger.add(new winston.transports.Console({
   level: 'http',
   silent: process.env.NODE_ENV === 'test',
 }));
+
+/**
+ * Sanitize a user-supplied string before embedding in log messages.
+ * Prevents log injection by stripping newlines, carriage returns, and
+ * other control characters that could be used to forge log entries.
+ * (CodeQL: js/log-injection)
+ */
+export function sanitizeForLog(value: unknown): string {
+  if (value === null || value === undefined) return '';
+  return String(value)
+    .replace(/[\r\n\t]/g, ' ')        // newlines → space (blocks log injection)
+    .replace(/[\x00-\x1f\x7f]/g, '') // strip other control chars
+    .slice(0, 200);                    // cap length
+}

@@ -2,7 +2,7 @@ import { prisma } from '../../shared/services/prisma';
 import { NotFoundError } from '../../shared/middleware/errorHandler';
 import { pdfQueue } from '../../jobs/index';
 import { auditService } from '../admin/audit.service';
-import { logger } from '../../shared/utils/logger';
+import { logger, sanitizeForLog } from '../../shared/utils/logger';
 
 export class ProposalsService {
   async list(options: {
@@ -266,3 +266,4 @@ const DEFAULT_WARRANTY_HIGHLIGHTS = [
 ];
 
 export const proposalsService = new ProposalsService();
+

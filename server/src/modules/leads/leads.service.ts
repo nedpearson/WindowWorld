@@ -3,7 +3,7 @@ import { prisma } from '../../shared/services/prisma';
 import { NotFoundError, AppError } from '../../shared/middleware/errorHandler';
 import { auditService } from '../admin/audit.service';
 import { aiService } from '../ai-analysis/ai.service';
-import { logger } from '../../shared/utils/logger';
+import { logger, sanitizeForLog } from '../../shared/utils/logger';
 import { leadScoringQueue } from '../../jobs';
 
 interface ListLeadsOptions {
@@ -59,9 +59,17 @@ export class LeadService {
       }),
     };
 
+    // Allowlist sortBy to prevent remote property injection (CodeQL: js/remote-property-injection)
+    const ALLOWED_SORT_FIELDS = new Set([
+      'createdAt', 'updatedAt', 'firstName', 'lastName', 'leadScore',
+      'urgencyScore', 'lastContactedAt', 'nextFollowUpAt', 'status', 'source',
+    ]);
+    const safeSortBy = ALLOWED_SORT_FIELDS.has(sortBy) ? sortBy : 'createdAt';
+
     const orderBy: Prisma.LeadOrderByWithRelationInput = {
-      [sortBy]: sortDir,
+      [safeSortBy]: sortDir,
     };
+
 
     const [total, data] = await Promise.all([
       prisma.lead.count({ where }),
@@ -641,3 +649,4 @@ export class LeadService {
 }
 
 export const leadService = new LeadService();
+

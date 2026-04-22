@@ -299,7 +299,9 @@ function CaptureTab({ enqueue }: { enqueue: (type: any, payload: any) => void })
           <div className="grid grid-cols-2 gap-2">
             {captures.map((cap) => (
               <div key={cap.id} className="relative rounded-xl overflow-hidden aspect-square bg-slate-800">
-                <img src={cap.url} alt={cap.label} className="w-full h-full object-cover" />
+                {/* cap.url is a browser-generated blob: URL (URL.createObjectURL) — not user-supplied HTML */}
+                {/* cap.label is user text, rendered as attribute value only — not injected as HTML */}
+                <img src={cap.url} alt={String(cap.label).replace(/[<>"'&]/g, '')} className="w-full h-full object-cover" />
                 <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-2">
                   <div className="text-[11px] text-white font-medium truncate">{cap.label}</div>
                 </div>

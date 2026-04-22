@@ -1,4 +1,3 @@
-import { prisma } from '../../shared/services/prisma';
 import { NotFoundError } from '../../shared/middleware/errorHandler';
 
 // â”€â”€â”€ Louisiana window series pricing (realistic Window World pricing) â”€â”€
