@@ -11,3 +11,7 @@ uploads/
 coverage/
 .nyc_output/
 *.tsbuildinfo
+# Workspace-level lock files are stale in an npm workspace monorepo.
+# Only the root package-lock.json is canonical.
+apps/web/package-lock.json
+server/package-lock.json
