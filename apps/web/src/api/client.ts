@@ -175,9 +175,8 @@ export const api = {
     getByOpeningId: (openingId: string) => get(`/measurements/opening/${openingId}`),
     create: (data: any) => post('/measurements', data),
     update: (id: string, data: any) => patch(`/measurements/${id}`, data),
-    verify: (id: string, data: any) => patch(`/measurements/${id}/verify`, data),
-    approveForOrder: (id: string) => patch(`/measurements/${id}/approve`),
-    getHistory: (id: string) => get(`/measurements/${id}/history`),
+    verify: (openingId: string, data: any) => post(`/measurements/opening/${openingId}/verify`, data),
+    approveForOrder: (openingId: string) => post(`/measurements/opening/${openingId}/approve-for-order`),
   },
 
   // Products
@@ -186,16 +185,21 @@ export const api = {
     getById: (id: string) => get(`/products/${id}`),
     create: (data: any) => post('/products', data),
     update: (id: string, data: any) => patch(`/products/${id}`, data),
-    recommend: (openingData: any) => post('/products/recommend', openingData),
+    calculate: (data: any) => post('/products/calculate', data),
+    getFinancingOptions: () => get<any>('/products/financing/options'),
+    calculateFinancing: (data: any) => post('/products/financing/calculate', data),
   },
 
   // Quotes
   quotes: {
     list: (params?: Record<string, any>) => get('/quotes', { params }),
     getById: (id: string) => get(`/quotes/${id}`),
+    getByLead: (leadId: string) => get(`/quotes/lead/${leadId}`),
     create: (data: any) => post('/quotes', data),
+    build: (data: any) => post('/quotes/build', data),
+    calculate: (data: any) => post('/quotes/calculate', data),
     update: (id: string, data: any) => patch(`/quotes/${id}`, data),
-    approve: (id: string) => patch(`/quotes/${id}/approve`),
+    delete: (id: string) => del(`/quotes/${id}`),
   },
 
   // Proposals
@@ -206,6 +210,7 @@ export const api = {
     update: (id: string, data: any) => patch(`/proposals/${id}`, data),
     send: (id: string, data: any) => post(`/proposals/${id}/send`, data),
     generatePdf: (id: string) => post(`/proposals/${id}/generate-pdf`),
+    updateStatus: (id: string, status: string) => patch(`/proposals/${id}/status`, { status }),
     sign: (id: string, data: any) => post(`/proposals/${id}/sign`, data),
   },
 
@@ -213,7 +218,8 @@ export const api = {
   invoices: {
     list: (params?: Record<string, any>) => get('/invoices', { params }),
     getById: (id: string) => get(`/invoices/${id}`),
-    create: (data: any) => post('/invoices', data),
+    getAging: () => get<any>('/invoices/aging'),
+    createFromProposal: (data: any) => post('/invoices/from-proposal', data),
     update: (id: string, data: any) => patch(`/invoices/${id}`, data),
     send: (id: string, data: any) => post(`/invoices/${id}/send`, data),
     recordPayment: (id: string, data: any) => post(`/invoices/${id}/payments`, data),
@@ -271,9 +277,10 @@ export const api = {
   // Campaigns
   campaigns: {
     list: (params?: Record<string, any>) => get('/campaigns', { params }),
-    getById: (id: string) => get(`/campaigns/${id}`),
-    create: (data: any) => post('/campaigns', data),
-    activateStormMode: (data: any) => post('/campaigns/storm-mode', data),
+    getTemplates: () => get<any>('/campaigns/templates'),
+    enroll: (leadId: string, campaignTemplateKey: string) => post('/campaigns/enroll', { leadId, campaignTemplateKey }),
+    triggerForStatus: (leadId: string, status: string) => post('/campaigns/trigger-for-status', { leadId, status }),
+    unenroll: (leadId: string, reason?: string) => post(`/campaigns/${leadId}/unenroll`, { reason }),
   },
 
   // Users
