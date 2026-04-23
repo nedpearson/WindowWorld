@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { CloudIcon } from '@heroicons/react/24/outline';
 import { BoltIcon } from '@heroicons/react/24/solid';
@@ -117,6 +117,7 @@ function LeadCard({ lead, stageKey, onMove }: { lead: any; stageKey: string; onM
 }
 
 export function PipelinePage() {
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
 
   const { data: pipelineResp, isLoading } = useQuery({
@@ -199,7 +200,9 @@ export function PipelinePage() {
             return (
               <div key={stage.key} className="flex flex-col flex-shrink-0 w-52">
                 {/* Stage header */}
-                <div className={`flex items-center justify-between px-3 py-2 rounded-xl border mb-2 ${headerClass}`}>
+                <button
+                  onClick={() => navigate(`/leads?status=${stage.key}`)}
+                  className={`flex items-center justify-between w-full px-3 py-2 rounded-xl border mb-2 ${headerClass} hover:opacity-80 transition-opacity`}>
                   <div className="flex items-center gap-2">
                     <div className={`w-2 h-2 rounded-full ${stage.dot}`} />
                     <span className="text-xs font-semibold truncate">{stage.label}</span>
@@ -210,7 +213,7 @@ export function PipelinePage() {
                       <span className="text-[10px] opacity-50">${(stageValue / 1000).toFixed(0)}K</span>
                     )}
                   </div>
-                </div>
+                </button>
 
                 {/* Cards */}
                 <div className="flex-1 overflow-y-auto space-y-2 pb-4 no-scrollbar">

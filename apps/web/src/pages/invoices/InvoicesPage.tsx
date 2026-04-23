@@ -242,6 +242,12 @@ function InvoiceRow({ invoice }: { invoice: Invoice }) {
                         <ChevronRightIcon className="h-3.5 w-3.5" /> View Proposal
                       </Link>
                     )}
+                    {invoice.leadId && (
+                      <Link to={`/leads/${invoice.leadId}`} onClick={(e) => e.stopPropagation()}
+                        className="btn-sm btn-ghost flex items-center gap-2">
+                        <ChevronRightIcon className="h-3.5 w-3.5" /> View Lead
+                      </Link>
+                    )}
                   </div>
                 </div>
               </motion.div>
@@ -303,12 +309,14 @@ export function InvoicesPage() {
       {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {[
-          { label: 'Outstanding', value: formatCurrency(totalOutstanding), sub: `${invoices.filter(i => !['PAID','CANCELLED'].includes(i.status)).length} open`, color: 'text-amber-400' },
-          { label: 'Collected', value: formatCurrency(totalCollected), sub: 'all time', color: 'text-emerald-400' },
-          { label: 'Overdue', value: formatCurrency(overdueAmount), sub: `${overdueCount} invoice${overdueCount !== 1 ? 's' : ''}`, color: 'text-red-400' },
-          { label: 'Paid in Full', value: invoices.filter(i => i.status === 'PAID').length.toString(), sub: 'invoices', color: 'text-cyan-400' },
+          { label: 'Outstanding', value: formatCurrency(totalOutstanding), sub: `${invoices.filter(i => !['PAID','CANCELLED'].includes(i.status)).length} open`, color: 'text-amber-400', filter: '' },
+          { label: 'Collected', value: formatCurrency(totalCollected), sub: 'all time', color: 'text-emerald-400', filter: 'PAID' },
+          { label: 'Overdue', value: formatCurrency(overdueAmount), sub: `${overdueCount} invoice${overdueCount !== 1 ? 's' : ''}`, color: 'text-red-400', filter: 'OVERDUE' },
+          { label: 'Paid in Full', value: invoices.filter(i => i.status === 'PAID').length.toString(), sub: 'invoices', color: 'text-cyan-400', filter: 'PAID' },
         ].map((s) => (
-          <div key={s.label} className={clsx('card p-4', s.label === 'Overdue' && overdueCount > 0 && 'border-red-500/20 bg-red-500/5')}>
+          <div key={s.label}
+            onClick={() => s.filter && setStatusFilter(s.filter)}
+            className={clsx('card p-4 transition-colors', s.filter && 'cursor-pointer hover:border-slate-600', s.label === 'Overdue' && overdueCount > 0 && 'border-red-500/20 bg-red-500/5')}>
             <div className="text-xs text-slate-500 mb-1">{s.label}</div>
             <div className={clsx('text-xl font-bold', s.color)}>{s.value}</div>
             <div className="text-[11px] text-slate-600 mt-0.5">{s.sub}</div>

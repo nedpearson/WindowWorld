@@ -1,10 +1,11 @@
 import { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   BanknotesIcon, CheckCircleIcon,
-  PencilIcon, ChevronDownIcon } from '@heroicons/react/24/outline';
+  PencilIcon, ChevronDownIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
 import clsx from 'clsx';
 import { api } from '../../api/client';
 import apiClient from '../../api/client';
@@ -53,6 +54,7 @@ function calcCommission(revenue: number, tiers: CommissionTier[]): { earned: num
 
 // ─── Rep commission card ───────────────────────────────────
 function RepCard({ rep, tiers }: { rep: Rep; tiers: CommissionTier[] }) {
+  const navigate = useNavigate();
   const [expanded, setExpanded] = useState(false);
   const { earned, tier } = calcCommission(rep.mtdRevenue, tiers);
   const projRevenue = rep.mtdRevenue + rep.deals.filter(d => d.status === 'PROJECTED').reduce((s, d) => s + d.amount, 0);
@@ -66,7 +68,10 @@ function RepCard({ rep, tiers }: { rep: Rep; tiers: CommissionTier[] }) {
             {rep.avatar}
           </div>
           <div className="flex-1">
-            <div className="text-sm font-semibold text-white">{rep.name}</div>
+            <button onClick={() => rep.id && navigate(`/leads?repId=${rep.id}`)}
+              className="text-sm font-semibold text-white hover:text-brand-300 transition-colors text-left">
+              {rep.name}
+            </button>
             <div className={clsx('text-xs font-medium', tier.color)}>{tier.label} Tier · {tier.rate}%</div>
           </div>
           <button onClick={() => setExpanded(!expanded)} className="btn-icon btn-ghost h-7 w-7">
@@ -113,7 +118,10 @@ function RepCard({ rep, tiers }: { rep: Rep; tiers: CommissionTier[] }) {
               <div className={clsx('w-2 h-2 rounded-full flex-shrink-0',
                 d.status === 'PAID' ? 'bg-emerald-500' : d.status === 'PENDING' ? 'bg-amber-500' : 'bg-slate-600')} />
               <div className="flex-1 min-w-0">
-                <div className="text-xs font-medium text-slate-200 truncate">{d.customer}</div>
+                <Link to={`/leads/${d.id}`}
+                  className="text-xs font-medium text-slate-200 hover:text-brand-300 transition-colors truncate block">
+                  {d.customer}
+                </Link>
                 <div className="text-[10px] text-slate-600">{d.series} · {d.closedAt}</div>
               </div>
               <div className="text-right flex-shrink-0">
@@ -122,6 +130,7 @@ function RepCard({ rep, tiers }: { rep: Rep; tiers: CommissionTier[] }) {
                   +${(d.amount * tier.rate / 100).toFixed(0)} comm.
                 </div>
               </div>
+              <ChevronRightIcon className="h-3.5 w-3.5 text-slate-700 flex-shrink-0" />
             </div>
           ))}
         </div>

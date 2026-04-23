@@ -239,13 +239,15 @@ export function InstallSchedulePage() {
       {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
         {[
-          { label: 'Need Scheduling', value: needsSched, color: 'text-red-400', bg: 'bg-red-500/10', urgent: needsSched > 0 },
-          { label: 'Scheduled', value: scheduled, color: 'text-blue-400', bg: 'bg-blue-500/10', urgent: false },
-          { label: 'In Progress', value: inProgress, color: 'text-amber-400', bg: 'bg-amber-500/10', urgent: false },
-          { label: 'Completed', value: complete, color: 'text-emerald-400', bg: 'bg-emerald-500/10', urgent: false },
-          { label: 'Pipeline Value', value: `$${(totalValue / 1000).toFixed(0)}K`, color: 'text-white', bg: 'bg-slate-800', urgent: false },
+          { label: 'Need Scheduling', value: needsSched, color: 'text-red-400', bg: 'bg-red-500/10', urgent: needsSched > 0, filter: 'NEEDS_SCHEDULING' as const },
+          { label: 'Scheduled', value: scheduled, color: 'text-blue-400', bg: 'bg-blue-500/10', urgent: false, filter: 'SCHEDULED' as const },
+          { label: 'In Progress', value: inProgress, color: 'text-amber-400', bg: 'bg-amber-500/10', urgent: false, filter: 'IN_PROGRESS' as const },
+          { label: 'Completed', value: complete, color: 'text-emerald-400', bg: 'bg-emerald-500/10', urgent: false, filter: 'COMPLETE' as const },
+          { label: 'Pipeline Value', value: `$${(totalValue / 1000).toFixed(0)}K`, color: 'text-white', bg: 'bg-slate-800', urgent: false, filter: '' as const },
         ].map(s => (
-          <div key={s.label} className={clsx('card p-4', s.urgent && 'border-red-500/20')}>
+          <div key={s.label}
+            onClick={() => s.filter && setStatusFilter(s.filter)}
+            className={clsx('card p-4', s.filter && 'cursor-pointer hover:border-slate-600 transition-colors', s.urgent && 'border-red-500/20')}>
             <div className={clsx('text-2xl font-bold', s.color)}>{s.value}</div>
             <div className="text-[11px] text-slate-500 mt-0.5">{s.label}</div>
           </div>

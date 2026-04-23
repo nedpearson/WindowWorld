@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   CurrencyDollarIcon, UsersIcon,
   TrophyIcon,
   CheckCircleIcon, BuildingStorefrontIcon,
-  DocumentTextIcon, BanknotesIcon } from '@heroicons/react/24/outline';
+  DocumentTextIcon, BanknotesIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
 import clsx from 'clsx';
 import { AreaChart, Area, BarChart, Bar,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
@@ -23,6 +24,7 @@ const EMPTY_DASHBOARD = {
 function formatK(n: number) { return n >= 1000 ? `$${(n / 1000).toFixed(0)}K` : `$${n}`; }
 
 export function AnalyticsPage() {
+  const navigate = useNavigate();
   const [period, setPeriod] = useState<Period>('30d');
   const [activeTab, setActiveTab] = useState<AnalyticsTab>('overview');
 
@@ -60,12 +62,12 @@ export function AnalyticsPage() {
   const kpis = dash?.kpis ?? EMPTY_DASHBOARD.kpis;
 
   const KPI_CARDS = [
-    { label: 'MTD Revenue', value: formatK(kpis.mtdRevenue ?? 0), icon: CurrencyDollarIcon, color: 'text-emerald-400', bg: 'bg-emerald-500/10' },
-    { label: 'New Leads', value: String(kpis.newLeads ?? 0), icon: UsersIcon, color: 'text-blue-400', bg: 'bg-blue-500/10' },
-    { label: 'Close Rate', value: `${(kpis.closeRate ?? 0).toFixed(1)}%`, icon: TrophyIcon, color: 'text-purple-400', bg: 'bg-purple-500/10' },
-    { label: 'Avg Deal Size', value: formatK(kpis.avgDealSize ?? 0), icon: BuildingStorefrontIcon, color: 'text-amber-400', bg: 'bg-amber-500/10' },
-    { label: 'Proposals Sent', value: String(kpis.proposalsSent ?? 0), icon: DocumentTextIcon, color: 'text-cyan-400', bg: 'bg-cyan-500/10' },
-    { label: 'A/R Outstanding', value: formatK(kpis.arOutstanding ?? 0), icon: BanknotesIcon, color: 'text-red-400', bg: 'bg-red-500/10' },
+    { label: 'MTD Revenue', value: formatK(kpis.mtdRevenue ?? 0), icon: CurrencyDollarIcon, color: 'text-emerald-400', bg: 'bg-emerald-500/10', href: '/leads?status=SOLD' },
+    { label: 'New Leads', value: String(kpis.newLeads ?? 0), icon: UsersIcon, color: 'text-blue-400', bg: 'bg-blue-500/10', href: '/leads?status=NEW_LEAD' },
+    { label: 'Close Rate', value: `${(kpis.closeRate ?? 0).toFixed(1)}%`, icon: TrophyIcon, color: 'text-purple-400', bg: 'bg-purple-500/10', href: '/leads?status=VERBAL_COMMIT' },
+    { label: 'Avg Deal Size', value: formatK(kpis.avgDealSize ?? 0), icon: BuildingStorefrontIcon, color: 'text-amber-400', bg: 'bg-amber-500/10', href: '/leads?status=SOLD' },
+    { label: 'Proposals Sent', value: String(kpis.proposalsSent ?? 0), icon: DocumentTextIcon, color: 'text-cyan-400', bg: 'bg-cyan-500/10', href: '/proposals?status=SENT' },
+    { label: 'A/R Outstanding', value: formatK(kpis.arOutstanding ?? 0), icon: BanknotesIcon, color: 'text-red-400', bg: 'bg-red-500/10', href: '/invoices?status=OVERDUE' },
   ];
 
   const CustomTooltip = ({ active, payload, label }: any) => {
@@ -104,9 +106,14 @@ export function AnalyticsPage() {
           const Icon = kpi.icon;
           return (
             <motion.div key={kpi.label} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.04 }} className="card p-4 flex flex-col gap-2">
-              <div className={clsx('w-8 h-8 rounded-lg flex items-center justify-center', kpi.bg)}>
-                <Icon className={clsx('h-4 w-4', kpi.color)} />
+              transition={{ delay: i * 0.04 }}
+              onClick={() => navigate(kpi.href)}
+              className="card p-4 flex flex-col gap-2 cursor-pointer hover:border-slate-600 group transition-colors">
+              <div className="flex items-center justify-between">
+                <div className={clsx('w-8 h-8 rounded-lg flex items-center justify-center', kpi.bg)}>
+                  <Icon className={clsx('h-4 w-4', kpi.color)} />
+                </div>
+                <ChevronRightIcon className="h-3.5 w-3.5 text-slate-600 opacity-0 group-hover:opacity-100 transition-opacity" />
               </div>
               <div className={clsx('text-xl font-bold', kpi.color)}>
                 {loading ? <span className="h-5 w-16 bg-slate-700 rounded animate-pulse inline-block" /> : kpi.value}
@@ -175,12 +182,15 @@ export function AnalyticsPage() {
                 ) : (
                   <div className="space-y-2.5 mt-2">
                     {funnel.map((stage: any, i: number) => (
-                      <div key={stage.label ?? i}>
+                      <button key={stage.label ?? i}
+                        onClick={() => stage.status && navigate(`/leads?status=${stage.status}`)}
+                        className="w-full text-left group">
                         <div className="flex items-center justify-between mb-1">
-                          <span className="text-xs text-slate-400">{stage.label}</span>
+                          <span className="text-xs text-slate-400 group-hover:text-slate-200 transition-colors">{stage.label}</span>
                           <div className="text-xs flex items-center gap-2">
                             <span className="text-white font-medium">{stage.count}</span>
                             <span className="text-slate-500">{stage.pct?.toFixed(0)}%</span>
+                            <ChevronRightIcon className="h-3 w-3 text-slate-600 opacity-0 group-hover:opacity-100 transition-opacity" />
                           </div>
                         </div>
                         <div className="score-bar">
@@ -190,7 +200,7 @@ export function AnalyticsPage() {
                             transition={{ delay: i * 0.08, duration: 0.6 }}
                             style={{ backgroundColor: stage.color ?? '#3b82f6' }} />
                         </div>
-                      </div>
+                      </button>
                     ))}
                   </div>
                 )}
@@ -212,19 +222,23 @@ export function AnalyticsPage() {
               ) : (
                 <div className="divide-y divide-slate-700/30">
                   {(dash?.recentWins ?? []).map((win: any) => (
-                    <div key={win.id} className="flex items-center gap-4 p-4">
+                    <Link key={win.id} to={win.id ? `/leads/${win.id}` : '/leads?status=SOLD'}
+                      className="flex items-center gap-4 p-4 hover:bg-slate-800/30 transition-colors group">
                       <div className="w-8 h-8 rounded-full bg-emerald-500/15 flex items-center justify-center flex-shrink-0">
                         <CheckCircleIcon className="h-4 w-4 text-emerald-400" />
                       </div>
                       <div className="flex-1">
-                        <div className="text-sm font-medium text-white">{win.name}</div>
+                        <div className="text-sm font-medium text-white group-hover:text-brand-300 transition-colors">{win.name}</div>
                         <div className="text-xs text-slate-500">{win.city} · {win.windows} windows · {win.rep}</div>
                       </div>
-                      <div className="text-right">
-                        <div className="text-sm font-bold text-emerald-400">${(win.amount ?? 0).toLocaleString()}</div>
-                        <div className="text-[10px] text-slate-600">{win.closedAt}</div>
+                      <div className="text-right flex items-center gap-2">
+                        <div>
+                          <div className="text-sm font-bold text-emerald-400">${(win.amount ?? 0).toLocaleString()}</div>
+                          <div className="text-[10px] text-slate-600">{win.closedAt}</div>
+                        </div>
+                        <ChevronRightIcon className="h-3.5 w-3.5 text-slate-600 opacity-0 group-hover:opacity-100 transition-opacity" />
                       </div>
-                    </div>
+                    </Link>
                   ))}
                 </div>
               )}
@@ -283,7 +297,9 @@ export function AnalyticsPage() {
                     </thead>
                     <tbody>
                       {repPerf.map((rep: any, i: number) => (
-                        <tr key={rep.id ?? i}>
+                        <tr key={rep.id ?? i}
+                          onClick={() => rep.id && navigate(`/leads?repId=${rep.id}`)}
+                          className={clsx(rep.id && 'cursor-pointer hover:bg-slate-700/30 transition-colors')}>
                           <td><span className="font-bold">{i === 0 ? '🥇' : i === 1 ? '🥈' : '🥉'}</span></td>
                           <td>
                             <div className="flex items-center gap-2">
@@ -298,6 +314,7 @@ export function AnalyticsPage() {
                           <td><span className="text-xs text-brand-400">{(rep.closeRate ?? 0).toFixed(1)}%</span></td>
                           <td className="font-mono text-sm">${(rep.avgDealSize ?? 0).toLocaleString()}</td>
                           <td className="font-bold text-emerald-400">${(rep.revenue ?? 0).toLocaleString()}</td>
+                          <td><ChevronRightIcon className="h-3.5 w-3.5 text-slate-600" /></td>
                         </tr>
                       ))}
                     </tbody>
@@ -357,13 +374,16 @@ export function AnalyticsPage() {
                     </thead>
                     <tbody>
                       {[...sources].sort((a: any, b: any) => b.revenue - a.revenue).map((src: any) => (
-                        <tr key={src.source}>
+                        <tr key={src.source}
+                          onClick={() => navigate(`/leads?source=${encodeURIComponent(src.source)}`)}
+                          className="cursor-pointer hover:bg-slate-700/30 transition-colors">
                           <td><span className="font-medium text-slate-200">{src.source}</span></td>
                           <td>{src.count}</td>
                           <td>{src.closed}</td>
                           <td><span className={clsx('text-xs font-medium', src.closeRate >= 30 ? 'text-emerald-400' : src.closeRate >= 20 ? 'text-brand-400' : 'text-slate-400')}>{(src.closeRate ?? 0).toFixed(1)}%</span></td>
                           <td className="font-medium text-white">${(src.revenue ?? 0).toLocaleString()}</td>
                           <td className="font-mono text-sm text-slate-400">${src.count > 0 ? Math.round((src.revenue ?? 0) / src.count).toLocaleString() : '—'}</td>
+                          <td><ChevronRightIcon className="h-3.5 w-3.5 text-slate-600" /></td>
                         </tr>
                       ))}
                     </tbody>

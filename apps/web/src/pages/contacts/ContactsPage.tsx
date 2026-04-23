@@ -199,12 +199,14 @@ export function ContactsPage() {
       {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {[
-          { label: 'Primary Contacts', value: contacts.filter(c => c.role === 'PRIMARY').length, icon: UserIcon, color: 'text-brand-400' },
-          { label: 'Spouses / Co-decision', value: contacts.filter(c => c.role === 'SPOUSE').length, icon: UsersIcon, color: 'text-purple-400' },
-          { label: 'Starred', value: starred, icon: StarSolid, color: 'text-amber-400' },
-          { label: 'Total Pipeline', value: `$${(contacts.filter(c => c.isPrimary).reduce((s, c) => s + (c.leadValue || 0), 0) / 1000).toFixed(0)}K`, icon: HomeIcon, color: 'text-emerald-400' },
+          { label: 'Primary Contacts', value: contacts.filter(c => c.role === 'PRIMARY').length, icon: UserIcon, color: 'text-brand-400', filter: 'PRIMARY' as const },
+          { label: 'Spouses / Co-decision', value: contacts.filter(c => c.role === 'SPOUSE').length, icon: UsersIcon, color: 'text-purple-400', filter: 'SPOUSE' as const },
+          { label: 'Starred', value: starred, icon: StarSolid, color: 'text-amber-400', filter: '' as const },
+          { label: 'Total Pipeline', value: `$${(contacts.filter(c => c.isPrimary).reduce((s, c) => s + (c.leadValue || 0), 0) / 1000).toFixed(0)}K`, icon: HomeIcon, color: 'text-emerald-400', filter: '' as const },
         ].map((s) => (
-          <div key={s.label} className="card p-4 flex items-center gap-3">
+          <div key={s.label}
+            onClick={() => s.filter && setRoleFilter(s.filter)}
+            className={clsx('card p-4 flex items-center gap-3', s.filter && 'cursor-pointer hover:border-slate-600 transition-colors')}>
             <s.icon className={clsx('h-5 w-5 flex-shrink-0', s.color)} />
             <div>
               <div className={clsx('text-xl font-bold', s.color)}>{s.value}</div>

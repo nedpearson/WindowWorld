@@ -57,12 +57,19 @@ function ApptCard({ appt }: { appt: Appointment }) {
   if (dismissed) return null;
   const leadName = appt.lead ? `${appt.lead.firstName} ${appt.lead.lastName}` : appt.title;
   const phone = appt.lead?.phone ?? '';
+  const leadId = appt.leadId || appt.lead?.id;
   return (
     <div className={clsx('card p-4 border-l-4', TYPE_COLOR[appt.type] || 'border-l-slate-500')}>
       <div className="flex items-start justify-between gap-2 mb-3">
         <div>
           <div className="text-xs font-semibold text-slate-400">{formatTime(appt.scheduledAt)}</div>
-          <div className="text-sm font-semibold text-white mt-0.5">{leadName}</div>
+          {leadId ? (
+            <Link to={`/leads/${leadId}`} className="text-sm font-semibold text-white hover:text-brand-300 transition-colors mt-0.5 block">
+              {leadName}
+            </Link>
+          ) : (
+            <div className="text-sm font-semibold text-white mt-0.5">{leadName}</div>
+          )}
           {appt.address && (
             <a href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(appt.address)}`}
               target="_blank" rel="noopener noreferrer"
@@ -78,13 +85,7 @@ function ApptCard({ appt }: { appt: Appointment }) {
       <div className="flex gap-2">
         {phone && <a href={`tel:${phone}`} className="btn-sm btn-primary flex items-center gap-1.5 flex-1 justify-center"><PhoneIcon className="h-3.5 w-3.5" />Call</a>}
         {phone && <a href={`sms:${phone}`} className="btn-sm btn-secondary flex items-center gap-1.5 flex-1 justify-center"><ChatBubbleLeftIcon className="h-3.5 w-3.5" />Text</a>}
-        {appt.address && (
-          <a href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(appt.address)}`}
-            target="_blank" rel="noopener noreferrer"
-            className="btn-sm btn-secondary flex items-center gap-1.5 flex-1 justify-center">
-            <MapPinIcon className="h-3.5 w-3.5" />Nav
-          </a>
-        )}
+        {leadId && <Link to={`/leads/${leadId}`} className="btn-sm btn-secondary flex items-center gap-1.5 flex-1 justify-center"><ChevronRightIcon className="h-3.5 w-3.5" />Lead</Link>}
       </div>
     </div>
   );
