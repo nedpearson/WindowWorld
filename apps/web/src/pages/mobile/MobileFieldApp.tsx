@@ -281,7 +281,9 @@ function CaptureTab({ enqueue }: { enqueue: (type: any, payload: any) => void })
         const fd = new FormData();
         fd.append('file', pendingFile, pendingFile.name);
         fd.append('label', label);
-        fd.append('source', 'MOBILE_FIELD_APP');
+        fd.append('type', 'PHOTO_EXTERIOR');          // required by server
+        fd.append('triggerAiAnalysis', 'true');        // auto-queue AI analysis
+        fd.append('notes', `Field capture — ${label}`);
 
         const uploadRes = await apiClient.documents.upload(fd) as any;
         const docId = uploadRes?.data?.id;
@@ -479,16 +481,35 @@ function MeasureTab({
     const dims = `${finalWidth.toFixed(3)}" W × ${finalHeight.toFixed(3)}" H`;
     setSaved((prev) => [...prev, { label: selectedOpening.label, width: finalWidth.toFixed(3), height: finalHeight.toFixed(3) }]);
 
-    await enqueue('MEASUREMENT_SAVE', {
+    const payload = {
       openingId: selectedOpening.id,
       roomLabel: selectedOpening.label,
-      finalWidth, finalHeight,
+      finalWidth,
+      finalHeight,
       status: 'REVIEWED',
       isAiEstimated: false,
       measurementMethod: 'FIELD_TAPE',
-      notes: 'Field-measured via MobileFieldApp' });
+      notes: 'Field-measured via MobileFieldApp',
+    };
 
-    toast.success(`Saved: ${selectedOpening.label} — ${dims}`);
+    try {
+      if (navigator.onLine) {
+        // Direct API call — POST /api/v1/measurements
+        await apiClient.measurements.create(payload);
+        haptic.success();
+        toast.success(`Saved: ${selectedOpening.label} — ${dims}`);
+      } else {
+        // Offline — queue for later sync
+        await enqueue('MEASUREMENT_SAVE', payload);
+        toast.success(`Saved locally: ${selectedOpening.label} — syncs when online`);
+      }
+    } catch (err: any) {
+      console.error('[MeasureTab] save error:', err);
+      // Fallback to queue on network error
+      await enqueue('MEASUREMENT_SAVE', payload);
+      toast.error('Saved to queue — will sync when connection is restored');
+    }
+
     setStep('select-opening');
     setSelectedOpening(null);
     setWidthInt(''); setWidthFrac('0');

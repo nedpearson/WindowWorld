@@ -10,7 +10,9 @@ import { BoltIcon as BoltSolid, CheckBadgeIcon } from '@heroicons/react/24/solid
 import { useAuthStore } from '../../store/auth.store';
 import { usePushNotifications } from '../../hooks/usePushNotifications';
 import { usePWA } from '../../hooks/usePWA';
+import axios from 'axios';
 import apiClient from '../../api/client';
+
 import { toast } from 'sonner';
 
 // ─── Step type ────────────────────────────────────────────────
@@ -293,25 +295,26 @@ export function FieldInstallPage() {
     const uid   = searchParams.get('uid');
 
     if (!token || !uid) {
-      // No token in URL — just go to login
       navigate('/login', { replace: true });
       return;
     }
 
-    // Validate the token by calling /api/v1/auth/me with it
-    apiClient.get('/auth/me', {
+    // Use raw axios — the apiClient interceptor would overwrite the QR token
+    const base = import.meta.env.VITE_API_URL || '/api/v1';
+    axios.get(`${base}/auth/me`, {
       headers: { Authorization: `Bearer ${token}` },
-    } as any)
+      timeout: 10000,
+    })
       .then((res: any) => {
-        const userData = res.data?.user ?? res.data;
-        if (!userData?.id) throw new Error('Invalid user data');
-        // Hydrate auth store
+        // Server returns { success, data: { user } } or { success, data: user }
+        const userData = res.data?.data?.user ?? res.data?.data ?? res.data?.user ?? res.data;
+        if (!userData?.id) throw new Error('No user in response');
         setUser(userData);
-        setTokens(token, ''); // access token from QR; refresh token will be fetched on next auth cycle
+        setTokens(token, '');
         setAuthDone(true);
       })
       .catch((err: any) => {
-        console.error('[FieldInstall] Auth failed', err);
+        console.error('[FieldInstall] Auth failed', err?.response?.data ?? err.message);
         setAuthError('This QR code has expired or is invalid. Ask the desktop app to generate a new one.');
       });
   }, [searchParams, navigate, setUser, setTokens]);
