@@ -1,2 +1,6 @@
 [phases.setup]
-nixPkgs = ["nodejs_20"]
+nixPkgs = ["nodejs_22"]
+
+[phases.install]
+# NODE_ENV=development is set in buildCommand so devDependencies (vite, plugins) are included
+cmds = ["npm install --include=dev --legacy-peer-deps"]
