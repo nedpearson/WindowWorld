@@ -14,6 +14,10 @@ import { useAuthStore, useAppStore } from '../../store/auth.store';
 import apiClient from '../../api/client';
 import { useCalendarAppointments, type Appointment } from '../../api/appointments';
 import { MobileAccessQR } from '../../components/MobileAccessQR';
+import {
+  usePipelineValueDrilldown, useRevenueDrilldown, useProposalsDrilldown,
+  useApptsDrilldown, useGoalDrilldown, usePipelineDrilldown, useQueueDrilldown,
+} from '../../components/DashboardDrilldowns';
 
 // ── Helpers ────────────────────────────────────────────────────
 function isSameDay(a: Date, b: Date) { return a.toDateString() === b.toDateString(); }
@@ -90,6 +94,13 @@ function ApptCard({ appt }: { appt: Appointment }) {
 export function DashboardPage() {
   const user = useAuthStore((s) => s.user);
   const stormMode = useAppStore((s) => s.stormModeActive);
+  const drillPipelineValue = usePipelineValueDrilldown();
+  const drillRevenue       = useRevenueDrilldown();
+  const drillProposals     = useProposalsDrilldown();
+  const drillAppts         = useApptsDrilldown();
+  const drillGoal          = useGoalDrilldown();
+  const drillPipelineStage = usePipelineDrilldown();
+  const drillQueue         = useQueueDrilldown();
   const financingMode = useAppStore((s) => s.financingModeActive);
 
   const [showAllQueue, setShowAllQueue] = useState(false);
@@ -195,13 +206,17 @@ export function DashboardPage() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {[
           { label: 'Pipeline Value', value: dashLoading ? '—' : `$${(pipelineTotal / 1000).toFixed(0)}K`,
-            sub: `${pipeline.reduce((s: number, st: any) => s + (st.count ?? 0), 0)} leads`, icon: ArrowTrendingUpIcon, color: 'blue' },
+            sub: `${pipeline.reduce((s: number, st: any) => s + (st.count ?? 0), 0)} leads`, icon: ArrowTrendingUpIcon, color: 'blue',
+            onClick: () => drillPipelineValue(pipeline, pipelineTotal) },
           { label: 'Closed This Month', value: dashLoading ? '—' : `$${(mtdRevenue / 1000).toFixed(0)}K`,
-            sub: `${goalPct}% of goal`, icon: BanknotesIcon, color: 'green' },
+            sub: `${goalPct}% of goal`, icon: BanknotesIcon, color: 'green',
+            onClick: () => drillRevenue(mtdRevenue, monthlyTarget, goalPct) },
           { label: 'Proposals Pending', value: dashLoading ? '—' : String(proposals.length),
-            sub: `$${((proposals.reduce((s: number, p: any) => s + (p.quote?.grandTotal ?? 0), 0)) / 1000).toFixed(0)}K at stake`, icon: DocumentTextIcon, color: 'purple' },
+            sub: `$${((proposals.reduce((s: number, p: any) => s + (p.quote?.grandTotal ?? 0), 0)) / 1000).toFixed(0)}K at stake`, icon: DocumentTextIcon, color: 'purple',
+            onClick: () => drillProposals(proposals) },
           { label: 'Appts Today', value: String(todayApts.length),
-            sub: todayApts[0] ? `Next: ${formatTime(todayApts[0].scheduledAt)}` : 'None scheduled', icon: CalendarIcon, color: 'amber' },
+            sub: todayApts[0] ? `Next: ${formatTime(todayApts[0].scheduledAt)}` : 'None scheduled', icon: CalendarIcon, color: 'amber',
+            onClick: () => drillAppts(todayApts) },
         ].map((s) => {
           const cMap: Record<string, { g: string; ic: string }> = {
             blue:   { g: 'from-brand-600/20 to-brand-800/10 border-brand-600/20', ic: 'text-brand-400 bg-brand-500/15' },
@@ -210,12 +225,17 @@ export function DashboardPage() {
             amber:  { g: 'from-amber-600/20 to-amber-800/10 border-amber-600/20', ic: 'text-amber-400 bg-amber-500/15' } };
           const c = cMap[s.color];
           return (
-            <div key={s.label} className={`card p-5 bg-gradient-to-br ${c.g}`}>
+            <motion.button key={s.label} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+              onClick={(s as any).onClick}
+              className={`card p-5 bg-gradient-to-br ${c.g} text-left cursor-pointer group relative`}>
+              <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                <ChevronRightIcon className="h-4 w-4 text-slate-500" />
+              </div>
               <div className={`p-2 rounded-lg mb-3 w-fit ${c.ic}`}><s.icon className="h-5 w-5" /></div>
               <div className="text-2xl font-bold text-white mb-0.5">{s.value}</div>
               <div className="text-xs text-slate-400 font-medium">{s.label}</div>
               <div className="text-[11px] text-slate-600 mt-0.5">{s.sub}</div>
-            </div>
+            </motion.button>
           );
         })}
       </div>
@@ -251,7 +271,8 @@ export function DashboardPage() {
               <div>
                 {visibleQueue.map((item: any, i: number) => (
                   <motion.div key={item.id} initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.04 }}
-                    className="flex items-start gap-3 px-5 py-4 hover:bg-slate-800/30 transition-colors group border-b border-slate-800/50 last:border-0">
+                    onClick={() => drillQueue(item)}
+                    className="flex items-start gap-3 px-5 py-4 hover:bg-slate-800/30 transition-colors group border-b border-slate-800/50 last:border-0 cursor-pointer">
                     <div className="flex-shrink-0 w-6 text-center">
                       <span className="text-xs font-bold text-slate-600">#{i + 1}</span>
                     </div>
@@ -343,22 +364,24 @@ export function DashboardPage() {
                 {pipeline.map((stage: any) => {
                   const pct = pipelineTotal > 0 ? (stage.value / pipelineTotal) * 100 : 0;
                   return (
-                    <div key={stage.label ?? stage.stage}>
+                    <button key={stage.label ?? stage.stage} onClick={() => drillPipelineStage(stage, pipelineTotal)}
+                      className="w-full text-left group hover:bg-slate-800/30 rounded-lg p-1.5 -mx-1.5 transition-colors">
                       <div className="flex justify-between items-center mb-1">
                         <div className="flex items-center gap-2">
                           <div className="w-2 h-2 rounded-full" style={{ background: stage.color ?? '#64748b' }} />
-                          <span className="text-xs text-slate-400">{stage.label ?? stage.stage}</span>
+                          <span className="text-xs text-slate-400 group-hover:text-slate-200 transition-colors">{stage.label ?? stage.stage}</span>
                         </div>
                         <div className="flex items-center gap-3">
                           <span className="text-xs text-slate-500 font-mono">{stage.count} leads</span>
                           <span className="text-xs font-semibold text-slate-300">${((stage.value ?? 0) / 1000).toFixed(0)}K</span>
+                          <ChevronRightIcon className="h-3 w-3 text-slate-600 group-hover:text-slate-400 transition-colors" />
                         </div>
                       </div>
                       <div className="score-bar">
                         <motion.div initial={{ width: 0 }} animate={{ width: `${pct}%` }} transition={{ delay: 0.2 }}
                           className="score-bar-fill" style={{ background: stage.color ?? '#3b82f6' }} />
                       </div>
-                    </div>
+                    </button>
                   );
                 })}
               </div>
@@ -369,7 +392,10 @@ export function DashboardPage() {
         {/* Right col */}
         <div className="space-y-4">
           {/* Goal tracker */}
-          <div className="card p-5">
+          <motion.button whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.99 }}
+            onClick={() => drillGoal(mtdRevenue, monthlyTarget, goalPct)}
+            className="card p-5 w-full text-left group cursor-pointer relative">
+            <ChevronRightIcon className="absolute top-4 right-4 h-4 w-4 text-slate-600 opacity-0 group-hover:opacity-100 transition-opacity" />
             <div className="flex items-center gap-4">
               <div className="relative flex-shrink-0">
                 <GoalRing pct={goalPct} />
@@ -381,12 +407,10 @@ export function DashboardPage() {
                 <div className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Monthly Revenue</div>
                 <div className="text-xl font-bold text-white mt-1">${(mtdRevenue / 1000).toFixed(0)}K</div>
                 <div className="text-xs text-slate-500">of ${(monthlyTarget / 1000).toFixed(0)}K target</div>
-                <div className="text-xs text-emerald-400 mt-1 font-medium">
-                  ${((monthlyTarget - mtdRevenue) / 1000).toFixed(0)}K to go
-                </div>
+                <div className="text-xs text-emerald-400 mt-1 font-medium">${((monthlyTarget - mtdRevenue) / 1000).toFixed(0)}K to go</div>
               </div>
             </div>
-          </div>
+          </motion.button>
 
           {/* Today's Route */}
           <div className="card overflow-hidden">

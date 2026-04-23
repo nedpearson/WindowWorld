@@ -2,6 +2,7 @@ import { lazy, Suspense } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuthStore } from './store/auth.store';
 import { AppLayout } from './components/layout/AppLayout';
+import { DrilldownProvider } from './components/DrilldownPanel';
 import { LoginPage } from './pages/auth/LoginPage';
 import { DashboardPage } from './pages/dashboard/DashboardPage';
 import { LeadsPage } from './pages/leads/LeadsPage';
@@ -52,6 +53,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
 export default function App() {
   return (
+    <DrilldownProvider>
     <Suspense fallback={<PageLoader />}>
       <Routes>
         {/* Public homeowner proposal portal — no auth required */}
@@ -131,5 +133,6 @@ export default function App() {
         </Route>
       </Routes>
     </Suspense>
+    </DrilldownProvider>
   );
 }
