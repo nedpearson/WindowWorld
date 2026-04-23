@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
@@ -8,11 +8,13 @@ import {
   ArrowPathIcon, ChevronRightIcon, ChevronLeftIcon,
   WifiIcon, XMarkIcon, MicrophoneIcon, ListBulletIcon,
   ClipboardDocumentListIcon, ChatBubbleLeftIcon,
-  ArrowDownTrayIcon, BellAlertIcon, SignalSlashIcon } from '@heroicons/react/24/outline';
+  ArrowDownTrayIcon, BellAlertIcon, SignalSlashIcon,
+  QrCodeIcon, DevicePhoneMobileIcon, ShareIcon, ArrowTopRightOnSquareIcon } from '@heroicons/react/24/outline';
 import { BoltIcon, CloudIcon, SignalIcon } from '@heroicons/react/24/solid';
 import clsx from 'clsx';
+import { QRCodeSVG } from 'qrcode.react';
 import { useOfflineQueue } from '../../hooks/useOfflineQueue';
-import { useAppStore } from '../../store/auth.store';
+import { useAuthStore, useAppStore } from '../../store/auth.store';
 import { usePWA } from '../../hooks/usePWA';
 import { useVoiceNote } from '../../hooks/useVoiceNote';
 import { haptic } from '../../utils/haptics';
@@ -738,6 +740,179 @@ function NotesTab({ enqueue }: { enqueue: (type: any, payload: any) => void }) {
   );
 }
 
+// ─── Desktop QR Panel ────────────────────────────────────────
+function DesktopQRPanel({
+  user, isOnline, pendingCount, isSyncing, stopCount, confirmedCount, accessToken
+}: {
+  user: any; isOnline: boolean; pendingCount: number; isSyncing: boolean;
+  stopCount: number; confirmedCount: number; accessToken: string | null;
+}) {
+  const [tick, setTick] = useState(0);
+  const [copied, setCopied] = useState(false);
+
+  // Live clock — updates the QR link timestamp every 30s to show "live"
+  useEffect(() => {
+    const id = setInterval(() => setTick((t) => t + 1), 30_000);
+    return () => clearInterval(id);
+  }, []);
+
+  // Build the deep-link URL that lands on the field app pre-authenticated
+  const baseUrl = window.location.origin;
+  const qrUrl = new URL('/field', baseUrl);
+  if (user?.id) qrUrl.searchParams.set('uid', user.id);
+  if (accessToken) qrUrl.searchParams.set('token', accessToken);
+  qrUrl.searchParams.set('ts', Math.floor(Date.now() / 30_000).toString()); // rotates every 30s
+  const qrString = qrUrl.toString();
+
+  const copyLink = useCallback(async () => {
+    await navigator.clipboard.writeText(qrString);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }, [qrString]);
+
+  const userName = user ? `${user.firstName} ${user.lastName}`.trim() : 'Field Rep';
+  const initials = user ? `${user.firstName?.[0] ?? ''}${user.lastName?.[0] ?? ''}`.toUpperCase() : 'WW';
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, x: -20 }}
+      animate={{ opacity: 1, x: 0 }}
+      transition={{ duration: 0.4, ease: 'easeOut' }}
+      className="hidden md:flex flex-col w-80 min-h-screen bg-slate-900/60 backdrop-blur-xl border-r border-slate-800/60 p-6 gap-6"
+    >
+      {/* Header */}
+      <div className="flex items-center gap-3">
+        <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-brand-500 to-brand-700 flex items-center justify-center text-white font-black text-sm shadow-lg shadow-brand-500/20">
+          WW
+        </div>
+        <div>
+          <div className="text-sm font-bold text-white">Field Mode</div>
+          <div className="text-[10px] text-slate-500">Desktop Console</div>
+        </div>
+      </div>
+
+      {/* Rep identity */}
+      <div className="flex items-center gap-3 p-3 rounded-2xl bg-slate-800/50 border border-slate-700/40">
+        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-brand-600 to-indigo-600 flex items-center justify-center text-white text-sm font-bold flex-shrink-0">
+          {initials}
+        </div>
+        <div className="min-w-0">
+          <div className="text-sm font-semibold text-white truncate">{userName}</div>
+          <div className="text-[10px] text-slate-500 truncate">{user?.email}</div>
+        </div>
+        <div className={clsx(
+          'ml-auto w-2 h-2 rounded-full flex-shrink-0',
+          isOnline ? 'bg-emerald-400 shadow-sm shadow-emerald-400/50' : 'bg-red-400'
+        )} />
+      </div>
+
+      {/* Live stats */}
+      <div className="grid grid-cols-3 gap-2">
+        {[
+          { label: 'Stops', value: stopCount, color: 'text-white' },
+          { label: 'Confirmed', value: confirmedCount, color: 'text-emerald-400' },
+          { label: 'Queued', value: pendingCount, color: pendingCount > 0 ? 'text-amber-400' : 'text-slate-500' },
+        ].map(({ label, value, color }) => (
+          <div key={label} className="flex flex-col items-center p-2.5 rounded-xl bg-slate-800/60 border border-slate-700/30">
+            <span className={clsx('text-xl font-bold tabular-nums', color)}>{value}</span>
+            <span className="text-[9px] text-slate-600 mt-0.5">{label}</span>
+          </div>
+        ))}
+      </div>
+
+      {/* QR Code */}
+      <div className="flex flex-col items-center gap-4">
+        <div className="text-xs font-semibold text-slate-400 uppercase tracking-widest flex items-center gap-2">
+          <QrCodeIcon className="h-3.5 w-3.5" />
+          Scan to Open on iPhone
+        </div>
+
+        {/* QR canvas */}
+        <motion.div
+          key={tick} // re-renders on each 30s tick to show "live" update
+          initial={{ scale: 0.95, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ duration: 0.3 }}
+          className="relative p-4 rounded-2xl bg-white shadow-2xl shadow-black/40"
+        >
+          <QRCodeSVG
+            value={qrString}
+            size={180}
+            level="M"
+            includeMargin={false}
+            imageSettings={{
+              src: `${baseUrl}/icon-192x192.png`,
+              height: 36,
+              width: 36,
+              excavate: true,
+            }}
+          />
+          {/* Live pulse indicator */}
+          <div className="absolute -top-1.5 -right-1.5 w-3.5 h-3.5 rounded-full bg-emerald-400 border-2 border-slate-900 animate-pulse" />
+        </motion.div>
+
+        {/* Link action */}
+        <div className="flex items-center gap-2 w-full">
+          <button
+            onClick={copyLink}
+            className={clsx(
+              'flex-1 flex items-center justify-center gap-2 text-xs py-2.5 rounded-xl font-semibold transition-all',
+              copied
+                ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                : 'bg-slate-800 text-slate-300 border border-slate-700/50 hover:bg-slate-700 hover:text-white'
+            )}
+          >
+            <ArrowTopRightOnSquareIcon className="h-3.5 w-3.5" />
+            {copied ? 'Copied!' : 'Copy Link'}
+          </button>
+        </div>
+      </div>
+
+      {/* iPhone install instructions */}
+      <div className="flex flex-col gap-3">
+        <div className="flex items-center gap-2">
+          <DevicePhoneMobileIcon className="h-4 w-4 text-slate-500" />
+          <span className="text-xs font-semibold text-slate-400 uppercase tracking-widest">Install on iPhone</span>
+        </div>
+
+        <div className="space-y-2">
+          {[
+            { step: '1', icon: '📱', text: 'Scan QR code with iPhone Camera app' },
+            { step: '2', icon: '🌐', text: 'Tap the link to open in Safari' },
+            { step: '3', icon: '⬆️', text: <>Tap the <strong className="text-white">Share</strong> icon <span className="inline-flex items-baseline"><ShareIcon className="h-3 w-3 inline relative top-0.5" /></span> at the bottom</> },
+            { step: '4', icon: '➕', text: <><strong className="text-white">"Add to Home Screen"</strong> → Add</> },
+          ].map(({ step, icon, text }) => (
+            <div key={step} className="flex items-start gap-3 p-3 rounded-xl bg-slate-800/40 border border-slate-700/30">
+              <div className="w-5 h-5 rounded-full bg-brand-600/20 border border-brand-500/30 flex items-center justify-center flex-shrink-0 text-[10px] font-bold text-brand-400">{step}</div>
+              <div className="text-xs text-slate-400 leading-relaxed">
+                <span className="mr-1.5">{icon}</span>{text}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="flex items-start gap-2 p-3 rounded-xl bg-brand-500/8 border border-brand-500/20">
+          <BoltIcon className="h-3.5 w-3.5 text-brand-400 flex-shrink-0 mt-0.5" />
+          <p className="text-[10px] text-brand-300 leading-relaxed">
+            QR code is linked to <strong>{userName}'s</strong> account. Scanning opens the app pre-authenticated — no login required.
+          </p>
+        </div>
+      </div>
+
+      {/* Sync status footer */}
+      <div className="mt-auto flex items-center gap-2 text-[10px] text-slate-600">
+        {isSyncing
+          ? <><ArrowPathIcon className="h-3 w-3 animate-spin text-brand-400" /><span className="text-brand-400">Syncing…</span></>
+          : isOnline
+          ? <><div className="w-1.5 h-1.5 rounded-full bg-emerald-400" /><span>Live • updates every 30s</span></>
+          : <><div className="w-1.5 h-1.5 rounded-full bg-red-400" /><span>Offline</span></>
+        }
+        <span className="ml-auto">{new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}</span>
+      </div>
+    </motion.div>
+  );
+}
+
 // ─── Main Component ───────────────────────────────────────────
 export function MobileFieldApp() {
   const _navigate = useNavigate();
@@ -746,6 +921,8 @@ export function MobileFieldApp() {
   const { enqueue, pendingCount, isSyncing, syncNow, isOnline, failedCount } = useOfflineQueue();
   const stormMode = useAppStore((s) => s.stormModeActive);
   const { isInstallable, isInstalled, isUpdateAvailable, isIOS, install, dismissInstall } = usePWA();
+  const user = useAuthStore((s) => s.user);
+  const accessToken = useAuthStore((s) => s.accessToken);
 
   // ─── Real today's route from the server ──────────
   const { data: routeData, isLoading: routeLoading, refetch: refetchRoute } = useQuery({
@@ -775,10 +952,23 @@ export function MobileFieldApp() {
   };
 
   return (
-    <div
-      className="min-h-screen bg-slate-950 flex flex-col max-w-md mx-auto relative"
-      style={{ paddingTop: 'var(--sat, 0px)' }}
-    >
+    <div className="min-h-screen bg-slate-950 flex flex-row">
+      {/* ── Desktop QR sidebar — hidden on mobile ── */}
+      <DesktopQRPanel
+        user={user}
+        isOnline={isOnline}
+        pendingCount={pendingCount}
+        isSyncing={isSyncing}
+        stopCount={TODAY_STOPS.length}
+        confirmedCount={confirmedCount}
+        accessToken={accessToken}
+      />
+
+      {/* ── Mobile app shell — centered, max-w-md ── */}
+      <div
+        className="flex-1 flex flex-col md:max-w-md md:border-x md:border-slate-800/50 relative mx-auto"
+        style={{ paddingTop: 'var(--sat, 0px)' }}
+      >
       {/* Banners */}
       <AnimatePresence>
         {isUpdateAvailable && <UpdateBanner key="update" />}
@@ -917,6 +1107,8 @@ export function MobileFieldApp() {
             </button>
           ))}
         </div>
+      </div>
+      {/* end mobile shell */}
       </div>
     </div>
   );
