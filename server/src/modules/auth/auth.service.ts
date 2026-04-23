@@ -258,7 +258,7 @@ export class AuthService {
     };
   }
 
-  async refreshTokens(refreshToken: string): Promise<AuthTokens> {
+  async refreshTokens(refreshToken: string): Promise<AuthTokens & { user: LoginResult['user'] }> {
     const storedToken = await prisma.refreshToken.findUnique({
       where: { token: refreshToken },
       include: { user: true },
@@ -301,7 +301,18 @@ export class AuthService {
       },
     });
 
-    return tokens;
+    return {
+      ...tokens,
+      user: {
+        id: storedToken.user.id,
+        email: storedToken.user.email,
+        firstName: storedToken.user.firstName,
+        lastName: storedToken.user.lastName,
+        role: storedToken.user.role,
+        organizationId: storedToken.user.organizationId,
+        avatarUrl: (storedToken.user as any).avatarUrl ?? null,
+      },
+    };
   }
 
   async logout(refreshToken: string, userId: string): Promise<void> {

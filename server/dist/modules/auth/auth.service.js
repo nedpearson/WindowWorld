@@ -228,7 +228,18 @@ class AuthService {
                 expiresAt: refreshExpiresAt,
             },
         });
-        return tokens;
+        return {
+            ...tokens,
+            user: {
+                id: storedToken.user.id,
+                email: storedToken.user.email,
+                firstName: storedToken.user.firstName,
+                lastName: storedToken.user.lastName,
+                role: storedToken.user.role,
+                organizationId: storedToken.user.organizationId,
+                avatarUrl: storedToken.user.avatarUrl ?? null,
+            },
+        };
     }
     async logout(refreshToken, userId) {
         await prisma_1.prisma.refreshToken.updateMany({

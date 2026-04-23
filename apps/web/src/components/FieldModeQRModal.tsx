@@ -12,8 +12,8 @@ import { Link } from 'react-router-dom';
 
 // ─── Modal ────────────────────────────────────────────────────
 export function FieldModeQRModal({ onClose }: { onClose: () => void }) {
-  const user        = useAuthStore(s => s.user);
-  const accessToken = useAuthStore(s => s.accessToken);
+  const user         = useAuthStore(s => s.user);
+  const refreshToken = useAuthStore(s => s.refreshToken);
   const [tick, setTick]     = useState(0);
   const [copied, setCopied] = useState(false);
 
@@ -30,11 +30,12 @@ export function FieldModeQRModal({ onClose }: { onClose: () => void }) {
     return () => window.removeEventListener('keydown', fn);
   }, [onClose]);
 
-  // Build authenticated deep-link
+  // Build authenticated deep-link — embed refreshToken (long-lived)
+  // so the phone can call POST /auth/refresh and establish a full session.
   const origin = window.location.origin;
   const qrUrl  = new URL('/field-install', origin);
-  if (user?.id)    qrUrl.searchParams.set('uid', user.id);
-  if (accessToken) qrUrl.searchParams.set('token', accessToken);
+  if (user?.id)     qrUrl.searchParams.set('uid', user.id);
+  if (refreshToken) qrUrl.searchParams.set('token', refreshToken);
   qrUrl.searchParams.set('ts', Math.floor(Date.now() / 30_000).toString());
   const qrString = qrUrl.toString();
 

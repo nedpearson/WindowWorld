@@ -291,33 +291,32 @@ export function FieldInstallPage() {
     if (hydrated.current) return;
     hydrated.current = true;
 
+    // QR URL contains ?token=<refreshToken>&uid=<userId>
+    // We exchange the refresh token for a fresh access+refresh pair.
     const token = searchParams.get('token');
     const uid   = searchParams.get('uid');
 
     if (!token || !uid) {
-      navigate('/login', { replace: true });
+      // No QR params — show a friendly error instead of bouncing to /login
+      setAuthError('This link is missing authentication info. Go back to the desktop and scan the QR code again.');
       return;
     }
 
-    // Use raw axios — the apiClient interceptor would overwrite the QR token
+    // Exchange the QR refresh token for a fresh session
     const base = import.meta.env.VITE_API_URL || '/api/v1';
-    axios.get(`${base}/auth/me`, {
-      headers: { Authorization: `Bearer ${token}` },
-      timeout: 10000,
-    })
+    axios.post(`${base}/auth/refresh`, { refreshToken: token }, { timeout: 10000 })
       .then((res: any) => {
-        // Server returns { success, data: { user } } or { success, data: user }
-        const userData = res.data?.data?.user ?? res.data?.data ?? res.data?.user ?? res.data;
-        if (!userData?.id) throw new Error('No user in response');
+        const { accessToken, refreshToken: newRefresh, user: userData } = res.data?.data ?? {};
+        if (!accessToken || !userData?.id) throw new Error('Invalid refresh response');
         setUser(userData);
-        setTokens(token, '');
+        setTokens(accessToken, newRefresh ?? token);
         setAuthDone(true);
       })
       .catch((err: any) => {
-        console.error('[FieldInstall] Auth failed', err?.response?.data ?? err.message);
-        setAuthError('This QR code has expired or is invalid. Ask the desktop app to generate a new one.');
+        console.error('[FieldInstall] Token refresh failed', err?.response?.data ?? err.message);
+        setAuthError('This QR code has expired. Go back to the desktop and scan the QR code again — it refreshes every 30 seconds.');
       });
-  }, [searchParams, navigate, setUser, setTokens]);
+  }, [searchParams, setUser, setTokens]);
 
   const userName = user ? `${user.firstName} ${user.lastName}`.trim() : 'there';
 

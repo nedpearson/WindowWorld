@@ -698,10 +698,10 @@ function MeasureTab({
 
 // ─── Desktop QR Panel ────────────────────────────────────────
 function DesktopQRPanel({
-  user, isOnline, pendingCount, isSyncing, stopCount, confirmedCount, accessToken
+  user, isOnline, pendingCount, isSyncing, stopCount, confirmedCount, refreshToken
 }: {
   user: any; isOnline: boolean; pendingCount: number; isSyncing: boolean;
-  stopCount: number; confirmedCount: number; accessToken: string | null;
+  stopCount: number; confirmedCount: number; refreshToken: string | null;
 }) {
   const [tick, setTick] = useState(0);
   const [copied, setCopied] = useState(false);
@@ -712,11 +712,12 @@ function DesktopQRPanel({
     return () => clearInterval(id);
   }, []);
 
-  // Build the deep-link URL that lands on the field app pre-authenticated
+  // Build the deep-link — embed refreshToken (long-lived) so the phone can
+  // call POST /auth/refresh and get a fresh access token on arrival.
   const baseUrl = window.location.origin;
   const qrUrl = new URL('/field-install', baseUrl);
-  if (user?.id) qrUrl.searchParams.set('uid', user.id);
-  if (accessToken) qrUrl.searchParams.set('token', accessToken);
+  if (user?.id)     qrUrl.searchParams.set('uid', user.id);
+  if (refreshToken) qrUrl.searchParams.set('token', refreshToken);
   qrUrl.searchParams.set('ts', Math.floor(Date.now() / 30_000).toString()); // rotates every 30s
   const qrString = qrUrl.toString();
 
@@ -880,6 +881,7 @@ export function MobileFieldApp() {
   const { isInstallable, isInstalled, isUpdateAvailable, isIOS, install, dismissInstall } = usePWA();
   const user = useAuthStore((s) => s.user);
   const accessToken = useAuthStore((s) => s.accessToken);
+  const refreshToken = useAuthStore((s) => s.refreshToken);
 
   useEffect(() => {
     const handler = () => setIsDesktop(window.innerWidth >= 768);
@@ -921,7 +923,7 @@ export function MobileFieldApp() {
     return (
       <DesktopInstallPortal
         user={user}
-        accessToken={accessToken}
+        refreshToken={refreshToken}
         isOnline={isOnline}
         stopCount={TODAY_STOPS.length}
         confirmedCount={confirmedCount}
