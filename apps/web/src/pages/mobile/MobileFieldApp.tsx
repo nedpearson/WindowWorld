@@ -335,7 +335,8 @@ function CaptureTab({ enqueue }: { enqueue: (type: any, payload: any) => void })
             >
               <div className="text-base font-semibold text-white mb-4">Label this photo</div>
               <div className="grid grid-cols-2 gap-2 mb-4">
-                {[...OPENING_TEMPLATES.map((o) => o.label), 'Exterior - Front', 'Exterior - Side', 'Damage', 'Other'].map((label) => (
+                {['Living Room', 'Bedroom', 'Kitchen', 'Bathroom', 'Dining Room', 'Office',
+                  'Exterior - Front', 'Exterior - Side', 'Damage', 'Other'].map((label) => (
                   <button key={label} onClick={() => { haptic.selection(); setSelectedLabel(label); }}
                     className={clsx('py-2.5 px-3 rounded-xl text-sm text-left transition-colors',
                       selectedLabel === label ? 'bg-brand-600 text-white' : 'bg-slate-800 text-slate-300 active:bg-slate-700'
