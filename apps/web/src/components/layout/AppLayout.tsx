@@ -1,4 +1,4 @@
-import { Outlet, useLocation, Link } from 'react-router-dom';
+import { Outlet, useLocation, Link, useNavigate } from 'react-router-dom';
 import { useAuthStore, useAppStore } from '../../store/auth.store';
 import { useState } from 'react';
 import { motion } from 'framer-motion';
@@ -9,7 +9,7 @@ import {
   ExclamationTriangleIcon, MagnifyingGlassIcon, BellIcon,
   ArrowRightOnRectangleIcon, BuildingStorefrontIcon, ClipboardDocumentListIcon, MapIcon, ShieldCheckIcon,
   UserGroupIcon, WrenchScrewdriverIcon, StarIcon, AcademicCapIcon,
-  ArrowUpTrayIcon, CurrencyDollarIcon } from '@heroicons/react/24/outline';
+  ArrowUpTrayIcon, CurrencyDollarIcon, QrCodeIcon } from '@heroicons/react/24/outline';
 import { BoltIcon as BoltSolid} from '@heroicons/react/24/solid';
 import clsx from 'clsx';
 import { io, Socket } from 'socket.io-client';
@@ -17,6 +17,7 @@ import { useEffect} from 'react';
 import { GlobalSearch } from '../search/GlobalSearch';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import apiClient from '../../api/client';
+import { FieldModeQRModal } from '../FieldModeQRModal';
 
 function NotificationsDropdown({
   isOpen, onClose, notifications, unreadCount, onMarkAllRead
@@ -89,7 +90,7 @@ const navSections = [
   {
     label: 'Field Work',
     items: [
-      { label: 'Field Mode',    path: '/field',        icon: MapPinIcon,              badge: 'MOBILE' },
+      { label: 'Field Mode',    path: '/field',        icon: MapPinIcon,              badge: 'MOBILE', qr: true },
       { label: 'Inspections',   path: '/inspections',  icon: ClipboardDocumentListIcon },
     ] },
   {
@@ -147,6 +148,7 @@ export function AppLayout() {
   const [, setNotificationsOpen] = useState(false);
   const [wsNotifications, setWsNotifications] = useState<any[]>([]);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [showFieldModal, setShowFieldModal] = useState(false);
   const queryClient = useQueryClient();
 
   // Fetch notifications from API on mount + every 5 min
@@ -264,9 +266,32 @@ export function AppLayout() {
                 {section.label}
               </div>
               <div className="space-y-0.5">
-                {section.items.map((item) => (
-                  <NavItem key={item.path} item={item} active={isActive(item.path)} />
-                ))}
+                {section.items.map((item: any) =>
+                  item.qr ? (
+                    // ── Field Mode: opens QR modal on desktop ──
+                    <button
+                      key={item.path}
+                      onClick={() => setShowFieldModal(true)}
+                      className={clsx(
+                        'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150 w-full',
+                        isActive(item.path)
+                          ? 'bg-brand-600/15 text-brand-400'
+                          : 'text-slate-400 hover:bg-slate-800 hover:text-slate-100'
+                      )}
+                    >
+                      <item.icon style={{ width: 18, height: 18 }} className="flex-shrink-0" />
+                      <span className="flex-1 text-left">{item.label}</span>
+                      <QrCodeIcon className="h-3.5 w-3.5 text-brand-400 flex-shrink-0" />
+                      {item.badge && (
+                        <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-brand-500/20 text-brand-400">
+                          {item.badge}
+                        </span>
+                      )}
+                    </button>
+                  ) : (
+                    <NavItem key={item.path} item={item} active={isActive(item.path)} />
+                  )
+                )}
               </div>
             </div>
           ))}
@@ -404,6 +429,7 @@ export function AppLayout() {
         </main>
       </div>
       <GlobalSearch isOpen={searchOpen} onClose={() => setSearchOpen(false)} />
+      {showFieldModal && <FieldModeQRModal onClose={() => setShowFieldModal(false)} />}
     </div>
   );
 }
