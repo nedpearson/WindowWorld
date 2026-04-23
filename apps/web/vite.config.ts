@@ -12,6 +12,8 @@ export default defineConfig({
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
         cleanupOutdatedCaches: true,
+        skipWaiting: true,        // activate new SW immediately on deploy
+        clientsClaim: true,       // take control of all open tabs immediately
         // Inject push handler into the generated service worker
         importScripts: ['/sw-push.js'],
         runtimeCaching: [

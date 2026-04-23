@@ -212,32 +212,60 @@ app.use(`${apiV1}/campaigns`, campaignsRouter);
 app.use(`${apiV1}/admin`, adminRouter);
 app.use(`${apiV1}/push`, pushRouter);
 
-// â”€â”€â”€ SPA â€“ serve built React app â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── SPA — serve built React app ─────────────────────────────────────────────
 // Must come AFTER all /api/ routes so they take priority.
 // In production the frontend is built into ./public by the nixpacks build step.
 const webDistPath = path.join(__dirname, '..', 'public');
 if (fs.existsSync(webDistPath)) {
-  // Serve hashed static assets with long-lived immutable cache headers
+  // 1. Serve ONLY the hashed /assets/* files with long-lived immutable cache.
+  //    These filenames change on every build so stale cache is impossible.
   app.use(
-    express.static(webDistPath, {
+    '/assets',
+    express.static(path.join(webDistPath, 'assets'), {
       maxAge: '1y',
       immutable: true,
       index: false,
     })
   );
-  // SPA fallback â€” all remaining GETs serve index.html (client-side routing)
+
+  // 2. Serve service-worker files and index.html with NO cache so the browser
+  //    always gets the latest entrypoint (which references the new chunk hashes).
+  //    Without this, browsers cache index.html for a year and request deleted chunks.
+  const noCache = (_req: any, res: any, next: any) => {
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+    next();
+  };
+
+  // sw.js + workbox runtime files must never be cached long-term
+  app.get(['/sw.js', '/workbox-*.js', '/manifest.webmanifest'], noCache, express.static(webDistPath));
+
+  // All other non-asset static files (icons, fonts, etc.) — short cache
+  app.use(
+    express.static(webDistPath, {
+      maxAge: '1d',
+      index: false,
+    })
+  );
+
+  // SPA fallback — all remaining GETs serve index.html with no-cache
   app.get('*', (_req, res) => {
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
     res.sendFile(path.join(webDistPath, 'index.html'));
   });
+
   logger.info(`[SPA] Serving React app from ${webDistPath}`);
 } else {
-  logger.warn('[SPA] No built frontend found at ./public â€” SPA serving skipped (dev or separate web service)');
+  logger.warn('[SPA] No built frontend found at ./public — SPA serving skipped (dev or separate web service)');
 }
 
 app.use(errorHandler);
 
 
-// Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ Start Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+// ———— Start ——————————————————————————————————————————————————————————————————
 async function start() {
   try {
     // Initialize background job queues
