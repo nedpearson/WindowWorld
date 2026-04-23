@@ -78,6 +78,7 @@ const analytics_routes_1 = require("./modules/analytics/analytics.routes");
 const notifications_routes_1 = require("./modules/notifications/notifications.routes");
 const campaigns_routes_1 = require("./modules/campaigns/campaigns.routes");
 const admin_routes_1 = require("./modules/admin/admin.routes");
+const push_routes_1 = require("./modules/push/push.routes");
 // Background jobs
 const jobs_1 = require("./jobs");
 dotenv_1.default.config();
@@ -232,6 +233,7 @@ app.use(`${apiV1}/analytics`, analytics_routes_1.analyticsRouter);
 app.use(`${apiV1}/notifications`, notifications_routes_1.notificationsRouter);
 app.use(`${apiV1}/campaigns`, campaigns_routes_1.campaignsRouter);
 app.use(`${apiV1}/admin`, admin_routes_1.adminRouter);
+app.use(`${apiV1}/push`, push_routes_1.pushRouter);
 // â”€â”€â”€ SPA â€“ serve built React app â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // Must come AFTER all /api/ routes so they take priority.
 // In production the frontend is built into ./public by the nixpacks build step.

@@ -33,6 +33,7 @@ const QuickQuotePage      = lazy(() => import('./pages/proposals/QuickQuotePage'
 const CommissionPage      = lazy(() => import('./pages/commissions/CommissionPage').then(m => ({ default: m.CommissionPage })));
 const CsvImportPage       = lazy(() => import('./pages/leads/CsvImportPage').then(m => ({ default: m.CsvImportPage })));
 const HomeownerPortalPage = lazy(() => import('./pages/homeowner/HomeownerPortalPage').then(m => ({ default: m.HomeownerPortalPage })));
+const FieldInstallPage    = lazy(() => import('./pages/mobile/FieldInstallPage').then(m => ({ default: m.FieldInstallPage })));
 
 // Slim fallback for lazy routes
 function PageLoader() {
@@ -55,6 +56,9 @@ export default function App() {
       <Routes>
         {/* Public homeowner proposal portal — no auth required */}
         <Route path="/portal/:id" element={<HomeownerPortalPage />} />
+
+        {/* QR Install landing — public, auto-authenticates from token in URL */}
+        <Route path="/field-install" element={<FieldInstallPage />} />
 
         <Route path="/login" element={<LoginPage />} />
 

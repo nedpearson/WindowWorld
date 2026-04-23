@@ -41,6 +41,7 @@ import { analyticsRouter } from './modules/analytics/analytics.routes';
 import { notificationsRouter } from './modules/notifications/notifications.routes';
 import { campaignsRouter } from './modules/campaigns/campaigns.routes';
 import { adminRouter } from './modules/admin/admin.routes';
+import { pushRouter } from './modules/push/push.routes';
 
 // Background jobs
 import { initializeJobQueues } from './jobs';
@@ -209,6 +210,7 @@ app.use(`${apiV1}/analytics`, analyticsRouter);
 app.use(`${apiV1}/notifications`, notificationsRouter);
 app.use(`${apiV1}/campaigns`, campaignsRouter);
 app.use(`${apiV1}/admin`, adminRouter);
+app.use(`${apiV1}/push`, pushRouter);
 
 // â”€â”€â”€ SPA â€“ serve built React app â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // Must come AFTER all /api/ routes so they take priority.

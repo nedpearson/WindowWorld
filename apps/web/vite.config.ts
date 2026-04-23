@@ -7,14 +7,15 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
-      registerType: 'autoUpdate', // auto-activate new SW immediately so stale caches are never served
-      includeAssets: ['favicon.svg', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png'],
+      registerType: 'autoUpdate',
+      includeAssets: ['favicon.svg', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png', 'sw-push.js'],
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
         cleanupOutdatedCaches: true,
+        // Inject push handler into the generated service worker
+        importScripts: ['/sw-push.js'],
         runtimeCaching: [
           {
-            // Cache API calls — network first, fallback to cache
             urlPattern: ({ url }) => url.pathname.startsWith('/api/'),
             handler: 'NetworkFirst',
             options: {
@@ -25,7 +26,6 @@ export default defineConfig({
             },
           },
           {
-            // Cache Google Fonts / external assets
             urlPattern: /^https:\/\/fonts\.(googleapis|gstatic)\.com/,
             handler: 'CacheFirst',
             options: {

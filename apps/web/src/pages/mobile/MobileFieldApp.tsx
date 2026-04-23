@@ -759,7 +759,7 @@ function DesktopQRPanel({
 
   // Build the deep-link URL that lands on the field app pre-authenticated
   const baseUrl = window.location.origin;
-  const qrUrl = new URL('/field', baseUrl);
+  const qrUrl = new URL('/field-install', baseUrl);
   if (user?.id) qrUrl.searchParams.set('uid', user.id);
   if (accessToken) qrUrl.searchParams.set('token', accessToken);
   qrUrl.searchParams.set('ts', Math.floor(Date.now() / 30_000).toString()); // rotates every 30s
