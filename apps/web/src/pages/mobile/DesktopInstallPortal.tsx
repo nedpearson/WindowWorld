@@ -52,11 +52,18 @@ export function DesktopInstallPortal({
   const timeStr    = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
   const dateStr    = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
 
-  const STEPS = [
-    { n: 1, icon: '📱', title: 'Open iPhone Camera', desc: 'Point it at the QR code below' },
-    { n: 2, icon: '🔗', title: 'Tap the notification', desc: 'Opens in Safari automatically' },
+  const STEPS_IOS = [
+    { n: 1, icon: '📷', title: 'Scan with iPhone Camera', desc: 'Point it at the QR code — no app needed' },
+    { n: 2, icon: '🔗', title: 'Tap the notification', desc: 'Opens in Safari (switch from Chrome if needed)' },
     { n: 3, icon: '⬆️', title: 'Tap the Share button', desc: 'Bottom toolbar in Safari' },
     { n: 4, icon: '➕', title: '"Add to Home Screen"', desc: 'Then tap Add — you\'re done!' },
+  ];
+
+  const STEPS_ANDROID = [
+    { n: 1, icon: '📷', title: 'Scan QR with Camera or Chrome', desc: 'Point camera at code, or open the copied link' },
+    { n: 2, icon: '⋮', title: 'Tap the Chrome menu (⋮)', desc: 'Top-right corner of the browser' },
+    { n: 3, icon: '➕', title: '"Add to Home screen"', desc: 'Or "Install app" if Chrome shows a banner' },
+    { n: 4, icon: '✅', title: 'Tap Install', desc: 'WindowWorld appears on your home screen!' },
   ];
 
   const FEATURES = [
@@ -128,16 +135,16 @@ export function DesktopInstallPortal({
                 initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}
                 className="text-4xl font-black text-white leading-tight"
               >
-                Install on<br />
+                Install on your <br />
                 <span className="bg-gradient-to-r from-brand-400 to-indigo-400 bg-clip-text text-transparent">
-                  your iPhone
+                  iPhone or Android
                 </span>
               </motion.h1>
               <motion.p
                 initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
                 className="text-slate-400 text-sm mt-3 leading-relaxed"
               >
-                Scan the QR code with your iPhone camera to instantly open the app — pre-authenticated as <strong className="text-white">{userName}</strong>. No login required.
+                Scan the QR code with your phone camera to instantly open the app — pre-authenticated as <strong className="text-white">{userName}</strong>. Works on <strong className="text-slate-300">iOS Safari</strong>, <strong className="text-slate-300">iOS Chrome</strong>, and <strong className="text-slate-300">Android Chrome</strong>.
               </motion.p>
             </div>
 
@@ -245,51 +252,61 @@ export function DesktopInstallPortal({
             initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
             className="space-y-6"
           >
+            {/* Install steps — iOS */}
             <div>
-              <div className="flex items-center gap-2 mb-4">
-                <DevicePhoneMobileIcon className="h-5 w-5 text-brand-400" />
-                <span className="text-sm font-bold text-white">Install Steps</span>
+              <div className="flex items-center gap-2 mb-3">
+                <span className="text-lg">🍎</span>
+                <span className="text-sm font-bold text-white">iPhone / iOS</span>
               </div>
-
-              <div className="space-y-3">
-                {STEPS.map(({ n, icon, title, desc }) => (
+              <div className="space-y-2">
+                {STEPS_IOS.map(({ n, icon, title, desc }) => (
                   <motion.div
-                    key={n}
+                    key={`ios-${n}`}
                     initial={{ opacity: 0, x: 20 }}
                     animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: 0.15 + n * 0.08 }}
-                    className="flex items-center gap-4 p-4 rounded-2xl bg-slate-800/60 border border-slate-700/40"
+                    transition={{ delay: 0.15 + n * 0.06 }}
+                    className="flex items-center gap-3 p-3 rounded-xl bg-slate-800/60 border border-slate-700/40"
                   >
-                    <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-brand-600/30 to-brand-700/30 border border-brand-500/20 flex items-center justify-center flex-shrink-0 text-xl">
+                    <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-brand-600/30 to-brand-700/30 border border-brand-500/20 flex items-center justify-center flex-shrink-0 text-lg">
                       {icon}
                     </div>
-                    <div>
-                      <div className="text-sm font-semibold text-white">{title}</div>
-                      <div className="text-xs text-slate-500 mt-0.5">{desc}</div>
+                    <div className="min-w-0">
+                      <div className="text-xs font-semibold text-white">{title}</div>
+                      <div className="text-[10px] text-slate-500 mt-0.5">{desc}</div>
                     </div>
-                    <div className="ml-auto w-6 h-6 rounded-full bg-slate-700 flex items-center justify-center text-[11px] font-black text-slate-400 flex-shrink-0">
-                      {n}
-                    </div>
+                    <div className="ml-auto w-5 h-5 rounded-full bg-slate-700 flex items-center justify-center text-[10px] font-black text-slate-400 flex-shrink-0">{n}</div>
                   </motion.div>
                 ))}
               </div>
             </div>
 
-            {/* Safari note */}
-            <motion.div
-              initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}
-              className="p-4 rounded-2xl bg-amber-500/8 border border-amber-500/20"
-            >
-              <div className="flex items-start gap-2.5">
-                <span className="text-lg flex-shrink-0">⚠️</span>
-                <div>
-                  <div className="text-xs font-semibold text-amber-300 mb-1">Must open in Safari</div>
-                  <div className="text-[11px] text-amber-400/70 leading-relaxed">
-                    "Add to Home Screen" is only available in Safari on iOS. If it opens in another browser, tap <strong className="text-amber-300">Open in Safari</strong> first.
-                  </div>
-                </div>
+            {/* Install steps — Android */}
+            <div>
+              <div className="flex items-center gap-2 mb-3">
+                <span className="text-lg">🤖</span>
+                <span className="text-sm font-bold text-white">Android / Chrome</span>
               </div>
-            </motion.div>
+              <div className="space-y-2">
+                {STEPS_ANDROID.map(({ n, icon, title, desc }) => (
+                  <motion.div
+                    key={`android-${n}`}
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.3 + n * 0.06 }}
+                    className="flex items-center gap-3 p-3 rounded-xl bg-slate-800/60 border border-slate-700/40"
+                  >
+                    <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-600/30 to-emerald-700/30 border border-emerald-500/20 flex items-center justify-center flex-shrink-0 text-lg">
+                      {icon}
+                    </div>
+                    <div className="min-w-0">
+                      <div className="text-xs font-semibold text-white">{title}</div>
+                      <div className="text-[10px] text-slate-500 mt-0.5">{desc}</div>
+                    </div>
+                    <div className="ml-auto w-5 h-5 rounded-full bg-slate-700 flex items-center justify-center text-[10px] font-black text-slate-400 flex-shrink-0">{n}</div>
+                  </motion.div>
+                ))}
+              </div>
+            </div>
 
             {/* What you get */}
             <motion.div
