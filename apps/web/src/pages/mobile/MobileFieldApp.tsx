@@ -9,7 +9,8 @@ import {
   WifiIcon, XMarkIcon, MicrophoneIcon, ListBulletIcon,
   ClipboardDocumentListIcon, ChatBubbleLeftIcon,
   ArrowDownTrayIcon, BellAlertIcon, SignalSlashIcon,
-  QrCodeIcon, DevicePhoneMobileIcon, ShareIcon, ArrowTopRightOnSquareIcon } from '@heroicons/react/24/outline';
+  QrCodeIcon, DevicePhoneMobileIcon, ShareIcon, ArrowTopRightOnSquareIcon,
+  SparklesIcon, GlobeAltIcon } from '@heroicons/react/24/outline';
 import { BoltIcon, CloudIcon, SignalIcon } from '@heroicons/react/24/solid';
 import clsx from 'clsx';
 import { QRCodeSVG } from 'qrcode.react';
@@ -20,9 +21,13 @@ import { useVoiceNote } from '../../hooks/useVoiceNote';
 import { haptic } from '../../utils/haptics';
 import { useQuery } from '@tanstack/react-query';
 import apiClient from '../../api/client';
+import { MapTab } from './tabs/MapTab';
+import { PitchTab } from './tabs/PitchTab';
+import { RouteTab } from './tabs/RouteTab';
+import { NotesTab } from './tabs/NotesTab';
 
 // ─── Types ────────────────────────────────────────────────────
-type FieldTab = 'route' | 'capture' | 'measure' | 'notes';
+type FieldTab = 'map' | 'route' | 'capture' | 'measure' | 'pitch' | 'notes';
 type MeasureStep = 'select-opening' | 'enter-width' | 'enter-height' | 'confirm';
 
 // Normalise a raw appointment from the route API into the stop shape used by StopCard
@@ -941,10 +946,12 @@ export function MobileFieldApp() {
   const greeting = now.getHours() < 12 ? 'Good morning' : now.getHours() < 17 ? 'Good afternoon' : 'Good evening';
 
   const TABS: Array<{ key: FieldTab; icon: any; label: string }> = [
-    { key: 'route', icon: MapPinIcon, label: 'Route' },
-    { key: 'capture', icon: CameraIcon, label: 'Camera' },
+    { key: 'map',     icon: GlobeAltIcon,              label: 'Map' },
+    { key: 'route',   icon: MapPinIcon,                label: 'Route' },
+    { key: 'capture', icon: CameraIcon,                label: 'Camera' },
     { key: 'measure', icon: ClipboardDocumentListIcon, label: 'Measure' },
-    { key: 'notes', icon: PencilIcon, label: 'Notes' },
+    { key: 'pitch',   icon: SparklesIcon,              label: 'Pitch' },
+    { key: 'notes',   icon: PencilIcon,                label: 'Notes' },
   ];
 
   const handleTabChange = (tab: FieldTab) => {
@@ -1053,30 +1060,31 @@ export function MobileFieldApp() {
               exit={{ opacity: 0, y: -6 }}
               transition={{ duration: 0.12 }}
             >
+              {activeTab === 'map' && (
+                <MapTab
+                  stops={TODAY_STOPS}
+                  activeStopId={activeStop}
+                  onSelectStop={(id) => { setActiveStop(id); handleTabChange('route'); }}
+                />
+              )}
               {activeTab === 'route' && (
-                <div className="space-y-3">
-                  {routeLoading ? (
-                    <div className="flex flex-col items-center justify-center py-12 gap-3">
-                      <div className="w-8 h-8 border-2 border-brand-500/30 border-t-brand-500 rounded-full animate-spin" />
-                      <div className="text-xs text-slate-500">Loading today’s route…</div>
-                    </div>
-                  ) : TODAY_STOPS.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center py-12 text-center gap-3">
-                      <MapPinIcon className="h-10 w-10 text-slate-700" />
-                      <div className="text-sm font-medium text-slate-400">No appointments today</div>
-                      <div className="text-xs text-slate-600">Your manager hasn’t scheduled any stops yet.</div>
-                    </div>
-                  ) : (
-                    TODAY_STOPS.map((stop) => (
-                      <StopCard key={stop.id} stop={stop} isActive={activeStop === stop.id}
-                        onSelect={(s: any) => setActiveStop(activeStop === s.id ? null : s.id)} />
-                    ))
-                  )}
-                </div>
+                <RouteTab
+                  stops={TODAY_STOPS}
+                  activeStopId={activeStop}
+                  onSelectStop={(id) => setActiveStop(id)}
+                  estimatedMiles={estimatedMiles}
+                  isLoading={routeLoading}
+                  refetch={refetchRoute}
+                  greeting={greeting}
+                  userName={`${user?.firstName ?? ''} ${user?.lastName ?? ''}`.trim()}
+                  stormMode={stormMode}
+                  enqueue={enqueue}
+                />
               )}
               {activeTab === 'capture' && <CaptureTab enqueue={enqueue} />}
               {activeTab === 'measure' && <MeasureTab enqueue={enqueue} stops={TODAY_STOPS} activeStopId={activeStop} />}
-              {activeTab === 'notes' && <NotesTab enqueue={enqueue} />}
+              {activeTab === 'pitch' && <PitchTab stops={TODAY_STOPS} activeStopId={activeStop} />}
+              {activeTab === 'notes' && <NotesTab stops={TODAY_STOPS} activeStopId={activeStop} />}
             </motion.div>
           </AnimatePresence>
         </div>
