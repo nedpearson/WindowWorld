@@ -39,8 +39,8 @@ export class AnalyticsService {
     const closedValue = acceptedProposals.reduce((s: number, p: any) => s + ((p.quote as any)?.total || (p.quote as any)?.grandTotal || 0), 0);
 
     // Lead metrics
-    const newLeads = leads.filter((l: any) => l.status === 'NEW' || l.status === 'CONTACTED');
-    const closedLeads = leads.filter((l: any) => ['VERBAL_COMMIT', 'CONTRACTED', 'PAID', 'INSTALLED'].includes(l.status as string));
+    const newLeads = leads.filter((l: any) => l.status === 'NEW_LEAD' || l.status === 'ATTEMPTING_CONTACT' || l.status === 'CONTACTED');
+    const closedLeads = leads.filter((l: any) => ['VERBAL_COMMIT', 'SOLD', 'PAID', 'INSTALLED'].includes(l.status as string));
     const closeRate = leads.length > 0 ? closedLeads.length / leads.length : 0;
 
     // Appointment metrics
@@ -118,7 +118,7 @@ export class AnalyticsService {
         where: {
           assignedRepId: rep.id,
           createdAt: { gte: since },
-          status: { in: ['VERBAL_COMMIT', 'CONTRACTED', 'PAID', 'INSTALLED'] as any[] },
+          status: { in: ['VERBAL_COMMIT', 'SOLD', 'PAID', 'INSTALLED'] as any[] },
         } as any,
       });
 
@@ -156,7 +156,7 @@ export class AnalyticsService {
       const src = lead.source || 'UNKNOWN';
       if (!acc[src]) acc[src] = { source: src, count: 0, closed: 0, revenue: 0 };
       acc[src].count++;
-      if (['VERBAL_COMMIT', 'CONTRACTED', 'PAID', 'INSTALLED'].includes(lead.status as string)) {
+      if (['VERBAL_COMMIT', 'SOLD', 'PAID', 'INSTALLED'].includes(lead.status as string)) {
         acc[src].closed++;
         acc[src].revenue += lead.estimatedRevenue || 0;
       }
@@ -200,12 +200,12 @@ export class AnalyticsService {
     since.setDate(since.getDate() - periodDays);
 
     const statuses = [
-      { key: 'LEAD_IN', label: 'Leads In', statuses: ['NEW', 'CONTACTED', 'QUALIFIED', 'APPOINTMENT_SET', 'INSPECTED', 'PROPOSAL_SENT', 'NEGOTIATING', 'VERBAL_COMMIT', 'CONTRACTED', 'INSTALLED', 'PAID'] },
-      { key: 'APPOINTMENT_SET', label: 'Appt Set', statuses: ['APPOINTMENT_SET', 'INSPECTED', 'PROPOSAL_SENT', 'NEGOTIATING', 'VERBAL_COMMIT', 'CONTRACTED', 'INSTALLED', 'PAID'] },
-      { key: 'INSPECTED', label: 'Inspected', statuses: ['INSPECTED', 'PROPOSAL_SENT', 'NEGOTIATING', 'VERBAL_COMMIT', 'CONTRACTED', 'INSTALLED', 'PAID'] },
-      { key: 'PROPOSAL_SENT', label: 'Proposal Sent', statuses: ['PROPOSAL_SENT', 'NEGOTIATING', 'VERBAL_COMMIT', 'CONTRACTED', 'INSTALLED', 'PAID'] },
-      { key: 'COMMITTED', label: 'Committed', statuses: ['VERBAL_COMMIT', 'CONTRACTED', 'INSTALLED', 'PAID'] },
-      { key: 'CLOSED', label: 'Closed', statuses: ['CONTRACTED', 'INSTALLED', 'PAID'] },
+      { key: 'LEAD_IN',          label: 'Leads In',       statuses: ['NEW_LEAD', 'ATTEMPTING_CONTACT', 'CONTACTED', 'QUALIFIED', 'APPOINTMENT_SET', 'INSPECTION_COMPLETE', 'MEASURING_COMPLETE', 'PROPOSAL_SENT', 'FOLLOW_UP', 'VERBAL_COMMIT', 'SOLD', 'AWAITING_VERIFICATION', 'ORDER_READY', 'ORDERED', 'INSTALLED', 'PAID'] },
+      { key: 'APPOINTMENT_SET',  label: 'Appt Set',       statuses: ['APPOINTMENT_SET', 'INSPECTION_COMPLETE', 'MEASURING_COMPLETE', 'PROPOSAL_SENT', 'FOLLOW_UP', 'VERBAL_COMMIT', 'SOLD', 'ORDER_READY', 'ORDERED', 'INSTALLED', 'PAID'] },
+      { key: 'INSPECTED',        label: 'Inspected',       statuses: ['INSPECTION_COMPLETE', 'MEASURING_COMPLETE', 'PROPOSAL_SENT', 'FOLLOW_UP', 'VERBAL_COMMIT', 'SOLD', 'ORDER_READY', 'ORDERED', 'INSTALLED', 'PAID'] },
+      { key: 'PROPOSAL_SENT',    label: 'Proposal Sent',   statuses: ['PROPOSAL_SENT', 'FOLLOW_UP', 'VERBAL_COMMIT', 'SOLD', 'ORDER_READY', 'ORDERED', 'INSTALLED', 'PAID'] },
+      { key: 'COMMITTED',        label: 'Committed',       statuses: ['VERBAL_COMMIT', 'SOLD', 'ORDER_READY', 'ORDERED', 'INSTALLED', 'PAID'] },
+      { key: 'CLOSED',           label: 'Closed',          statuses: ['SOLD', 'ORDER_READY', 'ORDERED', 'INSTALLED', 'PAID'] },
     ];
 
     const counts = await Promise.all(statuses.map(async (s) => ({
@@ -227,7 +227,8 @@ export class AnalyticsService {
     const now = new Date();
     const mtdStart = new Date(now.getFullYear(), now.getMonth(), 1);
     const ytdStart = new Date(now.getFullYear(), 0, 1);
-    const CLOSED = ['VERBAL_COMMIT', 'ORDER_SUBMITTED', 'IN_PRODUCTION', 'INSTALLED', 'SOLD'] as any[];
+    // Valid closed/active statuses aligned to Prisma LeadStatus enum
+    const CLOSED = ['VERBAL_COMMIT', 'SOLD', 'AWAITING_VERIFICATION', 'ORDER_READY', 'ORDERED', 'INSTALLED', 'PAID'] as any[];
     const ACTIVE  = ['NEW_LEAD', 'ATTEMPTING_CONTACT', 'CONTACTED', 'QUALIFIED', 'APPOINTMENT_SET',
                      'MEASURING_COMPLETE', 'INSPECTION_COMPLETE', 'PROPOSAL_SENT', 'FOLLOW_UP'] as any[];
 
@@ -327,7 +328,7 @@ export class AnalyticsService {
       const zip = lead.zip || 'UNKNOWN';
       if (!acc[zip]) acc[zip] = { zip, count: 0, closed: 0, leads: [] };
       acc[zip].count++;
-      if (['VERBAL_COMMIT', 'CONTRACTED', 'INSTALLED', 'PAID'].includes(lead.status)) {
+      if (['VERBAL_COMMIT', 'SOLD', 'INSTALLED', 'PAID'].includes(lead.status)) {
         acc[zip].closed++;
       }
       // Only include first 5 leads per zip for performance
