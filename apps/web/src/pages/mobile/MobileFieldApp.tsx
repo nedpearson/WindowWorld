@@ -230,19 +230,33 @@ function StopCard({ stop, isActive, onSelect }: any) {
   );
 }
 
+// ─── Room labels (self-contained — no external variable reference) ─
+const ROOM_LABELS = [
+  'Living Room', 'Master Bedroom', 'Bedroom 2', 'Bedroom 3',
+  'Kitchen', 'Bathroom', 'Dining Room', 'Office / Study',
+  'Exterior – Front', 'Exterior – Back', 'Exterior – Side', 'Garage',
+  'Damage / Defect', 'Frame Close-Up', 'Other',
+];
+
 // ─── Camera Capture ───────────────────────────────────────────
 function CaptureTab({ enqueue }: { enqueue: (type: any, payload: any) => void }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [captures, setCaptures] = useState<Array<{ id: string; url: string; label: string; uploaded: boolean }>>([]);
+  const [captures, setCaptures] = useState<Array<{
+    id: string; url: string; label: string;
+    status: 'pending' | 'uploading' | 'done' | 'error';
+    aiResult?: string;
+  }>>([]);
   const [selectedLabel, setSelectedLabel] = useState('');
   const [showLabelModal, setShowLabelModal] = useState(false);
   const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
 
   const handleCapture = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     haptic.tap();
     setPendingFile(file);
+    setSelectedLabel('');
     setShowLabelModal(true);
     if (e.target) e.target.value = '';
   };
@@ -250,49 +264,88 @@ function CaptureTab({ enqueue }: { enqueue: (type: any, payload: any) => void })
   const confirmCapture = async () => {
     if (!pendingFile) return;
     haptic.impact();
-    const url = URL.createObjectURL(pendingFile);
+
+    const blobUrl = URL.createObjectURL(pendingFile);
     const id = `photo-${Date.now()}`;
-    setCaptures((prev) => [...prev, { id, url, label: selectedLabel || 'Unlabeled', uploaded: false }]);
+    const label = selectedLabel || 'Unlabeled';
+
+    setCaptures(prev => [...prev, { id, url: blobUrl, label, status: 'uploading' }]);
     setShowLabelModal(false);
     setPendingFile(null);
     setSelectedLabel('');
+    setIsUploading(true);
 
-    await enqueue('PHOTO_UPLOAD', {
-      filename: pendingFile.name,
-      label: selectedLabel,
-      size: pendingFile.size,
-      mimeType: pendingFile.type });
+    try {
+      if (navigator.onLine) {
+        // Real upload to server
+        const fd = new FormData();
+        fd.append('file', pendingFile, pendingFile.name);
+        fd.append('label', label);
+        fd.append('source', 'MOBILE_FIELD_APP');
 
-    toast.success(navigator.onLine ? 'Photo queued for upload' : 'Photo saved — will upload when online');
+        const uploadRes = await apiClient.documents.upload(fd) as any;
+        const docId = uploadRes?.data?.id;
 
-    setTimeout(() => {
-      haptic.success();
-      setCaptures((prev) => prev.map((c) => c.id === id ? { ...c, uploaded: true } : c));
-    }, 1500);
+        let aiSummary = '';
+        if (docId) {
+          try {
+            const aiRes = await apiClient.documents.analyzeWindow(docId) as any;
+            aiSummary = aiRes?.data?.summary ?? aiRes?.summary ?? '';
+          } catch { /* AI analysis is best-effort */ }
+        }
+
+        setCaptures(prev => prev.map(c =>
+          c.id === id ? { ...c, status: 'done', aiResult: aiSummary } : c
+        ));
+        haptic.success();
+        toast.success(aiSummary ? `Uploaded · AI: ${aiSummary.slice(0, 60)}…` : 'Photo uploaded ✓');
+      } else {
+        // Offline — queue it
+        await enqueue('PHOTO_UPLOAD', { filename: pendingFile.name, label, size: pendingFile.size, mimeType: pendingFile.type });
+        setCaptures(prev => prev.map(c => c.id === id ? { ...c, status: 'done' } : c));
+        haptic.success();
+        toast.success('Photo saved — uploads when back online');
+      }
+    } catch (err) {
+      console.error('[CaptureTab] upload error:', err);
+      setCaptures(prev => prev.map(c => c.id === id ? { ...c, status: 'error' } : c));
+      // Fallback: push to offline queue so it retries
+      await enqueue('PHOTO_UPLOAD', { filename: pendingFile?.name ?? 'photo.jpg', label, size: pendingFile?.size ?? 0, mimeType: pendingFile?.type ?? 'image/jpeg' });
+      toast.error('Upload failed — saved to retry queue');
+    } finally {
+      setIsUploading(false);
+    }
   };
 
   return (
     <div className="space-y-4">
       <input ref={fileInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handleCapture} />
 
+      {/* Camera button */}
       <button
         onClick={() => { haptic.tap(); fileInputRef.current?.click(); }}
-        className="w-full flex flex-col items-center justify-center gap-3 py-8 rounded-2xl border-2 border-dashed border-brand-500/40 bg-brand-500/5 active:bg-brand-500/10 transition-colors"
+        disabled={isUploading}
+        className="w-full flex flex-col items-center justify-center gap-3 py-8 rounded-2xl border-2 border-dashed border-brand-500/40 bg-brand-500/5 active:bg-brand-500/10 disabled:opacity-50 transition-colors"
       >
         <div className="w-14 h-14 rounded-full bg-brand-600/20 flex items-center justify-center">
-          <CameraIcon className="h-7 w-7 text-brand-400" />
+          {isUploading
+            ? <div className="w-7 h-7 border-2 border-brand-400/30 border-t-brand-400 rounded-full animate-spin" />
+            : <CameraIcon className="h-7 w-7 text-brand-400" />
+          }
         </div>
         <div className="text-center">
-          <div className="text-sm font-semibold text-white">Take Photo</div>
-          <div className="text-xs text-slate-500 mt-0.5">Opens rear camera · AI labels automatically</div>
+          <div className="text-sm font-semibold text-white">{isUploading ? 'Uploading…' : 'Take Photo'}</div>
+          <div className="text-xs text-slate-500 mt-0.5">Opens rear camera · AI analysis on upload</div>
         </div>
       </button>
 
+      {/* AI note */}
       <div className="flex items-start gap-2 p-3 rounded-xl bg-slate-800/60 border border-slate-700/30 text-xs text-slate-500">
         <BoltIcon className="h-4 w-4 text-brand-400 flex-shrink-0" />
         <span>AI will analyze photos for window type and condition. All estimates require field verification before ordering.</span>
       </div>
 
+      {/* Photo grid */}
       {captures.length > 0 && (
         <div>
           <div className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">
@@ -301,21 +354,30 @@ function CaptureTab({ enqueue }: { enqueue: (type: any, payload: any) => void })
           <div className="grid grid-cols-2 gap-2">
             {captures.map((cap) => (
               <div key={cap.id} className="relative rounded-xl overflow-hidden aspect-square bg-slate-800">
-                {/* Validate the URL is a browser-generated blob: URL before rendering.
-                    URL.createObjectURL always returns a blob: scheme URL — this guard
-                    ensures no external/data URL can be injected as an image src (CodeQL: js/xss). */}
                 {cap.url.startsWith('blob:') && (
-                <img src={cap.url} alt={String(cap.label).replace(/[<>"'&]/g, '')} className="w-full h-full object-cover" />
+                  <img src={cap.url} alt={String(cap.label).replace(/[<>"'&]/g, '')} className="w-full h-full object-cover" />
                 )}
+                {/* Label strip */}
                 <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-2">
-                  <div className="text-[11px] text-white font-medium truncate">{String(cap.label ?? '')}</div>
+                  <div className="text-[11px] text-white font-medium truncate">{cap.label}</div>
+                  {cap.aiResult && (
+                    <div className="text-[10px] text-brand-300 truncate mt-0.5">{cap.aiResult}</div>
+                  )}
                 </div>
+                {/* Status badge */}
                 <div className={clsx(
                   'absolute top-2 right-2 w-5 h-5 rounded-full flex items-center justify-center shadow',
-                  cap.uploaded ? 'bg-emerald-500' : 'bg-amber-500'
+                  cap.status === 'done'      ? 'bg-emerald-500' :
+                  cap.status === 'uploading' ? 'bg-brand-500' :
+                  cap.status === 'error'     ? 'bg-red-500' :
+                  'bg-amber-500'
                 )}>
-                  {cap.uploaded
+                  {cap.status === 'uploading'
+                    ? <div className="w-3 h-3 border border-white/30 border-t-white rounded-full animate-spin" />
+                    : cap.status === 'done'
                     ? <CheckCircleIcon className="h-3.5 w-3.5 text-white" />
+                    : cap.status === 'error'
+                    ? <ExclamationCircleIcon className="h-3.5 w-3.5 text-white" />
                     : <CloudArrowUpIcon className="h-3.5 w-3.5 text-white" />
                   }
                 </div>
@@ -339,11 +401,11 @@ function CaptureTab({ enqueue }: { enqueue: (type: any, payload: any) => void })
               className="w-full bg-slate-900 rounded-t-2xl p-6 border-t border-slate-700"
               style={{ paddingBottom: 'calc(1.5rem + var(--sab, 0px))' }}
             >
-              <div className="text-base font-semibold text-white mb-4">Label this photo</div>
-              <div className="grid grid-cols-2 gap-2 mb-4">
-                {['Living Room', 'Bedroom', 'Kitchen', 'Bathroom', 'Dining Room', 'Office',
-                  'Exterior - Front', 'Exterior - Side', 'Damage', 'Other'].map((label) => (
-                  <button key={label} onClick={() => { haptic.selection(); setSelectedLabel(label); }}
+              <div className="text-base font-semibold text-white mb-4">Where is this window?</div>
+              <div className="grid grid-cols-2 gap-2 mb-4 max-h-64 overflow-y-auto">
+                {ROOM_LABELS.map((label) => (
+                  <button key={label}
+                    onClick={() => { haptic.selection(); setSelectedLabel(label); }}
                     className={clsx('py-2.5 px-3 rounded-xl text-sm text-left transition-colors',
                       selectedLabel === label ? 'bg-brand-600 text-white' : 'bg-slate-800 text-slate-300 active:bg-slate-700'
                     )}>
@@ -351,11 +413,19 @@ function CaptureTab({ enqueue }: { enqueue: (type: any, payload: any) => void })
                   </button>
                 ))}
               </div>
-              <input value={selectedLabel} onChange={(e) => setSelectedLabel(e.target.value)}
-                placeholder="Or type a custom label..." className="input mb-4" />
+              <input
+                value={selectedLabel}
+                onChange={(e) => setSelectedLabel(e.target.value)}
+                placeholder="Or type a custom label..."
+                className="input mb-4"
+              />
               <div className="flex gap-3">
-                <button onClick={() => { haptic.tap(); setShowLabelModal(false); }} className="btn-secondary flex-1">Cancel</button>
-                <button onClick={confirmCapture} className="btn-primary flex-1">Save Photo</button>
+                <button onClick={() => { haptic.tap(); setShowLabelModal(false); setPendingFile(null); }} className="btn-secondary flex-1">
+                  Cancel
+                </button>
+                <button onClick={confirmCapture} className="btn-primary flex-1">
+                  Save &amp; Upload
+                </button>
               </div>
             </motion.div>
           </motion.div>
