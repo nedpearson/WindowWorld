@@ -995,11 +995,18 @@ export function MobileFieldApp() {
   const _navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<FieldTab>('route');
   const [activeStop, setActiveStop] = useState<string | null>(null);
+  const [isDesktop, setIsDesktop] = useState(() => window.innerWidth >= 768);
   const { enqueue, pendingCount, isSyncing, syncNow, isOnline, failedCount } = useOfflineQueue();
   const stormMode = useAppStore((s) => s.stormModeActive);
   const { isInstallable, isInstalled, isUpdateAvailable, isIOS, install, dismissInstall } = usePWA();
   const user = useAuthStore((s) => s.user);
   const accessToken = useAuthStore((s) => s.accessToken);
+
+  useEffect(() => {
+    const handler = () => setIsDesktop(window.innerWidth >= 768);
+    window.addEventListener('resize', handler);
+    return () => window.removeEventListener('resize', handler);
+  }, []);
 
   // ─── Real today's route from the server ──────────
   const { data: routeData, isLoading: routeLoading, refetch: refetchRoute } = useQuery({
@@ -1030,14 +1037,7 @@ export function MobileFieldApp() {
     setActiveTab(tab);
   };
 
-  // ─── Desktop: show full QR install portal instead of mobile shell ───
-  const [isDesktop, setIsDesktop] = useState(() => window.innerWidth >= 768);
-  useEffect(() => {
-    const handler = () => setIsDesktop(window.innerWidth >= 768);
-    window.addEventListener('resize', handler);
-    return () => window.removeEventListener('resize', handler);
-  }, []);
-
+  // ─── Desktop: show QR install portal ───────────────
   if (isDesktop) {
     return (
       <DesktopInstallPortal
