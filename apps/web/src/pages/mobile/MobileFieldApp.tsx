@@ -25,6 +25,7 @@ import { MapTab } from './tabs/MapTab';
 import { PitchTab } from './tabs/PitchTab';
 import { RouteTab } from './tabs/RouteTab';
 import { NotesTab } from './tabs/NotesTab';
+import { DesktopInstallPortal } from './DesktopInstallPortal';
 
 // ─── Types ────────────────────────────────────────────────────
 type FieldTab = 'map' | 'route' | 'capture' | 'measure' | 'pitch' | 'notes';
@@ -959,18 +960,30 @@ export function MobileFieldApp() {
     setActiveTab(tab);
   };
 
-  return (
-    <div className="min-h-screen bg-slate-950 flex flex-row">
-      {/* ── Desktop QR sidebar — hidden on mobile ── */}
-      <DesktopQRPanel
+  // ─── Desktop: show full QR install portal instead of mobile shell ───
+  const [isDesktop, setIsDesktop] = useState(() => window.innerWidth >= 768);
+  useEffect(() => {
+    const handler = () => setIsDesktop(window.innerWidth >= 768);
+    window.addEventListener('resize', handler);
+    return () => window.removeEventListener('resize', handler);
+  }, []);
+
+  if (isDesktop) {
+    return (
+      <DesktopInstallPortal
         user={user}
+        accessToken={accessToken}
         isOnline={isOnline}
-        pendingCount={pendingCount}
-        isSyncing={isSyncing}
         stopCount={TODAY_STOPS.length}
         confirmedCount={confirmedCount}
-        accessToken={accessToken}
+        pendingCount={pendingCount}
+        isSyncing={isSyncing}
       />
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-slate-950 flex flex-row">
 
       {/* ── Mobile app shell — centered, max-w-md ── */}
       <div
