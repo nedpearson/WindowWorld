@@ -7,7 +7,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { CheckBadgeIcon } from '@heroicons/react/24/solid';
 import clsx from 'clsx';
-import { useAuthStore } from '../../store/auth.store';
+import { useAuthStore } from '../store/auth.store';
 import { Link } from 'react-router-dom';
 
 // ─── Modal ────────────────────────────────────────────────────

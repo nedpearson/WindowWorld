@@ -224,7 +224,7 @@ function NotificationsStep({ onNext, onSkip }: { onNext: () => void; onSkip: () 
 // ─── Done Step ────────────────────────────────────────────────
 function DoneStep({ userName, onGo }: { userName: string; onGo: () => void }) {
   const features = [
-    { icon: '📍', text: 'Today's route & stops' },
+    { icon: '📍', text: "Today's route & stops" },
     { icon: '📸', text: 'Camera + AI window analysis' },
     { icon: '📏', text: 'Guided measurement tool' },
     { icon: '🎙️', text: 'Voice notes — hands-free' },

@@ -3,7 +3,7 @@ import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import clsx from 'clsx';
-import { MapPinIcon, ArrowPathIcon, NavigationIcon } from '@heroicons/react/24/outline';
+import { MapPinIcon, ArrowPathIcon, ArrowTopRightOnSquareIcon } from '@heroicons/react/24/outline';
 
 // Fix leaflet default marker icon broken by bundlers
 delete (L.Icon.Default.prototype as any)._getIconUrl;
