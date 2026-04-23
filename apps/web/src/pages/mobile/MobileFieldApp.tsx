@@ -985,6 +985,16 @@ export function MobileFieldApp() {
                 <CloudIcon className="h-3 w-3" /> Storm
               </div>
             )}
+
+            {/* Quick link back to full desktop platform */}
+            <Link
+              to="/dashboard"
+              className="flex items-center gap-1 text-[10px] px-2 py-1.5 rounded-lg bg-slate-800 text-slate-400 border border-slate-700 hover:text-slate-200 transition-colors"
+              title="Open desktop dashboard"
+            >
+              <ArrowTopRightOnSquareIcon className="h-3 w-3" />
+              <span className="hidden sm:inline">Desktop</span>
+            </Link>
           </div>
         </div>
 

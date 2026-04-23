@@ -9,7 +9,7 @@ import {
   ExclamationTriangleIcon, MagnifyingGlassIcon, BellIcon,
   ArrowRightOnRectangleIcon, BuildingStorefrontIcon, ClipboardDocumentListIcon, MapIcon, ShieldCheckIcon,
   UserGroupIcon, WrenchScrewdriverIcon, StarIcon, AcademicCapIcon,
-  ArrowUpTrayIcon, CurrencyDollarIcon, QrCodeIcon } from '@heroicons/react/24/outline';
+  ArrowUpTrayIcon, CurrencyDollarIcon, QrCodeIcon, Bars3Icon } from '@heroicons/react/24/outline';
 import { BoltIcon as BoltSolid} from '@heroicons/react/24/solid';
 import clsx from 'clsx';
 import { io, Socket } from 'socket.io-client';
@@ -145,11 +145,20 @@ export function AppLayout() {
   const offlineMode = useAppStore((s) => s.offlineMode);
   const syncPending = useAppStore((s) => s.syncPending);
   const [, setMobileMenuOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [, setNotificationsOpen] = useState(false);
   const [wsNotifications, setWsNotifications] = useState<any[]>([]);
   const [searchOpen, setSearchOpen] = useState(false);
   const [showFieldModal, setShowFieldModal] = useState(false);
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
+
+  // ── Mobile redirect: phone users belong in /field ──
+  useEffect(() => {
+    if (window.innerWidth < 768) {
+      navigate('/field', { replace: true });
+    }
+  }, [navigate]);
 
   // Fetch notifications from API on mount + every 5 min
   const { data: notifData } = useQuery({
@@ -217,8 +226,19 @@ export function AppLayout() {
 
   return (
     <div className="flex min-h-screen bg-slate-950">
+      {/* ── Mobile overlay backdrop ──────────────────── */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 bg-black/60 z-30 md:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
       {/* ── Sidebar ─────────────────────────── */}
-      <aside className="fixed left-0 top-0 h-full w-64 bg-slate-900 border-r border-slate-800 z-40 flex flex-col">
+      <aside className={clsx(
+        'fixed left-0 top-0 h-full w-64 bg-slate-900 border-r border-slate-800 z-40 flex flex-col transition-transform duration-200',
+        sidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
+      )}>
         {/* Logo */}
         <div className="flex items-center gap-3 px-5 py-4 border-b border-slate-800">
           <div className="w-8 h-8 rounded-lg bg-brand-600 flex items-center justify-center shadow-glow">
@@ -370,9 +390,18 @@ export function AppLayout() {
       </aside>
 
       {/* ── Main content ──────────────────────── */}
-      <div className="flex-1 ml-64 flex flex-col">
+      <div className="flex-1 md:ml-64 flex flex-col min-w-0">
         {/* Topbar */}
-        <header className="sticky top-0 h-14 bg-slate-900/95 backdrop-blur-sm border-b border-slate-800 z-30 flex items-center px-6 gap-4">
+        <header className="sticky top-0 h-14 bg-slate-900/95 backdrop-blur-sm border-b border-slate-800 z-30 flex items-center px-3 md:px-6 gap-3">
+          {/* Hamburger menu button - tablet/small screens only */}
+          <button
+            onClick={() => setSidebarOpen(o => !o)}
+            className="md:hidden p-1.5 rounded-lg text-slate-500 hover:text-slate-300 hover:bg-slate-800 transition-colors flex-shrink-0"
+            aria-label="Open menu"
+          >
+            <Bars3Icon className="h-5 w-5" />
+          </button>
+
           {/* Search */}
           <button onClick={() => setSearchOpen(true)}
             className="flex items-center gap-2.5 px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 text-slate-500 text-sm hover:border-brand-500/40 hover:text-slate-300 transition-colors flex-1 max-w-sm">
