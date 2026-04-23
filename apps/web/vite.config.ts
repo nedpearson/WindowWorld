@@ -73,6 +73,8 @@ export default defineConfig({
     },
   },
   build: {
+    outDir: '../../server/public',
+    emptyOutDir: true,
     rollupOptions: {
       output: {
         // manualChunks as a function splits vendor chunks for optimal caching
