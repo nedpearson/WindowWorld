@@ -20,7 +20,7 @@ export class AnalyticsService {
           createdAt: true, assignedRepId: true } as any,
       }),
       prisma.appointment.findMany({
-        where: { organizationId: organizationId as any, scheduledFor: { gte: since } } as any,
+        where: { lead: { organizationId }, scheduledAt: { gte: since } },
         select: { id: true, status: true, outcome: true },
       }),
     ]);

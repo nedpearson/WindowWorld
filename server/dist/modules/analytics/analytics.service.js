@@ -21,7 +21,7 @@ class AnalyticsService {
                     createdAt: true, assignedRepId: true },
             }),
             prisma_1.prisma.appointment.findMany({
-                where: { organizationId: organizationId, scheduledFor: { gte: since } },
+                where: { lead: { organizationId }, scheduledAt: { gte: since } },
                 select: { id: true, status: true, outcome: true },
             }),
         ]);
