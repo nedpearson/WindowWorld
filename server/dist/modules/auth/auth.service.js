@@ -10,11 +10,10 @@ const uuid_1 = require("uuid");
 const prisma_1 = require("../../shared/services/prisma");
 const errorHandler_1 = require("../../shared/middleware/errorHandler");
 const logger_1 = require("../../shared/utils/logger");
-const google_auth_library_1 = require("google-auth-library");
-const googleClient = new google_auth_library_1.OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+// google-auth-library is retained for potential id_token verification in future;
+// current flow uses fetch to the /oauth2/v3/userinfo endpoint instead.
 const JWT_SECRET = process.env.JWT_SECRET || 'CHANGE_THIS_SECRET';
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '7d';
-const JWT_REFRESH_EXPIRES_IN = process.env.JWT_REFRESH_EXPIRES_IN || '30d';
 const SALT_ROUNDS = 12;
 function generateTokens(payload) {
     const accessToken = jsonwebtoken_1.default.sign(payload, JWT_SECRET, {
