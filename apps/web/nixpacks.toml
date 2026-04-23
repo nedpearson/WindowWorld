@@ -1,2 +1,16 @@
 [phases.setup]
 nixPkgs = ["nodejs_22"]
+
+[phases.install]
+cmds = ["npm install --legacy-peer-deps"]
+
+[phases.build]
+cmds = ["npm run build"]
+
+# Only these variables are injected as Docker build-time ARGs.
+# Keep this list to safe, non-secret values.
+# Secrets (OPEN_API_KEY, JWT_SECRET, etc.) should be runtime-only
+# and set as Railway service variables, NOT listed here.
+[variables]
+VITE_APP_ENV = "production"
+NODE_ENV = "production"
