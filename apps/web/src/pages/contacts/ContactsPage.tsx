@@ -2,7 +2,8 @@ import { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Dialog } from '@headlessui/react';
 import {
   MagnifyingGlassIcon, PhoneIcon, EnvelopeIcon,
   ChatBubbleLeftIcon, PlusIcon, UserIcon,
@@ -125,12 +126,114 @@ function ContactCard({ contact, onStar }: { contact: Contact; onStar: (id: strin
     </motion.div>
   );
 }
+function AddContactModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
+  const queryClient = useQueryClient();
+  const [formData, setFormData] = useState({
+    firstName: '',
+    lastName: '',
+    email: '',
+    phone: '',
+    role: 'PRIMARY',
+    leadId: '',
+  });
+
+  const { data: leadsData } = useQuery({
+    queryKey: ['leads-list-simple'],
+    queryFn: () => api.leads.list({ limit: 500 }).then((r: any) => r.data || []),
+    enabled: isOpen,
+  });
+
+  const mutation = useMutation({
+    mutationFn: (data: any) => api.contacts.create(data),
+    onSuccess: () => {
+      toast.success('Contact added successfully');
+      queryClient.invalidateQueries({ queryKey: ['contacts-list'] });
+      setFormData({ firstName: '', lastName: '', email: '', phone: '', role: 'PRIMARY', leadId: '' });
+      onClose();
+    },
+    onError: (err: any) => {
+      toast.error(err.response?.data?.message || 'Failed to add contact');
+    }
+  });
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formData.leadId) {
+      toast.error('Please select a lead to attach this contact to.');
+      return;
+    }
+    mutation.mutate({
+      ...formData,
+      isPrimary: formData.role === 'PRIMARY',
+      isSpouse: formData.role === 'SPOUSE',
+      isOwner: formData.role !== 'OTHER' && formData.role !== 'PROPERTY_MANAGER',
+    });
+  };
+
+  return (
+    <Dialog open={isOpen} onClose={onClose} className="relative z-50">
+      <div className="fixed inset-0 bg-black/60 backdrop-blur-sm" aria-hidden="true" />
+      <div className="fixed inset-0 flex items-center justify-center p-4">
+        <Dialog.Panel className="mx-auto w-full max-w-md rounded-2xl bg-slate-900 border border-slate-700 p-6 shadow-xl page-transition">
+          <Dialog.Title className="text-lg font-bold text-white mb-4">Add New Contact</Dialog.Title>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-semibold text-slate-400 mb-1">First Name</label>
+                <input required value={formData.firstName} onChange={e => setFormData({ ...formData, firstName: e.target.value })} className="input w-full" placeholder="John" />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-400 mb-1">Last Name</label>
+                <input required value={formData.lastName} onChange={e => setFormData({ ...formData, lastName: e.target.value })} className="input w-full" placeholder="Doe" />
+              </div>
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-400 mb-1">Email</label>
+              <input type="email" value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} className="input w-full" placeholder="john@example.com" />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-400 mb-1">Phone</label>
+              <input type="tel" value={formData.phone} onChange={e => setFormData({ ...formData, phone: e.target.value })} className="input w-full" placeholder="(555) 123-4567" />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-400 mb-1">Role</label>
+              <select value={formData.role} onChange={e => setFormData({ ...formData, role: e.target.value })} className="input w-full">
+                <option value="PRIMARY">Primary Decision Maker</option>
+                <option value="SPOUSE">Spouse / Co-decision</option>
+                <option value="PROPERTY_MANAGER">Property Manager</option>
+                <option value="REFERRAL">Referral</option>
+                <option value="OTHER">Other</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-400 mb-1">Attach to Lead *</label>
+              <select required value={formData.leadId} onChange={e => setFormData({ ...formData, leadId: e.target.value })} className="input w-full">
+                <option value="">-- Select a Lead --</option>
+                {(leadsData || []).map((l: any) => (
+                  <option key={l.id} value={l.id}>{l.firstName} {l.lastName} - {l.address || 'Unknown Address'}</option>
+                ))}
+              </select>
+            </div>
+            
+            <div className="pt-4 flex gap-3">
+              <button type="button" onClick={onClose} className="btn-secondary flex-1">Cancel</button>
+              <button type="submit" disabled={mutation.isPending} className="btn-primary flex-1">
+                {mutation.isPending ? 'Saving...' : 'Save Contact'}
+              </button>
+            </div>
+          </form>
+        </Dialog.Panel>
+      </div>
+    </Dialog>
+  );
+}
 
 export function ContactsPage() {
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState('');
   const [sortBy, setSortBy] = useState<'name' | 'value' | 'status'>('name');
   const [starredIds, setStarredIds] = useState<Set<string>>(new Set());
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 
   const { data: rawData, isLoading } = useQuery({
     queryKey: ['contacts-list'],
@@ -190,7 +293,7 @@ export function ContactsPage() {
             {contacts.length} contacts · {totalWithPhone} with phone · {starred} starred
           </p>
         </div>
-        <button onClick={() => toast.info('Add contact from a Lead Detail page → Contacts section')}
+        <button onClick={() => setIsAddModalOpen(true)}
           className="btn-primary btn-sm flex items-center gap-2">
           <PlusIcon className="h-4 w-4" /> Add Contact
         </button>
@@ -256,6 +359,8 @@ export function ContactsPage() {
           ))}
         </div>
       )}
+
+      <AddContactModal isOpen={isAddModalOpen} onClose={() => setIsAddModalOpen(false)} />
     </div>
   );
 }
