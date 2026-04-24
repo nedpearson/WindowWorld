@@ -275,6 +275,16 @@ export function useOfflineQueue() {
 
     if (succeeded > 0) toast.success(`Synced ${succeeded} queued action${succeeded > 1 ? 's' : ''}`);
     if (failed > 0) toast.error(`${failed} action${failed > 1 ? 's' : ''} failed to sync`);
+
+    // Force PWA update check when user manually syncs
+    if ('serviceWorker' in navigator) {
+      try {
+        const reg = await navigator.serviceWorker.ready;
+        await reg.update();
+      } catch (err) {
+        console.warn('[OfflineQueue] Failed to check for app updates:', err);
+      }
+    }
   }, []);
 
   const clearFailed = useCallback(async () => {

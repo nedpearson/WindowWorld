@@ -69,15 +69,11 @@ if ('serviceWorker' in navigator && import.meta.env.PROD) {
           if (!newWorker) return;
           newWorker.addEventListener('statechange', () => {
             if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-              // New version available — prompt user to reload
-              toast('Update Available', {
-                description: 'A new version of WindowWorld is ready.',
-                duration: Infinity,
-                action: {
-                  label: 'Reload Now',
-                  onClick: () => window.location.reload(),
-                },
-              });
+              // Automatically reload to apply the update
+              toast.success('App updated! Reloading...', { duration: 2000 });
+              setTimeout(() => {
+                window.location.reload();
+              }, 1500);
             }
           });
         });
