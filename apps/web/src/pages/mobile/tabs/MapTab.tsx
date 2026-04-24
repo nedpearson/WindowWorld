@@ -120,11 +120,9 @@ export function MapTab({ stops, activeStopId, onSelectStop }: MapTabProps) {
   const mapCenter: [number, number] = gpsPos ?? routeCoords[0] ?? DEFAULT_CENTER;
 
   const tileUrl = mapType === 'satellite'
-    ? 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
-    : 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
-  const tileAttr = mapType === 'satellite'
-    ? '&copy; Esri'
-    : '&copy; <a href="https://carto.com/">CARTO</a>';
+    ? 'https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}'
+    : 'https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}';
+  const tileAttr = '&copy; Google Maps';
 
   return (
     <div className="relative h-full min-h-[60vh] rounded-2xl overflow-hidden border border-slate-800">
