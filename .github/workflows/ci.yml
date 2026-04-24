@@ -51,7 +51,8 @@ jobs:
 
     - name: Typecheck Backend (Server)
       working-directory: ./server
-      run: npx tsc --noEmit || echo "Warning: Backend has typing errors to fix"
+      run: |
+        npx tsc --noEmit || echo "Warning: Backend has typing errors to fix"
 
     - name: Typecheck Frontend (Web)
       working-directory: ./apps/web
