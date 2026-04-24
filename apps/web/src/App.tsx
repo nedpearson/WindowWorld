@@ -78,8 +78,8 @@ export default function App() {
 
           {/* Leads */}
           <Route path="leads" element={<LeadsPage />} />
-          <Route path="leads/:id" element={<LeadDetailPage />} />
           <Route path="leads/new" element={<LeadDetailPage isNew />} />
+          <Route path="leads/:id" element={<LeadDetailPage />} />
           <Route path="lead-intelligence" element={<LeadIntelligencePage />} />
           <Route path="pipeline" element={<PipelinePage />} />
           <Route path="map" element={<TerritoryMapPage />} />

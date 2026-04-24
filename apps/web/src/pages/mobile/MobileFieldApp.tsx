@@ -10,7 +10,7 @@ import {
   ClipboardDocumentListIcon, ChatBubbleLeftIcon,
   ArrowDownTrayIcon, BellAlertIcon, SignalSlashIcon,
   QrCodeIcon, DevicePhoneMobileIcon, ShareIcon, ArrowTopRightOnSquareIcon,
-  SparklesIcon, GlobeAltIcon } from '@heroicons/react/24/outline';
+  SparklesIcon, GlobeAltIcon, UserPlusIcon } from '@heroicons/react/24/outline';
 import { BoltIcon, CloudIcon, SignalIcon } from '@heroicons/react/24/solid';
 import clsx from 'clsx';
 import { QRCodeSVG } from 'qrcode.react';
@@ -28,7 +28,7 @@ import { NotesTab } from './tabs/NotesTab';
 import { DesktopInstallPortal } from './DesktopInstallPortal';
 
 // ─── Types ────────────────────────────────────────────────────
-type FieldTab = 'map' | 'route' | 'capture' | 'measure' | 'pitch' | 'notes';
+type FieldTab = 'map' | 'route' | 'capture' | 'measure' | 'pitch' | 'notes' | 'lead';
 type MeasureStep = 'select-opening' | 'enter-width' | 'enter-height' | 'confirm';
 
 // Normalise a raw appointment from the route API into the stop shape used by StopCard
@@ -437,27 +437,212 @@ function CaptureTab({ enqueue }: { enqueue: (type: any, payload: any) => void })
   );
 }
 
+// ─── New Lead Tab ─────────────────────────────────────────────
+const LEAD_SOURCES = [
+  'Door Knock', 'Referral', 'Storm Canvass', 'Phone Call',
+  'Web Lead', 'Social Media', 'Yard Sign', 'Event / Home Show', 'Other',
+];
+
+function NewLeadTab({ enqueue }: { enqueue: (type: any, payload: any) => void }) {
+  const [form, setForm] = useState({
+    firstName: '', lastName: '', phone: '', email: '',
+    address: '', city: '', zip: '', source: '',
+    notes: '', isStormLead: false,
+  });
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+
+  const set = (field: string, value: any) =>
+    setForm((prev) => ({ ...prev, [field]: value }));
+
+  const isValid = form.firstName.trim() && form.lastName.trim() && form.phone.trim();
+
+  const handleSubmit = async () => {
+    if (!isValid) return;
+    haptic.impact();
+    setSaving(true);
+    const payload = {
+      firstName: form.firstName.trim(),
+      lastName: form.lastName.trim(),
+      phone: form.phone.trim(),
+      email: form.email.trim() || undefined,
+      address: form.address.trim() || undefined,
+      city: form.city.trim() || undefined,
+      zip: form.zip.trim() || undefined,
+      source: form.source || 'FIELD',
+      notes: form.notes.trim() || undefined,
+      isStormLead: form.isStormLead,
+      status: 'NEW',
+    };
+
+    try {
+      if (navigator.onLine) {
+        await (apiClient as any).leads.create(payload);
+        haptic.success();
+        toast.success(`Lead created: ${payload.firstName} ${payload.lastName}`);
+      } else {
+        await enqueue('LEAD_CREATE', payload);
+        haptic.success();
+        toast.success('Lead saved locally — syncs when online');
+      }
+      setSaved(true);
+      setForm({ firstName: '', lastName: '', phone: '', email: '', address: '', city: '', zip: '', source: '', notes: '', isStormLead: false });
+      setTimeout(() => setSaved(false), 3000);
+    } catch (err) {
+      console.error('[NewLeadTab]', err);
+      await enqueue('LEAD_CREATE', payload);
+      toast.error('Saved to queue — will sync when connection is restored');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      {/* Success banner */}
+      <AnimatePresence>
+        {saved && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}
+            className="flex items-center gap-3 p-4 rounded-2xl bg-emerald-500/15 border border-emerald-500/30"
+          >
+            <CheckCircleIcon className="h-6 w-6 text-emerald-400 flex-shrink-0" />
+            <div>
+              <div className="text-sm font-semibold text-emerald-300">Lead Created!</div>
+              <div className="text-xs text-emerald-600">Visible in the dashboard immediately.</div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <div className="text-xs font-semibold text-slate-500 uppercase tracking-wide">New Lead — Field Entry</div>
+
+      {/* Name row */}
+      <div className="grid grid-cols-2 gap-2">
+        <div className="space-y-1">
+          <label className="text-[11px] text-slate-500">First Name *</label>
+          <input value={form.firstName} onChange={(e) => set('firstName', e.target.value)}
+            placeholder="First" className="input" autoComplete="given-name" />
+        </div>
+        <div className="space-y-1">
+          <label className="text-[11px] text-slate-500">Last Name *</label>
+          <input value={form.lastName} onChange={(e) => set('lastName', e.target.value)}
+            placeholder="Last" className="input" autoComplete="family-name" />
+        </div>
+      </div>
+
+      {/* Phone */}
+      <div className="space-y-1">
+        <label className="text-[11px] text-slate-500">Phone *</label>
+        <input value={form.phone} onChange={(e) => set('phone', e.target.value)}
+          type="tel" placeholder="(555) 000-0000" className="input" autoComplete="tel" />
+      </div>
+
+      {/* Email */}
+      <div className="space-y-1">
+        <label className="text-[11px] text-slate-500">Email</label>
+        <input value={form.email} onChange={(e) => set('email', e.target.value)}
+          type="email" placeholder="homeowner@email.com" className="input" autoComplete="email" />
+      </div>
+
+      {/* Address */}
+      <div className="space-y-1">
+        <label className="text-[11px] text-slate-500">Street Address</label>
+        <input value={form.address} onChange={(e) => set('address', e.target.value)}
+          placeholder="123 Main St" className="input" autoComplete="street-address" />
+      </div>
+
+      <div className="grid grid-cols-2 gap-2">
+        <div className="space-y-1">
+          <label className="text-[11px] text-slate-500">City</label>
+          <input value={form.city} onChange={(e) => set('city', e.target.value)}
+            placeholder="Baton Rouge" className="input" />
+        </div>
+        <div className="space-y-1">
+          <label className="text-[11px] text-slate-500">ZIP</label>
+          <input value={form.zip} onChange={(e) => set('zip', e.target.value)}
+            placeholder="70801" className="input" maxLength={5} />
+        </div>
+      </div>
+
+      {/* Source */}
+      <div className="space-y-1">
+        <label className="text-[11px] text-slate-500">Lead Source</label>
+        <div className="grid grid-cols-3 gap-1.5">
+          {LEAD_SOURCES.map((src) => (
+            <button key={src} onClick={() => { haptic.selection(); set('source', src); }}
+              className={clsx('py-2 px-2 rounded-xl text-xs font-medium transition-colors text-center leading-snug',
+                form.source === src ? 'bg-brand-600 text-white' : 'bg-slate-800 text-slate-400 active:bg-slate-700'
+              )}>
+              {src}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Storm toggle */}
+      <button
+        onClick={() => { haptic.tap(); set('isStormLead', !form.isStormLead); }}
+        className={clsx(
+          'w-full flex items-center justify-between p-3 rounded-xl border transition-colors',
+          form.isStormLead
+            ? 'bg-purple-600/20 border-purple-500/40 text-purple-300'
+            : 'bg-slate-800/60 border-slate-700/40 text-slate-400'
+        )}
+      >
+        <div className="flex items-center gap-2">
+          <CloudArrowUpIcon className="h-4 w-4" />
+          <span className="text-sm font-medium">Storm Lead</span>
+        </div>
+        <div className={clsx(
+          'w-10 h-5 rounded-full transition-colors relative',
+          form.isStormLead ? 'bg-purple-600' : 'bg-slate-700'
+        )}>
+          <div className={clsx(
+            'absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-all',
+            form.isStormLead ? 'left-5' : 'left-0.5'
+          )} />
+        </div>
+      </button>
+
+      {/* Notes */}
+      <div className="space-y-1">
+        <label className="text-[11px] text-slate-500">Notes</label>
+        <textarea value={form.notes} onChange={(e) => set('notes', e.target.value)}
+          placeholder="Damage details, window count, homeowner concerns…"
+          rows={3} className="input resize-none" />
+      </div>
+
+      {/* Submit */}
+      <button
+        onClick={handleSubmit}
+        disabled={!isValid || saving}
+        className="btn-primary w-full flex items-center justify-center gap-2 py-3.5 disabled:opacity-40"
+      >
+        {saving
+          ? <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />Saving…</>
+          : <><UserPlusIcon className="h-5 w-5" />Create Lead</>
+        }
+      </button>
+
+      <p className="text-[10px] text-slate-600 text-center">
+        * Required fields · Lead appears on dashboard immediately
+      </p>
+    </div>
+  );
+}
+
 // ─── Guided Measurement Tool ──────────────────────────────────
 function MeasureTab({
-  enqueue, stops, activeStopId
+  enqueue,
 }: {
   enqueue: (type: any, payload: any) => void;
   stops: any[];
   activeStopId: string | null;
 }) {
-  const activeStop = stops.find((s) => s.id === activeStopId);
-  const inspectionId: string | null = activeStop?.inspections?.[0]?.id ?? null;
-
-  // Load real openings from the API for the active stop's inspection
-  const { data: openingsResp, isLoading: openingsLoading } = useQuery({
-    queryKey: ['field-openings', inspectionId],
-    queryFn: () => apiClient.openings.listByInspection(inspectionId!),
-    enabled: !!inspectionId,
-    staleTime: 2 * 60 * 1000 });
-  const OPENING_TEMPLATES = ((openingsResp as any)?.data ?? []).map(toOpeningTemplate);
-
   const [step, setStep] = useState<MeasureStep>('select-opening');
   const [selectedOpening, setSelectedOpening] = useState<{ id: string; label: string; floor: string; type: string } | null>(null);
+  const [customLabel, setCustomLabel] = useState('');
   const [widthInt, setWidthInt] = useState('');
   const [widthFrac, setWidthFrac] = useState('0');
   const [heightInt, setHeightInt] = useState('');
@@ -482,7 +667,6 @@ function MeasureTab({
     setSaved((prev) => [...prev, { label: selectedOpening.label, width: finalWidth.toFixed(3), height: finalHeight.toFixed(3) }]);
 
     const payload = {
-      openingId: selectedOpening.id,
       roomLabel: selectedOpening.label,
       finalWidth,
       finalHeight,
@@ -494,29 +678,33 @@ function MeasureTab({
 
     try {
       if (navigator.onLine) {
-        // Direct API call — POST /api/v1/measurements
         await apiClient.measurements.create(payload);
         haptic.success();
         toast.success(`Saved: ${selectedOpening.label} — ${dims}`);
       } else {
-        // Offline — queue for later sync
         await enqueue('MEASUREMENT_SAVE', payload);
         toast.success(`Saved locally: ${selectedOpening.label} — syncs when online`);
       }
     } catch (err: any) {
       console.error('[MeasureTab] save error:', err);
-      // Fallback to queue on network error
       await enqueue('MEASUREMENT_SAVE', payload);
       toast.error('Saved to queue — will sync when connection is restored');
     }
 
     setStep('select-opening');
     setSelectedOpening(null);
+    setCustomLabel('');
     setWidthInt(''); setWidthFrac('0');
     setHeightInt(''); setHeightFrac('0');
   };
 
   const stepTo = (next: MeasureStep) => { haptic.tap(); setStep(next); };
+
+  const QUICK_ROOMS = [
+    'Living Room', 'Master Bedroom', 'Bedroom 2', 'Bedroom 3',
+    'Kitchen', 'Bathroom', 'Dining Room', 'Office',
+    'Front Exterior', 'Back Exterior', 'Side Exterior', 'Garage',
+  ];
 
   return (
     <div className="space-y-4">
@@ -524,52 +712,56 @@ function MeasureTab({
 
         {step === 'select-opening' && (
           <motion.div key="select" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-3">
-            <div className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Select Opening to Measure</div>
+            <div className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Select or Name Opening</div>
 
-            {/* No inspection selected — guide the rep */}
-            {!inspectionId && (
-              <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs text-amber-300">
-                Select an appointment in the Route tab to load its inspection openings.
-              </div>
-            )}
-
-            {/* Inspection selected but no openings yet */}
-            {inspectionId && !openingsLoading && OPENING_TEMPLATES.length === 0 && (
-              <div className="p-4 rounded-xl bg-slate-800/60 border border-slate-700/30 text-xs text-slate-400">
-                No openings found for this inspection. Ask your manager to create them first, or add them from the desktop Inspection page.
-              </div>
-            )}
-
-            {openingsLoading && (
-              <div className="flex items-center justify-center py-8">
-                <div className="w-6 h-6 border-2 border-brand-500/30 border-t-brand-500 rounded-full animate-spin" />
-              </div>
-            )}
-
-            {OPENING_TEMPLATES.map((o) => {
-              const isSaved = saved.find((s) => s.label === o.label);
-              return (
-                <button key={o.id} onClick={() => { haptic.selection(); setSelectedOpening(o); stepTo('enter-width'); }}
-                  className="w-full flex items-center justify-between p-4 rounded-xl bg-slate-800 border border-slate-700/50 active:bg-slate-700 transition-colors">
-                  <div className="text-left">
-                    <div className="text-sm font-medium text-white">{o.label}</div>
-                    <div className="text-xs text-slate-500">{o.floor} · {o.type}</div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {isSaved && <div className="text-[10px] text-emerald-400 font-mono">{isSaved.width}" × {isSaved.height}"</div>}
+            {/* Quick-select room grid */}
+            <div className="grid grid-cols-2 gap-2">
+              {QUICK_ROOMS.map((room) => {
+                const isSaved = saved.find((s) => s.label === room);
+                return (
+                  <button key={room}
+                    onClick={() => { haptic.selection(); setSelectedOpening({ id: room, label: room, floor: 'Floor 1', type: 'WINDOW' }); stepTo('enter-width'); }}
+                    className="flex items-center justify-between p-3 rounded-xl bg-slate-800 border border-slate-700/50 active:bg-slate-700 transition-colors text-left">
+                    <span className="text-sm text-white truncate">{room}</span>
                     {isSaved
-                      ? <CheckCircleIcon className="h-5 w-5 text-emerald-400" />
-                      : <ChevronRightIcon className="h-4 w-4 text-slate-600" />
+                      ? <CheckCircleIcon className="h-4 w-4 text-emerald-400 flex-shrink-0" />
+                      : <ChevronRightIcon className="h-3.5 w-3.5 text-slate-600 flex-shrink-0" />
                     }
-                  </div>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Custom label */}
+            <div className="space-y-2">
+              <div className="text-xs text-slate-500">Custom room / opening label</div>
+              <div className="flex gap-2">
+                <input
+                  value={customLabel}
+                  onChange={(e) => setCustomLabel(e.target.value)}
+                  placeholder="e.g. Hallway Window 3"
+                  className="input flex-1"
+                />
+                <button
+                  disabled={!customLabel.trim()}
+                  onClick={() => { haptic.selection(); setSelectedOpening({ id: customLabel, label: customLabel, floor: 'Floor 1', type: 'WINDOW' }); stepTo('enter-width'); }}
+                  className="btn-primary px-4 disabled:opacity-40"
+                >
+                  Go
                 </button>
-              );
-            })}
+              </div>
+            </div>
+
             {saved.length > 0 && (
               <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
-                <div className="text-xs font-semibold text-emerald-400">{saved.length}/{OPENING_TEMPLATES.length} measurements recorded</div>
+                <div className="text-xs font-semibold text-emerald-400">{saved.length} measurement{saved.length > 1 ? 's' : ''} recorded this session</div>
                 <div className="text-[11px] text-emerald-600 mt-0.5">
                   {navigator.onLine ? 'Synced to server' : 'Saved locally — syncs when online'}
+                </div>
+                <div className="mt-2 space-y-1">
+                  {saved.map((s, i) => (
+                    <div key={i} className="text-[11px] text-slate-400 font-mono">{s.label}: {s.width}" × {s.height}"</div>
+                  ))}
                 </div>
               </div>
             )}
@@ -909,6 +1101,7 @@ export function MobileFieldApp() {
     { key: 'route',   icon: MapPinIcon,                label: 'Route' },
     { key: 'capture', icon: CameraIcon,                label: 'Camera' },
     { key: 'measure', icon: ClipboardDocumentListIcon, label: 'Measure' },
+    { key: 'lead',    icon: UserPlusIcon,              label: 'New Lead' },
     { key: 'pitch',   icon: SparklesIcon,              label: 'Pitch' },
     { key: 'notes',   icon: PencilIcon,                label: 'Notes' },
   ];
@@ -1057,6 +1250,7 @@ export function MobileFieldApp() {
               )}
               {activeTab === 'capture' && <CaptureTab enqueue={enqueue} />}
               {activeTab === 'measure' && <MeasureTab enqueue={enqueue} stops={TODAY_STOPS} activeStopId={activeStop} />}
+              {activeTab === 'lead' && <NewLeadTab enqueue={enqueue} />}
               {activeTab === 'pitch' && <PitchTab stops={TODAY_STOPS} activeStopId={activeStop} />}
               {activeTab === 'notes' && <NotesTab stops={TODAY_STOPS} activeStopId={activeStop} />}
             </motion.div>
