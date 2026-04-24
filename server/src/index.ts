@@ -88,11 +88,11 @@ app.get('/health', async (_req, res) => {
   let dbStatus = 'ok';
   let dbLatencyMs: number | undefined;
   try {
-    const { prisma } = await import('./shared/services/prisma');
     const t = Date.now();
     await (prisma as any).$queryRaw`SELECT 1`;
     dbLatencyMs = Date.now() - t;
-  } catch {
+  } catch (err) {
+    logger.error('Health check DB query failed:', err);
     dbStatus = 'error';
   }
 
