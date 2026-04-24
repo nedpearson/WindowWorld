@@ -25,7 +25,9 @@
   },
   "overrides": {
     "serialize-javascript": "7.0.5",
-    "@rollup/plugin-terser": "^1.0.0"
+    "@rollup/plugin-terser": "^1.0.0",
+    "fast-xml-parser": ">=5.7.0",
+    "uuid": "^14.0.0"
   },
   "engines": {
     "node": ">=18.0.0"
