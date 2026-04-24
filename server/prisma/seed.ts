@@ -457,11 +457,16 @@ async function main() {
     },
   ];
 
-  // Only create leads if none exist yet
-  const existingLeadCount = await prisma.lead.count({ where: { organizationId: org.id } });
+  // Only create leads if none exist for our demo reps
+  const demoLeadCount = await prisma.lead.count({ 
+    where: { organizationId: org.id, assignedRepId: { in: [rep1.id, rep2.id] } } 
+  });
   let createdLeads: any[] = [];
-  if (existingLeadCount > 0) {
-    createdLeads = await prisma.lead.findMany({ where: { organizationId: org.id }, orderBy: { createdAt: 'asc' }, take: 15 });
+  if (demoLeadCount > 0) {
+    createdLeads = await prisma.lead.findMany({ 
+      where: { organizationId: org.id, assignedRepId: { in: [rep1.id, rep2.id] } }, 
+      orderBy: { createdAt: 'asc' }, take: 15 
+    });
     console.log(`⏭️  Leads already seeded (${createdLeads.length}), skipping`);
   } else {
     for (const ld of leadData) {
@@ -648,6 +653,82 @@ async function main() {
     console.log(`✅ Email/Proposal templates created`);
   } else {
     console.log(`⏭️  Templates already seeded, skipping`);
+  }
+
+  // ─────────────────────────────────────────────
+  // QUOTES, PROPOSALS & INVOICES (skip if already seeded)
+  // ─────────────────────────────────────────────
+  const existingQuoteCount = await prisma.quote.count({ where: { lead: { organizationId: org.id } } });
+  if (createdLeads.length > 0 && existingQuoteCount === 0) {
+    const leadWithProposal = createdLeads[1] || createdLeads[0]; // Use Patricia Landry if available
+    
+    const quote = await prisma.quote.create({
+      data: {
+        leadId: leadWithProposal.id,
+        createdById: rep1.id,
+        status: 'accepted',
+        subtotal: 9200,
+        laborTotal: 1500,
+        total: 10700,
+        lineItems: {
+          create: [
+            { description: 'Series 2000 Double Hung Window', quantity: 10, unitPrice: 770, total: 7700 },
+            { description: 'Labor/Installation', quantity: 10, unitPrice: 150, total: 1500 }
+          ]
+        }
+      }
+    });
+
+    const proposal = await prisma.proposal.create({
+      data: {
+        leadId: leadWithProposal.id,
+        quoteId: quote.id,
+        createdById: rep1.id,
+        status: 'ACCEPTED',
+        customerName: `${leadWithProposal.firstName} ${leadWithProposal.lastName}`,
+        customerEmail: leadWithProposal.email,
+        propertyAddress: leadWithProposal.address,
+        projectSummary: 'Full home window replacement (10 windows)',
+        sentAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
+        viewedAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
+        signedAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000),
+        signatureRequired: true,
+        signedByName: `${leadWithProposal.firstName} ${leadWithProposal.lastName}`
+      }
+    });
+
+    await prisma.invoice.create({
+      data: {
+        organizationId: org.id,
+        leadId: leadWithProposal.id,
+        proposalId: proposal.id,
+        createdById: finance.id,
+        invoiceNumber: 'INV-1001',
+        grandTotal: 10700,
+        status: 'PARTIAL',
+        subtotal: 9200,
+        total: 10700,
+        depositPct: 50,
+        depositAmount: 5350,
+        depositPaid: 5350,
+        balanceDue: 5350,
+        issuedAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000),
+        dueDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
+        lineItems: {
+          create: [
+            { description: 'WindowWorld Series 2000 Project (10 Windows)', quantity: 1, unitPrice: 10700, total: 10700 }
+          ]
+        },
+        payments: {
+          create: [
+            { amount: 5350, method: 'card', isDeposit: true, paidAt: new Date(Date.now() - 12 * 60 * 60 * 1000) }
+          ]
+        }
+      }
+    });
+    console.log(`✅ Quote, Proposal, and Invoice created for ${leadWithProposal.firstName} ${leadWithProposal.lastName}`);
+  } else {
+    console.log(`⏭️  Quotes/Proposals already seeded, skipping`);
   }
 
   // ─────────────────────────────────────────────
