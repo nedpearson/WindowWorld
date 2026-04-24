@@ -228,7 +228,7 @@ export function LeadDetailPage({ isNew = false }: { isNew?: boolean }) {
 
   // Normalize API shape to what the component expects
   const rawLead = (leadResp as any)?.data || leadResp;
-  const property = rawLead?.properties?.[0] || {};
+  const property = rawLead?.properties?.[0] ? { ...rawLead.properties[0], openings: rawLead.properties[0].openings || [] } : { openings: [] };
   const lead = rawLead ? {
     ...rawLead,
     // compat shims
