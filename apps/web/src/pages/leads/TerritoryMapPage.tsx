@@ -22,100 +22,66 @@ const STATUS_COLOR_DOT: Record<string, string> = {
   NEW_LEAD: '#64748b', ATTEMPTING_CONTACT: '#f59e0b',
   LOST: '#ef4444' };
 
-// ─── SVG map component ─────────────────────────────────────────
+import { MapContainer, TileLayer, CircleMarker, Popup } from 'react-leaflet';
+import 'leaflet/dist/leaflet.css';
+
+// ─── Interactive Map component ─────────────────────────────────────────
 function SimpleLeadsMap({ leads, selected, onSelect }: {
   leads: MapLead[];
   selected: string | null;
   onSelect: (id: string) => void;
 }) {
-  // Louisiana rough bounds: lat 28.9-33.0, lng -94.0 to -88.8
-  const LAT_MIN = 28.9, LAT_MAX = 33.1, LNG_MIN = -94.1, LNG_MAX = -88.7;
-  const W = 700, H = 420;
-
-  const toX = (lng: number) => ((lng - LNG_MIN) / (LNG_MAX - LNG_MIN)) * W;
-  const toY = (lat: number) => H - ((lat - LAT_MIN) / (LAT_MAX - LAT_MIN)) * H;
-
   return (
-    <div className="relative w-full rounded-xl overflow-hidden border border-slate-700/50 bg-slate-900">
+    <div className="relative w-full rounded-xl overflow-hidden border border-slate-700/50 bg-slate-900" style={{ minHeight: 450, height: '100%' }}>
       {/* Map label */}
-      <div className="absolute top-3 left-3 z-10 bg-slate-900/80 backdrop-blur-sm px-3 py-1.5 rounded-lg border border-slate-700 text-xs text-slate-400">
+      <div className="absolute top-3 left-3 z-[1000] bg-slate-900/80 backdrop-blur-sm px-3 py-1.5 rounded-lg border border-slate-700 text-xs text-slate-400">
         Louisiana · {leads.length} leads mapped
       </div>
 
-      <svg
-        viewBox={`0 0 ${W} ${H}`}
-        className="w-full"
-        style={{ minHeight: 360 }}
+      <MapContainer 
+        center={[30.9843, -91.9623]} // Center of Louisiana
+        zoom={7} 
+        style={{ height: '100%', width: '100%', minHeight: 450 }}
+        zoomControl={true}
       >
-        {/* Background */}
-        <rect width={W} height={H} fill="#0f172a" />
+        {/* Dark theme tiles matching the UI */}
+        <TileLayer
+          url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+        />
 
-        {/* Grid lines */}
-        {Array.from({ length: 8 }).map((_, i) => (
-          <line key={`h${i}`} x1={0} y1={(i / 7) * H} x2={W} y2={(i / 7) * H}
-            stroke="rgba(148,163,184,0.05)" strokeWidth={1} />
-        ))}
-        {Array.from({ length: 10 }).map((_, i) => (
-          <line key={`v${i}`} x1={(i / 9) * W} y1={0} x2={(i / 9) * W} y2={H}
-            stroke="rgba(148,163,184,0.05)" strokeWidth={1} />
-        ))}
-
-        {/* Region labels */}
-        <text x={toX(-91.19)} y={toY(30.45)} fill="rgba(148,163,184,0.2)" fontSize="11" textAnchor="middle">Baton Rouge Metro</text>
-        <text x={toX(-91.85)} y={toY(30.22)} fill="rgba(148,163,184,0.15)" fontSize="9" textAnchor="middle">Lafayette</text>
-        <text x={toX(-90.17)} y={toY(30.0)} fill="rgba(148,163,184,0.15)" fontSize="9" textAnchor="middle">New Orleans</text>
-        <text x={toX(-90.95)} y={toY(30.49)} fill="rgba(148,163,184,0.1)" fontSize="9" textAnchor="middle">Denham Springs</text>
-
-        {/* Lead pins */}
         {leads.map((lead) => {
-          const x = toX(lead.lng);
-          const y = toY(lead.lat);
           const isSelected = selected === lead.id;
           const color = STATUS_COLOR_DOT[lead.status] || '#64748b';
           const radius = isSelected ? 10 : lead.isStorm ? 8 : 7;
 
           return (
-            <g key={lead.id} onClick={() => onSelect(lead.id)} style={{ cursor: 'pointer' }}>
-              {/* Pulse ring for storm leads */}
-              {lead.isStorm && (
-                <circle cx={x} cy={y} r={radius + 5} fill="none" stroke="#7c3aed" strokeWidth={1.5} opacity={0.4} />
-              )}
-
-              {/* Selection ring */}
-              {isSelected && (
-                <circle cx={x} cy={y} r={radius + 6} fill="none" stroke="white" strokeWidth={2} opacity={0.8} />
-              )}
-
-              {/* Main pin */}
-              <circle
-                cx={x} cy={y}
-                r={radius}
-                fill={color}
-                opacity={isSelected ? 1 : 0.85}
-                stroke={isSelected ? 'white' : 'rgba(0,0,0,0.3)'}
-                strokeWidth={isSelected ? 2 : 1}
-              />
-
-              {/* Score label on selected */}
-              {isSelected && (
-                <text cx={x} cy={y + 1} textAnchor="middle" dominantBaseline="middle" fill="white" fontSize="8" fontWeight="bold">
-                  {lead.score}
-                </text>
-              )}
-
-              {/* Lead initial on normal pins */}
-              {!isSelected && (
-                <text x={x} y={y + 1} textAnchor="middle" dominantBaseline="middle" fill="white" fontSize="7">
-                  {lead.name[0]}
-                </text>
-              )}
-            </g>
+            <CircleMarker
+              key={lead.id}
+              center={[lead.lat, lead.lng]}
+              radius={radius}
+              pathOptions={{
+                fillColor: color,
+                fillOpacity: isSelected ? 1 : 0.85,
+                color: isSelected ? 'white' : lead.isStorm ? '#7c3aed' : 'rgba(0,0,0,0.3)',
+                weight: isSelected ? 2 : lead.isStorm ? 3 : 1,
+              }}
+              eventHandlers={{
+                click: () => onSelect(lead.id),
+              }}
+            >
+              <Popup className="text-slate-800">
+                <div className="text-sm font-bold">{lead.name}</div>
+                <div className="text-xs">{lead.city}, {lead.parish}</div>
+                <div className="text-xs mt-1 font-semibold" style={{ color }}>{lead.status.replace(/_/g, ' ')}</div>
+              </Popup>
+            </CircleMarker>
           );
         })}
-      </svg>
+      </MapContainer>
 
       {/* Legend */}
-      <div className="absolute bottom-3 right-3 flex flex-col gap-1 bg-slate-900/80 backdrop-blur-sm px-3 py-2 rounded-lg border border-slate-700 text-[10px] text-slate-500">
+      <div className="absolute bottom-3 right-3 z-[1000] flex flex-col gap-1 bg-slate-900/80 backdrop-blur-sm px-3 py-2 rounded-lg border border-slate-700 text-[10px] text-slate-500">
         {[
           { color: '#10b981', label: 'Sold / Verbal' },
           { color: '#7c3aed', label: 'Proposal Sent' },
