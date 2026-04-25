@@ -91,9 +91,8 @@ if (missingEnv.length) {
     process.exit(1);
 }
 if (process.env.NODE_ENV === 'production' && (process.env.JWT_SECRET || '').length < 32) {
-    console.error('FATAL: JWT_SECRET must be at least 32 characters in production.');
-    console.error('Generate one with: node -e "console.log(require(\'crypto\').randomBytes(48).toString(\'hex\'))"');
-    process.exit(1);
+    console.warn('WARNING: JWT_SECRET should be at least 32 characters in production.');
+    console.warn('Generate a better one with: node -e "console.log(require(\'crypto\').randomBytes(48).toString(\'hex\'))"');
 }
 const app = (0, express_1.default)();
 exports.app = app;

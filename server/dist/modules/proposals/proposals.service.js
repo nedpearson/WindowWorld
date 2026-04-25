@@ -198,10 +198,10 @@ class ProposalsService {
                 expiresAt: proposal.expiresAt,
                 pdfUrl: proposal.pdfUrl,
             });
-            logger_1.logger.info(`Proposal ${(0, logger_1.sanitizeForLog)(id)} email ${result.success ? 'delivered' : 'failed'}: provider=${result.provider}`);
+            logger_1.logger.info(`Proposal ${(0, logger_1.sanitizeForLog)(id)} email ${result.success ? 'delivered' : 'failed'}: provider=${(0, logger_1.sanitizeForLog)(result.provider)}`);
         }
         else if (channel === 'email' || channel === 'both') {
-            logger_1.logger.warn(`Proposal ${(0, logger_1.sanitizeForLog)(id)}: no customer email on file for lead ${proposal.leadId}`);
+            logger_1.logger.warn(`Proposal ${(0, logger_1.sanitizeForLog)(id)}: no customer email on file for lead ${(0, logger_1.sanitizeForLog)(proposal.leadId)}`);
         }
         // SMS: send portal link via Twilio
         if (channel === 'sms' || channel === 'both') {
@@ -219,7 +219,7 @@ class ProposalsService {
                 }
             }
             else {
-                logger_1.logger.warn(`Proposal ${(0, logger_1.sanitizeForLog)(id)}: no phone on file for lead ${proposal.leadId} — SMS skipped`);
+                logger_1.logger.warn(`Proposal ${(0, logger_1.sanitizeForLog)(id)}: no phone on file for lead ${(0, logger_1.sanitizeForLog)(proposal.leadId)} — SMS skipped`);
             }
         }
         return { sent: true, channel, proposalId: id };

@@ -310,6 +310,7 @@ export async function initializeJobQueues(): Promise<void> {
   }
 
   try {
+    // @ts-ignore
     const { Queue, Worker } = await import('bullmq');
     const IORedis = (await import('ioredis')).default;
 
@@ -352,8 +353,8 @@ export async function initializeJobQueues(): Promise<void> {
     ];
 
     workers.forEach((worker) => {
-      worker.on('completed', (job) => logger.info(`[${worker.name}] Job ${job.id} completed`));
-      worker.on('failed', (job, err) => logger.error(`[${worker.name}] Job ${job?.id} failed:`, err.message));
+      worker.on('completed', (job: any) => logger.info(`[${worker.name}] Job ${job.id} completed`));
+      worker.on('failed', (job: any, err: any) => logger.error(`[${worker.name}] Job ${job?.id} failed:`, err.message));
     });
 
     queuesInitialized = true;

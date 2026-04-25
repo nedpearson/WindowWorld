@@ -318,6 +318,7 @@ async function initializeJobQueues() {
         return;
     }
     try {
+        // @ts-ignore
         const { Queue, Worker } = await Promise.resolve().then(() => __importStar(require('bullmq')));
         const IORedis = (await Promise.resolve().then(() => __importStar(require('ioredis')))).default;
         const connection = new IORedis(process.env.REDIS_URL, {
