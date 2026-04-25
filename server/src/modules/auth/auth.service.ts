@@ -1,6 +1,6 @@
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import { v4 as uuidv4 } from 'uuid';
+import crypto from 'crypto';
 import { prisma } from '../../shared/services/prisma';
 import { AppError, UnauthorizedError, NotFoundError } from '../../shared/middleware/errorHandler';
 import { logger } from '../../shared/utils/logger';
@@ -44,7 +44,7 @@ function generateTokens(payload: TokenPayload): AuthTokens {
     expiresIn: JWT_EXPIRES_IN,
   } as jwt.SignOptions);
 
-  const refreshToken = uuidv4();
+  const refreshToken = crypto.randomUUID();
   const expiresIn = 7 * 24 * 60 * 60; // 7 days in seconds
 
   return { accessToken, refreshToken, expiresIn };
@@ -190,7 +190,7 @@ export class AuthService {
         data: {
           email,
           googleId,
-          passwordHash: await bcrypt.hash(uuidv4(), 12),
+          passwordHash: await bcrypt.hash(crypto.randomUUID(), 12),
           firstName: userInfo.given_name || email.split('@')[0],
           lastName: userInfo.family_name || 'User',
           role: 'SUPER_ADMIN',

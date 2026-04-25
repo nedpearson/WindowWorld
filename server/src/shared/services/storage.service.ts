@@ -1,6 +1,6 @@
 import { S3Client, PutObjectCommand, DeleteObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
-import { v4 as uuidv4 } from 'uuid';
+import crypto from 'crypto';
 import path from 'path';
 import fs from 'fs/promises';
 import { logger, sanitizeForLog } from '../utils/logger';
@@ -39,7 +39,7 @@ export class StorageService {
     // to prevent path traversal via crafted filenames (CodeQL: js/path-injection)
     const ext = path.extname(originalName).replace(/[^a-zA-Z0-9.]/g, '').slice(0, 10);
     const safeExt = /^\.[a-zA-Z0-9]{1,8}$/.test(ext) ? ext : '';
-    const key = `uploads/${uuidv4()}${safeExt}`;
+    const key = `uploads/${crypto.randomUUID()}${safeExt}`;
 
     if (isS3Enabled && s3Client && process.env.S3_BUCKET_NAME) {
       try {
