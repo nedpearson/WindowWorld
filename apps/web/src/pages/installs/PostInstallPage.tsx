@@ -9,6 +9,7 @@ import {
 import { StarIcon as StarSolid } from '@heroicons/react/24/solid';
 import clsx from 'clsx';
 import { api } from '../../api/client';
+import { useAuthStore } from '../../store/auth.store';
 
 // ─── Types ────────────────────────────────────────────────
 type ReviewStatus = 'PENDING' | 'SENT' | 'RECEIVED' | 'DECLINED';
@@ -78,7 +79,7 @@ const REFERRAL_STATUS: Record<ReferralStatus, { label: string; badge: string }> 
   PROVIDED:   { label: 'Referral Given', badge: 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20' },
   CONVERTED:  { label: 'Converted ✓',   badge: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' } };
 
-const GOOGLE_REVIEW_URL = 'https://g.page/windowworldla/review';
+const GOOGLE_REVIEW_URL = 'https://www.google.com/search?q=Window+World+of+Baton+Rouge+Google+reviews#lrd=0x8626a72e811c750b:0x5e2cf44b611840d4,3,,,';
 
 // ─── Request Modal ─────────────────────────────────────────
 function ReviewRequestModal({ job, type, onClose, onSent }: {
@@ -200,6 +201,7 @@ function JobRow({ job, onRequestReview, onRequestReferral }: {
 
 // ─── Page ──────────────────────────────────────────
 export function PostInstallPage() {
+  const user = useAuthStore(s => s.user);
   // localStates: tracks review/referral actions on top of the server-fetched list
   const [localStates, setLocalStates] = useState<Record<string, Partial<CompletedJob>>>({});
   const [modalJob, setModalJob] = useState<CompletedJob | null>(null);
@@ -213,7 +215,10 @@ export function PostInstallPage() {
 
   const jobs: CompletedJob[] = (rawLeads || []).map((l: any) => mapLead(l, localStates));
 
-  const reps = Array.from(new Set(jobs.map(j => j.repName)));
+  const reps = Array.from(new Set([
+    ...(user ? [`${user.firstName} ${user.lastName}`] : []),
+    ...jobs.map(j => j.repName)
+  ]));
 
   const handleSent = (id: string, type: 'REVIEW' | 'REFERRAL') => {
     setLocalStates(prev => ({
