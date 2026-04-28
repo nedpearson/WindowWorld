@@ -61,7 +61,7 @@ jobs:
 
     - name: Typecheck Frontend (Web)
       working-directory: ./apps/web
-      run: npx tsc --noEmit
+      run: npm run typecheck
 
     - name: Install Playwright Browsers
       working-directory: ./apps/web
