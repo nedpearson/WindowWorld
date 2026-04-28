@@ -49,6 +49,10 @@ jobs:
       working-directory: ./server
       run: npx prisma migrate deploy
 
+    - name: Seed Database
+      working-directory: ./server
+      run: npm run seed
+
     - name: Typecheck Backend (Server)
       working-directory: ./server
       run: |
