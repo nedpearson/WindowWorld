@@ -55,9 +55,9 @@ async function main() {
     // ── Owner / Platform Admin (REAL ORG) ──────────────────────
     prisma.user.upsert({
       where: { email: 'nedpearson@gmail.com' },
-      update: { passwordHash: nedHash, role: UserRole.SUPER_ADMIN, isActive: true, organizationId: orgDemo.id },
+      update: { passwordHash: nedHash, role: UserRole.SUPER_ADMIN, isActive: true, organizationId: orgReal.id },
       create: {
-        organizationId: orgDemo.id,
+        organizationId: orgReal.id,
         email: 'nedpearson@gmail.com',
         passwordHash: nedHash,
         firstName: 'Ned',
