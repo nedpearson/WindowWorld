@@ -32,9 +32,9 @@ function SimpleLeadsMap({ leads, selected, onSelect }: {
   onSelect: (id: string) => void;
 }) {
   return (
-    <div className="relative w-full rounded-xl overflow-hidden border border-slate-700/50 bg-slate-900" style={{ minHeight: 450, height: '100%' }}>
+    <div className="relative w-full rounded-xl overflow-hidden border border-slate-300 bg-slate-100" style={{ minHeight: 450, height: '100%' }}>
       {/* Map label */}
-      <div className="absolute top-3 left-3 z-[1000] bg-slate-900/80 backdrop-blur-sm px-3 py-1.5 rounded-lg border border-slate-700 text-xs text-slate-400">
+      <div className="absolute top-3 left-3 z-[1000] bg-white/90 backdrop-blur-sm px-3 py-1.5 rounded-lg border border-slate-200 text-xs font-medium text-slate-700 shadow-sm">
         Louisiana · {leads.length} leads mapped
       </div>
 
@@ -81,7 +81,7 @@ function SimpleLeadsMap({ leads, selected, onSelect }: {
       </MapContainer>
 
       {/* Legend */}
-      <div className="absolute bottom-3 right-3 z-[1000] flex flex-col gap-1 bg-slate-900/80 backdrop-blur-sm px-3 py-2 rounded-lg border border-slate-700 text-[10px] text-slate-500">
+      <div className="absolute bottom-3 right-3 z-[1000] flex flex-col gap-1 bg-white/90 backdrop-blur-sm px-3 py-2 rounded-lg border border-slate-200 shadow-sm text-[10px] font-medium text-slate-700">
         {[
           { color: '#10b981', label: 'Sold / Verbal' },
           { color: '#7c3aed', label: 'Proposal Sent' },
@@ -93,7 +93,7 @@ function SimpleLeadsMap({ leads, selected, onSelect }: {
             {label}
           </div>
         ))}
-        <div className="mt-1 pt-1 border-t border-slate-700/50 flex items-center gap-1.5">
+        <div className="mt-1 pt-1 border-t border-slate-200 flex items-center gap-1.5">
           <div className="w-2.5 h-2.5 rounded-full bg-purple-500 ring-1 ring-purple-400/50" />
           Storm lead
         </div>
