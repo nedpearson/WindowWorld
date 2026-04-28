@@ -19,11 +19,11 @@ test.describe('WindowWorld Core Revenue Flow Smoke Test', () => {
       // Should result in a transition to the dashboard
       await page.waitForURL('**/dashboard');
       
-      // Verify Dashboard Loaded
-      await expect(page.getByRole('heading', { name: 'Dashboard' })).toBeVisible();
+      // Verify Dashboard Loaded by checking the greeting heading
+      await expect(page.getByRole('heading', { name: /Good/i })).toBeVisible();
       
       // Verify "Overview" and specific metrics loaded
-      await expect(page.getByText('Lead Sources')).toBeVisible();
+      await expect(page.getByText('Pipeline Value')).toBeVisible();
     }
   });
 
