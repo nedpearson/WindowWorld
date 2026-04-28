@@ -291,7 +291,7 @@ export class AnalyticsService {
       include: {
         assignedRep: { select: { id: true, firstName: true, lastName: true } },
         contacts: { where: { isPrimary: true }, take: 1 },
-        quote: { select: { grandTotal: true, total: true, totalWindows: true } } as any,
+        quotes: { select: { grandTotal: true, total: true, totalWindows: true } } as any,
       } as any,
       orderBy: { updatedAt: 'desc' },
       take: limit,
