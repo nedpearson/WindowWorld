@@ -3,13 +3,13 @@ import { FireIcon, TrophyIcon, StarIcon, BoltIcon } from '@heroicons/react/24/so
 import clsx from 'clsx';
 
 export function RepGamePanel() {
-  // Static demo data for gamification
+  // Real gamification data should come from API, fallback to 0s for empty state
   const stats = {
-    streakDays: 14,
-    weeklyScore: 850,
-    premiumRatio: 42,
-    responseSpeed: 'Fast',
-    rank: 'Top 10%'
+    streakDays: 0,
+    weeklyScore: 0,
+    premiumRatio: 0,
+    responseSpeed: 'N/A',
+    rank: 'Unranked'
   };
 
   return (
