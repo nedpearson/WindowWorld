@@ -6,7 +6,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.storageService = exports.StorageService = void 0;
 const client_s3_1 = require("@aws-sdk/client-s3");
 const s3_request_presigner_1 = require("@aws-sdk/s3-request-presigner");
-const uuid_1 = require("uuid");
+const crypto_1 = __importDefault(require("crypto"));
 const path_1 = __importDefault(require("path"));
 const promises_1 = __importDefault(require("fs/promises"));
 const logger_1 = require("../utils/logger");
@@ -41,7 +41,7 @@ class StorageService {
         // to prevent path traversal via crafted filenames (CodeQL: js/path-injection)
         const ext = path_1.default.extname(originalName).replace(/[^a-zA-Z0-9.]/g, '').slice(0, 10);
         const safeExt = /^\.[a-zA-Z0-9]{1,8}$/.test(ext) ? ext : '';
-        const key = `uploads/${(0, uuid_1.v4)()}${safeExt}`;
+        const key = `uploads/${crypto_1.default.randomUUID()}${safeExt}`;
         if (isS3Enabled && s3Client && process.env.S3_BUCKET_NAME) {
             try {
                 await s3Client.send(new client_s3_1.PutObjectCommand({

@@ -79,6 +79,7 @@ const notifications_routes_1 = require("./modules/notifications/notifications.ro
 const campaigns_routes_1 = require("./modules/campaigns/campaigns.routes");
 const admin_routes_1 = require("./modules/admin/admin.routes");
 const push_routes_1 = require("./modules/push/push.routes");
+const silo_ai_routes_1 = require("./modules/silo-ai/silo-ai.routes");
 // Background jobs
 const jobs_1 = require("./jobs");
 dotenv_1.default.config();
@@ -233,6 +234,7 @@ app.use(`${apiV1}/notifications`, notifications_routes_1.notificationsRouter);
 app.use(`${apiV1}/campaigns`, campaigns_routes_1.campaignsRouter);
 app.use(`${apiV1}/admin`, admin_routes_1.adminRouter);
 app.use(`${apiV1}/push`, push_routes_1.pushRouter);
+app.use(`${apiV1}/silo`, silo_ai_routes_1.siloAiRouter);
 // ── SPA — serve built React app ─────────────────────────────────────────────
 // Must come AFTER all /api/ routes so they take priority.
 // In production the frontend is built into ./public by the nixpacks build step.

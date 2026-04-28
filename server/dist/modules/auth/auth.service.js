@@ -6,7 +6,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.authService = exports.AuthService = void 0;
 const bcryptjs_1 = __importDefault(require("bcryptjs"));
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
-const uuid_1 = require("uuid");
+const crypto_1 = __importDefault(require("crypto"));
 const prisma_1 = require("../../shared/services/prisma");
 const errorHandler_1 = require("../../shared/middleware/errorHandler");
 const logger_1 = require("../../shared/utils/logger");
@@ -19,7 +19,7 @@ function generateTokens(payload) {
     const accessToken = jsonwebtoken_1.default.sign(payload, JWT_SECRET, {
         expiresIn: JWT_EXPIRES_IN,
     });
-    const refreshToken = (0, uuid_1.v4)();
+    const refreshToken = crypto_1.default.randomUUID();
     const expiresIn = 7 * 24 * 60 * 60; // 7 days in seconds
     return { accessToken, refreshToken, expiresIn };
 }
@@ -135,7 +135,7 @@ class AuthService {
                 data: {
                     email,
                     googleId,
-                    passwordHash: await bcryptjs_1.default.hash((0, uuid_1.v4)(), 12),
+                    passwordHash: await bcryptjs_1.default.hash(crypto_1.default.randomUUID(), 12),
                     firstName: userInfo.given_name || email.split('@')[0],
                     lastName: userInfo.family_name || 'User',
                     role: 'SUPER_ADMIN',

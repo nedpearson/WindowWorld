@@ -12,7 +12,7 @@ export class SiloAiService {
     // Fetch data for the rep
     const leads = await prisma.lead.findMany({
       where: { assignedRepId: repId, status: { notIn: ['SOLD', 'LOST', 'INSTALLED', 'PAID'] } },
-      include: { latestScore: true, activities: { take: 1, orderBy: { createdAt: 'desc' } } }
+      include: { leadScores: { take: 1, orderBy: { scoredAt: 'desc' } }, activities: { take: 1, orderBy: { createdAt: 'desc' } } }
     });
 
     const appointments = await prisma.appointment.findMany({

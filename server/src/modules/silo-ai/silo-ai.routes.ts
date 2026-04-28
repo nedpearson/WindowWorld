@@ -13,7 +13,7 @@ router.get('/morning-brief/:repId', auth.repOrAbove, async (req: Request, res: R
     if ((req as AuthenticatedRequest).user.id !== repId && !['MANAGER', 'ADMIN', 'OWNER', 'SALES_MANAGER'].includes((req as AuthenticatedRequest).user.role)) {
       return res.status(403).json({ success: false, message: 'Forbidden' });
     }
-    const data = await siloAiService.generateMorningBrief(repId);
+    const data = await siloAiService.generateMorningBrief(repId as string);
     res.json({ success: true, data });
   } catch (error: any) {
     logger.error('Silo AI morning-brief error:', error);
@@ -24,7 +24,7 @@ router.get('/morning-brief/:repId', auth.repOrAbove, async (req: Request, res: R
 // Phase 3: Appointment Prep
 router.get('/appointment-prep/:appointmentId', auth.repOrAbove, async (req: Request, res: Response) => {
   try {
-    const data = await siloAiService.generateAppointmentPrep(req.params.appointmentId);
+    const data = await siloAiService.generateAppointmentPrep(req.params.appointmentId as string);
     res.json({ success: true, data });
   } catch (error: any) {
     logger.error('Silo AI appointment-prep error:', error);
@@ -57,7 +57,7 @@ router.get('/live-assist', auth.repOrAbove, async (req: Request, res: Response) 
 // Phase 6: Proposal Analysis
 router.get('/proposal-analysis/:proposalId', auth.repOrAbove, async (req: Request, res: Response) => {
   try {
-    const data = await siloAiService.analyzeProposal(req.params.proposalId);
+    const data = await siloAiService.analyzeProposal(req.params.proposalId as string);
     res.json({ success: true, data });
   } catch (error: any) {
     logger.error('Silo AI proposal-analysis error:', error);
