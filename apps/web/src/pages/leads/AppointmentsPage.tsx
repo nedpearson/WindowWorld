@@ -15,6 +15,7 @@ import {
   useUpdateAppointmentStatus,
   type Appointment } from '../../api/appointments';
 import { BookAppointmentDrawer } from '../../components/scheduling/BookAppointmentDrawer';
+import { AppointmentPrepPanel } from '../../components/ai/AppointmentPrepPanel';
 
 // ─── Constants ────────────────────────────────────────────────
 const DAYS_OF_WEEK = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -357,6 +358,9 @@ function AptDetailPanel({ apt, onClose, onEdit }: {
             </div>
           )}
         </div>
+
+        {/* Silo AI Prep Panel */}
+        <AppointmentPrepPanel appointmentId={apt.id} />
 
         {/* Action Buttons */}
         <div className="flex flex-wrap gap-2 mt-4 pt-3 border-t border-slate-800">

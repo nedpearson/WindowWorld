@@ -8,6 +8,7 @@ import {
 import { BoltIcon, CheckBadgeIcon } from '@heroicons/react/24/solid';
 import clsx from 'clsx';
 import { useProposal, useGeneratePdf, useUpdateProposalStatus, useSendProposal, useCreateInvoiceFromProposal, type Proposal } from '../../api/proposals';
+import { ProposalIntelligencePanel } from '../../components/ai/ProposalIntelligencePanel';
 
 // ─── Summary helpers ──────────────────────────────────────────
 function formatCurrency(n?: number) {
@@ -464,6 +465,8 @@ export function ProposalDetailPage() {
 
         {/* RIGHT — sidebar */}
         <div className="space-y-4">
+          <ProposalIntelligencePanel proposalId={proposal.id} />
+          
           <StatusTimeline proposal={proposal} />
 
           {/* Quick actions */}

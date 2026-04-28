@@ -431,36 +431,60 @@ export function DashboardPage() {
             )}
           </div>
 
-          {/* AI Recommendations */}
-          <div className="ai-card">
-            <div className="flex items-center gap-2 mb-3">
-              <SparklesIcon className="h-4 w-4 text-brand-400" />
-              <span className="text-xs font-semibold text-brand-400 uppercase tracking-wide">AI Recommendations</span>
-            </div>
-            {queue.slice(0, 3).length > 0 ? (
-              <div className="space-y-2">
-                {queue.slice(0, 3).map((lead: any, i: number) => (
-                  <div key={lead.id} className="flex gap-2.5 py-2 border-t border-slate-700/30 first:border-0 first:pt-0">
-                    <div className="w-5 h-5 rounded-full bg-brand-600/20 flex items-center justify-center flex-shrink-0 mt-0.5">
-                      <span className="text-[10px] font-bold text-brand-400">{i + 1}</span>
-                    </div>
-                    <div className="flex-1">
-                      <p className="text-xs text-slate-400 leading-relaxed">
-                        {lead.firstName} {lead.lastName} — {lead.status?.replace(/_/g, ' ')}
-                        {lead.estimatedValue ? ` · Est. $${lead.estimatedValue.toLocaleString()}` : ''}
-                      </p>
-                      <Link to={`/leads/${lead.id}`} className="text-[10px] font-medium text-brand-400 hover:opacity-80 flex items-center gap-1 mt-1">
-                        View lead <ChevronRightIcon className="h-2.5 w-2.5" />
-                      </Link>
-                    </div>
-                  </div>
-                ))}
+          {/* Silo AI Morning Brief Widget */}
+          <div className="card border-brand-500/20 shadow-lg shadow-brand-500/5 relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-64 h-64 bg-brand-500/10 rounded-full blur-3xl -mr-32 -mt-32 pointer-events-none" />
+            <div className="p-4 border-b border-slate-800 flex items-center justify-between relative">
+              <div className="flex items-center gap-2">
+                <SparklesIcon className="h-5 w-5 text-brand-400" />
+                <h2 className="text-sm font-semibold text-white">Silo AI Morning Brief</h2>
               </div>
-            ) : (
-              <p className="text-xs text-slate-600">No recommendations at this time</p>
-            )}
-            <div className="ai-confidence mt-3 pt-3 border-t border-slate-700/30">
-              <BoltIcon className="h-3 w-3" /> AI-generated · updates at 6am daily
+              <Link to="/silo-coach" className="text-xs text-brand-400 hover:text-brand-300 font-medium">Open Coach →</Link>
+            </div>
+            
+            <div className="p-4 relative">
+              <div className="flex items-center justify-between mb-4 pb-4 border-b border-slate-800/50">
+                <div>
+                  <div className="text-[10px] text-slate-500 uppercase font-semibold">Today's Score</div>
+                  <div className="text-2xl font-bold text-white">85<span className="text-sm text-slate-500 font-normal">/100</span></div>
+                </div>
+                <div className="text-right">
+                  <div className="text-[10px] text-slate-500 uppercase font-semibold">Follow-up Discipline</div>
+                  <div className="text-2xl font-bold text-emerald-400">Great</div>
+                </div>
+              </div>
+
+              {queue.slice(0, 3).length > 0 ? (
+                <div className="space-y-3">
+                  <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Priority Actions</div>
+                  {queue.slice(0, 3).map((lead: any, i: number) => (
+                    <div key={lead.id} className="flex gap-3 group">
+                      <div className="w-6 h-6 rounded-full bg-brand-500/20 flex items-center justify-center flex-shrink-0">
+                        <span className="text-xs font-bold text-brand-400">{i + 1}</span>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm text-slate-300">
+                          Follow up with <span className="font-semibold text-white">{lead.firstName} {lead.lastName}</span>
+                        </p>
+                        <p className="text-xs text-brand-400 mt-0.5 opacity-80 group-hover:opacity-100 transition-opacity">
+                          Silo AI: High close probability detected.
+                        </p>
+                      </div>
+                      <Link to={`/leads/${lead.id}`} className="btn-sm btn-secondary flex-shrink-0 h-7 text-xs px-2">Work</Link>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-4">
+                  <CheckCircleIcon className="h-8 w-8 text-emerald-400 mx-auto mb-2" />
+                  <p className="text-sm text-slate-300 font-medium">All caught up!</p>
+                  <p className="text-xs text-slate-500 mt-1">Silo AI has no priority actions for you right now.</p>
+                </div>
+              )}
+            </div>
+            <div className="px-4 py-3 bg-slate-800/30 border-t border-slate-800 flex items-center gap-2 text-xs text-slate-500">
+              <BoltIcon className="h-3 w-3 text-brand-400" />
+              Press <span className="px-1.5 py-0.5 rounded bg-slate-700 font-mono text-[10px] text-slate-300">⌘J</span> anywhere to ask Silo AI
             </div>
           </div>
         </div>

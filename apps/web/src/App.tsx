@@ -25,6 +25,7 @@ import { SettingsPage } from './pages/settings/SettingsPage';
 // ─── Lazy-loaded (code-split) heavy pages ─────────────────
 const AnalyticsPage       = lazy(() => import('./pages/analytics/AnalyticsPage').then(m => ({ default: m.AnalyticsPage })));
 const CoachingPage        = lazy(() => import('./pages/analytics/CoachingPage').then(m => ({ default: m.CoachingPage })));
+const SiloCoachPage       = lazy(() => import('./pages/analytics/SiloCoachPage').then(m => ({ default: m.SiloCoachPage })));
 const ProductCatalogPage  = lazy(() => import('./pages/proposals/ProductCatalogPage').then(m => ({ default: m.ProductCatalogPage })));
 const AdminPage           = lazy(() => import('./pages/admin/AdminPage').then(m => ({ default: m.AdminPage })));
 const MobileFieldApp      = lazy(() => import('./pages/mobile/MobileFieldApp').then(m => ({ default: m.MobileFieldApp })));
@@ -104,8 +105,9 @@ export default function App() {
           <Route path="admin" element={<AdminPage />} />
           <Route path="settings" element={<SettingsPage />} />
 
-          {/* Analytics */}
+          {/* Analytics & Silo */}
           <Route path="analytics" element={<AnalyticsPage />} />
+          <Route path="silo-coach" element={<SiloCoachPage />} />
 
           {/* Contacts */}
           <Route path="contacts" element={<ContactsPage />} />

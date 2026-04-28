@@ -340,6 +340,15 @@ export const api = {
     getLatest: (leadId: string) => get<any>(`/lead-scores/lead/${leadId}/latest`),
     override: (leadId: string, data: any) => post(`/lead-scores/lead/${leadId}/override`, data),
   },
+
+  // Silo AI Intelligence Layer
+  silo: {
+    getMorningBrief: (repId: string) => get(`/silo/morning-brief/${repId}`),
+    getAppointmentPrep: (appointmentId: string) => get(`/silo/appointment-prep/${appointmentId}`),
+    getFollowUpEngine: () => get(`/silo/follow-up-engine`),
+    getLiveAssist: (prompt: string) => get(`/silo/live-assist`, { params: { prompt } }),
+    getProposalAnalysis: (proposalId: string) => get(`/silo/proposal-analysis/${proposalId}`)
+  }
 };
 
 // ─── Attach api namespaces directly onto the axios instance ──

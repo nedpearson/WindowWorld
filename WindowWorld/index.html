@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Window World — Operations Dashboard</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>tailwind.config={darkMode:'class',theme:{extend:{fontFamily:{sans:['Inter','system-ui','sans-serif']}}}}</script>
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>*{box-sizing:border-box}body{margin:0;font-family:'Inter',system-ui,sans-serif;background:#0B0F19;color:#F8FAFC;height:100vh;overflow:hidden}::-webkit-scrollbar{width:6px}::-webkit-scrollbar-track{background:#0B0F19}::-webkit-scrollbar-thumb{background:#1E293B;border-radius:3px}</style>
+</head>
+<body>
+  <div id="root" style="height:100vh"></div>
+  <script type="text/babel">
+    const {useState,useMemo}=React;
+
+    const TABS=[
+      {id:'dashboard',label:'Dashboard',icon:'📊'},
+      {id:'estimates',label:'Estimates',icon:'📋'},
+      {id:'orders',label:'Work Orders',icon:'🔧'},
+      {id:'products',label:'Products',icon:'🪟'},
+      {id:'customers',label:'Customers',icon:'👤'},
+      {id:'installers',label:'Installers',icon:'👷'},
+      {id:'reports',label:'Reports',icon:'📈'},
+      {id:'settings',label:'Settings',icon:'⚙️'},
+    ];
+
+    // ── Mock Data ──
+    const ESTIMATES=[
+      {id:'EST-1041',name:'Johnson Residence',date:'2024-01-15',status:'Pending',amount:'$12,400',windows:8,type:'Double Hung',rep:'Mike Torres'},
+      {id:'EST-1042',name:'Garcia Commercial',date:'2024-01-14',status:'Approved',amount:'$34,800',windows:24,type:'Casement',rep:'Sarah Lin'},
+      {id:'EST-1043',name:'Patel Home',date:'2024-01-13',status:'Follow Up',amount:'$8,900',windows:6,type:'Sliding',rep:'Mike Torres'},
+      {id:'EST-1044',name:'Williams Condo',date:'2024-01-12',status:'Approved',amount:'$5,200',windows:4,type:'Bay Window',rep:'James Reid'},
+      {id:'EST-1045',name:'Chen Renovation',date:'2024-01-11',status:'Declined',amount:'$18,600',windows:12,type:'Picture',rep:'Sarah Lin'},
+    ];
+    const ORDERS=[
+      {id:'WO-3021',name:'Martinez Residence',date:'2024-01-18',status:'Scheduled',amount:'$9,800',crew:'Team Alpha',installDate:'2024-02-05'},
+      {id:'WO-3022',name:'Thompson Office',date:'2024-01-16',status:'In Progress',amount:'$22,400',crew:'Team Bravo',installDate:'2024-01-20'},
+      {id:'WO-3023',name:'Lee Home',date:'2024-01-14',status:'Completed',amount:'$7,600',crew:'Team Alpha',installDate:'2024-01-17'},
+      {id:'WO-3024',name:'Brown Duplex',date:'2024-01-12',status:'Inspection',amount:'$14,200',crew:'Team Charlie',installDate:'2024-01-15'},
+    ];
+    const PRODUCTS=[
+      {id:'P-100',name:'SolarZone Double Hung',date:'Energy Star',status:'In Stock',amount:'$420',category:'Windows',inventory:342},
+      {id:'P-101',name:'ThermaGuard Casement',date:'Triple Pane',status:'In Stock',amount:'$580',category:'Windows',inventory:128},
+      {id:'P-102',name:'ProView Bay Window',date:'Custom Size',status:'Low Stock',amount:'$1,850',category:'Windows',inventory:14},
+      {id:'P-103',name:'SecureEntry Steel Door',date:'Impact Rated',status:'In Stock',amount:'$1,200',category:'Doors',inventory:67},
+      {id:'P-104',name:'GlidePath Patio Door',date:'12ft Opening',status:'Backordered',amount:'$2,400',category:'Doors',inventory:0},
+    ];
+    const CUSTOMERS=[
+      {id:'C-2001',name:'Robert & Linda Johnson',date:'2023-06-10',status:'VIP',amount:'$42,800',projects:4,phone:'(555) 234-5678'},
+      {id:'C-2002',name:'Apex Property Mgmt',date:'2023-09-22',status:'Commercial',amount:'$128,400',projects:8,phone:'(555) 876-5432'},
+      {id:'C-2003',name:'Maria Santos',date:'2024-01-05',status:'New',amount:'$8,900',projects:1,phone:'(555) 345-6789'},
+      {id:'C-2004',name:'David & Karen Chen',date:'2023-11-15',status:'Active',amount:'$18,600',projects:2,phone:'(555) 456-7890'},
+    ];
+    const INSTALLERS=[
+      {id:'I-01',name:'Team Alpha',date:'Mike Torres (Lead)',status:'Available',amount:'4.9★',jobs:142,cert:'Master Certified'},
+      {id:'I-02',name:'Team Bravo',date:'Sarah Lin (Lead)',status:'On Job',amount:'4.8★',jobs:118,cert:'Senior Certified'},
+      {id:'I-03',name:'Team Charlie',date:'James Reid (Lead)',status:'Available',amount:'4.7★',jobs:96,cert:'Certified'},
+    ];
+
+    function App(){
+      const [activeTab,setActiveTab]=useState('dashboard');
+      const [selectedRecord,setSelectedRecord]=useState(null);
+      const [search,setSearch]=useState('');
+
+      const statusColor=(s)=>{
+        const map={'Approved':'bg-emerald-500/10 text-emerald-400','Completed':'bg-emerald-500/10 text-emerald-400','In Stock':'bg-emerald-500/10 text-emerald-400','Available':'bg-emerald-500/10 text-emerald-400','VIP':'bg-purple-500/10 text-purple-400','Active':'bg-blue-500/10 text-blue-400','Commercial':'bg-indigo-500/10 text-indigo-400','Pending':'bg-amber-500/10 text-amber-400','Follow Up':'bg-amber-500/10 text-amber-400','Scheduled':'bg-blue-500/10 text-blue-400','In Progress':'bg-cyan-500/10 text-cyan-400','On Job':'bg-cyan-500/10 text-cyan-400','Low Stock':'bg-amber-500/10 text-amber-400','Inspection':'bg-violet-500/10 text-violet-400','New':'bg-teal-500/10 text-teal-400','Master Certified':'bg-emerald-500/10 text-emerald-400','Senior Certified':'bg-blue-500/10 text-blue-400','Certified':'bg-slate-500/10 text-slate-400'};
+        return map[s]||'bg-slate-500/10 text-slate-400';
+      };
+
+      const renderStats=(stats)=>(
+        <div className="grid grid-cols-4 gap-4 mb-6">{stats.map(s=>(
+          <div key={s.label} className="bg-[#131B2B] border border-[#1E293B] rounded-2xl p-5 hover:border-[#334155] transition-colors">
+            <div className={"text-2xl font-bold mb-1 "+s.color}>{s.value}</div>
+            <div className="text-xs text-slate-500 uppercase tracking-wider">{s.label}</div>
+            <div className="text-xs text-slate-600 mt-1">{s.sub}</div>
+          </div>
+        ))}</div>
+      );
+
+      const renderDetail=(record,fields)=>(
+        <div className="space-y-4">
+          <button onClick={()=>setSelectedRecord(null)} className="flex items-center gap-2 text-slate-400 hover:text-white text-sm transition-colors">← Back to list</button>
+          <div className="bg-[#131B2B] border border-[#1E293B] rounded-2xl p-6">
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h2 className="text-xl font-bold text-white">{record.name}</h2>
+                <p className="text-slate-400 text-sm mt-0.5">{record.id} · {record.date}</p>
+              </div>
+              <div className="flex gap-3">
+                <button className="px-4 py-2 bg-[#1E293B] hover:bg-[#263348] text-white text-sm rounded-lg transition-colors">Edit</button>
+                <button className="px-4 py-2 bg-sky-600 hover:bg-sky-500 text-white text-sm rounded-lg transition-colors">Actions ▾</button>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">{fields.map(([k,v])=>(
+              <div key={k} className="bg-[#0B0F19] rounded-xl p-4 border border-[#1E293B]">
+                <div className="text-xs text-slate-500 uppercase mb-1">{k}</div>
+                <div className="text-sm text-white font-medium">{String(v)}</div>
+              </div>
+            ))}</div>
+          </div>
+        </div>
+      );
+
+      const renderTable=(title,data,cols)=>{
+        const filtered=data.filter(r=>r.name.toLowerCase().includes(search.toLowerCase()));
+        return(
+          <div className="bg-[#131B2B] border border-[#1E293B] rounded-2xl overflow-hidden">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-[#1E293B]">
+              <h3 className="text-white font-semibold">{title}</h3>
+              <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search..." className="bg-[#0B0F19] border border-[#1E293B] rounded-lg px-3 py-2 text-sm text-white w-48 placeholder-slate-500 focus:outline-none focus:border-sky-500 transition-colors"/>
+            </div>
+            <table className="w-full text-sm">
+              <thead><tr className="border-b border-[#1E293B]">{cols.map(c=>(<th key={c} className="text-left py-3 px-4 text-xs text-slate-500 uppercase tracking-wide">{c}</th>))}</tr></thead>
+              <tbody>{filtered.map(r=>(
+                <tr key={r.id} onClick={()=>setSelectedRecord(r)} className="border-b border-[#1E293B]/50 hover:bg-[#1E293B]/40 cursor-pointer transition-colors">
+                  <td className="py-3 px-4 text-white font-medium">{r.name}</td>
+                  <td className="py-3 px-4 text-slate-400">{r.date}</td>
+                  <td className="py-3 px-4"><span className={"px-2.5 py-1 rounded-full text-xs font-medium "+statusColor(r.status)}>{r.status}</span></td>
+                  <td className="py-3 px-4 text-slate-300">{r.amount}</td>
+                </tr>
+              ))}</tbody>
+            </table>
+            {filtered.length===0&&<div className="py-8 text-center text-slate-500 text-sm">No records match your search.</div>}
+          </div>
+        );
+      };
+
+      const renderContent=()=>{
+        if(selectedRecord){
+          const r=selectedRecord;
+          switch(activeTab){
+            case 'estimates':return renderDetail(r,[['Windows',r.windows],['Window Type',r.type],['Sales Rep',r.rep],['Status',r.status],['Amount',r.amount],['Date',r.date]]);
+            case 'orders':return renderDetail(r,[['Crew',r.crew],['Install Date',r.installDate],['Status',r.status],['Amount',r.amount],['Order Date',r.date],['Order ID',r.id]]);
+            case 'products':return renderDetail(r,[['Category',r.category],['Inventory',r.inventory],['Specs',r.date],['Status',r.status],['Unit Price',r.amount],['SKU',r.id]]);
+            case 'customers':return renderDetail(r,[['Phone',r.phone],['Projects',r.projects],['Status',r.status],['Lifetime Value',r.amount],['Member Since',r.date],['ID',r.id]]);
+            case 'installers':return renderDetail(r,[['Lead',r.date],['Certification',r.cert],['Jobs Completed',r.jobs],['Rating',r.amount],['Status',r.status],['Team ID',r.id]]);
+            default:return renderDetail(r,[['ID',r.id],['Status',r.status],['Amount',r.amount],['Date',r.date]]);
+          }
+        }
+        switch(activeTab){
+          case 'dashboard':return(<div>
+            {renderStats([
+              {label:'Monthly Revenue',value:'$284,600',sub:'↑ 14% vs last month',color:'text-emerald-400'},
+              {label:'Active Estimates',value:'47',sub:'$412K pipeline',color:'text-sky-400'},
+              {label:'Installs This Week',value:'12',sub:'3 crews deployed',color:'text-purple-400'},
+              {label:'Customer Rating',value:'4.9★',sub:'142 reviews',color:'text-amber-400'},
+            ])}
+            <div className="grid grid-cols-2 gap-6">
+              <div className="bg-[#131B2B] border border-[#1E293B] rounded-2xl p-6">
+                <h3 className="text-white font-semibold mb-4">Revenue Trend</h3>
+                <div className="flex items-end gap-2 h-40">{[65,78,82,70,90,85,95,88,92,100,96,110].map((v,i)=>(
+                  <div key={i} className="flex-1 bg-sky-500/20 rounded-t-lg hover:bg-sky-500/40 transition-colors relative group" style={{height:v+'%'}}>
+                    <div className="absolute -top-6 left-1/2 -translate-x-1/2 text-[10px] text-sky-400 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">${Math.round(v*2.84)}K</div>
+                  </div>
+                ))}</div>
+                <div className="flex justify-between mt-2 text-[10px] text-slate-600">
+                  <span>Jan</span><span>Feb</span><span>Mar</span><span>Apr</span><span>May</span><span>Jun</span><span>Jul</span><span>Aug</span><span>Sep</span><span>Oct</span><span>Nov</span><span>Dec</span>
+                </div>
+              </div>
+              <div className="bg-[#131B2B] border border-[#1E293B] rounded-2xl p-6">
+                <h3 className="text-white font-semibold mb-4">Product Mix</h3>
+                <div className="space-y-3">{[
+                  {name:'Double Hung Windows',pct:42,color:'bg-sky-500'},
+                  {name:'Casement Windows',pct:24,color:'bg-emerald-500'},
+                  {name:'Entry Doors',pct:18,color:'bg-purple-500'},
+                  {name:'Patio Doors',pct:10,color:'bg-amber-500'},
+                  {name:'Bay/Bow Windows',pct:6,color:'bg-pink-500'},
+                ].map(p=>(
+                  <div key={p.name}>
+                    <div className="flex justify-between text-xs mb-1"><span className="text-slate-300">{p.name}</span><span className="text-slate-500">{p.pct}%</span></div>
+                    <div className="h-2 bg-[#0B0F19] rounded-full overflow-hidden"><div className={p.color+" h-full rounded-full transition-all"} style={{width:p.pct+'%'}}/></div>
+                  </div>
+                ))}</div>
+              </div>
+            </div>
+          </div>);
+          case 'estimates':return(<div>
+            {renderStats([
+              {label:'Open Estimates',value:'47',sub:'$412K total value',color:'text-sky-400'},
+              {label:'Conversion Rate',value:'68%',sub:'↑ 4% this quarter',color:'text-emerald-400'},
+              {label:'Avg Estimate',value:'$8,740',sub:'Per household',color:'text-purple-400'},
+              {label:'Follow Ups Due',value:'12',sub:'This week',color:'text-amber-400'},
+            ])}
+            {renderTable('Estimates Pipeline',ESTIMATES,['Customer','Date','Status','Value'])}
+          </div>);
+          case 'orders':return(<div>
+            {renderStats([
+              {label:'Active Orders',value:'23',sub:'$198K in progress',color:'text-sky-400'},
+              {label:'Scheduled',value:'8',sub:'Next 2 weeks',color:'text-blue-400'},
+              {label:'Completed MTD',value:'34',sub:'$286K revenue',color:'text-emerald-400'},
+              {label:'Avg Install Time',value:'1.8 days',sub:'Per project',color:'text-purple-400'},
+            ])}
+            {renderTable('Work Orders',ORDERS,['Project','Date','Status','Amount'])}
+          </div>);
+          case 'products':return(<div>
+            {renderStats([
+              {label:'Total SKUs',value:'148',sub:'Windows, Doors, Siding',color:'text-sky-400'},
+              {label:'In Stock',value:'126',sub:'85% availability',color:'text-emerald-400'},
+              {label:'Low Stock Alerts',value:'8',sub:'Reorder needed',color:'text-amber-400'},
+              {label:'Avg Margin',value:'42%',sub:'Across all lines',color:'text-purple-400'},
+            ])}
+            {renderTable('Product Catalog',PRODUCTS,['Product','Specs','Status','Price'])}
+          </div>);
+          case 'customers':return(<div>
+            {renderStats([
+              {label:'Total Customers',value:'2,847',sub:'↑ 12% YoY',color:'text-sky-400'},
+              {label:'Lifetime Value',value:'$18.4K',sub:'Per customer avg',color:'text-emerald-400'},
+              {label:'Referral Rate',value:'34%',sub:'Word of mouth',color:'text-purple-400'},
+              {label:'NPS Score',value:'82',sub:'Excellent',color:'text-amber-400'},
+            ])}
+            {renderTable('Customer Directory',CUSTOMERS,['Customer','Since','Status','Total Spend'])}
+          </div>);
+          case 'installers':return(<div>
+            {renderStats([
+              {label:'Active Crews',value:'3',sub:'12 installers total',color:'text-sky-400'},
+              {label:'Avg Rating',value:'4.8★',sub:'Customer reviews',color:'text-amber-400'},
+              {label:'Jobs This Month',value:'34',sub:'On track',color:'text-emerald-400'},
+              {label:'Certifications',value:'100%',sub:'All crews certified',color:'text-purple-400'},
+            ])}
+            {renderTable('Installation Teams',INSTALLERS,['Team','Lead','Status','Rating'])}
+          </div>);
+          case 'reports':return(<div>
+            {renderStats([
+              {label:'YTD Revenue',value:'$1.84M',sub:'↑ 18% vs prior year',color:'text-emerald-400'},
+              {label:'Gross Margin',value:'44.2%',sub:'Above target',color:'text-sky-400'},
+              {label:'Close Rate',value:'68%',sub:'Estimate to order',color:'text-purple-400'},
+              {label:'Avg Days to Close',value:'4.2',sub:'From estimate',color:'text-amber-400'},
+            ])}
+            <div className="grid grid-cols-2 gap-4">
+              {[{title:'Sales by Rep',items:[{n:'Mike Torres',v:'$482K'},{n:'Sarah Lin',v:'$398K'},{n:'James Reid',v:'$324K'}]},
+                {title:'Revenue by Product',items:[{n:'Windows',v:'$1.12M'},{n:'Doors',v:'$420K'},{n:'Siding',v:'$298K'}]},
+                {title:'Top Zip Codes',items:[{n:'75201 — Dallas',v:'$284K'},{n:'75202 — Uptown',v:'$198K'},{n:'75204 — Knox',v:'$142K'}]},
+                {title:'Monthly Targets',items:[{n:'Revenue',v:'92% of goal'},{n:'Installs',v:'88% of goal'},{n:'New Customers',v:'105% of goal'}]}
+              ].map(card=>(
+                <div key={card.title} className="bg-[#131B2B] border border-[#1E293B] rounded-2xl p-5">
+                  <h4 className="text-white font-semibold text-sm mb-4">{card.title}</h4>
+                  <div className="space-y-3">{card.items.map(it=>(
+                    <div key={it.n} className="flex justify-between items-center py-2 border-b border-[#1E293B]/50 last:border-0">
+                      <span className="text-slate-300 text-sm">{it.n}</span>
+                      <span className="text-white font-semibold text-sm">{it.v}</span>
+                    </div>
+                  ))}</div>
+                </div>
+              ))}
+            </div>
+          </div>);
+          case 'settings':return(<div>
+            {renderStats([
+              {label:'Users',value:'8',sub:'3 admin, 5 staff',color:'text-sky-400'},
+              {label:'Integrations',value:'4',sub:'All connected',color:'text-emerald-400'},
+              {label:'Last Backup',value:'2h ago',sub:'Automated daily',color:'text-purple-400'},
+              {label:'Uptime',value:'99.9%',sub:'Last 30 days',color:'text-amber-400'},
+            ])}
+            <div className="space-y-4">{[
+              {title:'Company Profile',desc:'Business name, address, license numbers, and branding'},
+              {title:'User Management',desc:'Add/remove team members, assign roles and permissions'},
+              {title:'Pricing & Tax',desc:'Product markup rules, tax rates by jurisdiction'},
+              {title:'Notifications',desc:'Email alerts for estimates, orders, and installations'},
+              {title:'Integrations',desc:'QuickBooks, Google Calendar, CRM, and supplier portals'},
+            ].map(s=>(
+              <div key={s.title} className="bg-[#131B2B] border border-[#1E293B] rounded-2xl p-5 flex items-center justify-between hover:border-[#334155] transition-colors cursor-pointer">
+                <div><h4 className="text-white font-semibold text-sm">{s.title}</h4><p className="text-slate-500 text-xs mt-1">{s.desc}</p></div>
+                <span className="text-slate-600 text-lg">→</span>
+              </div>
+            ))}</div>
+          </div>);
+          default:return null;
+        }
+      };
+
+      return(
+        <div className="flex h-screen bg-[#0B0F19] overflow-hidden">
+          <aside className="w-56 flex-shrink-0 bg-[#131B2B] border-r border-[#1E293B] flex flex-col overflow-y-auto">
+            <div className="p-5 border-b border-[#1E293B]">
+              <h1 className="text-lg font-bold text-white flex items-center gap-2">🪟 Window World</h1>
+              <p className="text-[10px] text-slate-500 mt-1 uppercase tracking-widest">Operations Hub</p>
+            </div>
+            <nav className="flex-1 p-3 space-y-1">{TABS.map(tab=>(
+              <button key={tab.id} onClick={()=>{setActiveTab(tab.id);setSelectedRecord(null);setSearch('');}}
+                className={"w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium whitespace-nowrap transition-all "+(activeTab===tab.id?"bg-sky-600/20 text-sky-400 border border-sky-500/30":"text-slate-400 hover:text-white hover:bg-[#1E293B]")}>
+                <span>{tab.icon}</span>{tab.label}
+              </button>
+            ))}</nav>
+            <div className="p-4 border-t border-[#1E293B]">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-full bg-sky-600/20 flex items-center justify-center text-sky-400 text-xs font-bold">WW</div>
+                <div><div className="text-xs text-white font-medium">Dallas Branch</div><div className="text-[10px] text-slate-500">License #WW-4821</div></div>
+              </div>
+            </div>
+          </aside>
+          <main className="flex-1 overflow-y-auto flex flex-col">
+            <header className="flex-shrink-0 border-b border-[#1E293B] px-8 py-5 flex items-center justify-between">
+              <h2 className="text-xl font-bold text-white">{TABS.find(t=>t.id===activeTab)?.label}</h2>
+              <div className="flex items-center gap-3">
+                <button className="px-4 py-2 bg-sky-600 hover:bg-sky-500 text-white text-sm font-semibold rounded-lg transition-colors">+ New {activeTab==='estimates'?'Estimate':activeTab==='orders'?'Order':activeTab==='customers'?'Customer':'Record'}</button>
+              </div>
+            </header>
+            <div className="flex-1 p-8">{renderContent()}</div>
+          </main>
+        </div>
+      );
+    }
+    ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+  </script>
+</body>
+</html>

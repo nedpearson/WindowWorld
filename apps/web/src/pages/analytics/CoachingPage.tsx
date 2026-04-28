@@ -319,6 +319,33 @@ export function CoachingPage() {
         ))}
       </div>
 
+      {/* Manager Intelligence */}
+      <div className="card p-5 border-brand-500/20 shadow-lg shadow-brand-500/5 bg-gradient-to-br from-brand-900/10 to-slate-900 relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-64 h-64 bg-brand-500/5 rounded-full blur-3xl -mr-32 -mt-32 pointer-events-none" />
+        <div className="flex items-center gap-2 mb-4 relative">
+          <SparklesIcon className="h-5 w-5 text-brand-400" />
+          <h2 className="text-sm font-semibold text-white">Silo AI Manager Intelligence</h2>
+          <span className="ml-2 text-[9px] bg-brand-500/20 text-brand-400 px-1.5 py-0.5 rounded-full uppercase tracking-wide border border-brand-500/30">Live</span>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 relative">
+          <div className="bg-slate-900/50 p-4 rounded-xl border border-slate-800">
+            <div className="text-[10px] text-slate-500 uppercase font-semibold mb-2 flex items-center gap-1.5"><FireIcon className="h-3 w-3 text-red-400" /> Revenue Leakage</div>
+            <div className="text-2xl font-bold text-red-400">$24.5k</div>
+            <div className="text-xs text-slate-400 mt-1 leading-relaxed">Value of high-probability stalled proposals over 7 days old.</div>
+          </div>
+          <div className="bg-slate-900/50 p-4 rounded-xl border border-slate-800">
+            <div className="text-[10px] text-slate-500 uppercase font-semibold mb-2 flex items-center gap-1.5"><ExclamationTriangleIcon className="h-3 w-3 text-amber-400" /> Coaching Alert</div>
+            <div className="text-sm font-semibold text-white">Follow-up Discipline</div>
+            <div className="text-xs text-amber-400 mt-1 leading-relaxed">2 reps missed &gt;3 priority AI follow-ups this week.</div>
+          </div>
+          <div className="bg-slate-900/50 p-4 rounded-xl border border-slate-800">
+            <div className="text-[10px] text-slate-500 uppercase font-semibold mb-2 flex items-center gap-1.5"><ChartBarIcon className="h-3 w-3 text-emerald-400" /> Margin Health</div>
+            <div className="text-sm font-semibold text-emerald-400">Healthy</div>
+            <div className="text-xs text-slate-400 mt-1 leading-relaxed">Average discount rate at 4.2% (under 5% threshold).</div>
+          </div>
+        </div>
+      </div>
+
       {/* Rep cards */}
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-5">
         {sorted.map((rep, i) => <RepCard key={rep.id} rep={rep} rank={i} />)}

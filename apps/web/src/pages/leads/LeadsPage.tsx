@@ -10,6 +10,7 @@ import { BoltIcon } from '@heroicons/react/24/solid';
 import { api } from '../../api/client';
 import { useAppStore } from '../../store/auth.store';
 import clsx from 'clsx';
+import { FollowUpEngine } from '../../components/ai/FollowUpEngine';
 
 // ─── Status config ────────────────────────────────────────────
 const STATUS_COLOR: Record<string, string> = {
@@ -182,6 +183,9 @@ export function LeadsPage() {
           Reset
         </button>
       </div>
+
+      {/* Follow Up Engine */}
+      <FollowUpEngine />
 
       {/* Table */}
       <div className="table-container">

@@ -18,6 +18,7 @@ import { GlobalSearch } from '../search/GlobalSearch';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import apiClient from '../../api/client';
 import { FieldModeQRModal } from '../FieldModeQRModal';
+import { SiloCommandBar } from '../ai/SiloCommandBar';
 
 function NotificationsDropdown({
   isOpen, onClose, notifications, unreadCount, onMarkAllRead
@@ -72,6 +73,7 @@ const navSections = [
     label: 'Overview',
     items: [
       { label: 'Dashboard',        path: '/dashboard',         icon: HomeIcon },
+      { label: 'Silo AI Coach',    path: '/silo-coach',        icon: SparklesIcon, badge: 'AI' },
       { label: 'Analytics',        path: '/analytics',         icon: ChartBarIcon },
       { label: 'Rep Coaching',     path: '/coaching',          icon: AcademicCapIcon },
     ] },
@@ -458,6 +460,7 @@ export function AppLayout() {
         </main>
       </div>
       <GlobalSearch isOpen={searchOpen} onClose={() => setSearchOpen(false)} />
+      <SiloCommandBar />
       {showFieldModal && <FieldModeQRModal onClose={() => setShowFieldModal(false)} />}
     </div>
   );
