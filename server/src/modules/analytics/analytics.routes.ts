@@ -8,7 +8,41 @@ const router = Router();
 router.get('/dashboard', auth.repOrAbove, async (req: Request, res: Response) => {
   const user = (req as AuthenticatedRequest).user;
   const days = parseInt(req.query.days as string) || 30;
-  const data = await analyticsService.getRevenueSummary(user.organizationId, days);
+  
+  const summary = await analyticsService.getRevenueSummary(user.organizationId, days);
+  const funnel = await analyticsService.getConversionFunnel(user.organizationId, days);
+  const recentWins = await analyticsService.getInstalledLeads(user.organizationId, 5);
+
+  const data = {
+    kpis: {
+      mtdRevenue: summary.revenue.totalInvoiced,
+      monthlyTarget: 75000,
+      newLeads: summary.leads.new,
+      closeRate: summary.leads.closeRate,
+      avgDealSize: summary.leads.closed > 0 ? summary.revenue.totalInvoiced / summary.leads.closed : 0,
+      proposalsSent: summary.pipeline.sentCount,
+      arOutstanding: summary.revenue.outstanding,
+    },
+    pipeline: {
+      stages: funnel.map(f => ({
+        stage: f.key,
+        label: f.label,
+        count: f.count,
+        pct: f.pct,
+        value: f.count * 4500, // Estimating $4500 per lead in funnel
+      })),
+    },
+    recentWins: recentWins.map((w: any) => ({
+      id: w.id,
+      name: `${w.firstName} ${w.lastName}`,
+      amount: w.quote?.grandTotal || w.estimatedRevenue || 0,
+      closedAt: new Date(w.updatedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+      city: w.city,
+      windows: w.quote?.totalWindows || 0,
+      rep: w.assignedRep ? `${w.assignedRep.firstName} ${w.assignedRep.lastName}` : 'Unassigned',
+    })),
+  };
+
   res.json({ success: true, data });
 });
 
