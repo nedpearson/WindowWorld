@@ -278,7 +278,10 @@ export function InstallSchedulePage() {
       {/* Jobs grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
         {isLoading ? (
-          [...Array(4)].map((_, i) => <div key={i} className="h-56 bg-slate-800/50 rounded-2xl animate-pulse" />)
+          <div className="col-span-3 py-16 text-center text-slate-500 text-sm">
+            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-brand-500 mx-auto mb-3"></div>
+            Loading schedule...
+          </div>
         ) : filtered.length === 0 ? (
           <div className="col-span-3 py-16 text-center">
             {jobs.length === 0 ? (
