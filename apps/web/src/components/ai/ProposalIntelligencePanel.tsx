@@ -5,7 +5,7 @@ import apiClient from '../../api/client';
 export function ProposalIntelligencePanel({ proposalId }: { proposalId: string }) {
   const { data: intel, isLoading } = useQuery({
     queryKey: ['silo-proposal-intel', proposalId],
-    queryFn: () => apiClient.silo.getProposalAnalysis(proposalId).then(res => res.data as any),
+    queryFn: () => (apiClient as any).silo.getProposalAnalysis(proposalId).then((res: any) => res.data as any),
     enabled: !!proposalId
   });
 

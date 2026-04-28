@@ -82,7 +82,7 @@ async function authenticateBiometric(): Promise<boolean> {
         challenge: crypto.getRandomValues(new Uint8Array(32)),
         rpId: window.location.hostname,
         allowCredentials: [
-          { type: 'public-key', id: base64ToBuffer(stored.id) },
+          { type: 'public-key', id: base64ToBuffer(stored.id) as any },
         ],
         userVerification: 'required',
         timeout: 60000,

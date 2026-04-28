@@ -8,7 +8,7 @@ import { Link } from 'react-router-dom';
 export function FollowUpEngine() {
   const { data: followUps, isLoading } = useQuery({
     queryKey: ['silo-follow-up-engine'],
-    queryFn: () => apiClient.silo.getFollowUpEngine().then(res => res.data as any)
+    queryFn: () => (apiClient as any).silo.getFollowUpEngine().then((res: any) => res.data as any)
   });
 
   if (isLoading) {

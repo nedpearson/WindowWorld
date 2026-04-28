@@ -258,7 +258,7 @@ export function CoachingPage() {
 
   const { data: repData, isLoading: loadingReps } = useQuery({
     queryKey: ['rep-performance-coaching'],
-    queryFn: () => api.analytics.repPerformance(30).then((r: any) => (r.data || []).map(mapRepToMetric)),
+    queryFn: () => api.analytics.repPerformance({ days: 30 }).then((r: any) => (r.data || []).map(mapRepToMetric)),
     staleTime: 120_000,
     enabled: isManager });
 

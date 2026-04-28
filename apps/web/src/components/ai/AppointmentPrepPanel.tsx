@@ -14,7 +14,7 @@ export function AppointmentPrepPanel({ appointmentId }: PrepPanelProps) {
 
   const { data: prepData, isLoading } = useQuery({
     queryKey: ['silo-prep', appointmentId],
-    queryFn: () => apiClient.silo.getAppointmentPrep(appointmentId).then(res => res.data as any),
+    queryFn: () => (apiClient as any).silo.getAppointmentPrep(appointmentId).then((res: any) => res.data as any),
     enabled: !!appointmentId,
   });
 

@@ -93,8 +93,8 @@ export function LeadsPage() {
     placeholderData: (prev) => prev,
     staleTime: 30_000 });
 
-  const leads: any[] = leadsResp?.data || [];
-  const meta = leadsResp?.meta || { total: 0 };
+  const leads: any[] = (leadsResp as any)?.data || [];
+  const meta = (leadsResp as any)?.meta || { total: 0 };
 
   const filtered = leads; // server-side filtered
   const toggleSort = (col: typeof sortBy) => {

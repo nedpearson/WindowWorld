@@ -13,7 +13,7 @@ export function SiloCoachPage() {
 
   const { data: brief, isLoading } = useQuery({
     queryKey: ['silo-morning-brief', user?.id],
-    queryFn: () => apiClient.silo.getMorningBrief(user?.id as string).then(res => res.data as any),
+    queryFn: () => (apiClient as any).silo.getMorningBrief(user?.id as string).then((res: any) => res.data as any),
     enabled: !!user?.id
   });
 
