@@ -300,8 +300,8 @@ export function AutomationsPage() {
   const { data: apiTemplates } = useCampaignTemplates();
   const { data: apiEnrollments, isLoading } = useCampaignEnrollments();
 
-  const templates = apiTemplates !== undefined ? apiTemplates : DEMO_TEMPLATES;
-  const enrollments = apiEnrollments !== undefined ? apiEnrollments : DEMO_ENROLLMENTS;
+  const templates = Array.isArray(apiTemplates) ? apiTemplates : DEMO_TEMPLATES;
+  const enrollments = Array.isArray(apiEnrollments) ? apiEnrollments : DEMO_ENROLLMENTS;
 
   const filtered = enrollments.filter((e) => !statusFilter || e.status === statusFilter);
 
