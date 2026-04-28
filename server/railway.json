@@ -5,7 +5,7 @@
           "buildCommand": "npx prisma generate"
     },
     "deploy": {
-          "startCommand": "npx prisma db push --accept-data-loss && npx prisma db seed && node dist/index.js",
+          "startCommand": "npx prisma migrate reset --force && node dist/index.js",
           "healthcheckPath": "/health",
           "healthcheckTimeout": 300,
           "restartPolicyType": "ON_FAILURE",
