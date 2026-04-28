@@ -13,6 +13,7 @@ jobs:
     # Define environment variables used by Prisma or tests if needed
     env:
       DATABASE_URL: "postgresql://postgres:postgres@localhost:5432/windowworld_test?schema=public"
+      JWT_SECRET: "ci-test-jwt-secret-do-not-use-in-prod"
 
     services:
       postgres:
@@ -32,10 +33,10 @@ jobs:
     steps:
     - uses: actions/checkout@v3
 
-    - name: Use Node.js 18.x
+    - name: Use Node.js 22.x
       uses: actions/setup-node@v3
       with:
-        node-version: '18.x'
+        node-version: '22.x'
         cache: 'npm'
 
     - name: Install Monorepo Dependencies
