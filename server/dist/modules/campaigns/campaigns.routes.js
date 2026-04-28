@@ -32,4 +32,10 @@ router.post('/:leadId/unenroll', auth_1.auth.repOrAbove, async (req, res) => {
     await campaigns_service_1.campaignsService.unenroll(req.params.leadId, reason);
     res.json({ success: true, message: 'Lead unenrolled from all active campaigns' });
 });
+router.post('/deploy-playbook', auth_1.auth.repOrAbove, async (req, res) => {
+    const user = req.user;
+    const { playbookId, config } = req.body;
+    const data = await campaigns_service_1.campaignsService.deployPlaybook(playbookId, config, user.id);
+    res.json({ success: true, data });
+});
 //# sourceMappingURL=campaigns.routes.js.map

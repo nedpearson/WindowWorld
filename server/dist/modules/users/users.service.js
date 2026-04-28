@@ -14,7 +14,7 @@ class UsersService {
         return prisma_1.prisma.user.findMany({
             where: {
                 organizationId,
-                ...(role && { role }),
+                ...(role === 'SALES_REP' ? { role: { in: ['SALES_REP', 'SUPER_ADMIN'] } } : (role ? { role } : {})),
                 ...(isActive !== undefined && { isActive }),
                 ...(search && {
                     OR: [
@@ -96,7 +96,7 @@ class UsersService {
         else
             startDate.setMonth(now.getMonth() - 3);
         const reps = await prisma_1.prisma.user.findMany({
-            where: { organizationId, role: { in: ['SALES_REP', 'SALES_MANAGER'] }, isActive: true },
+            where: { organizationId, role: { in: ['SALES_REP', 'SALES_MANAGER', 'SUPER_ADMIN'] }, isActive: true },
             select: {
                 id: true, firstName: true, lastName: true, avatarUrl: true, role: true,
                 assignedLeads: {

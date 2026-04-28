@@ -35,4 +35,11 @@ router.post('/:leadId/unenroll', auth.repOrAbove, async (req: Request, res: Resp
   res.json({ success: true, message: 'Lead unenrolled from all active campaigns' });
 });
 
+router.post('/deploy-playbook', auth.repOrAbove, async (req: Request, res: Response) => {
+  const user = (req as AuthenticatedRequest).user;
+  const { playbookId, config } = req.body;
+  const data = await campaignsService.deployPlaybook(playbookId, config, user.id);
+  res.json({ success: true, data });
+});
+
 export { router as campaignsRouter };

@@ -282,6 +282,7 @@ export const api = {
     enroll: (leadId: string, campaignTemplateKey: string) => post('/campaigns/enroll', { leadId, campaignTemplateKey }),
     triggerForStatus: (leadId: string, status: string) => post('/campaigns/trigger-for-status', { leadId, status }),
     unenroll: (leadId: string, reason?: string) => post(`/campaigns/${leadId}/unenroll`, { reason }),
+    deployPlaybook: (playbookId: string, config: any) => post('/campaigns/deploy-playbook', { playbookId, config }),
   },
 
   // Users

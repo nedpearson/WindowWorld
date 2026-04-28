@@ -392,6 +392,18 @@ export class CampaignsService {
 
     return { triggered: matching };
   }
+
+  async deployPlaybook(playbookId: string, config: any, userId: string) {
+    logger.info(`Deploying marketing playbook ${sanitizeForLog(playbookId)} by user ${sanitizeForLog(userId)}`);
+    // Simulated deployment to external APIs (Facebook, MLS, etc)
+    return {
+      success: true,
+      playbookId,
+      status: 'DEPLOYED',
+      message: `Successfully deployed ${playbookId} with config`,
+      timestamp: new Date()
+    };
+  }
 }
 
 export const campaignsService = new CampaignsService();

@@ -352,6 +352,13 @@ export declare class CampaignsService {
     triggerForStatus(leadId: string, status: string, enrolledById: string): Promise<{
         triggered: string[];
     }>;
+    deployPlaybook(playbookId: string, config: any, userId: string): Promise<{
+        success: boolean;
+        playbookId: string;
+        status: string;
+        message: string;
+        timestamp: Date;
+    }>;
 }
 export declare const campaignsService: CampaignsService;
 //# sourceMappingURL=campaigns.service.d.ts.map

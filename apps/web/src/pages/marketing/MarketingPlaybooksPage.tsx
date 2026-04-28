@@ -6,6 +6,7 @@ import {
   XMarkIcon, UserGroupIcon, Cog6ToothIcon
 } from '@heroicons/react/24/outline';
 import { toast } from 'sonner';
+import apiClient from '../../api/client';
 
 const PLAYBOOKS = [
   {
@@ -61,13 +62,18 @@ export function MarketingPlaybooksPage() {
 
   const activePlaybook = PLAYBOOKS.find(p => p.id === selectedPlaybook);
 
-  const handleActivate = () => {
+  const handleActivate = async () => {
+    if (!activePlaybook) return;
     setActivating(true);
-    setTimeout(() => {
-      setActivating(false);
-      toast.success(`${activePlaybook?.title} playbook activated successfully!`);
+    try {
+      await apiClient.campaigns.deployPlaybook(activePlaybook.id, { timestamp: new Date().toISOString() });
+      toast.success(`${activePlaybook.title} playbook activated successfully!`);
       setSelectedPlaybook(null);
-    }, 1500);
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Failed to deploy playbook');
+    } finally {
+      setActivating(false);
+    }
   };
 
   return (
