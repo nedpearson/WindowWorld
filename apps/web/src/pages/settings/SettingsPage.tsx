@@ -8,7 +8,7 @@ import {
   EyeIcon, EyeSlashIcon, ComputerDesktopIcon, DevicePhoneMobileIcon,
   ArrowRightOnRectangleIcon, ClockIcon, GlobeAltIcon } from '@heroicons/react/24/outline';
 import { useAuthStore } from '../../store/auth.store';
-import { useUpdateUser } from '../../api/admin';
+import { useUpdateUser, useOrgStats } from '../../api/admin';
 import apiClient from '../../api/client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
@@ -475,6 +475,7 @@ function OrganizationTab() {
 function BillingTab() {
   const user = useAuthStore((s) => s.user);
   const isAdmin = user?.role === 'SUPER_ADMIN';
+  const { data: stats } = useOrgStats({ enabled: isAdmin });
 
   if (!isAdmin) {
     return (
@@ -515,9 +516,9 @@ function BillingTab() {
       <div className="card p-5 space-y-4">
         <div className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Plan Usage</div>
         {[
-          { label: 'Team Members',    used: 1, max: 10,    unit: 'users' },
-          { label: 'Active Leads',    used: 89, max: 500,  unit: 'leads' },
-          { label: 'AI Analyses',     used: 23, max: 200,  unit: 'this month' },
+          { label: 'Team Members',    used: stats?.activeUsers || 0, max: 10,    unit: 'users' },
+          { label: 'Active Leads',    used: stats?.totalLeads || 0, max: 500,  unit: 'leads' },
+          { label: 'AI Analyses',     used: Math.min((stats?.totalLeads || 0) * 2, 200), max: 200,  unit: 'this month' },
           { label: 'Storage',         used: 1.2, max: 10,  unit: 'GB' },
         ].map((item) => (
           <div key={item.label}>

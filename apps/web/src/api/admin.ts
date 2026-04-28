@@ -144,9 +144,10 @@ export function useLeaderboard(period: 'week' | 'month' | 'quarter' = 'month') {
   });
 }
 
-export function useOrgStats() {
+export function useOrgStats(options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: ['admin', 'stats'],
+    enabled: options?.enabled,
     queryFn: async () => {
       const { data } = await apiClient.get('/admin/stats');
       return data.data as OrgStats;
