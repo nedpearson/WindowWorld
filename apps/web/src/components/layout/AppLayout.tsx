@@ -225,7 +225,10 @@ export function AppLayout() {
     return () => window.removeEventListener('keydown', handler);
   }, []);
 
-  const isActive = (path: string) => location.pathname === path || location.pathname.startsWith(path + '/');
+  const isActive = (path: string) => {
+    if (path === '/installs' && location.pathname.startsWith('/installs/post-install')) return false;
+    return location.pathname === path || location.pathname.startsWith(path + '/');
+  };
 
   return (
     <div className="flex min-h-screen bg-slate-950">
