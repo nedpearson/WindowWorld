@@ -218,18 +218,7 @@ export function LoginPage() {
 
   // ── Demo bypass ─────────────────────────────────────────────────────────
   const enterPreviewMode = () => {
-    setTokens('preview-token', 'preview-refresh');
-    setUser({
-      id: 'preview',
-      email: 'admin@windowworldla.com',
-      firstName: 'Jake',
-      lastName: 'Thibodaux',
-      role: 'SALES_MANAGER',
-      organizationId: 'org-1',
-      isActive: true,
-    } as any);
-    navigate('/dashboard');
-    toast.success('Preview mode — demo data only');
+    onSubmit({ email: 'admin@windowworldla.com', password: 'Demo@1234', rememberMe: true });
   };
 
   return (
@@ -379,7 +368,7 @@ export function LoginPage() {
               onClick={enterPreviewMode}
               className="btn-secondary w-full mt-2"
             >
-              ⚡ Preview Demo (No Backend)
+              ⚡ Preview Demo
             </button>
           </form>
 
