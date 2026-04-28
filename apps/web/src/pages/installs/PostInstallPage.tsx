@@ -226,8 +226,11 @@ export function PostInstallPage() {
   const filtered = filterRep ? jobs.filter(j => j.repName === filterRep) : jobs;
 
   if (isLoading) return (
-    <div className="p-6 space-y-3">
-      {[...Array(4)].map((_, i) => <div key={i} className="h-16 bg-slate-800 rounded-xl animate-pulse" />)}
+    <div className="p-6 h-[50vh] flex items-center justify-center">
+      <div className="text-center text-slate-500 text-sm">
+        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-brand-500 mx-auto mb-3"></div>
+        Loading reviews...
+      </div>
     </div>
   );
 

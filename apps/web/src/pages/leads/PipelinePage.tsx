@@ -218,9 +218,7 @@ export function PipelinePage() {
                 {/* Cards */}
                 <div className="flex-1 overflow-y-auto space-y-2 pb-4 no-scrollbar">
                   {isLoading
-                    ? [...Array(2)].map((_, i) => (
-                        <div key={i} className="h-24 bg-slate-800 rounded-xl animate-pulse" />
-                      ))
+                    ? <div className="flex justify-center py-4"><div className="animate-spin rounded-full h-4 w-4 border-b-2 border-brand-500"></div></div>
                     : leads.map((lead) => (
                         <LeadCard
                           key={lead.id}
