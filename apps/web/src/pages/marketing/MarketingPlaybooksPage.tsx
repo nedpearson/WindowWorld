@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   MegaphoneIcon, MapPinIcon, FireIcon, HomeModernIcon, 
   ArrowPathRoundedSquareIcon, PlayIcon, CheckCircleIcon,
-  XMarkIcon, UserGroupIcon, Cog6ToothIcon
+  XMarkIcon, UserGroupIcon, Cog6ToothIcon, BuildingOfficeIcon
 } from '@heroicons/react/24/outline';
 import { toast } from 'sonner';
 import apiClient from '../../api/client';
@@ -53,6 +53,15 @@ const PLAYBOOKS = [
     color: 'from-slate-600/20 to-slate-800/10 border-slate-500/30 text-slate-300',
     stats: { active: 0, generated: 0 },
     inputs: ['Lead Age (Months)', 'Lost Reason', 'New Incentive Offer'],
+  },
+  {
+    id: 'commercial-multi-family',
+    title: 'Multi-Family CapEx Turnaround',
+    description: 'Target Baton Rouge apartment complex owners and property managers looking to increase property value and reduce maintenance overhead via bulk window replacements.',
+    icon: BuildingOfficeIcon,
+    color: 'from-teal-600/20 to-teal-800/10 border-teal-500/30 text-teal-400',
+    stats: { active: 1, generated: 12 },
+    inputs: ['Property Management Group', 'Min Unit Count', 'CapEx ROI Template'],
   }
 ];
 
