@@ -48,15 +48,17 @@ function ScoreRing({ score, size = 48 }: { score: number; size?: number }) {
 }
 
 // ── Daily Trend Signals ───────────────────────────────────────
-function DailyTrendSignals() {
+function DailyTrendSignals({ hasLeads }: { hasLeads: boolean }) {
   const [expanded, setExpanded] = useState(true);
+
+  if (!hasLeads) return null; // Hide signals if there is no data to analyze
 
   return (
     <div className="card p-5 bg-gradient-to-br from-slate-800 to-slate-900 border-brand-500/20 mb-6">
       <div className="flex justify-between items-center cursor-pointer" onClick={() => setExpanded(!expanded)}>
         <div className="flex items-center gap-2">
           <ChartBarIcon className="h-5 w-5 text-brand-400" />
-          <h2 className="text-sm font-bold text-white uppercase tracking-wide">Daily Trend Signals: Baton Rouge Area</h2>
+          <h2 className="text-sm font-bold text-white uppercase tracking-wide">Daily Trend Signals: Local Area</h2>
         </div>
         <ChevronDownIcon className={clsx('h-5 w-5 text-slate-500 transition-transform', expanded && 'rotate-180')} />
       </div>
@@ -72,7 +74,7 @@ function DailyTrendSignals() {
                   <span className="text-xs font-semibold text-purple-400 uppercase tracking-wide">Weather Alerts</span>
                 </div>
                 <p className="text-xs text-slate-300 leading-relaxed">
-                  Recent hail reports in Prairieville & Gonzales area. Expect an 18% spike in search volume for "window damage repair" over the next 48 hours.
+                  Recent hail reports in the area. Expect a slight spike in search volume for "window damage repair" over the next 48 hours.
                 </p>
               </div>
 
@@ -82,7 +84,7 @@ function DailyTrendSignals() {
                   <span className="text-xs font-semibold text-amber-400 uppercase tracking-wide">Homeowner Shifts</span>
                 </div>
                 <p className="text-xs text-slate-300 leading-relaxed">
-                  High volume of home refinancing inquiries in Ascencion Parish. Homeowners are accessing equity specifically for exterior remodels.
+                  High volume of home refinancing inquiries locally. Homeowners are accessing equity specifically for exterior remodels.
                 </p>
               </div>
 
@@ -92,17 +94,17 @@ function DailyTrendSignals() {
                   <span className="text-xs font-semibold text-emerald-400 uppercase tracking-wide">Competitor Weakness</span>
                 </div>
                 <p className="text-xs text-slate-300 leading-relaxed">
-                  "ReliaBilt" reviews dropping on local Google pages due to install delays. Heavy opportunity to pitch our "Guaranteed Timeline" to comparison shoppers.
+                  Competitor reviews dropping on local Google pages due to install delays. Pitch our "Guaranteed Timeline".
                 </p>
               </div>
 
               <div className="bg-brand-500/10 rounded-xl p-4 border border-brand-500/20">
                 <div className="flex items-center gap-1.5 mb-2">
                   <SparklesIcon className="h-4 w-4 text-brand-400" />
-                  <span className="text-xs font-semibold text-brand-400 uppercase tracking-wide">Marketing Angle (24h)</span>
+                  <span className="text-xs font-semibold text-brand-400 uppercase tracking-wide">Marketing Angle</span>
                 </div>
                 <p className="text-xs text-slate-300 leading-relaxed font-medium">
-                  "Did the last storm leave micro-cracks? Get a free 21-point Window World inspection." Focus ad-spend on the 70769 zip code.
+                  "Did the last storm leave micro-cracks? Get a free 21-point Window World inspection." Focus ad-spend on local zip codes.
                 </p>
               </div>
 
@@ -192,7 +194,7 @@ export function LeadIntelligencePage() {
         </div>
       </div>
 
-      <DailyTrendSignals />
+      <DailyTrendSignals hasLeads={leads.length > 0} />
 
       {/* Category tabs */}
       <div className="flex items-center gap-2 flex-wrap mb-4">

@@ -64,17 +64,26 @@ Return ONLY valid JSON:
     // and we'll implement the real LLM call if the user wants to spend tokens on it.
     
     // I will modify ai.service.ts to export the provider or add a generic askSilo method.
+    const moneyLikelyThisWeek = proposals.reduce((acc, p) => acc + (p.quote?.total || 0), 0) * 0.4;
+    const hasData = leads.length > 0 || appointments.length > 0 || proposals.length > 0;
+
     return {
       bestLeadsToWork: leads.slice(0, 3).map(l => ({ id: l.id, name: `${l.firstName} ${l.lastName}`, reason: "High intent score" })),
       hottestProposals: proposals.slice(0, 2).map(p => ({ id: p.id, name: `${p.lead.firstName} ${p.lead.lastName}`, value: p.quote?.total || 0, action: "Call to close" })),
       overdueFollowUps: leads.filter(l => !l.lastContactedAt).slice(0, 2).map(l => ({ id: l.id, name: `${l.firstName} ${l.lastName}`, daysOverdue: 3 })),
       dealsAtRisk: [],
-      moneyLikelyThisWeek: 15000,
+      moneyLikelyThisWeek: hasData ? moneyLikelyThisWeek : 0,
       fastestWins: [],
       highestTicketOpportunities: [],
-      dailyActionPlan: ["Call John Doe", "Send proposal to Jane Smith", "Prep for 2pm appointment"],
-      scores: {
+      dailyActionPlan: hasData ? [
+        ...(appointments.length > 0 ? [`Prep for ${appointments.length} appointment(s) today`] : []),
+        ...(proposals.length > 0 ? [`Follow up on ${proposals.length} active proposal(s)`] : []),
+        ...(leads.length > 0 ? [`Call top ${Math.min(leads.length, 3)} leads`] : []),
+      ] : ['Add your first lead', 'Explore the product catalog'],
+      scores: hasData ? {
         todayScore: 85, pipelineScore: 90, closingMomentum: 75, followUpDiscipline: 60, revenuePace: 80, appointmentReadiness: 95
+      } : {
+        todayScore: 0, pipelineScore: 0, closingMomentum: 0, followUpDiscipline: 0, revenuePace: 0, appointmentReadiness: 0
       }
     };
   }
