@@ -7,6 +7,7 @@ import { LoginPage } from './pages/auth/LoginPage';
 import { DashboardPage } from './pages/dashboard/DashboardPage';
 import { LeadsPage } from './pages/leads/LeadsPage';
 import { LeadDetailPage } from './pages/leads/LeadDetailPage';
+import { NewLeadPage } from './pages/leads/NewLeadPage';
 import { LeadIntelligencePage } from './pages/leads/LeadIntelligencePage';
 import { PipelinePage } from './pages/leads/PipelinePage';
 import { TerritoryMapPage } from './pages/leads/TerritoryMapPage';
@@ -80,7 +81,7 @@ export default function App() {
 
           {/* Leads */}
           <Route path="leads" element={<LeadsPage />} />
-          <Route path="leads/new" element={<LeadDetailPage isNew />} />
+          <Route path="leads/new" element={<NewLeadPage />} />
           <Route path="leads/:id" element={<LeadDetailPage />} />
           <Route path="lead-intelligence" element={<LeadIntelligencePage />} />
           <Route path="pipeline" element={<PipelinePage />} />
