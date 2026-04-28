@@ -8,7 +8,7 @@ import {
   XMarkIcon, BoltIcon, CloudIcon,
   ExclamationTriangleIcon, MagnifyingGlassIcon, BellIcon,
   ArrowRightOnRectangleIcon, BuildingStorefrontIcon, ClipboardDocumentListIcon, MapIcon, ShieldCheckIcon,
-  UserGroupIcon, WrenchScrewdriverIcon, StarIcon, AcademicCapIcon,
+  UserGroupIcon, WrenchScrewdriverIcon, StarIcon, AcademicCapIcon, MegaphoneIcon,
   ArrowUpTrayIcon, CurrencyDollarIcon, QrCodeIcon, Bars3Icon, SparklesIcon } from '@heroicons/react/24/outline';
 import { BoltIcon as BoltSolid} from '@heroicons/react/24/solid';
 import clsx from 'clsx';
@@ -82,6 +82,7 @@ const navSections = [
     items: [
       { label: 'Lead Intelligence', path: '/lead-intelligence', icon: BeakerIcon },
       { label: 'All Leads',         path: '/leads',             icon: UsersIcon },
+      { label: 'Marketing Playbooks',path: '/playbooks',        icon: MegaphoneIcon },
       { label: 'Contacts',          path: '/contacts',          icon: UserGroupIcon },
       { label: 'CSV Import',        path: '/leads/import',      icon: ArrowUpTrayIcon },
       { label: 'Pipeline',          path: '/pipeline',          icon: BuildingStorefrontIcon },

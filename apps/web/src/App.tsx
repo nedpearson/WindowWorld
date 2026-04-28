@@ -12,6 +12,7 @@ import { PipelinePage } from './pages/leads/PipelinePage';
 import { TerritoryMapPage } from './pages/leads/TerritoryMapPage';
 import { AppointmentsPage } from './pages/leads/AppointmentsPage';
 import { AutomationsPage } from './pages/leads/AutomationsPage';
+import { MarketingPlaybooksPage } from './pages/marketing/MarketingPlaybooksPage';
 import { InspectionPage } from './pages/inspections/InspectionPage';
 import { MeasurementPage } from './pages/inspections/MeasurementPage';
 import { ProposalsPage } from './pages/proposals/ProposalsPage';
@@ -85,6 +86,7 @@ export default function App() {
           <Route path="pipeline" element={<PipelinePage />} />
           <Route path="map" element={<TerritoryMapPage />} />
           <Route path="appointments" element={<AppointmentsPage />} />
+          <Route path="playbooks" element={<MarketingPlaybooksPage />} />
           <Route path="automations" element={<AutomationsPage />} />
 
           {/* Inspections */}
