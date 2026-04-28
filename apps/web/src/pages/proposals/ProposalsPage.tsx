@@ -79,7 +79,7 @@ export function ProposalsPage() {
   const statusMutation = useUpdateProposalStatus();
 
   // Use API data if available, else demo
-  const proposals: Proposal[] = apiData?.data?.length ? apiData.data : DEMO_PROPOSALS;
+  const proposals: Proposal[] = apiData?.data !== undefined ? apiData.data : DEMO_PROPOSALS;
 
   const filtered = proposals.filter((p) => {
     const name = p.lead ? `${p.lead.firstName} ${p.lead.lastName}` : '';

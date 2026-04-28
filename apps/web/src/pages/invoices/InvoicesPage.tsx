@@ -276,7 +276,7 @@ export function InvoicesPage() {
     status: statusFilter || undefined,
     overdueOnly: overdueOnly || undefined });
 
-  const invoices: Invoice[] = apiData?.data?.length ? apiData.data : DEMO_INVOICES;
+  const invoices: Invoice[] = apiData?.data !== undefined ? apiData.data : DEMO_INVOICES;
 
   const filtered = invoices.filter((inv) => {
     const q = search.toLowerCase();
