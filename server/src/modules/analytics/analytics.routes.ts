@@ -35,10 +35,10 @@ router.get('/dashboard', auth.repOrAbove, async (req: Request, res: Response) =>
     recentWins: recentWins.map((w: any) => ({
       id: w.id,
       name: `${w.firstName} ${w.lastName}`,
-      amount: w.quotes?.[0]?.grandTotal || w.estimatedRevenue || 0,
+      amount: w.quotes?.[0]?.totalCost || w.estimatedRevenue || 0,
       closedAt: new Date(w.updatedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
       city: w.city,
-      windows: w.quotes?.[0]?.totalWindows || 0,
+      windows: 0, // removed from schema
       rep: w.assignedRep ? `${w.assignedRep.firstName} ${w.assignedRep.lastName}` : 'Unassigned',
     })),
   };
