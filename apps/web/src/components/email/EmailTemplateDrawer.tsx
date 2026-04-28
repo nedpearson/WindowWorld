@@ -67,7 +67,7 @@ const EMAIL_TEMPLATES: EmailTemplate[] = [
   {
     id: 'fin1', category: 'Financing', name: 'Financing Breakdown',
     subject: 'WindowWorld Financing Options — {{firstName}}',
-    body: `Hi {{firstName}},\n\nI wanted to break down the financing options we have available so you can choose what works best for your budget:\n\n🟢 18-Month Same-as-Cash (0% Interest)\n   → ${{monthly18}}/month — no interest if paid in full within 18 months\n\n🔵 36-Month at 6.9%\n   → ${{monthly36}}/month — great for budget flexibility\n\n🔵 60-Month at 9.9%\n   → ${{monthly60}}/month — lowest monthly payment option\n\nFor context, new windows typically reduce energy bills by $35–45/month, which offsets a meaningful portion of your payment.\n\nWould love to get on a quick call to go over whichever option makes the most sense for you.\n\n{{repName}} | {{repPhone}}`,
+    body: 'Hi {{firstName}},\\n\\nI wanted to break down the financing options we have available so you can choose what works best for your budget:\\n\\n🟢 18-Month Same-as-Cash (0% Interest)\\n   → ${{monthly18}}/month — no interest if paid in full within 18 months\\n\\n🔵 36-Month at 6.9%\\n   → ${{monthly36}}/month — great for budget flexibility\\n\\n🔵 60-Month at 9.9%\\n   → ${{monthly60}}/month — lowest monthly payment option\\n\\nFor context, new windows typically reduce energy bills by $35–45/month, which offsets a meaningful portion of your payment.\\n\\nWould love to get on a quick call to go over whichever option makes the most sense for you.\\n\\n{{repName}} | {{repPhone}}',
     tags: ['financing', 'payment'],
   },
   {

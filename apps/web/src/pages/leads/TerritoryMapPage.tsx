@@ -119,7 +119,7 @@ export function TerritoryMapPage() {
           name: `${l.firstName} ${l.lastName}`,
           address: l.address ?? '',
           city: l.city ?? '',
-          status: l.status,
+          status: l.status || 'NEW_LEAD',
           score: l.aiScore ?? l.score ?? 50,
           urgency: l.urgency ?? 50,
           isStorm: l.isStormLead ?? false,

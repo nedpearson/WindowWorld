@@ -9,7 +9,7 @@ import {
   ExclamationTriangleIcon, MagnifyingGlassIcon, BellIcon,
   ArrowRightOnRectangleIcon, BuildingStorefrontIcon, ClipboardDocumentListIcon, MapIcon, ShieldCheckIcon,
   UserGroupIcon, WrenchScrewdriverIcon, StarIcon, AcademicCapIcon,
-  ArrowUpTrayIcon, CurrencyDollarIcon, QrCodeIcon, Bars3Icon } from '@heroicons/react/24/outline';
+  ArrowUpTrayIcon, CurrencyDollarIcon, QrCodeIcon, Bars3Icon, SparklesIcon } from '@heroicons/react/24/outline';
 import { BoltIcon as BoltSolid} from '@heroicons/react/24/solid';
 import clsx from 'clsx';
 import { io, Socket } from 'socket.io-client';

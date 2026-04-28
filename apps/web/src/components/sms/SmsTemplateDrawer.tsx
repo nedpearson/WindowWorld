@@ -44,7 +44,7 @@ const SMS_TEMPLATES: SmsTemplate[] = [
   { id: 't15', category: 'No Answer', label: 'Last attempt', tags: ['no-answer', 'final'], body: `Hi {{firstName}}, this will be my last outreach so I don't bother you. If you'd like a free window estimate, I'm here whenever you're ready. No pressure — take care! — {{repName}} · WindowWorld` },
 
   // Financing
-  { id: 't16', category: 'Financing', label: 'Monthly payment framing', tags: ['financing'], body: `Hi {{firstName}}, quick note — your quote works out to about ${{monthly}}/month on our 18-month same-as-cash plan. That's less than most car payments! Want me to send over the financing details? — {{repName}}` },
+  { id: 't16', category: 'Financing', label: 'Monthly payment framing', tags: ['financing'], body: 'Hi {{firstName}}, quick note — your quote works out to about ${{monthly}}/month on our 18-month same-as-cash plan. That\'s less than most car payments! Want me to send over the financing details? — {{repName}}' },
   { id: 't17', category: 'Financing', label: 'Same-as-cash reminder', tags: ['financing', 'urgent'], body: `Hi {{firstName}}, just a reminder — our 0% interest financing rates are locked for {{daysLeft}} more days. After that, rates adjust. Want to lock in before then? Happy to set it up quickly. — {{repName}}` },
 ];
 
