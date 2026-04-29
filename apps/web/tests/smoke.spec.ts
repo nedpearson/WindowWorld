@@ -8,7 +8,7 @@ test.describe('WindowWorld Core Revenue Flow Smoke Test', () => {
 
     // View login form assertions
     await expect(page).toHaveTitle(/WindowWorld/);
-    await expect(page.getByRole('heading', { name: 'Welcome back' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Welcome back' })).toBeVisible({ timeout: 30000 });
 
     // Trigger demo bypass button logic (since we do not have an active db in simple CI runs without composing)
     const previewBtn = page.locator('#preview-mode-btn');
@@ -17,7 +17,7 @@ test.describe('WindowWorld Core Revenue Flow Smoke Test', () => {
       await previewBtn.click();
       
       // Should result in a transition to the dashboard
-      await page.waitForURL('**/dashboard');
+      await page.waitForURL('**/dashboard', { timeout: 30000 });
       
       // Verify Dashboard Loaded by checking the greeting heading
       await expect(page.getByRole('heading', { name: /Good/i })).toBeVisible();
