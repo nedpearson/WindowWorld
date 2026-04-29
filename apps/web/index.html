@@ -56,6 +56,19 @@
     </script>
   </head>
   <body>
+    <script>
+      // Automatically unregister service workers and clear caches in local development
+      if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+        if ('serviceWorker' in navigator) {
+          navigator.serviceWorker.getRegistrations().then(function(r) {
+            r.forEach(function(sw) { sw.unregister(); });
+          });
+          caches.keys().then(function(names) {
+            for (let name of names) caches.delete(name);
+          });
+        }
+      }
+    </script>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
