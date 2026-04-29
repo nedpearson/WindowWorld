@@ -26,7 +26,6 @@ import { SettingsPage } from './pages/settings/SettingsPage';
 
 // ─── Lazy-loaded (code-split) heavy pages ─────────────────
 const AnalyticsPage       = lazy(() => import('./pages/analytics/AnalyticsPage').then(m => ({ default: m.AnalyticsPage })));
-const CoachingPage        = lazy(() => import('./pages/analytics/CoachingPage').then(m => ({ default: m.CoachingPage })));
 const SiloCoachPage       = lazy(() => import('./pages/analytics/SiloCoachPage').then(m => ({ default: m.SiloCoachPage })));
 const ProductCatalogPage  = lazy(() => import('./pages/proposals/ProductCatalogPage').then(m => ({ default: m.ProductCatalogPage })));
 const AdminPage           = lazy(() => import('./pages/admin/AdminPage').then(m => ({ default: m.AdminPage })));
@@ -122,8 +121,8 @@ export default function App() {
           <Route path="installs" element={<InstallSchedulePage />} />
           <Route path="installs/post-install" element={<PostInstallPage />} />
 
-          {/* Coaching dashboard — manager only (guarded in component) */}
-          <Route path="coaching" element={<CoachingPage />} />
+          {/* /coaching now redirects to Silo AI Coach */}
+          <Route path="coaching" element={<Navigate to="/silo-coach" replace />} />
 
           {/* Quick Quote */}
           <Route path="quick-quote" element={<QuickQuotePage />} />

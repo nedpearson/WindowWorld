@@ -8,7 +8,7 @@ import {
   XMarkIcon, BoltIcon, CloudIcon,
   ExclamationTriangleIcon, MagnifyingGlassIcon, BellIcon,
   ArrowRightOnRectangleIcon, BuildingStorefrontIcon, ClipboardDocumentListIcon, MapIcon, ShieldCheckIcon,
-  UserGroupIcon, WrenchScrewdriverIcon, StarIcon, AcademicCapIcon, MegaphoneIcon,
+  UserGroupIcon, WrenchScrewdriverIcon, StarIcon, MegaphoneIcon,
   ArrowUpTrayIcon, CurrencyDollarIcon, QrCodeIcon, Bars3Icon, SparklesIcon } from '@heroicons/react/24/outline';
 import { BoltIcon as BoltSolid} from '@heroicons/react/24/solid';
 import clsx from 'clsx';
@@ -75,7 +75,6 @@ const navSections = [
       { label: 'Dashboard',        path: '/dashboard',         icon: HomeIcon },
       { label: 'Silo AI Coach',    path: '/silo-coach',        icon: SparklesIcon, badge: 'AI' },
       { label: 'Analytics',        path: '/analytics',         icon: ChartBarIcon },
-      { label: 'Rep Coaching',     path: '/coaching',          icon: AcademicCapIcon },
     ] },
   {
     label: 'Leads & Sales',
