@@ -662,29 +662,90 @@ async function main() {
 
 
   // ─────────────────────────────────────────────
-  // APPOINTMENTS (skip if already seeded)
+  // APPOINTMENTS — idempotent, rich demo data
   // ─────────────────────────────────────────────
   const existingApptCount = await prisma.appointment.count();
-  if (createdLeads.length > 0 && existingApptCount === 0) {
-    const appointmentLead = createdLeads[0];
-    await prisma.appointment.create({
-      data: {
-        leadId: appointmentLead.id,
-        createdById: rep1.id,
-        title: 'Initial Window Consultation',
-        type: 'initial-consult',
-        status: 'CONFIRMED',
-        scheduledAt: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000),
-        duration: 90,
-        address: appointmentLead.address!,
-        lat: appointmentLead.lat,
-        lng: appointmentLead.lng,
-        notes: 'Homeowner confirmed availability. Has 10 windows, interested in full replacement.',
-      },
+  if (existingApptCount === 0) {
+    // Fetch all org leads so we can link appointments even on a re-seed
+    const allOrgLeads = await prisma.lead.findMany({
+      where: { organizationId: orgReal.id },
+      select: { id: true, firstName: true, lastName: true, address: true, lat: true, lng: true, phone: true },
     });
-    console.log(`✅ Appointment created`);
+
+    // Helper: date relative to now
+    const d = (daysOffset: number, hour: number, min = 0) => {
+      const dt = new Date();
+      dt.setHours(hour, min, 0, 0);
+      dt.setDate(dt.getDate() + daysOffset);
+      return dt;
+    };
+
+    // Pin leads by index for deterministic appointments
+    const L = (i: number) => allOrgLeads[i % allOrgLeads.length];
+
+    const apptDefs = [
+      // ── TODAY (visible in Route view + today stats) ──────────────
+      { lead: L(0), title: 'Initial Window Consultation', type: 'initial-consult', status: 'CONFIRMED',  scheduledAt: d(0, 9),  duration: 90,  notes: 'Homeowner confirmed. Interested in full window replacement — 12 openings.' },
+      { lead: L(1), title: 'Follow-Up on Proposal',      type: 'follow-up',       status: 'SCHEDULED',  scheduledAt: d(0, 11), duration: 60,  notes: 'Sent proposal last week. Husband wants to review pricing one more time.' },
+      { lead: L(2), title: 'Field Measurement Visit',    type: 'measurement',     status: 'CONFIRMED',  scheduledAt: d(0, 14), duration: 75,  notes: 'All windows need to be measured — estimate 10 openings.' },
+
+      // ── TOMORROW ────────────────────────────────────────────────
+      { lead: L(3), title: 'Initial Consultation',       type: 'initial-consult', status: 'SCHEDULED',  scheduledAt: d(1, 10), duration: 90 },
+      { lead: L(4), title: 'Proposal Presentation',      type: 'proposal',        status: 'CONFIRMED',  scheduledAt: d(1, 13), duration: 60,  notes: 'Presenting 3-option proposal. Upsell Series 4000 on primary openings.' },
+      { lead: L(5), title: 'Field Measurement',          type: 'measurement',     status: 'SCHEDULED',  scheduledAt: d(1, 15), duration: 75 },
+
+      // ── DAY AFTER TOMORROW ───────────────────────────────────────
+      { lead: L(6), title: 'Contract Signing',           type: 'close',           status: 'CONFIRMED',  scheduledAt: d(2, 10), duration: 60,  notes: 'Ready to sign. Financing approved through GreenSky.' },
+      { lead: L(7), title: 'Follow-Up Call + Visit',     type: 'follow-up',       status: 'SCHEDULED',  scheduledAt: d(2, 14), duration: 45 },
+
+      // ── LATER THIS WEEK ──────────────────────────────────────────
+      { lead: L(8),  title: 'Initial Consultation',      type: 'initial-consult', status: 'SCHEDULED',  scheduledAt: d(3, 9),  duration: 90 },
+      { lead: L(9),  title: 'Proposal Review',           type: 'proposal',        status: 'SCHEDULED',  scheduledAt: d(4, 11), duration: 60 },
+      { lead: L(10), title: 'Field Measurement',         type: 'measurement',     status: 'CONFIRMED',  scheduledAt: d(4, 14), duration: 75,  notes: 'Confirmed 2-day notice. Access to side gate needed.' },
+      { lead: L(11), title: 'Initial Consultation',      type: 'initial-consult', status: 'SCHEDULED',  scheduledAt: d(5, 10), duration: 90 },
+
+      // ── NEXT WEEK ────────────────────────────────────────────────
+      { lead: L(0),  title: 'Follow-Up After Measurement', type: 'follow-up',     status: 'SCHEDULED',  scheduledAt: d(8,  9),  duration: 60 },
+      { lead: L(2),  title: 'Proposal Presentation',       type: 'proposal',      status: 'SCHEDULED',  scheduledAt: d(9,  10), duration: 75,  notes: 'Show Series 3000 vs Series 4000 comparison.' },
+      { lead: L(4),  title: 'Contract Signing',            type: 'close',         status: 'SCHEDULED',  scheduledAt: d(10, 11), duration: 60 },
+      { lead: L(6),  title: 'Initial Consultation',        type: 'initial-consult',status: 'SCHEDULED', scheduledAt: d(11, 14), duration: 90 },
+      { lead: L(8),  title: 'Field Measurement',           type: 'measurement',   status: 'SCHEDULED',  scheduledAt: d(12, 13), duration: 75 },
+
+      // ── WEEK 3 ───────────────────────────────────────────────────
+      { lead: L(1),  title: 'Proposal Presentation',    type: 'proposal',        status: 'SCHEDULED',  scheduledAt: d(15, 10), duration: 60 },
+      { lead: L(3),  title: 'Contract Signing',         type: 'close',           status: 'SCHEDULED',  scheduledAt: d(16, 11), duration: 60 },
+
+      // ── COMPLETED (past appointments for historical data) ─────────
+      { lead: L(5),  title: 'Initial Consultation',     type: 'initial-consult', status: 'COMPLETED',  scheduledAt: d(-7, 10), duration: 90, outcome: 'interested', notes: 'Very interested. Wants measurement next week.' },
+      { lead: L(7),  title: 'Field Measurement',        type: 'measurement',     status: 'COMPLETED',  scheduledAt: d(-5, 14), duration: 75, outcome: 'measured',    notes: '9 openings measured. Proposal to follow.' },
+      { lead: L(9),  title: 'Proposal Presentation',   type: 'proposal',        status: 'COMPLETED',  scheduledAt: d(-3, 11), duration: 60, outcome: 'consider',    notes: 'They liked Series 4000 but need to discuss financing.' },
+      { lead: L(11), title: 'Initial Consultation',    type: 'initial-consult', status: 'COMPLETED',  scheduledAt: d(-2, 9),  duration: 90, outcome: 'interested' },
+      { lead: L(0),  title: 'Contract Signed',         type: 'close',           status: 'COMPLETED',  scheduledAt: d(-1, 13), duration: 60, outcome: 'sold',        notes: 'Sold! 12 windows, Series 4000. GreenSky financing approved.' },
+    ];
+
+    for (const appt of apptDefs) {
+      await prisma.appointment.create({
+        data: {
+          leadId:      appt.lead.id,
+          createdById: rep1.id,
+          title:       appt.title,
+          type:        appt.type,
+          status:      appt.status as any,
+          scheduledAt: appt.scheduledAt,
+          duration:    appt.duration,
+          address:     appt.lead.address ?? undefined,
+          lat:         appt.lead.lat ?? undefined,
+          lng:         appt.lead.lng ?? undefined,
+          notes:       (appt as any).notes ?? null,
+          outcome:     (appt as any).outcome ?? null,
+          reminderSent:     appt.status === 'CONFIRMED',
+          confirmationSent: appt.status === 'CONFIRMED',
+        },
+      });
+    }
+    console.log(`✅ Appointments: ${apptDefs.length} demo appointments created (today + 2 weeks + history)`);
   } else {
-    console.log(`⏭️  Appointments already seeded, skipping`);
+    console.log(`⏭️  Appointments already seeded (${existingApptCount} total), skipping`);
   }
 
 
