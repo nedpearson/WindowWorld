@@ -179,9 +179,10 @@ export function DashboardPage() {
 
   // ── Determine if we need Demo Fallback ─────────────────────
   // If the user's org is "demo" or if they have absolutely no pipeline, revenue, queue, or proposals, show demo data
+  const isSuperAdmin = user?.role?.toLowerCase().includes('super') || user?.role?.toLowerCase() === 'superadmin' || user?.isAdmin;
   const isDemoFallback = 
     user?.organization?.slug === 'demo' || 
-    (rawPipelineTotal === 0 && rawMtdRevenue === 0 && queue.length === 0 && proposals.length === 0 && !dashLoading);
+    (rawPipelineTotal === 0 && rawMtdRevenue === 0 && queue.length === 0 && proposals.length === 0 && !dashLoading && isSuperAdmin);
 
   const activeDashData = isDemoFallback ? DEMO_DASH_DATA : dashData;
   const activeProposals = isDemoFallback && proposals.length === 0 ? DEMO_PROPOSALS : proposals;

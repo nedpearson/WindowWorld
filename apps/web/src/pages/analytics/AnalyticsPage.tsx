@@ -21,10 +21,53 @@ const EMPTY_DASHBOARD = {
   kpis: { mtdRevenue: 0, newLeads: 0, closeRate: 0, avgDealSize: 0, proposalsSent: 0, arOutstanding: 0 },
   revenueRaw: [] as any[], funnelRaw: [] as any[], recentWins: [] as any[] };
 
+const DEMO_ANALYTICS_DASH = {
+  kpis: { mtdRevenue: 48500, newLeads: 124, closeRate: 32.5, avgDealSize: 12500, proposalsSent: 45, arOutstanding: 8500 },
+  recentWins: [
+    { id: '1', name: 'John Doe', city: 'Dallas', windows: 12, rep: 'Sarah Smith', amount: 15000, closedAt: 'Today' },
+    { id: '2', name: 'Mike Johnson', city: 'Fort Worth', windows: 8, rep: 'David Lee', amount: 9500, closedAt: 'Yesterday' }
+  ]
+};
+
+const DEMO_REP_PERF = [
+  { id: 'r1', name: 'Sarah Smith', leadsAssigned: 45, dealsClosed: 15, closeRate: 33.3, avgDealSize: 13500, revenue: 202500 },
+  { id: 'r2', name: 'David Lee', leadsAssigned: 38, dealsClosed: 11, closeRate: 28.9, avgDealSize: 11200, revenue: 123200 },
+  { id: 'r3', name: 'Mike Chen', leadsAssigned: 41, dealsClosed: 10, closeRate: 24.3, avgDealSize: 12100, revenue: 121000 },
+];
+
+const DEMO_SOURCES = [
+  { source: 'Google Ads', count: 45, closed: 12, closeRate: 26.6, revenue: 155000 },
+  { source: 'Organic Search', count: 32, closed: 10, closeRate: 31.2, revenue: 125000 },
+  { source: 'Referral', count: 18, closed: 8, closeRate: 44.4, revenue: 98000 },
+  { source: 'Facebook', count: 29, closed: 5, closeRate: 17.2, revenue: 62000 },
+];
+
+const DEMO_REVENUE = [
+  { label: 'Week 1', amount: 12500 },
+  { label: 'Week 2', amount: 28000 },
+  { label: 'Week 3', amount: 18500 },
+  { label: 'Week 4', amount: 35000 },
+];
+
+const DEMO_FUNNEL = [
+  { status: 'NEW_LEAD', label: 'New Leads', count: 124, pct: 100, color: '#3b82f6' },
+  { status: 'APPT_SET', label: 'Appointments Set', count: 85, pct: 68, color: '#8b5cf6' },
+  { status: 'PROPOSAL_SENT', label: 'Proposals Sent', count: 45, pct: 36, color: '#f59e0b' },
+  { status: 'SOLD', label: 'Closed Won', count: 35, pct: 28, color: '#10b981' },
+];
+
+const DEMO_PIPELINE = [
+  { stage: 'LEAD', label: 'New Lead', count: 42, value: 125000, pct: 38, color: '#3b82f6' },
+  { stage: 'APPT_SET', label: 'Appointment Set', count: 18, value: 85000, pct: 26, color: '#8b5cf6' },
+  { stage: 'PROPOSAL_SENT', label: 'Proposal Sent', count: 12, value: 65000, pct: 20, color: '#f59e0b' },
+  { stage: 'CONTRACT_SIGNED', label: 'Contract Signed', count: 8, value: 48500, pct: 15, color: '#10b981' },
+];
+
 function formatK(n: number) { return n >= 1000 ? `$${(n / 1000).toFixed(0)}K` : `$${n}`; }
 
 export function AnalyticsPage() {
   const navigate = useNavigate();
+  const { user } = useAuthStore((s: any) => s);
   const [period, setPeriod] = useState<Period>('30d');
   const [activeTab, setActiveTab] = useState<AnalyticsTab>('overview');
 
@@ -59,7 +102,21 @@ export function AnalyticsPage() {
     });
   }, [period]);
 
-  const kpis = dash?.kpis ?? EMPTY_DASHBOARD.kpis;
+  const rawMtdRevenue = dash?.kpis?.mtdRevenue ?? 0;
+  
+  const isSuperAdmin = user?.role?.toLowerCase().includes('super') || user?.role?.toLowerCase() === 'superadmin' || user?.isAdmin;
+  const isDemoFallback = 
+    user?.organization?.slug === 'demo' || 
+    (rawMtdRevenue === 0 && !loading && (isSuperAdmin || repPerf.length === 0));
+
+  const activeDash = isDemoFallback ? DEMO_ANALYTICS_DASH : dash;
+  const activeRepPerf = isDemoFallback ? DEMO_REP_PERF : repPerf;
+  const activeSources = isDemoFallback ? DEMO_SOURCES : sources;
+  const activeRevenue = isDemoFallback ? DEMO_REVENUE : revenue;
+  const activeFunnel = isDemoFallback ? DEMO_FUNNEL : funnel;
+  const activePipeline = isDemoFallback ? DEMO_PIPELINE : pipeline;
+
+  const kpis = activeDash?.kpis ?? EMPTY_DASHBOARD.kpis;
 
   const KPI_CARDS = [
     { label: 'MTD Revenue', value: formatK(kpis.mtdRevenue ?? 0), icon: CurrencyDollarIcon, color: 'text-emerald-400', bg: 'bg-emerald-500/10', href: '/leads?status=SOLD' },
@@ -90,7 +147,10 @@ export function AnalyticsPage() {
       <div className="flex items-start justify-between">
         <div>
           <h1 className="text-xl font-bold text-white">Analytics &amp; Reporting</h1>
-          <p className="text-slate-500 text-sm mt-0.5">WindowWorld Louisiana · Baton Rouge HQ</p>
+          <p className="text-slate-500 text-sm mt-0.5">
+            WindowWorld Louisiana · Baton Rouge HQ
+            {isDemoFallback && <span className="ml-2 px-1.5 py-0.5 rounded bg-brand-500/20 text-brand-400 text-[10px] font-bold uppercase tracking-wider border border-brand-500/30">Demo Mode</span>}
+          </p>
         </div>
         <div className="flex items-center gap-2">
           {(['7d', '30d', '90d'] as Period[]).map((p) => (
@@ -149,13 +209,13 @@ export function AnalyticsPage() {
               {/* Revenue trend */}
               <div className="card p-5">
                 <h2 className="text-sm font-semibold text-white mb-4">Revenue Trend</h2>
-                {loading ? (
+                {loading && !isDemoFallback ? (
                   <div className="h-52 bg-slate-800 rounded-lg animate-pulse" />
-                ) : revenue.length === 0 ? (
+                ) : activeRevenue.length === 0 ? (
                   <div className="h-52 flex items-center justify-center text-slate-600 text-sm">No data for period</div>
                 ) : (
                   <ResponsiveContainer width="100%" height={220}>
-                    <AreaChart data={revenue} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
+                    <AreaChart data={activeRevenue} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
                       <defs>
                         <linearGradient id="revGrad" x1="0" y1="0" x2="0" y2="1">
                           <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
@@ -175,13 +235,13 @@ export function AnalyticsPage() {
               {/* Funnel */}
               <div className="card p-5">
                 <h2 className="text-sm font-semibold text-white mb-4">Conversion Funnel</h2>
-                {loading ? (
+                {loading && !isDemoFallback ? (
                   <div className="h-52 bg-slate-800 rounded-lg animate-pulse" />
-                ) : funnel.length === 0 ? (
+                ) : activeFunnel.length === 0 ? (
                   <div className="h-52 flex items-center justify-center text-slate-600 text-sm">No data for period</div>
                 ) : (
                   <div className="space-y-2.5 mt-2">
-                    {funnel.map((stage: any, i: number) => (
+                    {activeFunnel.map((stage: any, i: number) => (
                       <button key={stage.label ?? i}
                         onClick={() => stage.status && navigate(`/leads?status=${stage.status}`)}
                         className="w-full text-left group">
@@ -213,15 +273,15 @@ export function AnalyticsPage() {
                 <TrophyIcon className="h-4 w-4 text-amber-400" />
                 <span className="text-sm font-semibold text-white">Recent Wins</span>
               </div>
-              {loading ? (
+              {loading && !isDemoFallback ? (
                 <div className="p-4 space-y-3">
                   {[0,1,2].map(i => <div key={i} className="h-12 bg-slate-800 rounded-lg animate-pulse" />)}
                 </div>
-              ) : (dash?.recentWins ?? []).length === 0 ? (
+              ) : (activeDash?.recentWins ?? []).length === 0 ? (
                 <div className="p-8 text-center text-slate-600 text-sm">No closed deals in this period</div>
               ) : (
                 <div className="divide-y divide-slate-700/30">
-                  {(dash?.recentWins ?? []).map((win: any) => (
+                  {(activeDash?.recentWins ?? []).map((win: any) => (
                     <Link key={win.id} to={win.id ? `/leads/${win.id}` : '/leads?status=SOLD'}
                       className="flex items-center gap-4 p-4 hover:bg-slate-800/30 transition-colors group">
                       <div className="w-8 h-8 rounded-full bg-emerald-500/15 flex items-center justify-center flex-shrink-0">
@@ -249,9 +309,9 @@ export function AnalyticsPage() {
         {/* ── REP PERFORMANCE ── */}
         {activeTab === 'reps' && (
           <motion.div key="reps" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-5">
-            {loading ? (
+            {loading && !isDemoFallback ? (
               <div className="h-64 bg-slate-800 rounded-xl animate-pulse" />
-            ) : repPerf.length === 0 ? (
+            ) : activeRepPerf.length === 0 ? (
               <div className="card p-12 text-center text-slate-600">No rep data for this period</div>
             ) : (
               <>
@@ -259,13 +319,13 @@ export function AnalyticsPage() {
                   <div className="card p-5">
                     <h2 className="text-sm font-semibold text-white mb-4">Revenue by Rep</h2>
                     <ResponsiveContainer width="100%" height={200}>
-                      <BarChart data={repPerf.map((r: any) => ({ name: r.name?.split(' ')[0], revenue: r.revenue }))}>
+                      <BarChart data={activeRepPerf.map((r: any) => ({ name: r.name?.split(' ')[0], revenue: r.revenue }))}>
                         <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
                         <XAxis dataKey="name" tick={{ fill: '#64748b', fontSize: 10 }} />
                         <YAxis tick={{ fill: '#64748b', fontSize: 10 }} tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`} />
                         <Tooltip content={<CustomTooltip />} />
                         <Bar dataKey="revenue" radius={[4, 4, 0, 0]} name="amount">
-                          {repPerf.map((_: any, i: number) => (
+                          {activeRepPerf.map((_: any, i: number) => (
                             <Cell key={i} fill={['#3b82f6', '#8b5cf6', '#10b981'][i % 3]} />
                           ))}
                         </Bar>
@@ -275,7 +335,7 @@ export function AnalyticsPage() {
                   <div className="card p-5">
                     <h2 className="text-sm font-semibold text-white mb-4">Close Rate by Rep</h2>
                     <ResponsiveContainer width="100%" height={200}>
-                      <BarChart data={repPerf.map((r: any) => ({ name: r.name?.split(' ')[0], rate: r.closeRate }))}>
+                      <BarChart data={activeRepPerf.map((r: any) => ({ name: r.name?.split(' ')[0], rate: r.closeRate }))}>
                         <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
                         <XAxis dataKey="name" tick={{ fill: '#64748b', fontSize: 10 }} />
                         <YAxis tick={{ fill: '#64748b', fontSize: 10 }} tickFormatter={(v) => `${v}%`} />
@@ -296,7 +356,7 @@ export function AnalyticsPage() {
                       </tr>
                     </thead>
                     <tbody>
-                      {repPerf.map((rep: any, i: number) => (
+                      {activeRepPerf.map((rep: any, i: number) => (
                         <tr key={rep.id ?? i}
                           onClick={() => rep.id && navigate(`/leads?repId=${rep.id}`)}
                           className={clsx(rep.id && 'cursor-pointer hover:bg-slate-700/30 transition-colors')}>
@@ -328,9 +388,9 @@ export function AnalyticsPage() {
         {/* ── LEAD SOURCES ── */}
         {activeTab === 'sources' && (
           <motion.div key="sources" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-5">
-            {loading ? (
+            {loading && !isDemoFallback ? (
               <div className="h-64 bg-slate-800 rounded-xl animate-pulse" />
-            ) : sources.length === 0 ? (
+            ) : activeSources.length === 0 ? (
               <div className="card p-12 text-center text-slate-600">No source data for this period</div>
             ) : (
               <>
@@ -338,13 +398,13 @@ export function AnalyticsPage() {
                   <div className="card p-5">
                     <h2 className="text-sm font-semibold text-white mb-4">Lead Volume by Source</h2>
                     <ResponsiveContainer width="100%" height={220}>
-                      <BarChart data={sources.map((s: any) => ({ name: s.source, count: s.count }))}>
+                      <BarChart data={activeSources.map((s: any) => ({ name: s.source, count: s.count }))}>
                         <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
                         <XAxis dataKey="name" tick={{ fill: '#64748b', fontSize: 9 }} />
                         <YAxis tick={{ fill: '#64748b', fontSize: 10 }} />
                         <Tooltip content={<CustomTooltip />} />
                         <Bar dataKey="count" radius={[4, 4, 0, 0]}>
-                          {sources.map((_: any, i: number) => (
+                          {activeSources.map((_: any, i: number) => (
                             <Cell key={i} fill={['#3b82f6','#10b981','#8b5cf6','#ef4444','#f59e0b','#64748b'][i % 6]} />
                           ))}
                         </Bar>
@@ -354,7 +414,7 @@ export function AnalyticsPage() {
                   <div className="card p-5">
                     <h2 className="text-sm font-semibold text-white mb-4">Revenue by Source</h2>
                     <ResponsiveContainer width="100%" height={220}>
-                      <BarChart data={sources.filter((s: any) => s.revenue > 0).map((s: any) => ({ name: s.source, revenue: s.revenue }))}>
+                      <BarChart data={activeSources.filter((s: any) => s.revenue > 0).map((s: any) => ({ name: s.source, revenue: s.revenue }))}>
                         <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
                         <XAxis dataKey="name" tick={{ fill: '#64748b', fontSize: 9 }} />
                         <YAxis tick={{ fill: '#64748b', fontSize: 10 }} tickFormatter={(v) => `$${(v/1000).toFixed(0)}k`} />
@@ -373,7 +433,7 @@ export function AnalyticsPage() {
                       <tr><th>Source</th><th>Leads</th><th>Closed</th><th>Close Rate</th><th>Revenue</th><th>Rev/Lead</th></tr>
                     </thead>
                     <tbody>
-                      {[...sources].sort((a: any, b: any) => b.revenue - a.revenue).map((src: any) => (
+                      {[...activeSources].sort((a: any, b: any) => b.revenue - a.revenue).map((src: any) => (
                         <tr key={src.source}
                           onClick={() => navigate(`/leads?source=${encodeURIComponent(src.source)}`)}
                           className="cursor-pointer hover:bg-slate-700/30 transition-colors">
@@ -397,9 +457,9 @@ export function AnalyticsPage() {
         {/* ── WIN/LOSS & VELOCITY: show pipeline data ── */}
         {(activeTab === 'win-loss' || activeTab === 'velocity') && (
           <motion.div key={activeTab} initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-5">
-            {loading ? (
+            {loading && !isDemoFallback ? (
               <div className="h-64 bg-slate-800 rounded-xl animate-pulse" />
-            ) : pipeline.length === 0 ? (
+            ) : activePipeline.length === 0 ? (
               <div className="card p-12 text-center text-slate-600">No pipeline data for this period</div>
             ) : (
               <div className="card p-5">
@@ -407,7 +467,7 @@ export function AnalyticsPage() {
                   {activeTab === 'velocity' ? 'Pipeline Velocity — Avg Days per Stage' : 'Pipeline Stage Breakdown'}
                 </h2>
                 <div className="space-y-4">
-                  {pipeline.map((stage: any, i: number) => (
+                  {activePipeline.map((stage: any, i: number) => (
                     <div key={i}>
                       <div className="flex items-center justify-between mb-1.5">
                         <span className="text-xs text-slate-400">{stage.label ?? stage.stage}</span>
