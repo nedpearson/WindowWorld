@@ -241,6 +241,7 @@ model Organization {
   productCategories ProductCategory[]
   templates         Template[]
   campaigns         Campaign[]
+  communicationLogs CommunicationLog[]
 
   @@map("organizations")
 }
@@ -281,6 +282,7 @@ model User {
   pushSubscriptions PushSubscription[]
   expensesCreated   JobExpense[]       @relation("ExpensesCreated")
   expensesVerified  JobExpense[]       @relation("ExpensesVerified")
+  communicationLogs CommunicationLog[]
 
   @@map("users")
 }
@@ -433,6 +435,7 @@ model Lead {
   aiAnalyses   AiAnalysis[]
   Inspection   Inspection[]
   expenses     JobExpense[]
+  communicationLogs CommunicationLog[]
 
   @@index([organizationId, status])
   @@index([organizationId, assignedRepId])
@@ -1531,9 +1534,53 @@ model Activity {
 
   lead Lead  @relation(fields: [leadId], references: [id])
   user User? @relation(fields: [userId], references: [id])
+  communicationLog CommunicationLog?
 
   @@index([leadId, occurredAt])
   @@map("activities")
+}
+
+// ============================================================
+// COMMUNICATION LOG (Twilio calls + SMS)
+// ============================================================
+
+model CommunicationLog {
+  id             String   @id @default(uuid())
+  leadId         String
+  organizationId String
+  userId         String?  // Rep who initiated (null for inbound)
+
+  direction   String   // OUTBOUND | INBOUND
+  type        String   // CALL | SMS
+
+  // Twilio metadata
+  twilioSid   String?  @unique   // CallSid or MessageSid
+  to          String
+  from        String
+  body        String?  @db.Text  // SMS message body
+  status      String   // initiated | ringing | in-progress | completed | busy | no-answer | failed | sent | delivered
+  duration    Int?                // seconds (calls) or null
+  recordingUrl String?            // MP3 URL after call completes
+  errorCode   String?            // Twilio error code on failure
+
+  // Link back to the Activity log entry
+  activityId  String?  @unique
+
+  simulated   Boolean  @default(false) // true in dev without Twilio creds
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  lead         Lead          @relation(fields: [leadId], references: [id])
+  organization Organization  @relation(fields: [organizationId], references: [id])
+  user         User?         @relation(fields: [userId], references: [id])
+  activity     Activity?     @relation(fields: [activityId], references: [id])
+
+  @@index([leadId, createdAt])
+  @@index([organizationId, createdAt])
+  @@index([userId])
+  @@index([type, status])
+  @@map("communication_logs")
 }
 
 // ============================================================

@@ -365,6 +365,25 @@ export const api = {
     parseReceipt: (imageUrl: string, leadId: string) =>
       post<any>('/job-expenses/parse-receipt', { imageUrl, leadId }),
   },
+
+  // ── Twilio Communications (calls + SMS) ──────────────────────────────
+  communications: {
+    /** Send an SMS to a lead */
+    sendSms: (leadId: string, phone: string, message: string, opts?: { referenceId?: string; referenceType?: string }) =>
+      post<any>(`/communications/leads/${leadId}/sms`, { phone, message, ...opts }),
+    /** Initiate an outbound call to a lead */
+    initiateCall: (leadId: string, phone: string) =>
+      post<any>(`/communications/leads/${leadId}/call`, { phone }),
+    /** Get call + SMS history for a lead */
+    getHistory: (leadId: string, limit = 50) =>
+      get<any>(`/communications/leads/${leadId}/history`, { params: { limit } }),
+    /** Org-level comms stats (manager+) */
+    getStats: () =>
+      get<any>('/communications/stats'),
+    /** Generate Twilio Voice browser token */
+    getVoiceToken: () =>
+      get<any>('/communications/token'),
+  },
 };
 
 // ─── Attach api namespaces directly onto the axios instance ──
