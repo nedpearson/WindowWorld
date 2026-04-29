@@ -31,7 +31,7 @@
     "leaflet": "^1.9.4",
     "postcss": "^8.4.47",
     "qrcode.react": "^4.2.0",
-    "react": "^18.3.1",
+    "react": "^19.2.5",
     "react-dom": "^18.3.1",
     "react-dropzone": "^15.0.0",
     "react-hook-form": "^7.53.2",
@@ -54,7 +54,7 @@
     "@playwright/test": "^1.59.1",
     "@types/leaflet": "^1.9.14",
     "@types/node": "^22.19.17",
-    "@types/react": "^18.3.12",
+    "@types/react": "^19.2.14",
     "@types/react-dom": "^18.3.1"
   }
 }
