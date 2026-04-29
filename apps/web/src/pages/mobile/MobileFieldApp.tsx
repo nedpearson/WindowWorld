@@ -10,7 +10,7 @@ import {
   ClipboardDocumentListIcon, ChatBubbleLeftIcon,
   ArrowDownTrayIcon, BellAlertIcon, SignalSlashIcon,
   QrCodeIcon, DevicePhoneMobileIcon, ShareIcon, ArrowTopRightOnSquareIcon,
-  SparklesIcon, GlobeAltIcon, UserPlusIcon } from '@heroicons/react/24/outline';
+  SparklesIcon, GlobeAltIcon, UserPlusIcon, CurrencyDollarIcon } from '@heroicons/react/24/outline';
 import { BoltIcon, CloudIcon, SignalIcon } from '@heroicons/react/24/solid';
 import clsx from 'clsx';
 import { QRCodeSVG } from 'qrcode.react';
@@ -26,9 +26,10 @@ import { PitchTab } from './tabs/PitchTab';
 import { RouteTab } from './tabs/RouteTab';
 import { NotesTab } from './tabs/NotesTab';
 import { DesktopInstallPortal } from './DesktopInstallPortal';
+import { ReceiptCapture } from '../../components/field/ReceiptCapture';
 
 // ─── Types ────────────────────────────────────────────────────
-type FieldTab = 'map' | 'route' | 'capture' | 'measure' | 'pitch' | 'notes' | 'lead';
+type FieldTab = 'map' | 'route' | 'capture' | 'measure' | 'pitch' | 'notes' | 'lead' | 'receipt';
 type MeasureStep = 'select-opening' | 'enter-width' | 'enter-height' | 'confirm';
 
 // Normalise a raw appointment from the route API into the stop shape used by StopCard
@@ -1100,6 +1101,7 @@ export function MobileFieldApp() {
     { key: 'map',     icon: GlobeAltIcon,              label: 'Map' },
     { key: 'route',   icon: MapPinIcon,                label: 'Route' },
     { key: 'capture', icon: CameraIcon,                label: 'Camera' },
+    { key: 'receipt', icon: CurrencyDollarIcon,        label: 'Receipt' },
     { key: 'measure', icon: ClipboardDocumentListIcon, label: 'Measure' },
     { key: 'lead',    icon: UserPlusIcon,              label: 'New Lead' },
     { key: 'pitch',   icon: SparklesIcon,              label: 'Pitch' },
@@ -1249,6 +1251,27 @@ export function MobileFieldApp() {
                 />
               )}
               {activeTab === 'capture' && <CaptureTab enqueue={enqueue} />}
+              {activeTab === 'receipt' && (
+                activeStop
+                  ? (() => {
+                      const activeStopData = TODAY_STOPS.find((s: any) => s.id === activeStop);
+                      const leadId = activeStopData?.lead?.id;
+                      return leadId
+                        ? (
+                          <div className="space-y-3">
+                            <div className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                              Receipt Capture · {activeStopData?.lead?.name}
+                            </div>
+                            <ReceiptCapture
+                              leadId={leadId}
+                              onExpenseSaved={() => toast.success('Expense saved to job!')}
+                            />
+                          </div>
+                        )
+                        : <p className="text-xs text-slate-500 text-center py-6">Select a stop on the Route tab first.</p>;
+                    })()
+                  : <p className="text-xs text-slate-500 text-center py-6">Select a stop on the Route tab to capture a receipt.</p>
+              )}
               {activeTab === 'measure' && <MeasureTab enqueue={enqueue} stops={TODAY_STOPS} activeStopId={activeStop} />}
               {activeTab === 'lead' && <NewLeadTab enqueue={enqueue} />}
               {activeTab === 'pitch' && <PitchTab stops={TODAY_STOPS} activeStopId={activeStop} />}

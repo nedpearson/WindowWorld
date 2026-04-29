@@ -14,6 +14,7 @@ import clsx from 'clsx';
 import { PitchCoachPanel } from '../../components/ai/PitchCoachPanel';
 import { SmsTemplateDrawer } from '../../components/sms/SmsTemplateDrawer';
 import { EmailTemplateDrawer } from '../../components/email/EmailTemplateDrawer';
+import { JobCostSummary } from '../../components/leads/JobCostSummary';
 import { api } from '../../api/client';
 
 
@@ -44,7 +45,7 @@ const MEAS_STATUS_LABELS: Record<string, { label: string; class: string }> = {
   ESTIMATED: { label: 'AI Est.', class: 'ai-estimated-label' },
   APPROVED_FOR_ORDER: { label: 'Order Ready', class: 'ai-verified-label' } };
 
-type Tab = 'overview' | 'openings' | 'activities' | 'ai-coach' | 'financing';
+type Tab = 'overview' | 'openings' | 'activities' | 'ai-coach' | 'financing' | 'costs';
 
 const STATUS_FLOW = [
   { value: 'NEW_LEAD', label: 'New Lead' },
@@ -467,6 +468,7 @@ export function LeadDetailPage({ isNew = false }: { isNew?: boolean }) {
           { id: 'openings', label: `Openings (${property.openings.length})` },
           { id: 'activities', label: `Activity (${lead.activities.length})` },
           { id: 'financing', label: 'Financing' },
+          { id: 'costs', label: 'Job Costs' },
           { id: 'ai-coach', label: 'AI Coach' },
         ] as { id: Tab; label: string }[]).map((tab) => (
           <button
@@ -837,6 +839,10 @@ export function LeadDetailPage({ isNew = false }: { isNew?: boolean }) {
                 <ObjecionHandlers />
               </div>
             </div>
+          )}
+
+          {activeTab === 'costs' && (
+            <JobCostSummary leadId={id || lead.id} />
           )}
         </motion.div>
       </AnimatePresence>

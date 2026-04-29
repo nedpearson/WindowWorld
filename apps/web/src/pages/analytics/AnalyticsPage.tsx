@@ -10,6 +10,7 @@ import clsx from 'clsx';
 import { AreaChart, Area, BarChart, Bar,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import apiClient from '../../api/client';
+import { useAuthStore } from '../../store/auth.store';
 
 type Period = '7d' | '30d' | '90d';
 type AnalyticsTab = 'overview' | 'reps' | 'sources' | 'win-loss' | 'velocity';

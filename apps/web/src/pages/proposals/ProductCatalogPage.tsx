@@ -97,6 +97,18 @@ export function ProductCatalogPage() {
           <motion.div key="categories" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {isCatsLoading ? (
               [...Array(3)].map((_, i) => <div key={i} className="h-48 bg-slate-800 rounded-xl animate-pulse" />)
+            ) : !categories || categories.length === 0 ? (
+              <div className="col-span-3 card p-16 text-center">
+                <SwatchIcon className="h-10 w-10 text-slate-700 mx-auto mb-3" />
+                <p className="text-slate-400 font-medium">No product categories found.</p>
+                <p className="text-slate-600 text-sm mt-1">The catalog may still be loading from the server.</p>
+                <button
+                  onClick={() => window.location.reload()}
+                  className="btn-secondary btn-sm mt-4"
+                >
+                  Retry
+                </button>
+              </div>
             ) : categories?.map((cat: any) => (
               <div 
                 key={cat.id} 

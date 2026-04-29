@@ -353,7 +353,18 @@ export const api = {
     getFollowUpEngine: () => get(`/silo/follow-up-engine`),
     getLiveAssist: (prompt: string) => get(`/silo/live-assist`, { params: { prompt } }),
     getProposalAnalysis: (proposalId: string) => get(`/silo/proposal-analysis/${proposalId}`)
-  }
+  },
+
+  // Job Expenses
+  jobExpenses: {
+    listByLead: (leadId: string) => get<any>(`/job-expenses/lead/${leadId}`),
+    create: (data: Record<string, unknown>) => post<any>('/job-expenses', data),
+    update: (id: string, data: Record<string, unknown>) => patch<any>(`/job-expenses/${id}`, data),
+    verify: (id: string) => patch<any>(`/job-expenses/${id}/verify`, {}),
+    delete: (id: string) => del<any>(`/job-expenses/${id}`),
+    parseReceipt: (imageUrl: string, leadId: string) =>
+      post<any>('/job-expenses/parse-receipt', { imageUrl, leadId }),
+  },
 };
 
 // ─── Attach api namespaces directly onto the axios instance ──

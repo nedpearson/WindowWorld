@@ -157,6 +157,17 @@ enum DocumentType {
   CONTRACT
   PERMIT
   WARRANTY
+  RECEIPT
+  OTHER
+}
+
+enum ExpenseCategory {
+  MATERIALS
+  PERMITS
+  DISPOSAL
+  LABOR
+  TRAVEL
+  EQUIPMENT
   OTHER
 }
 
@@ -268,6 +279,8 @@ model User {
   refreshTokens     RefreshToken[]
   notifications     Notification[]
   pushSubscriptions PushSubscription[]
+  expensesCreated   JobExpense[]       @relation("ExpensesCreated")
+  expensesVerified  JobExpense[]       @relation("ExpensesVerified")
 
   @@map("users")
 }
@@ -419,6 +432,7 @@ model Lead {
   documents    Document[]
   aiAnalyses   AiAnalysis[]
   Inspection   Inspection[]
+  expenses     JobExpense[]
 
   @@index([organizationId, status])
   @@index([organizationId, assignedRepId])
@@ -1379,11 +1393,45 @@ model Document {
   proposal   Proposal?   @relation(fields: [proposalId], references: [id])
   invoice    Invoice?    @relation(fields: [invoiceId], references: [id])
   aiAnalysis AiAnalysis? @relation(fields: [aiAnalysisId], references: [id])
+  expense    JobExpense?
 
   @@index([leadId])
   @@index([inspectionId])
   @@index([openingId])
   @@map("documents")
+}
+
+// ============================================================
+// JOB EXPENSES
+// ============================================================
+
+model JobExpense {
+  id             String          @id @default(cuid())
+  organizationId String
+  leadId         String
+  createdById    String
+  verifiedById   String?
+  documentId     String?         @unique
+  amount         Decimal         @db.Decimal(10,2)
+  category       ExpenseCategory @default(OTHER)
+  vendor         String?         @db.VarChar(255)
+  description    String?         @db.VarChar(1000)
+  receiptDate    DateTime?
+  aiParsedData   Json?
+  aiConfidence   Float?
+  verifiedAt     DateTime?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  lead       Lead      @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  createdBy  User      @relation("ExpensesCreated", fields: [createdById], references: [id])
+  verifiedBy User?     @relation("ExpensesVerified", fields: [verifiedById], references: [id])
+  document   Document? @relation(fields: [documentId], references: [id])
+
+  @@index([leadId])
+  @@index([organizationId])
+  @@index([createdAt])
+  @@map("job_expenses")
 }
 
 // ============================================================

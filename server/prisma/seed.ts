@@ -678,10 +678,14 @@ async function main() {
   // ─────────────────────────────────────────────
   const existingQuoteCount = await prisma.quote.count({ where: { lead: { organizationId: orgReal.id } } });
   if (createdLeads.length > 0 && existingQuoteCount === 0) {
+    try {
     const leadWithProposal = createdLeads[1] || createdLeads[0]; // Use Patricia Landry if available
     
-    const quote = await prisma.quote.create({
-      data: {
+    const quote = await prisma.quote.upsert({
+      where: { id: 'seed-quote-001' },
+      update: {},
+      create: {
+        id: 'seed-quote-001',
         leadId: leadWithProposal.id,
         createdById: rep1.id,
         status: 'accepted',
@@ -697,8 +701,11 @@ async function main() {
       }
     });
 
-    const proposal = await prisma.proposal.create({
-      data: {
+    const proposal = await prisma.proposal.upsert({
+      where: { id: 'seed-proposal-001' },
+      update: {},
+      create: {
+        id: 'seed-proposal-001',
         leadId: leadWithProposal.id,
         quoteId: quote.id,
         createdById: rep1.id,
@@ -715,8 +722,10 @@ async function main() {
       }
     });
 
-    await prisma.invoice.create({
-      data: {
+    await prisma.invoice.upsert({
+      where: { invoiceNumber: 'INV-1001' },
+      update: {},
+      create: {
         organizationId: orgReal.id,
         leadId: leadWithProposal.id,
         proposalId: proposal.id,
@@ -745,6 +754,9 @@ async function main() {
       }
     });
     console.log(`✅ Quote, Proposal, and Invoice created for ${leadWithProposal.firstName} ${leadWithProposal.lastName}`);
+    } catch (err: any) {
+      console.log(`⏭️  Quotes/Proposals/Invoices already seeded, skipping (${err?.code ?? err?.message})`);
+    }
   } else {
     console.log(`⏭️  Quotes/Proposals already seeded, skipping`);
   }
@@ -769,6 +781,86 @@ async function main() {
     console.log(`⏭️  Campaign already seeded, skipping`);
   }
 
+
+  // ─────────────────────────────────────────────
+  // PRODUCT CATALOG TAXONOMY
+  // (categories → subcategories → series)
+  // All upserted on slug — fully idempotent.
+  // ─────────────────────────────────────────────
+  const catWindows = await prisma.productCategory.upsert({
+    where: { slug: 'windows' },
+    update: {},
+    create: {
+      name: 'Windows', slug: 'windows',
+      description: 'Exterior replacement windows — vinyl, energy-efficient, hurricane-rated',
+      sortOrder: 0, isActive: true,
+    },
+  });
+  const catDoors = await prisma.productCategory.upsert({
+    where: { slug: 'doors' },
+    update: {},
+    create: {
+      name: 'Doors', slug: 'doors',
+      description: 'Entry doors, storm doors, and patio doors',
+      sortOrder: 1, isActive: true,
+    },
+  });
+  const catSiding = await prisma.productCategory.upsert({
+    where: { slug: 'siding' },
+    update: {},
+    create: {
+      name: 'Siding', slug: 'siding',
+      description: 'Exterior siding, soffit, and trim products',
+      sortOrder: 2, isActive: true,
+    },
+  });
+  console.log(`✅ Product Categories: ${catWindows.name}, ${catDoors.name}, ${catSiding.name}`);
+
+  // Subcategories for Windows
+  const subSingleHung = await prisma.productSubcategory.upsert({
+    where: { slug: 'single-hung' },
+    update: {},
+    create: { categoryId: catWindows.id, name: 'Single Hung', slug: 'single-hung', description: 'Classic single-hung windows — lower sash slides up', sortOrder: 0, isActive: true },
+  });
+  const subDoubleHung = await prisma.productSubcategory.upsert({
+    where: { slug: 'double-hung' },
+    update: {},
+    create: { categoryId: catWindows.id, name: 'Double Hung', slug: 'double-hung', description: 'Both sashes tilt in for easy cleaning', sortOrder: 1, isActive: true },
+  });
+  const subCasement = await prisma.productSubcategory.upsert({
+    where: { slug: 'casement-awning' },
+    update: {},
+    create: { categoryId: catWindows.id, name: 'Casement & Awning', slug: 'casement-awning', description: 'Crank-operated outswing styles', sortOrder: 2, isActive: true },
+  });
+  const subSpecialty = await prisma.productSubcategory.upsert({
+    where: { slug: 'specialty-picture' },
+    update: {},
+    create: { categoryId: catWindows.id, name: 'Specialty & Picture', slug: 'specialty-picture', description: 'Bay, bow, slider, and fixed units', sortOrder: 3, isActive: true },
+  });
+  console.log(`✅ Product Subcategories: Single Hung, Double Hung, Casement & Awning, Specialty & Picture`);
+
+  // Series — mapped to correct subcategories
+  const seriesDefs = [
+    { slug: 'series-2000', name: 'Series 2000', subcategoryId: subSingleHung.id, description: 'Standard vinyl single-hung, energy-efficient, builder grade', sortOrder: 0 },
+    { slug: 'series-3000', name: 'Series 3000', subcategoryId: subDoubleHung.id, description: 'Mid-range vinyl double-hung with Low-E glass', sortOrder: 0 },
+    { slug: 'series-4000', name: 'Series 4000', subcategoryId: subDoubleHung.id, description: 'Premium vinyl double-hung, triple Low-E, argon fill, best seller', sortOrder: 1 },
+    { slug: 'series-6000', name: 'Series 6000', subcategoryId: subDoubleHung.id, description: 'Ultra-premium, impact-rated, hurricane zone ready', sortOrder: 2 },
+    { slug: 'series-casement', name: 'Casement', subcategoryId: subCasement.id, description: 'Outswing casement, premium multipoint locking hardware', sortOrder: 0 },
+    { slug: 'series-awning', name: 'Awning', subcategoryId: subCasement.id, description: 'Top-hinged awning window — ventilates even in rain', sortOrder: 1 },
+    { slug: 'series-slider', name: 'Horizontal Slider', subcategoryId: subSpecialty.id, description: 'Two or three-lite horizontal slider', sortOrder: 0 },
+    { slug: 'series-picture', name: 'Picture (Fixed)', subcategoryId: subSpecialty.id, description: 'Non-operable fixed lite — maximum light and views', sortOrder: 1 },
+    { slug: 'series-bay', name: 'Bay Window', subcategoryId: subSpecialty.id, description: 'Three-window bay unit, custom projection', sortOrder: 2 },
+    { slug: 'series-bow', name: 'Bow Window', subcategoryId: subSpecialty.id, description: 'Four or five-lite bow unit', sortOrder: 3 },
+  ];
+
+  for (const s of seriesDefs) {
+    await prisma.productSeries.upsert({
+      where: { slug: s.slug },
+      update: {},
+      create: { ...s, isActive: true },
+    });
+  }
+  console.log(`✅ Product Series: ${seriesDefs.map(s => s.name).join(', ')}`);
 
   console.log('\n🎉 Seed complete! Demo credentials:');
   console.log('   nedpearson@gmail.com        / 1Pearson2 (Super Admin — Ned Pearson [OWNER])');
