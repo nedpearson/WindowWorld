@@ -1,41 +1,83 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { toast } from 'sonner';
 import { useQuery } from '@tanstack/react-query';
-import {
-  CheckCircleIcon, ChevronDownIcon, ChevronUpIcon, HomeIcon, ArrowRightIcon } from '@heroicons/react/24/outline';
+import { HomeIcon, ArrowRightIcon } from '@heroicons/react/24/outline';
 import { BoltIcon, SparklesIcon, SwatchIcon } from '@heroicons/react/24/solid';
 import clsx from 'clsx';
 import { api } from '../../api/client';
+
+// ─── Instant placeholder data (mirrors server-side WINDOW_SERIES fallback) ────
+// Prevents ANY loading skeleton — the catalog renders immediately on mount
+// and silently swaps to real DB data when the API responds.
+const PLACEHOLDER_CATEGORIES = [
+  { id: 'cat-windows', slug: 'windows', name: 'Windows', description: 'Exterior replacement windows — vinyl, energy-efficient, hurricane-rated' },
+  { id: 'cat-doors',   slug: 'doors',   name: 'Doors',   description: 'Entry doors, storm doors, and patio doors' },
+  { id: 'cat-siding',  slug: 'siding',  name: 'Siding',  description: 'Exterior siding, soffit, and trim products' },
+];
+const PLACEHOLDER_SUBCATS: Record<string, any[]> = {
+  'cat-windows': [
+    { id: 'sub-single-hung', name: 'Single Hung',       slug: 'single-hung',      description: 'Classic single-hung windows' },
+    { id: 'sub-double-hung', name: 'Double Hung',       slug: 'double-hung',      description: 'Both sashes tilt for easy cleaning' },
+    { id: 'sub-casement',    name: 'Casement & Awning', slug: 'casement-awning',  description: 'Crank-operated outswing styles' },
+    { id: 'sub-specialty',   name: 'Specialty & Picture', slug: 'specialty-picture', description: 'Bay, bow, slider, and fixed units' },
+  ],
+};
+const PLACEHOLDER_SERIES: Record<string, any[]> = {
+  'sub-single-hung': [{ id: 'series-series_2000', name: 'Series 2000', description: 'Standard vinyl single-hung, energy-efficient, builder grade' }],
+  'sub-double-hung': [
+    { id: 'series-series_3000', name: 'Series 3000', description: 'Mid-range vinyl double-hung with Low-E glass' },
+    { id: 'series-series_4000', name: 'Series 4000', description: 'Premium double-hung, triple Low-E, argon fill — best seller' },
+    { id: 'series-series_6000', name: 'Series 6000', description: 'Ultra-premium, impact-rated, hurricane zone ready' },
+  ],
+  'sub-casement': [
+    { id: 'series-series_casement', name: 'Casement',  description: 'Outswing casement, premium multipoint locking hardware' },
+    { id: 'series-series_awning',   name: 'Awning',    description: 'Top-hinged awning — ventilates even in rain' },
+  ],
+  'sub-specialty': [
+    { id: 'series-series_slider',  name: 'Horizontal Slider', description: 'Two or three-lite horizontal slider' },
+    { id: 'series-series_picture', name: 'Picture (Fixed)',    description: 'Non-operable fixed lite — maximum light' },
+    { id: 'series-series_bay',     name: 'Bay Window',         description: 'Three-window bay unit, custom projection' },
+    { id: 'series-series_bow',     name: 'Bow Window',         description: 'Four or five-lite bow unit' },
+  ],
+};
 
 export function ProductCatalogPage() {
   const [activeCategoryId, setActiveCategoryId] = useState<string | null>(null);
   const [activeSubcategoryId, setActiveSubcategoryId] = useState<string | null>(null);
   const [activeSeriesId, setActiveSeriesId] = useState<string | null>(null);
 
-  const { data: categories, isLoading: isCatsLoading } = useQuery({
+  const { data: categories } = useQuery({
     queryKey: ['product-categories'],
-    queryFn: () => api.products.getCategories().then(r => r.data || [])
+    queryFn: () => api.products.getCategories().then((r: any) => (r?.data ?? r) || []),
+    placeholderData: PLACEHOLDER_CATEGORIES,
+    staleTime: 5 * 60 * 1000, // 5 min — avoid re-fetching on every tab focus
   });
 
   const { data: subcategories, isLoading: isSubLoading } = useQuery({
     queryKey: ['product-subcategories', activeCategoryId],
-    queryFn: () => api.products.getSubcategories({ categoryId: activeCategoryId }).then(r => r.data || []),
-    enabled: !!activeCategoryId
+    queryFn: () => api.products.getSubcategories({ categoryId: activeCategoryId }).then((r: any) => (r?.data ?? r) || []),
+    placeholderData: activeCategoryId ? (PLACEHOLDER_SUBCATS[activeCategoryId] ?? []) : [],
+    enabled: !!activeCategoryId,
+    staleTime: 5 * 60 * 1000,
   });
 
   const { data: seriesList, isLoading: isSeriesLoading } = useQuery({
     queryKey: ['product-series', activeSubcategoryId],
-    queryFn: () => api.products.getSeries({ subcategoryId: activeSubcategoryId }).then(r => r.data || []),
-    enabled: !!activeSubcategoryId
+    queryFn: () => api.products.getSeries({ subcategoryId: activeSubcategoryId }).then((r: any) => (r?.data ?? r) || []),
+    placeholderData: activeSubcategoryId ? (PLACEHOLDER_SERIES[activeSubcategoryId] ?? []) : [],
+    enabled: !!activeSubcategoryId,
+    staleTime: 5 * 60 * 1000,
   });
 
   const { data: products, isLoading: isProdsLoading } = useQuery({
     queryKey: ['products', activeSeriesId],
-    queryFn: () => api.products.list({ seriesId: activeSeriesId }).then(r => r.data || []),
-    enabled: !!activeSeriesId
+    queryFn: () => api.products.list({ seriesId: activeSeriesId }).then((r: any) => (r?.data ?? r) || []),
+    placeholderData: [] as any[],
+    enabled: !!activeSeriesId,
+    staleTime: 5 * 60 * 1000,
   });
+
 
   const activeCategory = categories?.find((c: any) => c.id === activeCategoryId);
   const activeSubcategory = subcategories?.find((c: any) => c.id === activeSubcategoryId);
@@ -95,31 +137,17 @@ export function ProductCatalogPage() {
         {/* LEVEL 1: CATEGORIES */}
         {!activeCategoryId && (
           <motion.div key="categories" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {isCatsLoading ? (
-              [...Array(3)].map((_, i) => <div key={i} className="h-48 bg-slate-800 rounded-xl animate-pulse" />)
-            ) : !categories || categories.length === 0 ? (
-              <div className="col-span-3 card p-16 text-center">
-                <SwatchIcon className="h-10 w-10 text-slate-700 mx-auto mb-3" />
-                <p className="text-slate-400 font-medium">No product categories found.</p>
-                <p className="text-slate-600 text-sm mt-1">The catalog may still be loading from the server.</p>
-                <button
-                  onClick={() => window.location.reload()}
-                  className="btn-secondary btn-sm mt-4"
-                >
-                  Retry
-                </button>
-              </div>
-            ) : categories?.map((cat: any) => (
-              <div 
-                key={cat.id} 
+            {(categories ?? []).map((cat: any) => (
+              <div
+                key={cat.id}
                 onClick={() => setActiveCategoryId(cat.id)}
                 className="card group cursor-pointer hover:border-brand-500/50 hover:shadow-lg hover:shadow-brand-500/10 transition-all overflow-hidden relative"
               >
                 <div className="h-32 bg-slate-800 flex items-center justify-center relative overflow-hidden">
                   <div className="absolute inset-0 bg-gradient-to-t from-slate-900 to-transparent z-10" />
                   {cat.slug === 'windows' && <div className="absolute inset-0 bg-blue-500/20" />}
-                  {cat.slug === 'doors' && <div className="absolute inset-0 bg-amber-500/20" />}
-                  {cat.slug === 'siding' && <div className="absolute inset-0 bg-emerald-500/20" />}
+                  {cat.slug === 'doors'   && <div className="absolute inset-0 bg-amber-500/20" />}
+                  {cat.slug === 'siding'  && <div className="absolute inset-0 bg-emerald-500/20" />}
                   <span className="text-4xl relative z-20 mix-blend-overlay opacity-30 font-black tracking-tight">{cat.name.toUpperCase()}</span>
                 </div>
                 <div className="p-5">
@@ -138,10 +166,8 @@ export function ProductCatalogPage() {
                Select {activeCategory?.name} Style
             </h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              {isSubLoading ? (
-                [...Array(4)].map((_, i) => <div key={i} className="h-32 bg-slate-800 rounded-xl animate-pulse" />)
-              ) : subcategories?.map((sub: any) => (
-                <div 
+              {(subcategories ?? []).map((sub: any) => (
+                <div
                   key={sub.id}
                   onClick={() => setActiveSubcategoryId(sub.id)}
                   className="card p-5 cursor-pointer hover:bg-slate-800/80 transition-colors border-l-4 border-l-brand-500"
@@ -159,16 +185,14 @@ export function ProductCatalogPage() {
           <motion.div key="series" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
             <h2 className="text-lg font-bold text-white mb-4">Available {activeSubcategory?.name} Series</h2>
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              {isSeriesLoading ? (
-                [...Array(3)].map((_, i) => <div key={i} className="h-64 bg-slate-800 rounded-xl animate-pulse" />)
-              ) : seriesList?.map((series: any) => (
+              {(seriesList ?? []).map((series: any) => (
                 <div key={series.id} className="card flex flex-col">
                   <div className="p-5 flex-1 border-b border-slate-800">
                     <h3 className="text-lg font-bold text-white">{series.name}</h3>
                     <p className="text-sm text-slate-400 mt-2">{series.description}</p>
                   </div>
                   <div className="p-4 bg-slate-800/30">
-                    <button 
+                    <button
                       onClick={() => setActiveSeriesId(series.id)}
                       className="btn-primary w-full"
                     >
