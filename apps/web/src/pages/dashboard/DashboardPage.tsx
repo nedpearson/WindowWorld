@@ -162,7 +162,6 @@ export function DashboardPage() {
   const rangeStart = useMemo(() => { const d = new Date(); d.setDate(d.getDate() - 1); return d.toISOString(); }, []);
   const rangeEnd   = useMemo(() => { const d = new Date(); d.setDate(d.getDate() + 1); return d.toISOString(); }, []);
   const { data: calApts = [] } = useCalendarAppointments(rangeStart, rangeEnd);
-  const todayApts = calApts.filter((a) => isSameDay(new Date(a.scheduledAt), today));
 
   // ── Action queue from leads.bestToday ──────────────────────
   const [queue, setQueue] = useState<any[]>([]);
@@ -172,7 +171,6 @@ export function DashboardPage() {
       .catch(() => {});
   }, []);
 
-  const visibleQueue = (showAllQueue ? queue : queue.slice(0, 3)).filter((i: any) => !dismissedIds.has(i.id));
 
   // ── Pipeline data from analytics ───────────────────────────
   const rawPipeline: any[] = dashData?.pipeline?.stages ?? [];
