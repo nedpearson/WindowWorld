@@ -1104,7 +1104,7 @@ export function MobileFieldApp() {
     { key: 'receipt', icon: CurrencyDollarIcon,        label: 'Receipt' },
     { key: 'measure', icon: ClipboardDocumentListIcon, label: 'Measure' },
     { key: 'lead',    icon: UserPlusIcon,              label: 'New Lead' },
-    { key: 'pitch',   icon: SparklesIcon,              label: 'Pitch' },
+    { key: 'pitch',   icon: SparklesIcon,              label: 'Silo AI' },
     { key: 'notes',   icon: PencilIcon,                label: 'Notes' },
   ];
 

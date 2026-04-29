@@ -222,7 +222,7 @@ export function PitchTab({ stops, activeStopId }: PitchTabProps) {
       {/* Section switcher */}
       <div className="flex gap-1 p-1 rounded-xl bg-slate-800 border border-slate-700/50">
         {([
-          { key: 'coach', label: '🤖 Coach' },
+          { key: 'coach', label: '✨ Silo AI' },
           { key: 'objections', label: '💬 Objections' },
           { key: 'financing', label: '💰 Financing' },
         ] as const).map(({ key, label }) => (
@@ -264,7 +264,7 @@ export function PitchTab({ stops, activeStopId }: PitchTabProps) {
           <motion.div key="coach" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} className="space-y-3">
             <div className="flex items-center gap-2">
               <BoltIcon className="h-4 w-4 text-brand-400" />
-              <span className="text-xs font-semibold text-slate-300 uppercase tracking-wide">AI Pitch Intelligence</span>
+              <span className="text-xs font-semibold text-slate-300 uppercase tracking-wide">Silo AI Coach</span>
             </div>
             {activeStop
               ? <AIPitchCoach leadId={activeStop.lead.id} leadName={activeStop.lead.name} />
