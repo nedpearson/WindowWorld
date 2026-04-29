@@ -188,10 +188,10 @@ export function CommissionPage() {
   });
 
   const user = useAuthStore((s) => s.user);
-  // Show real rep data if available; only show demo data for the 'demo' org
+  const noReps = !(Array.isArray(repsData) && repsData.length > 0);
   const REPS: Rep[] = (Array.isArray(repsData) && repsData.length > 0)
     ? repsData
-    : (isDemoMode(user) ? DEMO_REPS : []);
+    : (isDemoMode(user, noReps) ? DEMO_REPS : []);
 
   const totalEarned   = REPS.reduce((s, r) => s + calcCommission(r.mtdRevenue, tiers).earned, 0);
   const totalPipeline = REPS.reduce((s, r) => s + r.openPipeline, 0);

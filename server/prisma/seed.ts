@@ -28,11 +28,11 @@ async function main() {
   console.log(`✅ Live Organization: ${orgReal.name}`);
 
   const orgDemo = await prisma.organization.upsert({
-    where: { slug: 'windowworld-louisiana-demo' },
+    where: { slug: 'demo' },
     update: {},
     create: {
       name: 'WindowWorld Demo',
-      slug: 'windowworld-louisiana-demo',
+      slug: 'demo',
       brandColor: '#1a56db',
       address: '4700 Florida Blvd',
       city: 'Baton Rouge',
@@ -43,7 +43,7 @@ async function main() {
       website: 'https://windowworldla.com',
     },
   });
-  console.log(`✅ Demo Organization: ${orgDemo.name}`);
+  console.log(`✅ Demo Organization: ${orgDemo.name} (slug: 'demo')`);
 
   // ─────────────────────────────────────────────
   // USERS
@@ -67,17 +67,23 @@ async function main() {
         isActive: true,
       },
     }),
+    // ── Demo Preview Account (REAL ORG, non-super role) ─────────
+    // Thomas Broussard is the demo-preview account in the real org.
+    // He has SALES_MANAGER role (not SUPER_ADMIN) so the platform shows
+    // manager-level views. He sees all the seeded demo data in orgReal.
+    // nedpearson@gmail.com is excluded from demo data by isDemoMode().
     prisma.user.upsert({
       where: { email: 'admin@windowworldla.com' },
-      update: { passwordHash, isActive: true, organizationId: orgReal.id },
+      update: { passwordHash, isActive: true, organizationId: orgReal.id, role: UserRole.SALES_MANAGER },
       create: {
         organizationId: orgReal.id,
         email: 'admin@windowworldla.com',
         passwordHash,
         firstName: 'Thomas',
         lastName: 'Broussard',
-        role: UserRole.SUPER_ADMIN,
+        role: UserRole.SALES_MANAGER,
         phone: '(225) 555-0101',
+        isActive: true,
       },
     }),
     prisma.user.upsert({

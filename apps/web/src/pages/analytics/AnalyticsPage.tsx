@@ -106,9 +106,8 @@ export function AnalyticsPage() {
 
   const rawMtdRevenue = dash?.kpis?.mtdRevenue ?? 0;
   
-  // Demo fallback: ONLY for the 'demo' org — never for production accounts.
-  // nedpearson@gmail.com always sees real (empty) data.
-  const isDemoFallback = isDemoMode(user);
+  // Demo fallback: nedpearson@gmail.com is hard-excluded. All others with no data see demo.
+  const isDemoFallback = isDemoMode(user, Number(rawMtdRevenue) === 0);
 
   const activeDash = isDemoFallback ? DEMO_ANALYTICS_DASH : dash;
   const activeRepPerf = isDemoFallback ? DEMO_REP_PERF : repPerf;

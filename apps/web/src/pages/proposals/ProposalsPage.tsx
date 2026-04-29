@@ -81,8 +81,8 @@ export function ProposalsPage() {
   const statusMutation = useUpdateProposalStatus();
 
   const user = useAuthStore((s) => s.user);
-  // Use real API data if available; only show demo for the 'demo' org
-  const proposals: Proposal[] = (isDemoMode(user) && !Array.isArray(apiData?.data))
+  const noApiData = !Array.isArray(apiData?.data);
+  const proposals: Proposal[] = (isDemoMode(user, noApiData) && noApiData)
     ? DEMO_PROPOSALS
     : (Array.isArray(apiData?.data) ? apiData.data : []);
 

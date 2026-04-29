@@ -279,7 +279,7 @@ export function InvoicesPage() {
     overdueOnly: overdueOnly || undefined });
 
   const user = useAuthStore((s) => s.user);
-  const invoices: Invoice[] = (isDemoMode(user) && !Array.isArray(apiData?.data))
+  const invoices: Invoice[] = (isDemoMode(user, !Array.isArray(apiData?.data)) && !Array.isArray(apiData?.data))
     ? DEMO_INVOICES
     : (Array.isArray(apiData?.data) ? apiData.data : []);
 

@@ -321,12 +321,13 @@ export function AutomationsPage() {
   });
 
   const user = useAuthStore((s) => s.user);
-  const inDemoMode = isDemoMode(user);
+  const noTemplates = !Array.isArray(apiTemplates);
+  const noEnrollments = !(Array.isArray(apiEnrollments) && apiEnrollments.length > 0);
+  const inDemoMode = isDemoMode(user, noTemplates && noEnrollments);
 
   const templates = Array.isArray(apiTemplates) ? apiTemplates : (inDemoMode ? DEMO_TEMPLATES : []);
   const enrollments = useMemo(() => {
     if (Array.isArray(apiEnrollments) && apiEnrollments.length > 0) return apiEnrollments;
-    // Only fall back to demo enrollments for the demo org
     if (!inDemoMode) return [];
     return buildDemoEnrollments(leadsData || []);
   }, [apiEnrollments, leadsData, inDemoMode]);
