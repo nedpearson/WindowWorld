@@ -191,7 +191,7 @@ export function CommissionPage() {
   const noReps = !(Array.isArray(repsData) && repsData.length > 0);
   const REPS: Rep[] = (Array.isArray(repsData) && repsData.length > 0)
     ? repsData
-    : (isDemoMode(user, noReps) ? DEMO_REPS : []);
+    : (isDemoMode(user) ? DEMO_REPS : []);
 
   const totalEarned   = REPS.reduce((s, r) => s + calcCommission(r.mtdRevenue, tiers).earned, 0);
   const totalPipeline = REPS.reduce((s, r) => s + r.openPipeline, 0);

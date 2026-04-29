@@ -82,7 +82,7 @@ export function ProposalsPage() {
 
   const user = useAuthStore((s) => s.user);
   const noApiData = !Array.isArray(apiData?.data);
-  const proposals: Proposal[] = (isDemoMode(user, noApiData) && noApiData)
+  const proposals: Proposal[] = (isDemoMode(user) && noApiData)
     ? DEMO_PROPOSALS
     : (Array.isArray(apiData?.data) ? apiData.data : []);
 

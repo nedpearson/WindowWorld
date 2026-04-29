@@ -321,9 +321,7 @@ export function AutomationsPage() {
   });
 
   const user = useAuthStore((s) => s.user);
-  const noTemplates = !Array.isArray(apiTemplates);
-  const noEnrollments = !(Array.isArray(apiEnrollments) && apiEnrollments.length > 0);
-  const inDemoMode = isDemoMode(user, noTemplates && noEnrollments);
+  const inDemoMode = isDemoMode(user);
 
   const templates = Array.isArray(apiTemplates) ? apiTemplates : (inDemoMode ? DEMO_TEMPLATES : []);
   const enrollments = useMemo(() => {

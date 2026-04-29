@@ -45,8 +45,8 @@ export function SiloCoachPage() {
     ],
   };
 
-  const activeBrief = brief || DEMO_BRIEF;
-  const isDemo = !brief && !isLoading;
+  const activeBrief = brief || (isDemoMode(user) ? DEMO_BRIEF : null);
+  const isDemo = !brief && isDemoMode(user);
 
   if (isLoading) {
     return (
@@ -66,7 +66,27 @@ export function SiloCoachPage() {
     );
   }
 
-  // Use activeBrief (real or demo) — never blank
+  // Non-demo users with no brief yet → show empty / loading state
+  if (!activeBrief) {
+    return (
+      <div className="p-6 max-w-7xl mx-auto">
+        <div className="flex items-center gap-2 mb-6">
+          <SparklesIcon className="h-6 w-6 text-brand-400" />
+          <h1 className="text-2xl font-bold text-white">Silo AI Coach</h1>
+        </div>
+        <div className="card p-12 text-center">
+          <SparklesIcon className="h-12 w-12 text-brand-400/40 mx-auto mb-4" />
+          <div className="text-lg font-semibold text-slate-300 mb-2">Your AI Brief is Being Prepared</div>
+          <p className="text-slate-500 text-sm max-w-md mx-auto">
+            Silo AI analyzes your leads, pipeline, and activity to generate your personalized daily brief.
+            Add your first lead to get started.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // Use activeBrief (real or demo)
   const { scores, moneyLikelyThisWeek, dailyActionPlan, bestLeadsToWork, hottestProposals, overdueFollowUps } = activeBrief as any;
 
   return (

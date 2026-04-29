@@ -178,9 +178,9 @@ export function DashboardPage() {
   const rawPipelineTotal = rawPipeline.reduce((s: number, st: any) => s + (st.value ?? 0), 0);
   const rawMtdRevenue = dashData?.kpis?.mtdRevenue ?? 0;
 
-  // nedpearson@gmail.com is hard-excluded. All others with no real data see demo.
-  const hasNoData = Number(rawPipelineTotal) === 0 && Number(rawMtdRevenue) === 0;
-  const isDemoFallback = isDemoMode(user, hasNoData);
+  // nedpearson@gmail.com → strict PRODUCTION_EMAILS block → always empty state.
+  // Only org.slug === 'demo' gets demo data.
+  const isDemoFallback = isDemoMode(user);
 
   const activeDashData = isDemoFallback ? DEMO_DASH_DATA : dashData;
   const activeProposals = isDemoFallback && proposals.length === 0 ? DEMO_PROPOSALS : proposals;
