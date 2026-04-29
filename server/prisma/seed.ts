@@ -796,19 +796,181 @@ async function main() {
 
 
   // ─────────────────────────────────────────────
-  // AUTOMATION RULES (skip if already seeded)
+  // AUTOMATION RULES + RUN HISTORY (idempotent)
   // ─────────────────────────────────────────────
   const existingAutomationCount = await prisma.automation.count();
   if (existingAutomationCount === 0) {
-    await Promise.all([
-      prisma.automation.create({ data: { name: 'Stale Lead Follow-Up — 7 Days', description: 'Send follow-up task when lead has no contact for 7 days', trigger: 'NO_CONTACT_DAYS', conditions: { noContactDays: 7, statusNotIn: ['SOLD', 'LOST', 'PAID'] }, actions: [{ type: 'CREATE_TASK', title: 'Re-engage stale lead', priority: 'high' }, { type: 'SEND_NOTIFICATION', message: 'Lead has gone 7 days without contact' }], isActive: true, delayMinutes: 0 } }),
-      prisma.automation.create({ data: { name: 'Appointment Reminder — 24 Hours', description: 'Send appointment reminder to homeowner 24 hours before', trigger: 'APPOINTMENT_SET', conditions: { hoursUntilAppointment: 24 }, actions: [{ type: 'SEND_EMAIL', template: 'appointment-reminder' }, { type: 'SEND_SMS', message: 'Reminder: Your window consultation is tomorrow.' }], isActive: true, delayMinutes: 0 } }),
-      prisma.automation.create({ data: { name: 'Proposal Follow-Up — 3 Days', description: 'Follow up 3 days after proposal is sent if no response', trigger: 'PROPOSAL_SENT', conditions: { daysAfterSend: 3, noResponse: true }, actions: [{ type: 'CREATE_TASK', title: 'Follow up on sent proposal', priority: 'high' }, { type: 'SEND_EMAIL', template: 'proposal-followup' }], isActive: true, delayMinutes: 3 * 24 * 60 } }),
-      prisma.automation.create({ data: { name: 'Storm Opportunity Alert', description: 'Notify managers when a storm event affects leads in territory', trigger: 'STORM_EVENT', conditions: {}, actions: [{ type: 'SEND_NOTIFICATION', message: 'Storm event detected — activating storm opportunity mode' }, { type: 'UPDATE_LEAD_FLAGS', setStormLead: true }], isActive: true, delayMinutes: 0 } }),
-    ]);
-    console.log(`✅ Automation rules created`);
+    const ago = (days: number) => new Date(Date.now() - days * 86_400_000);
+
+    const autoStale = await prisma.automation.create({ data: {
+      organizationId: orgReal.id,
+      name: 'Stale Lead Follow-Up — 7 Days',
+      description: 'Send follow-up task when lead has no contact for 7 days',
+      trigger: 'NO_CONTACT_DAYS' as any,
+      conditions: { noContactDays: 7, statusNotIn: ['SOLD', 'LOST', 'PAID'] },
+      actions: [{ type: 'CREATE_TASK', title: 'Re-engage stale lead', priority: 'high' }, { type: 'SEND_NOTIFICATION', message: 'Lead has gone 7 days without contact' }],
+      isActive: true, delayMinutes: 0, runCount: 31, lastRunAt: ago(0),
+    }});
+    await prisma.automationRun.createMany({ data: [
+      { automationId: autoStale.id, status: 'COMPLETED' as any, triggeredAt: ago(1), completedAt: ago(1), result: { tasksCreated: 3, notified: 3 } },
+      { automationId: autoStale.id, status: 'COMPLETED' as any, triggeredAt: ago(3), completedAt: ago(3), result: { tasksCreated: 2, notified: 2 } },
+      { automationId: autoStale.id, status: 'COMPLETED' as any, triggeredAt: ago(7), completedAt: ago(7), result: { tasksCreated: 4, notified: 4 } },
+      { automationId: autoStale.id, status: 'FAILED'    as any, triggeredAt: ago(10), errorMessage: 'Lead not found in org scope' },
+    ]});
+
+    const autoAppt = await prisma.automation.create({ data: {
+      organizationId: orgReal.id,
+      name: 'Appointment Reminder — 24 Hours',
+      description: 'Send appointment reminder to homeowner 24 hours before scheduled visit',
+      trigger: 'APPOINTMENT_SET' as any,
+      conditions: { hoursUntilAppointment: 24 },
+      actions: [{ type: 'SEND_EMAIL', template: 'appointment-reminder' }, { type: 'SEND_SMS', message: 'Reminder: Your window consultation is tomorrow.' }],
+      isActive: true, delayMinutes: 0, runCount: 24, lastRunAt: ago(0),
+    }});
+    await prisma.automationRun.createMany({ data: [
+      { automationId: autoAppt.id, status: 'COMPLETED' as any, triggeredAt: ago(0), completedAt: ago(0), result: { emailsSent: 1, smsSent: 1 } },
+      { automationId: autoAppt.id, status: 'COMPLETED' as any, triggeredAt: ago(1), completedAt: ago(1), result: { emailsSent: 1, smsSent: 1 } },
+      { automationId: autoAppt.id, status: 'COMPLETED' as any, triggeredAt: ago(2), completedAt: ago(2), result: { emailsSent: 1, smsSent: 1 } },
+    ]});
+
+    const autoProposal = await prisma.automation.create({ data: {
+      organizationId: orgReal.id,
+      name: 'Proposal Follow-Up — 3 Days',
+      description: 'Follow up 3 days after proposal is sent if no response',
+      trigger: 'PROPOSAL_SENT' as any,
+      conditions: { daysAfterSend: 3, noResponse: true },
+      actions: [{ type: 'CREATE_TASK', title: 'Follow up on sent proposal', priority: 'high' }, { type: 'SEND_EMAIL', template: 'proposal-followup' }],
+      isActive: true, delayMinutes: 3 * 24 * 60, runCount: 17, lastRunAt: ago(2),
+    }});
+    await prisma.automationRun.createMany({ data: [
+      { automationId: autoProposal.id, status: 'COMPLETED' as any, triggeredAt: ago(2), completedAt: ago(2), result: { emailsSent: 1, tasksCreated: 1 } },
+      { automationId: autoProposal.id, status: 'COMPLETED' as any, triggeredAt: ago(5), completedAt: ago(5), result: { emailsSent: 1, tasksCreated: 1 } },
+      { automationId: autoProposal.id, status: 'COMPLETED' as any, triggeredAt: ago(8), completedAt: ago(8), result: { emailsSent: 1, tasksCreated: 1 } },
+    ]});
+
+    const autoStorm = await prisma.automation.create({ data: {
+      organizationId: orgReal.id,
+      name: 'Storm Opportunity Alert',
+      description: 'Notify managers when a storm event affects leads in territory',
+      trigger: 'STORM_EVENT' as any,
+      conditions: {},
+      actions: [{ type: 'SEND_NOTIFICATION', message: 'Storm event detected — activating storm opportunity mode' }, { type: 'UPDATE_LEAD_FLAGS', setStormLead: true }],
+      isActive: true, delayMinutes: 0, runCount: 3, lastRunAt: ago(14),
+    }});
+    await prisma.automationRun.createMany({ data: [
+      { automationId: autoStorm.id, status: 'COMPLETED' as any, triggeredAt: ago(14), completedAt: ago(14), result: { leadsTagged: 6, notified: 2 } },
+      { automationId: autoStorm.id, status: 'COMPLETED' as any, triggeredAt: ago(45), completedAt: ago(45), result: { leadsTagged: 11, notified: 2 } },
+    ]});
+
+    const autoNewLead = await prisma.automation.create({ data: {
+      organizationId: orgReal.id,
+      name: 'New Lead Welcome — Instant SMS',
+      description: 'Send a welcome SMS within 5 minutes of new lead submission',
+      trigger: 'LEAD_CREATED' as any,
+      conditions: { hasPhone: true },
+      actions: [{ type: 'SEND_SMS', message: 'Hi {firstName}! Thanks for reaching out to WindowWorld Louisiana. A rep will contact you within 1 business hour.' }],
+      isActive: true, delayMinutes: 5, runCount: 47, lastRunAt: ago(0),
+    }});
+    await prisma.automationRun.createMany({ data: [
+      { automationId: autoNewLead.id, status: 'COMPLETED' as any, triggeredAt: ago(0), completedAt: ago(0), result: { smsSent: 1 } },
+      { automationId: autoNewLead.id, status: 'COMPLETED' as any, triggeredAt: ago(1), completedAt: ago(1), result: { smsSent: 1 } },
+      { automationId: autoNewLead.id, status: 'COMPLETED' as any, triggeredAt: ago(2), completedAt: ago(2), result: { smsSent: 1 } },
+      { automationId: autoNewLead.id, status: 'COMPLETED' as any, triggeredAt: ago(3), completedAt: ago(3), result: { smsSent: 1 } },
+    ]});
+
+    const autoNurture = await prisma.automation.create({ data: {
+      organizationId: orgReal.id,
+      name: 'Nurture — 30 Day Re-Engagement',
+      description: 'Re-engage leads that have been in Nurture status for 30+ days',
+      trigger: 'LEAD_STATUS_CHANGED' as any,
+      conditions: { status: 'NURTURE', daysInStatus: 30 },
+      actions: [{ type: 'SEND_EMAIL', template: 'reengagement' }, { type: 'CREATE_TASK', title: 'Call and re-qualify nurture lead', priority: 'medium' }],
+      isActive: false, delayMinutes: 30 * 24 * 60, runCount: 8, lastRunAt: ago(12),
+    }});
+    await prisma.automationRun.createMany({ data: [
+      { automationId: autoNurture.id, status: 'COMPLETED' as any, triggeredAt: ago(12), completedAt: ago(12), result: { emailsSent: 2, tasksCreated: 2 } },
+    ]});
+
+    console.log(`✅ Automations: 6 rules created with run history`);
   } else {
-    console.log(`⏭️  Automations already seeded, skipping`);
+    const existingRunCount = await prisma.automationRun.count();
+    console.log(`⏭️  Automations already seeded (${existingAutomationCount} rules, ${existingRunCount} runs), skipping`);
+  }
+
+  // ─────────────────────────────────────────────
+  // CAMPAIGNS — idempotent demo records
+  // ─────────────────────────────────────────────
+  const existingCampaignCount = await prisma.campaign.count({ where: { organizationId: orgReal.id } });
+  if (existingCampaignCount === 0) {
+    const allOrgLeadsForCampaign = await prisma.lead.findMany({
+      where: { organizationId: orgReal.id },
+      select: { id: true, status: true, parish: true, zip: true },
+    });
+    const stormLeadIds = allOrgLeadsForCampaign.filter((_, i) => i < 4).map(l => l.id);
+    const newLeadIds   = allOrgLeadsForCampaign.filter((_, i) => i >= 4 && i < 9).map(l => l.id);
+    const nurLeadIds   = allOrgLeadsForCampaign.filter((_, i) => i >= 9 && i < 12).map(l => l.id);
+
+    await Promise.all([
+      prisma.campaign.create({ data: {
+        organizationId: orgReal.id,
+        name: 'Spring 2025 Storm Damage Blitz',
+        type: 'storm-opportunity',
+        status: 'active',
+        isStormCampaign: true,
+        targetParishes: ['East Baton Rouge', 'Livingston', 'Ascension'],
+        targetZips: ['70806', '70726', '70769'],
+        targetLeadStatus: ['NEW_LEAD', 'ATTEMPTING_CONTACT'],
+        leadCount: 6, contactedCount: 4, appointmentCount: 2, closeCount: 1,
+        revenue: 8900,
+        startDate: new Date('2025-04-01'), endDate: new Date('2025-06-30'),
+        notes: 'Follow up on all storm-flagged leads from the April weather event.',
+        leads: { connect: stormLeadIds.map(id => ({ id })) },
+      }}),
+      prisma.campaign.create({ data: {
+        organizationId: orgReal.id,
+        name: 'New Lead Welcome Sequence — Q2',
+        type: 'custom',
+        status: 'active',
+        targetParishes: ['East Baton Rouge', 'Lafayette'],
+        targetZips: [],
+        targetLeadStatus: ['NEW_LEAD'],
+        leadCount: 5, contactedCount: 5, appointmentCount: 3, closeCount: 0,
+        revenue: 0,
+        startDate: new Date('2025-04-01'),
+        notes: 'Auto-enrolled via new-lead-welcome campaign template.',
+        leads: { connect: newLeadIds.map(id => ({ id })) },
+      }}),
+      prisma.campaign.create({ data: {
+        organizationId: orgReal.id,
+        name: 'Spring Refresh — Referral Drive',
+        type: 'referral',
+        status: 'active',
+        targetParishes: ['Jefferson', 'St. Tammany'],
+        targetZips: ['70002', '70458'],
+        targetLeadStatus: [],
+        leadCount: 3, contactedCount: 2, appointmentCount: 1, closeCount: 0,
+        revenue: 0,
+        startDate: new Date('2025-03-15'),
+        notes: 'Referral-focused outreach to recently installed customers.',
+        leads: { connect: nurLeadIds.map(id => ({ id })) },
+      }}),
+      prisma.campaign.create({ data: {
+        organizationId: orgReal.id,
+        name: 'Nurture Re-Engagement — Q1 Leftovers',
+        type: 'reengagement',
+        status: 'paused',
+        targetParishes: [],
+        targetZips: [],
+        targetLeadStatus: ['NURTURE', 'FOLLOW_UP'],
+        leadCount: 8, contactedCount: 3, appointmentCount: 1, closeCount: 0,
+        revenue: 0,
+        startDate: new Date('2025-01-15'), endDate: new Date('2025-03-31'),
+        notes: 'Re-engage cold leads from Q1. Paused pending rep capacity.',
+      }}),
+    ]);
+    console.log(`✅ Campaigns: 4 demo campaign records created`);
+  } else {
+    console.log(`⏭️  Campaigns already seeded (${existingCampaignCount}), skipping`);
   }
 
 
@@ -913,26 +1075,6 @@ async function main() {
     }
   } else {
     console.log(`⏭️  Quotes/Proposals already seeded, skipping`);
-  }
-
-  // ─────────────────────────────────────────────
-  // CAMPAIGNS (skip if already seeded)
-  // ─────────────────────────────────────────────
-  const existingCampaignCount = await prisma.campaign.count({ where: { organizationId: orgReal.id } });
-  if (existingCampaignCount === 0) {
-    await prisma.campaign.create({
-      data: {
-        organizationId: orgReal.id, name: 'Summer 2025 Storm Follow-Up — BR Metro',
-        type: 'storm-opportunity', status: 'active', isStormCampaign: true,
-        targetParishes: ['East Baton Rouge', 'Livingston'], targetZips: ['70806', '70815', '70726'],
-        targetLeadStatus: ['NEW_LEAD', 'ATTEMPTING_CONTACT', 'CONTACTED'],
-        leadCount: 47, contactedCount: 23, appointmentCount: 8, closeCount: 3,
-        revenue: 41200, startDate: new Date(Date.now() - 21 * 24 * 60 * 60 * 1000),
-      },
-    });
-    console.log(`✅ Campaign created`);
-  } else {
-    console.log(`⏭️  Campaign already seeded, skipping`);
   }
 
 

@@ -1,20 +1,11 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { toast } from 'sonner';
-import {
-  BoltIcon as BoltOutline,
-  PlayIcon,
-  XMarkIcon,
-  PlusIcon,
-  CheckCircleIcon,
-  ClockIcon,
-  EnvelopeIcon,
-  ChatBubbleLeftRightIcon,
-  UserGroupIcon,
-  ChevronDownIcon } from '@heroicons/react/24/outline';
+import { toast } from 'sonner';\nimport {\n  BoltIcon as BoltOutline,\n  PlayIcon,\n  XMarkIcon,\n  PlusIcon,\n  CheckCircleIcon,\n  ClockIcon,\n  EnvelopeIcon,\n  ChatBubbleLeftRightIcon,\n  UserGroupIcon,\n  ChevronDownIcon } from '@heroicons/react/24/outline';
 import { BoltIcon, SparklesIcon } from '@heroicons/react/24/solid';
 import clsx from 'clsx';
+import { useQuery } from '@tanstack/react-query';
+import { api } from '../../api/client';
 import {
   useCampaignTemplates,
   useCampaignEnrollments,
@@ -44,7 +35,7 @@ function formatDelay(hours: number): string {
   return `Day ${days}`;
 }
 
-// ─── Demo data ────────────────────────────────────────────────
+// ─── Static template definitions ────────────────────────────
 const DEMO_TEMPLATES: CampaignTemplate[] = [
   { key: 'new-lead-welcome', name: 'New Lead Welcome Sequence', description: 'Automated welcome + appointment booking for new leads', triggerStatus: 'NEW', steps: [
     { step: 1, delayHours: 0, type: 'EMAIL', subject: 'Welcome — Your Free Estimate', templateKey: 'welcome_email' },
@@ -78,12 +69,21 @@ const DEMO_TEMPLATES: CampaignTemplate[] = [
   ]},
 ];
 
-const DEMO_ENROLLMENTS: CampaignEnrollment[] = [
-  { id: 'e1', leadId: '3', status: 'ACTIVE', currentStep: 2, enrolledAt: '2026-04-18T10:00:00Z', campaignTemplateKey: 'proposal-sent-followup', lead: { id: '3', firstName: 'Robert', lastName: 'Comeaux', status: 'PROPOSAL_SENT', email: 'robert@example.com' }, campaign: { name: 'Proposal Follow-up Sequence', templateKey: 'proposal-sent-followup' } },
-  { id: 'e2', leadId: '1', status: 'COMPLETED', currentStep: 5, enrolledAt: '2026-04-15T09:00:00Z', completedAt: '2026-04-18T09:00:00Z', campaignTemplateKey: 'new-lead-welcome', lead: { id: '1', firstName: 'Michael', lastName: 'Trosclair', status: 'ACCEPTED' }, campaign: { name: 'New Lead Welcome Sequence', templateKey: 'new-lead-welcome' } },
-  { id: 'e3', leadId: '6', status: 'ACTIVE', currentStep: 1, enrolledAt: '2026-04-19T08:00:00Z', campaignTemplateKey: 'new-lead-welcome', lead: { id: '6', firstName: 'Karen', lastName: 'Guidry', status: 'NEW_LEAD', email: 'karen@example.com' }, campaign: { name: 'New Lead Welcome Sequence', templateKey: 'new-lead-welcome' } },
-  { id: 'e4', leadId: '4', status: 'ACTIVE', currentStep: 3, enrolledAt: '2026-04-17T14:00:00Z', campaignTemplateKey: 'storm-lead-urgency', lead: { id: '4', firstName: 'Angela', lastName: 'Mouton', status: 'CONTACTED' }, campaign: { name: 'Storm Damage Urgency', templateKey: 'storm-lead-urgency' } },
-];
+// ─── Build demo enrollments from real lead data ───────────────
+function buildDemoEnrollments(leads: any[]): CampaignEnrollment[] {
+  if (!leads.length) return [];
+  const L = (i: number) => leads[i % leads.length];
+  return [
+    { id: 'e1', leadId: L(0).id, status: 'ACTIVE',       currentStep: 2, enrolledAt: '2025-04-18T10:00:00Z', campaignTemplateKey: 'proposal-sent-followup', lead: { id: L(0).id, firstName: L(0).firstName, lastName: L(0).lastName, status: L(0).status }, campaign: { name: 'Proposal Follow-up Sequence', templateKey: 'proposal-sent-followup' } },
+    { id: 'e2', leadId: L(1).id, status: 'COMPLETED',    currentStep: 5, enrolledAt: '2025-04-15T09:00:00Z', completedAt: '2025-04-18T09:00:00Z', campaignTemplateKey: 'new-lead-welcome', lead: { id: L(1).id, firstName: L(1).firstName, lastName: L(1).lastName, status: L(1).status }, campaign: { name: 'New Lead Welcome Sequence', templateKey: 'new-lead-welcome' } },
+    { id: 'e3', leadId: L(2).id, status: 'ACTIVE',       currentStep: 1, enrolledAt: '2025-04-19T08:00:00Z', campaignTemplateKey: 'new-lead-welcome', lead: { id: L(2).id, firstName: L(2).firstName, lastName: L(2).lastName, status: L(2).status, email: L(2).email }, campaign: { name: 'New Lead Welcome Sequence', templateKey: 'new-lead-welcome' } },
+    { id: 'e4', leadId: L(3).id, status: 'ACTIVE',       currentStep: 3, enrolledAt: '2025-04-17T14:00:00Z', campaignTemplateKey: 'storm-lead-urgency', lead: { id: L(3).id, firstName: L(3).firstName, lastName: L(3).lastName, status: L(3).status }, campaign: { name: 'Storm Damage Urgency', templateKey: 'storm-lead-urgency' } },
+    { id: 'e5', leadId: L(4).id, status: 'ACTIVE',       currentStep: 2, enrolledAt: '2025-04-20T11:00:00Z', campaignTemplateKey: 'storm-lead-urgency', lead: { id: L(4).id, firstName: L(4).firstName, lastName: L(4).lastName, status: L(4).status }, campaign: { name: 'Storm Damage Urgency', templateKey: 'storm-lead-urgency' } },
+    { id: 'e6', leadId: L(5).id, status: 'COMPLETED',    currentStep: 4, enrolledAt: '2025-04-10T09:00:00Z', completedAt: '2025-04-17T09:00:00Z', campaignTemplateKey: 'proposal-sent-followup', lead: { id: L(5).id, firstName: L(5).firstName, lastName: L(5).lastName, status: L(5).status }, campaign: { name: 'Proposal Follow-up Sequence', templateKey: 'proposal-sent-followup' } },
+    { id: 'e7', leadId: L(6).id, status: 'PAUSED',       currentStep: 2, enrolledAt: '2025-04-12T08:00:00Z', campaignTemplateKey: 'no-answer-sequence', lead: { id: L(6).id, firstName: L(6).firstName, lastName: L(6).lastName, status: L(6).status }, campaign: { name: 'No-Answer Re-Engagement', templateKey: 'no-answer-sequence' } },
+    { id: 'e8', leadId: L(7).id, status: 'UNSUBSCRIBED', currentStep: 1, enrolledAt: '2025-04-08T10:00:00Z', campaignTemplateKey: 'new-lead-welcome', lead: { id: L(7).id, firstName: L(7).firstName, lastName: L(7).lastName, status: L(7).status }, campaign: { name: 'New Lead Welcome Sequence', templateKey: 'new-lead-welcome' } },
+  ];
+}
 
 // ─── Template Card ────────────────────────────────────────────
 function TemplateCard({ template }: { template: CampaignTemplate }) {
@@ -300,8 +300,19 @@ export function AutomationsPage() {
   const { data: apiTemplates } = useCampaignTemplates();
   const { data: apiEnrollments, isLoading } = useCampaignEnrollments();
 
+  // Fetch real leads to populate enrollment demo data with correct IDs
+  const { data: leadsData } = useQuery({
+    queryKey: ['leads-list-for-automations'],
+    queryFn: () => api.leads.list({ limit: 15 }).then((r: any) => r.data || []),
+    staleTime: 5 * 60_000,
+  });
+
   const templates = Array.isArray(apiTemplates) ? apiTemplates : DEMO_TEMPLATES;
-  const enrollments = Array.isArray(apiEnrollments) ? apiEnrollments : DEMO_ENROLLMENTS;
+  const enrollments = useMemo(() => {
+    if (Array.isArray(apiEnrollments) && apiEnrollments.length > 0) return apiEnrollments;
+    // Fall back to demo enrollments wired to real lead IDs
+    return buildDemoEnrollments(leadsData || []);
+  }, [apiEnrollments, leadsData]);
 
   const filtered = enrollments.filter((e) => !statusFilter || e.status === statusFilter);
 
