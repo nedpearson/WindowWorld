@@ -117,11 +117,18 @@ function StatusTimeline({ proposal }: { proposal: Proposal }) {
 }
 
 // ─── Send Drawer ──────────────────────────────────────────────
-function SendDrawer({ proposal, onClose }: { proposal: Proposal; onClose: () => void }) {
+function SendDrawer({ proposal, isDemo, onClose }: { proposal: Proposal; isDemo: boolean; onClose: () => void }) {
   const [channel, setChannel] = useState<'email' | 'sms' | 'both'>('email');
   const sendMutation = useSendProposal();
 
   const handleSend = async () => {
+    // Demo proposals are not in the DB — show informational toast instead
+    if (isDemo) {
+      const ch = channel === 'email' ? 'email to the customer' : channel === 'sms' ? 'SMS to the customer\'s phone' : 'email + SMS to the customer';
+      toast.success(`📨 Demo Mode — Proposal would be sent via ${ch} with a PDF link and personalised message. Connect a real lead to enable this.`, { duration: 6000 });
+      onClose();
+      return;
+    }
     try {
       await sendMutation.mutateAsync({ id: proposal.id, channel });
       toast.success(`Proposal sent via ${channel}!`);
@@ -565,7 +572,7 @@ export function ProposalDetailPage() {
       {/* Send drawer modal */}
       <AnimatePresence>
         {showSendDrawer && (
-          <SendDrawer proposal={proposal} onClose={() => setShowSendDrawer(false)} />
+          <SendDrawer proposal={proposal} isDemo={isDemo} onClose={() => setShowSendDrawer(false)} />
         )}
       </AnimatePresence>
 
