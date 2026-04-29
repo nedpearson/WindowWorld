@@ -1,7 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { auth, AuthenticatedRequest } from '../../shared/middleware/auth';
 import { siloAiService } from './silo-ai.service';
-import { logger } from '../../shared/utils/logger';
+import { logger, sanitizeForLog } from '../../shared/utils/logger';
 
 const router = Router();
 
@@ -16,8 +16,8 @@ router.get('/morning-brief/:repId', auth.repOrAbove, async (req: Request, res: R
     const data = await siloAiService.generateMorningBrief(repId as string);
     res.json({ success: true, data });
   } catch (error: any) {
-    logger.error('Silo AI morning-brief error:', error);
-    res.status(500).json({ success: false, message: error.message });
+    logger.error(`Silo AI morning-brief error: ${sanitizeForLog(error.message)}`);
+    res.status(500).json({ success: false, message: 'Internal server error' });
   }
 });
 
@@ -27,8 +27,8 @@ router.get('/appointment-prep/:appointmentId', auth.repOrAbove, async (req: Requ
     const data = await siloAiService.generateAppointmentPrep(req.params.appointmentId as string);
     res.json({ success: true, data });
   } catch (error: any) {
-    logger.error('Silo AI appointment-prep error:', error);
-    res.status(500).json({ success: false, message: error.message });
+    logger.error(`Silo AI appointment-prep error: ${sanitizeForLog(error.message)}`);
+    res.status(500).json({ success: false, message: 'Internal server error' });
   }
 });
 
@@ -38,19 +38,19 @@ router.get('/follow-up-engine', auth.repOrAbove, async (req: Request, res: Respo
     const data = await siloAiService.getFollowUpQueue((req as AuthenticatedRequest).user.id);
     res.json({ success: true, data });
   } catch (error: any) {
-    logger.error('Silo AI follow-up-engine error:', error);
-    res.status(500).json({ success: false, message: error.message });
+    logger.error(`Silo AI follow-up-engine error: ${sanitizeForLog(error.message)}`);
+    res.status(500).json({ success: false, message: 'Internal server error' });
   }
 });
 
 // Phase 4: Live Assist
-router.get('/live-assist', auth.repOrAbove, async (req: Request, res: Response) => {
+router.post('/live-assist', auth.repOrAbove, async (req: Request, res: Response) => {
   try {
-    const data = await siloAiService.getLiveAssist(req.query.prompt as string);
+    const data = await siloAiService.getLiveAssist(req.body.prompt as string);
     res.json({ success: true, data });
   } catch (error: any) {
-    logger.error('Silo AI live-assist error:', error);
-    res.status(500).json({ success: false, message: error.message });
+    logger.error(`Silo AI live-assist error: ${sanitizeForLog(error.message)}`);
+    res.status(500).json({ success: false, message: 'Internal server error' });
   }
 });
 
@@ -60,8 +60,8 @@ router.get('/proposal-analysis/:proposalId', auth.repOrAbove, async (req: Reques
     const data = await siloAiService.analyzeProposal(req.params.proposalId as string);
     res.json({ success: true, data });
   } catch (error: any) {
-    logger.error('Silo AI proposal-analysis error:', error);
-    res.status(500).json({ success: false, message: error.message });
+    logger.error(`Silo AI proposal-analysis error: ${sanitizeForLog(error.message)}`);
+    res.status(500).json({ success: false, message: 'Internal server error' });
   }
 });
 

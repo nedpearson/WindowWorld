@@ -1,6 +1,6 @@
 import { Prisma, ExpenseCategory, JobExpense } from '@prisma/client';
 import { prisma } from '../../shared/services/prisma';
-import { logger } from '../../shared/utils/logger';
+import { logger, sanitizeForLog } from '../../shared/utils/logger';
 import { NotFoundError, ForbiddenError } from '../../shared/middleware/errorHandler';
 import OpenAI from 'openai';
 
@@ -234,7 +234,7 @@ export class JobExpensesService {
       return result;
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Unknown error';
-      logger.error('[JobExpenses] parseReceiptWithAI failed:', { message, imageUrl, leadId });
+      logger.error('[JobExpenses] parseReceiptWithAI failed:', { message: sanitizeForLog(message), imageUrl, leadId });
 
       // Save failed analysis record (non-blocking)
       try {

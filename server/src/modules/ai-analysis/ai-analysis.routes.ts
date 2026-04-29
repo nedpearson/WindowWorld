@@ -3,7 +3,7 @@ import { auth, AuthenticatedRequest } from '../../shared/middleware/auth';
 import { aiService } from './ai.service';
 import { leadScoringQueue, aiQueue } from '../../jobs';
 import { prisma } from '../../shared/services/prisma';
-import { logger } from '../../shared/utils/logger';
+import { logger, sanitizeForLog } from '../../shared/utils/logger';
 import { NotFoundError } from '../../shared/middleware/errorHandler';
 
 const router = Router();
@@ -123,8 +123,8 @@ router.get('/pitch-coach/:leadId', auth.repOrAbove, async (req: Request, res: Re
     const script = await aiService.generatePitchCoach(lead as any);
     return res.json({ success: true, data: script });
   } catch (err: any) {
-    logger.error('[ai/pitch-coach] Error:', err.message);
-    return res.status(500).json({ success: false, message: err.message });
+    logger.error(`[ai/pitch-coach] Error: ${sanitizeForLog(err.message)}`);
+    return res.status(500).json({ success: false, message: 'AI pitch coach generation failed' });
   }
 });
 
@@ -166,8 +166,8 @@ router.get('/lead-summary/:leadId', auth.repOrAbove, async (req: Request, res: R
     const summary = await aiService.generateLeadSummary(lead as any);
     return res.json({ success: true, data: summary });
   } catch (err: any) {
-    logger.error('[ai/lead-summary] Error:', err.message);
-    return res.status(500).json({ success: false, message: err.message });
+    logger.error(`[ai/lead-summary] Error: ${sanitizeForLog(err.message)}`);
+    return res.status(500).json({ success: false, message: 'AI lead summary generation failed' });
   }
 });
 

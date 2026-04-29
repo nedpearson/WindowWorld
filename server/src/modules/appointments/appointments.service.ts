@@ -1,7 +1,7 @@
 import { Prisma, AppointmentStatus } from '@prisma/client';
 import { prisma } from '../../shared/services/prisma';
 import { NotFoundError } from '../../shared/middleware/errorHandler';
-import { logger } from '../../shared/utils/logger';
+import { logger, sanitizeForLog } from '../../shared/utils/logger';
 import {
   checkForConflicts,
   syncAppointmentToGoogle,
@@ -133,7 +133,7 @@ export class AppointmentsService {
       } catch (err: any) {
         if (err.code === 'GCAL_CONFLICT') throw err;
         // Any other GCal error — log and continue (fail open)
-        logger.warn(`[appointments] GCal conflict check error: ${err.message}`);
+        logger.warn(`[appointments] GCal conflict check error: ${sanitizeForLog(err.message)}`);
       }
     }
 
@@ -188,7 +188,7 @@ export class AppointmentsService {
         });
       } catch (err: any) {
         // Non-fatal
-        logger.warn(`[appointments] Email confirmation failed for apt ${apt.id}: ${err.message}`);
+        logger.warn(`[appointments] Email confirmation failed for apt ${apt.id}: ${sanitizeForLog(err.message)}`);
       }
     }
 
@@ -216,7 +216,7 @@ export class AppointmentsService {
         });
       }
     } catch (err: any) {
-      logger.warn(`[appointments] GCal sync failed: ${err.message}`);
+      logger.warn(`[appointments] GCal sync failed: ${sanitizeForLog(err.message)}`);
     }
 
     return apt;

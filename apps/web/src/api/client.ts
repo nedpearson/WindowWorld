@@ -351,7 +351,7 @@ export const api = {
     getMorningBrief: (repId: string) => get(`/silo/morning-brief/${repId}`),
     getAppointmentPrep: (appointmentId: string) => get(`/silo/appointment-prep/${appointmentId}`),
     getFollowUpEngine: () => get(`/silo/follow-up-engine`),
-    getLiveAssist: (prompt: string) => get(`/silo/live-assist`, { params: { prompt } }),
+    getLiveAssist: (prompt: string) => post(`/silo/live-assist`, { prompt }),
     getProposalAnalysis: (proposalId: string) => get(`/silo/proposal-analysis/${proposalId}`)
   },
 

@@ -1,6 +1,6 @@
 import webpush from 'web-push';
 import { prisma } from '../../shared/services/prisma';
-import { logger } from '../../shared/utils/logger';
+import { logger, sanitizeForLog } from '../../shared/utils/logger';
 
 // ─── VAPID Setup ─────────────────────────────────────────────
 const vapidPublicKey  = process.env.VAPID_PUBLIC_KEY  ?? '';
@@ -98,7 +98,7 @@ export class PushService {
         if (err?.statusCode === 410 || err?.statusCode === 404) {
           expiredEndpoints.push(subs[i].endpoint);
         } else {
-          logger.error('[Push] Failed to send', { endpoint: subs[i].endpoint, err: err?.message });
+          logger.error('[Push] Failed to send', { endpoint: subs[i].endpoint, err: sanitizeForLog(err?.message) });
         }
       }
     });
