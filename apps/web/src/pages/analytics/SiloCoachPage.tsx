@@ -7,6 +7,7 @@ import { useAuthStore } from '../../store/auth.store';
 import apiClient from '../../api/client';
 import { Link } from 'react-router-dom';
 import { RepGamePanel } from '../../components/ai/RepGamePanel';
+import { isDemoMode } from '../../utils/isDemoMode';
 
 export function SiloCoachPage() {
   const user = useAuthStore(s => s.user);

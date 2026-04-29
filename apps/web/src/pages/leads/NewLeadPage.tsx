@@ -36,7 +36,7 @@ export function NewLeadPage() {
         ...formData,
         yearBuilt: formData.yearBuilt ? parseInt(formData.yearBuilt) : null,
         estimatedWindowCount: formData.estimatedWindowCount ? parseInt(formData.estimatedWindowCount) : null,
-      });
+      }) as any;
       const newLead = result.data || result;
       toast.success('Lead created successfully');
       navigate(`/leads/${newLead.id}`);

@@ -51,9 +51,9 @@ const DEMO_QUEUE = [
 ];
 
 const DEMO_CAL_APTS = [
-  { id: 'a1', title: 'Consultation', type: 'initial-consult', scheduledAt: new Date(new Date().setHours(10, 0, 0, 0)).toISOString(), lead: { firstName: 'Emily', lastName: 'Davis', phone: '555-0101' }, address: '123 Main St, Dallas, TX' },
-  { id: 'a2', title: 'Measurement', type: 'measurement', scheduledAt: new Date(new Date().setHours(14, 30, 0, 0)).toISOString(), lead: { firstName: 'Robert', lastName: 'Wilson', phone: '555-0102' }, address: '456 Oak Ln, Fort Worth, TX' },
-];
+  { id: 'a1', title: 'Consultation', type: 'initial-consult', scheduledAt: new Date(new Date().setHours(10, 0, 0, 0)).toISOString(), lead: { firstName: 'Emily', lastName: 'Davis', phone: '555-0101' }, address: '123 Main St, Dallas, TX', leadId: 'l1', status: 'SCHEDULED', createdById: 'u1' },
+  { id: 'a2', title: 'Measurement', type: 'measurement', scheduledAt: new Date(new Date().setHours(14, 30, 0, 0)).toISOString(), lead: { firstName: 'Robert', lastName: 'Wilson', phone: '555-0102' }, address: '456 Oak Ln, Fort Worth, TX', leadId: 'l2', status: 'SCHEDULED', createdById: 'u1' },
+] as Appointment[];
 
 // ── Goal Ring ──────────────────────────────────────────────────
 function GoalRing({ pct }: { pct: number }) {

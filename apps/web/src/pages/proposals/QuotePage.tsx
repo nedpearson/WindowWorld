@@ -120,7 +120,7 @@ export function QuotePage() {
   
   const { data: dbProducts } = useQuery({
     queryKey: ['db-products'],
-    queryFn: () => api.products.list().then(r => r.data || [])
+    queryFn: () => api.products.list().then((r: any) => r.data || [])
   });
 
   // Re-init line items whenever openings load
