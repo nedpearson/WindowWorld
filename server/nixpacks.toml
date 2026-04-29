@@ -1,22 +1,23 @@
-﻿[phases.setup]
-# Node 22 LTS -- required by Prisma and for running node dist/index.js
+[phases.setup]
+# Node 22 LTS -- required by Prisma and node dist/index.js
 nixPkgs = ["nodejs_22"]
 
 [phases.install]
 # Single npm install at monorepo root installs all workspace packages
-# including server/node_modules (Prisma runtime, Express, etc.)
 cmds = [
   "npm install --legacy-peer-deps"
 ]
 
 [phases.build]
 cmds = [
-  # Prisma client must be generated at deploy time (OS-specific native binaries).
-  # server/dist and server/public are pre-built and committed to git -- no tsc or
-  # vite build needed here (eliminates build cache skipping issues on Railway).
-  "cd server && npx prisma generate"
+  # 1. Generate Prisma client (OS-specific native binaries -- must run at deploy time)
+  "cd server && npx prisma generate",
+  # 2. Compile server TypeScript → server/dist/
+  "cd server && npx tsc",
+  # 3. Build Vite frontend → server/public/
+  "cd apps/web && npm run build"
 ]
 
 [start]
-# db push applies schema changes, db seed creates demo users (idempotent upserts)
+# Apply schema, run idempotent seed, start server
 cmd = "cd server && npx prisma db push --accept-data-loss && npx prisma db seed && node dist/index.js"

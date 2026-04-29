@@ -1,5 +1,9 @@
 node_modules/
-# server/dist is committed so Railway uses our pre-built local compilation
+
+# Build outputs — Railway builds these from source at deploy time (nixpacks.toml)
+# Never commit pre-built assets; source code changes will be picked up automatically.
+server/dist/
+server/public/
 apps/web/dist/
 apps/mobile/dist/
 build/

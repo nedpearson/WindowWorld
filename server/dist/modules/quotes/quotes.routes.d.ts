@@ -1,3 +1,0 @@
-declare const router: import("express-serve-static-core").Router;
-export { router as quotesRouter };
-//# sourceMappingURL=quotes.routes.d.ts.map
