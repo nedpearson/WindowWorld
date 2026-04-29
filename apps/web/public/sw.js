@@ -1,7 +1,7 @@
-// WindowWorld Service Worker v1.0
+// WindowWorld Service Worker v3 — updated 2026-04-29
 // Cache-first for static assets, network-first for API calls
 
-const CACHE_NAME = 'ww-v1';
+const CACHE_NAME = 'ww-v3';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
