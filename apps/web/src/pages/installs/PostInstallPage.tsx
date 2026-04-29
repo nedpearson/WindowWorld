@@ -79,14 +79,19 @@ const REFERRAL_STATUS: Record<ReferralStatus, { label: string; badge: string }> 
   PROVIDED:   { label: 'Referral Given', badge: 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20' },
   CONVERTED:  { label: 'Converted ✓',   badge: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' } };
 
-const GOOGLE_REVIEW_URL = 'https://www.google.com/search?q=Window+World+of+Baton+Rouge+Google+reviews#lrd=0x8626a72e811c750b:0x5e2cf44b611840d4,3,,,';
+// Direct Google Business Profile links for Window World of Baton Rouge
+// Place ID: ChIJC3UcjS6nhogRTUAYYbxE4l4  (Window World of Baton Rouge — 8405 Airline Hwy)
+const GOOGLE_PLACE_ID = 'ChIJC3UcjS6nhogRTUAYYbxE4l4';
+const GOOGLE_REVIEW_URL    = `https://search.google.com/local/reviews?placeid=${GOOGLE_PLACE_ID}`;
+const GOOGLE_WRITEREVIEW_URL = `https://search.google.com/local/writereview?placeid=${GOOGLE_PLACE_ID}`;
+
 
 // ─── Request Modal ─────────────────────────────────────────
 function ReviewRequestModal({ job, type, onClose, onSent }: {
   job: CompletedJob; type: 'REVIEW' | 'REFERRAL'; onClose: () => void; onSent: (id: string, type: 'REVIEW' | 'REFERRAL') => void;
 }) {
   const firstName = job.customerName.split(' ')[0];
-  const reviewMsg = `Hi ${firstName}! 😊 This is ${job.repName} from WindowWorld — hope you're loving your new windows! Would you take 2 minutes to leave us a Google review? It really helps our small team: ${GOOGLE_REVIEW_URL}\nThank you so much, ${firstName}! 🙏`;
+  const reviewMsg = `Hi ${firstName}! 😊 This is ${job.repName} from WindowWorld — hope you're loving your new windows! Would you take 2 minutes to leave us a Google review? It really helps our small team: ${GOOGLE_WRITEREVIEW_URL}\nThank you so much, ${firstName}! 🙏`;
   const referralMsg = `Hi ${firstName}! This is ${job.repName} from WindowWorld. We're so glad you love your new windows! Do you know anyone who might need windows? For every referral that books, we send you a $100 gift card. Just reply with their name and number! 🎁`;
   const msg = type === 'REVIEW' ? reviewMsg : referralMsg;
   const [edited, setEdited] = useState(msg);
@@ -326,3 +331,4 @@ export function PostInstallPage() {
     </div>
   );
 }
+
