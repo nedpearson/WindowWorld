@@ -107,7 +107,7 @@ export function AnalyticsPage() {
   const isSuperAdmin = user?.role?.toLowerCase().includes('super') || user?.role?.toLowerCase() === 'superadmin' || user?.isAdmin;
   const isDemoFallback = 
     user?.organization?.slug === 'demo' || 
-    (rawMtdRevenue === 0 && isSuperAdmin);
+    (Number(rawMtdRevenue) === 0 && isSuperAdmin);
 
   const activeDash = isDemoFallback ? DEMO_ANALYTICS_DASH : dash;
   const activeRepPerf = isDemoFallback ? DEMO_REP_PERF : repPerf;

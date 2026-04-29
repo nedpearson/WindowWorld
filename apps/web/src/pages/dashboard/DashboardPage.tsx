@@ -182,7 +182,7 @@ export function DashboardPage() {
   const isSuperAdmin = user?.role?.toLowerCase().includes('super') || user?.role?.toLowerCase() === 'superadmin' || user?.isAdmin;
   const isDemoFallback = 
     user?.organization?.slug === 'demo' || 
-    (rawPipelineTotal === 0 && rawMtdRevenue === 0 && isSuperAdmin);
+    (Number(rawPipelineTotal) === 0 && Number(rawMtdRevenue) === 0 && isSuperAdmin);
 
   const activeDashData = isDemoFallback ? DEMO_DASH_DATA : dashData;
   const activeProposals = isDemoFallback && proposals.length === 0 ? DEMO_PROPOSALS : proposals;
