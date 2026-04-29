@@ -4,7 +4,7 @@
     "private": true,
     "scripts": {
         "dev": "tsx watch src/index.ts",
-        "build": "prisma generate && tsc",
+        "build": "prisma generate && npx tsc",
         "start": "prisma db push --accept-data-loss && npx prisma db seed && node dist/index.js",
         "migrate": "prisma migrate dev",
         "migrate:deploy": "prisma migrate deploy",
@@ -14,7 +14,7 @@
         "studio": "prisma studio",
         "test": "vitest run",
         "test:watch": "vitest",
-        "typecheck": "tsc --noEmit",
+        "typecheck": "npx tsc --noEmit",
         "lint": "eslint src --ext .ts"
     },
     "dependencies": {
