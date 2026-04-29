@@ -10,11 +10,11 @@ cmds = [
 
 [phases.build]
 cmds = [
-  # 1. Generate Prisma client (OS-specific native binaries -- must run at deploy time)
-  "cd server && npx prisma generate",
-  # 2. Compile server TypeScript → server/dist/
-  "cd server && npx tsc",
-  # 3. Build Vite frontend → server/public/
+  # npm run build = 'prisma generate && tsc' using the local TypeScript binary.
+  # Do NOT use 'npx tsc' — npx installs a wrong 'tsc@2.0.4' package instead
+  # of the TypeScript compiler bundled in node_modules/.bin/tsc.
+  "cd server && npm run build",
+  # Build Vite frontend → apps/web/dist/
   "cd apps/web && npm run build"
 ]
 
