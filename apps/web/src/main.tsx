@@ -58,26 +58,37 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
   </React.StrictMode>
 );
 
-// ── Service Worker Registration ─────────────────────────────
-if ('serviceWorker' in navigator && import.meta.env.PROD) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker
-      .register('/sw.js', { scope: '/' })
-      .then((registration) => {
-        registration.addEventListener('updatefound', () => {
-          const newWorker = registration.installing;
-          if (!newWorker) return;
-          newWorker.addEventListener('statechange', () => {
-            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-              // Automatically reload to apply the update
-              toast.success('App updated! Reloading...', { duration: 2000 });
-              setTimeout(() => {
-                window.location.reload();
-              }, 1500);
-            }
-          });
-        });
-      })
-      .catch((err) => console.warn('[PWA] Service Worker registration failed:', err));
+
+// ── Permanent Auto-Update System ──────────────────────────────────────────
+// The Vite PWA plugin (vite.config.ts) generates a Workbox service worker
+// with cacheId = `ww-${BUILD_TIME}` — a unique value per deploy.
+// This means every Railway push busts the old cache automatically.
+//
+// Additionally, we poll /version.json every 5 min and auto-reload if the
+// deployed buildTime differs from what this bundle was compiled with.
+// Users always get fresh code within 5 minutes of any deploy — no manual
+// cache clearing, no "Rep Coaching" ghosts, ever again.
+if (import.meta.env.PROD) {
+  const CURRENT_BUILD = import.meta.env.VITE_BUILD_TIME as string;
+
+  async function checkForUpdate() {
+    try {
+      const res = await fetch(`/version.json?_=${Date.now()}`, { cache: 'no-store' });
+      if (!res.ok) return;
+      const { buildTime } = await res.json() as { buildTime: string };
+      if (buildTime && buildTime !== CURRENT_BUILD) {
+        console.info(`[update] New build ${buildTime} > current ${CURRENT_BUILD}. Reloading.`);
+        window.location.reload();
+      }
+    } catch { /* offline — skip silently */ }
+  }
+
+  // First check after 30s (let the app settle), then every 5 minutes
+  setTimeout(checkForUpdate, 30_000);
+  setInterval(checkForUpdate, 5 * 60 * 1000);
+
+  // Also trigger when the user switches back to this tab
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') checkForUpdate();
   });
 }
