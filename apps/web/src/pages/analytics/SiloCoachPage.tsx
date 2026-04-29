@@ -11,11 +11,42 @@ import { RepGamePanel } from '../../components/ai/RepGamePanel';
 export function SiloCoachPage() {
   const user = useAuthStore(s => s.user);
 
-  const { data: brief, isLoading } = useQuery({
+  const { data: brief, isLoading, isError } = useQuery({
     queryKey: ['silo-morning-brief', user?.id],
     queryFn: () => (apiClient as any).silo.getMorningBrief(user?.id as string).then((res: any) => res.data as any),
-    enabled: !!user?.id
+    enabled: !!user?.id,
+    retry: 2,
+    staleTime: 5 * 60_000,
   });
+
+  // Demo brief used when the server hasn't yet processed the AI brief or is starting up
+  const DEMO_BRIEF = {
+    scores: { todayScore: 78, pipelineScore: 82, closingMomentum: 74, followUpDiscipline: 68, appointmentReadiness: 88 },
+    moneyLikelyThisWeek: 47500,
+    dailyActionPlan: [
+      'Call Michael Trosclair — proposal viewed 3 times, high close probability',
+      'Follow up with Angela Mouton — 2 days since last contact, proposal expiring soon',
+      'Book appointment with 4 new storm leads from yesterday\'s canvassing',
+      'Review Karen Guidry\'s draft proposal before 3pm',
+      'Confirm install schedule with Robert Comeaux — project starts Monday',
+    ],
+    bestLeadsToWork: [
+      { id: '1', name: 'Michael Trosclair', reason: 'Proposal viewed 3× — high intent signal' },
+      { id: '4', name: 'Angela Mouton', reason: 'Appointment set for tomorrow — prep needed' },
+      { id: '2', name: 'Patricia Boudreaux', reason: '14-day stale — re-engage now' },
+    ],
+    hottestProposals: [
+      { id: 'p2', name: 'Storm Replacement — Michael Trosclair', value: 22400, action: 'Follow up today' },
+      { id: 'p4', name: 'Master Suite — Angela Mouton', value: 5900, action: 'Expires in 3 days' },
+    ],
+    overdueFollowUps: [
+      { id: '2', name: 'Patricia Boudreaux', daysOverdue: 14 },
+      { id: '5', name: 'James LeBlanc', daysOverdue: 7 },
+    ],
+  };
+
+  const activeBrief = brief || DEMO_BRIEF;
+  const isDemo = !brief && !isLoading;
 
   if (isLoading) {
     return (
@@ -35,28 +66,30 @@ export function SiloCoachPage() {
     );
   }
 
-  if (!brief) return null;
+  // Use activeBrief (real or demo) — never blank
+  const { scores, moneyLikelyThisWeek, dailyActionPlan, bestLeadsToWork, hottestProposals, overdueFollowUps } = activeBrief as any;
 
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-6 page-transition">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <div className="flex items-center gap-2 mb-1">
             <SparklesIcon className="h-6 w-6 text-brand-400" />
             <h1 className="text-2xl font-bold text-white">Silo AI Coach</h1>
+            {isDemo && <span className="ml-2 px-2 py-0.5 rounded bg-brand-500/20 text-brand-400 text-[10px] font-semibold uppercase tracking-wide">Preview</span>}
           </div>
-          <p className="text-slate-400">Your personal morning brief and sales optimization engine.</p>
+          <p className="text-slate-400">{isError ? 'AI brief unavailable — showing preview data' : 'Your personal morning brief and sales optimization engine.'}</p>
         </div>
         <div className="flex items-center gap-4 bg-slate-800/50 rounded-lg px-4 py-2 border border-slate-700/50">
           <div className="text-right">
             <div className="text-[10px] text-slate-500 uppercase font-semibold">Today's Score</div>
-            <div className="text-xl font-bold text-brand-400">{brief.scores?.todayScore || 0}/100</div>
+            <div className="text-xl font-bold text-brand-400">{scores?.todayScore || 0}/100</div>
           </div>
           <div className="w-px h-8 bg-slate-700" />
           <div className="text-right">
             <div className="text-[10px] text-slate-500 uppercase font-semibold">Weekly Pipeline</div>
-            <div className="text-xl font-bold text-emerald-400">${((brief.moneyLikelyThisWeek || 0) / 1000).toFixed(1)}k</div>
+            <div className="text-xl font-bold text-emerald-400">${((moneyLikelyThisWeek || 0) / 1000).toFixed(1)}k</div>
           </div>
         </div>
       </div>
@@ -74,7 +107,7 @@ export function SiloCoachPage() {
             </div>
             <div className="p-5 relative">
               <ul className="space-y-3">
-                {brief.dailyActionPlan?.map((action: string, idx: number) => (
+                {dailyActionPlan?.map((action: string, idx: number) => (
                   <motion.li 
                     initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: idx * 0.1 }}
                     key={idx} className="flex items-start gap-3"
@@ -97,7 +130,7 @@ export function SiloCoachPage() {
               </h2>
             </div>
             <div className="divide-y divide-slate-800/50">
-              {brief.bestLeadsToWork?.map((lead: any) => (
+              {bestLeadsToWork?.map((lead: any) => (
                 <div key={lead.id} className="p-4 flex items-center justify-between hover:bg-slate-800/30 transition-colors">
                   <div>
                     <Link to={`/leads/${lead.id}`} className="font-medium text-white hover:text-brand-300">{lead.name}</Link>
@@ -108,7 +141,7 @@ export function SiloCoachPage() {
                   <Link to={`/leads/${lead.id}`} className="btn-sm btn-secondary">View Lead</Link>
                 </div>
               ))}
-              {(!brief.bestLeadsToWork || brief.bestLeadsToWork.length === 0) && (
+              {(!bestLeadsToWork || bestLeadsToWork.length === 0) && (
                 <div className="p-6 text-center text-slate-500 text-sm">No priority leads identified today.</div>
               )}
             </div>
@@ -122,7 +155,7 @@ export function SiloCoachPage() {
               </h2>
             </div>
             <div className="divide-y divide-slate-800/50">
-              {brief.hottestProposals?.map((prop: any) => (
+              {hottestProposals?.map((prop: any) => (
                 <div key={prop.id} className="p-4 flex items-center justify-between hover:bg-slate-800/30 transition-colors">
                   <div>
                     <div className="font-medium text-white">{prop.name}</div>
@@ -134,7 +167,7 @@ export function SiloCoachPage() {
                   </div>
                 </div>
               ))}
-              {(!brief.hottestProposals || brief.hottestProposals.length === 0) && (
+              {(!hottestProposals || hottestProposals.length === 0) && (
                 <div className="p-6 text-center text-slate-500 text-sm">No hot proposals pending.</div>
               )}
             </div>
@@ -150,10 +183,10 @@ export function SiloCoachPage() {
             </h2>
             <div className="space-y-4">
               {[
-                { label: 'Pipeline Score', value: brief.scores?.pipelineScore, color: 'bg-emerald-500' },
-                { label: 'Closing Momentum', value: brief.scores?.closingMomentum, color: 'bg-brand-500' },
-                { label: 'Follow-Up Discipline', value: brief.scores?.followUpDiscipline, color: 'bg-amber-500' },
-                { label: 'Appointment Readiness', value: brief.scores?.appointmentReadiness, color: 'bg-purple-500' }
+                { label: 'Pipeline Score', value: scores?.pipelineScore, color: 'bg-emerald-500' },
+                { label: 'Closing Momentum', value: scores?.closingMomentum, color: 'bg-brand-500' },
+                { label: 'Follow-Up Discipline', value: scores?.followUpDiscipline, color: 'bg-amber-500' },
+                { label: 'Appointment Readiness', value: scores?.appointmentReadiness, color: 'bg-purple-500' }
               ].map(score => (
                 <div key={score.label}>
                   <div className="flex justify-between text-xs mb-1">
@@ -175,7 +208,7 @@ export function SiloCoachPage() {
               <h2 className="font-semibold text-white">Overdue Follow-ups</h2>
             </div>
             <div className="divide-y divide-slate-800/50">
-              {brief.overdueFollowUps?.map((f: any) => (
+              {overdueFollowUps?.map((f: any) => (
                 <div key={f.id} className="p-4 flex items-center justify-between hover:bg-slate-800/30">
                   <div>
                     <Link to={`/leads/${f.id}`} className="font-medium text-white hover:text-brand-300">{f.name}</Link>
@@ -184,7 +217,7 @@ export function SiloCoachPage() {
                   <Link to={`/leads/${f.id}`} className="btn-sm btn-secondary text-xs">Work</Link>
                 </div>
               ))}
-              {(!brief.overdueFollowUps || brief.overdueFollowUps.length === 0) && (
+              {(!overdueFollowUps || overdueFollowUps.length === 0) && (
                 <div className="p-6 text-center flex flex-col items-center">
                   <CheckCircleIcon className="h-8 w-8 text-emerald-400 mb-2" />
                   <div className="text-slate-300 font-medium">All caught up!</div>
