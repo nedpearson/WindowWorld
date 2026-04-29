@@ -4,7 +4,7 @@
  * Queues are only connected when Redis is available.
  */
 
-import { logger } from '../shared/utils/logger';
+import { logger, sanitizeForLog } from '../shared/utils/logger';
 
 // â”€â”€ Lazy queue singletons â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 let _pdfQueue: any = null;
@@ -38,7 +38,7 @@ const mockQueue = {
           logger.info(`[MockQueue] No handler for job "${name}" — skipped`);
         }
       } catch (err: any) {
-        logger.error(`[MockQueue] Sync job "${name}" failed: ${err.message}`);
+        logger.error(`[MockQueue] Sync job "${name}" failed: ${sanitizeForLog(err.message)}`);
       }
     });
 
@@ -201,10 +201,10 @@ async function runAiPhotoJob(job: any) {
 
     logger.info(`[ai-photo] Analysis complete for document ${documentId}`);
   } catch (error: any) {
-    logger.error(`[ai-photo] Analysis failed for ${documentId}:`, error.message);
+    logger.error(`[ai-photo] Analysis failed for ${documentId}:`, sanitizeForLog(error.message));
     await prisma.document.update({
       where: { id: documentId },
-      data: { aiStatus: 'FAILED', aiError: error.message } as any,
+      data: { aiStatus: 'FAILED', aiError: sanitizeForLog(error.message) } as any,
     });
   }
 }
@@ -248,7 +248,7 @@ async function runPdfJob(job: any) {
 
     logger.info(`[pdf] PDF generated and uploaded for proposal ${proposalId} -> ${url}`);
   } catch (error: any) {
-    logger.error(`[pdf] PDF generation failed for ${proposalId}:`, error.message);
+    logger.error(`[pdf] PDF generation failed for ${proposalId}:`, sanitizeForLog(error.message));
     await prisma.proposal.update({
       where: { id: proposalId },
       data: { pdfStatus: 'FAILED' } as any,
@@ -265,7 +265,7 @@ async function runEmailJob(job: any) {
   const result = await sendEmail({ to, subject, html, text });
 
   if (!result.success) {
-    logger.error(`[email] Failed to send to ${to}: ${result.error}`);
+    logger.error(`[email] Failed to send to ${sanitizeForLog(to)}: ${sanitizeForLog(result.error)}`);
     // Don't throw — let the job complete so it doesn't infinitely retry
   } else {
     logger.info(`[email] Delivered via ${result.provider}: id=${result.id}`);
@@ -329,7 +329,7 @@ export async function initializeJobQueues(): Promise<void> {
 
     // Route Redis errors through our logger instead of raw stderr spam
     connection.on('error', (err: Error) => {
-      logger.warn(`[Redis] ${err.message.split('\n')[0]}`);
+      logger.warn(`[Redis] ${sanitizeForLog(err.message.split('\n')[0])}`);
     });
 
     // Initialize queues
@@ -354,7 +354,7 @@ export async function initializeJobQueues(): Promise<void> {
 
     workers.forEach((worker) => {
       worker.on('completed', (job: any) => logger.info(`[${worker.name}] Job ${job.id} completed`));
-      worker.on('failed', (job: any, err: any) => logger.error(`[${worker.name}] Job ${job?.id} failed:`, err.message));
+      worker.on('failed', (job: any, err: any) => logger.error(`[${worker.name}] Job ${job?.id} failed:`, sanitizeForLog(err.message)));
     });
 
     queuesInitialized = true;
@@ -364,7 +364,7 @@ export async function initializeJobQueues(): Promise<void> {
     startAppointmentReminderCron();
 
   } catch (error: any) {
-    logger.error('Failed to initialize job queues:', error.message);
+    logger.error('Failed to initialize job queues:', sanitizeForLog(error.message));
   }
 }
 
@@ -423,11 +423,11 @@ export function startAppointmentReminderCron() {
           });
           logger.info(`[reminder-cron] Reminder sent for appointment ${apt.id} -> ${phone}`);
         } catch (err: any) {
-          logger.error(`[reminder-cron] Failed to send reminder for ${apt.id}: ${err.message}`);
+          logger.error(`[reminder-cron] Failed to send reminder for ${apt.id}: ${sanitizeForLog(err.message)}`);
         }
       }
     } catch (err: any) {
-      logger.error(`[reminder-cron] Error: ${err.message}`);
+      logger.error(`[reminder-cron] Error: ${sanitizeForLog(err.message)}`);
     }
   };
 

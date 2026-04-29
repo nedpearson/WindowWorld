@@ -1,6 +1,6 @@
 import path from 'path';
 import fs from 'fs';
-import { logger } from '../../shared/utils/logger';
+import { logger, sanitizeForLog } from '../../shared/utils/logger';
 
 /**
  * PDF generation service for proposals.
@@ -40,7 +40,7 @@ export class PdfGeneratorService {
         return outputPath;
       }
     } catch (err: any) {
-      logger.warn(`Puppeteer unavailable: ${err.message} â€” falling back to HTML file`);
+      logger.warn(`Puppeteer unavailable: ${sanitizeForLog(err.message)} â€” falling back to HTML file`);
     }
 
     // Fallback: save as HTML

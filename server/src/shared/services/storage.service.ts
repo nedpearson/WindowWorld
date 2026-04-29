@@ -58,7 +58,7 @@ export class StorageService {
         const url = await getSignedUrl(s3Client, command, { expiresIn: 3600 * 24 * 7 });
         return { url, s3Key: key };
       } catch (err: any) {
-        logger.error(`Failed to upload to S3: ${String(err.message).slice(0, 200)}`);
+        logger.error(`Failed to upload to S3: ${sanitizeForLog(err.message)}`);
         throw new Error('Cloud storage upload failed.');
       }
     }
@@ -77,7 +77,7 @@ export class StorageService {
       await fs.writeFile(localPath, buffer);
       return { url: `/${key}` };
     } catch (err: any) {
-      logger.error(`Failed to write local file: ${String(err.message).slice(0, 200)}`);
+      logger.error(`Failed to write local file: ${sanitizeForLog(err.message)}`);
       throw new Error('Local file upload failed.');
     }
   }
@@ -94,7 +94,7 @@ export class StorageService {
           Key: s3KeyOrUrl.includes('/') ? `uploads/${key}` : s3KeyOrUrl,
         }));
       } catch (err: any) {
-        logger.warn(`Failed to delete S3 object: ${String(err.message).slice(0, 200)}`);
+        logger.warn(`Failed to delete S3 object: ${sanitizeForLog(err.message)}`);
       }
     } else if (localPath) {
       // Validate the local deletion path is within the upload dir

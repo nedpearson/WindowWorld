@@ -1,4 +1,4 @@
-import { logger } from '../utils/logger';
+import { logger, sanitizeForLog } from '../utils/logger';
 
 /**
  * Email service — uses Resend when RESEND_API_KEY is set.
@@ -86,7 +86,7 @@ export async function sendEmail(opts: SendEmailOptions): Promise<EmailResult> {
     return { provider: 'resend', success: true, id: data?.id };
 
   } catch (err: any) {
-    logger.error('[email] Resend send exception', { message: err.message, to: opts.to });
+    logger.error('[email] Resend send exception', { message: sanitizeForLog(err.message), to: opts.to });
     return { provider: 'resend', success: false, error: err.message };
   }
 }

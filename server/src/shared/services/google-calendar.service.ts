@@ -167,7 +167,7 @@ async function getCalendarClient(userId: string): Promise<calendar_v3.Calendar |
       });
       oauth2.setCredentials(credentials);
     } catch (err: any) {
-      logger.error(`GCal token refresh failed for user ${sanitizeForLog(userId)}: ${err.message}`);
+      logger.error(`GCal token refresh failed for user ${sanitizeForLog(userId)}: ${sanitizeForLog(err.message)}`);
       return null;
     }
   }
