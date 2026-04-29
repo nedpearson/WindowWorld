@@ -60,15 +60,15 @@ const PLATFORM_LABELS: Record<string, { title: string; sub: string; badge?: stri
 // ─── Modal ────────────────────────────────────────────────────
 export function FieldModeQRModal({ onClose }: { onClose: () => void }) {
   const user         = useAuthStore(s => s.user);
-  const refreshToken = useAuthStore(s => s.refreshToken);
+  const accessToken  = useAuthStore(s => s.accessToken);
   const [tick, setTick]     = useState(0);
   const [copied, setCopied] = useState(false);
   const [platform]          = useState(detectPlatform);
   const [activeTab, setActiveTab] = useState<'qr' | 'steps'>('qr');
 
-  // Rotate QR every 30 s
+  // Rotate QR display every 60 s (for UX freshness indicator, JWT still valid for 7d)
   useEffect(() => {
-    const id = setInterval(() => setTick(t => t + 1), 30_000);
+    const id = setInterval(() => setTick(t => t + 1), 60_000);
     return () => clearInterval(id);
   }, []);
 
@@ -79,12 +79,12 @@ export function FieldModeQRModal({ onClose }: { onClose: () => void }) {
     return () => window.removeEventListener('keydown', fn);
   }, [onClose]);
 
-  // Build authenticated deep-link with refreshToken
+  // Build authenticated deep-link with accessToken (JWT, not rotated on use)
   const origin  = window.location.origin;
   const qrUrl   = new URL('/field-install', origin);
-  if (user?.id)     qrUrl.searchParams.set('uid', user.id);
-  if (refreshToken) qrUrl.searchParams.set('token', refreshToken);
-  qrUrl.searchParams.set('ts', Math.floor(Date.now() / 30_000).toString());
+  if (user?.id)    qrUrl.searchParams.set('uid', user.id);
+  if (accessToken) qrUrl.searchParams.set('token', accessToken);
+  qrUrl.searchParams.set('mode', 'qr');  // tells FieldInstallPage to use /auth/qr-exchange
   const qrString = qrUrl.toString();
 
   const copyLink = useCallback(async () => {
@@ -265,7 +265,7 @@ export function FieldModeQRModal({ onClose }: { onClose: () => void }) {
             </div>
 
             <div className="text-center text-[10px] text-slate-700">
-              QR refreshes every 30 s · No login required after scanning
+              QR is linked to your active session · Valid while you're logged in
             </div>
           </div>
         </motion.div>

@@ -1,8 +1,11 @@
 import { Router, Request, Response } from 'express';
 import { body, validationResult } from 'express-validator';
+import jwt from 'jsonwebtoken';
 import { authService } from './auth.service';
 import { requireAuth, AuthenticatedRequest } from '../../shared/middleware/auth';
-import { ValidationError } from '../../shared/middleware/errorHandler';
+import { ValidationError, UnauthorizedError } from '../../shared/middleware/errorHandler';
+import { prisma } from '../../shared/services/prisma';
+import { logger } from '../../shared/utils/logger';
 
 const router = Router();
 
@@ -56,6 +59,69 @@ router.post(
     const { refreshToken } = req.body;
     const tokens = await authService.refreshTokens(refreshToken);
     res.json({ success: true, data: tokens });
+  }
+);
+
+// POST /api/v1/auth/qr-exchange
+// Accepts an accessToken (JWT) from a QR code scan and issues a fresh session
+// for the mobile device WITHOUT revoking any desktop session token.
+// This avoids the token-rotation race where the desktop silently refreshes
+// and invalidates the QR token before the phone can use it.
+router.post(
+  '/qr-exchange',
+  [body('accessToken').isString().notEmpty().withMessage('Access token required')],
+  async (req: Request, res: Response) => {
+    validateRequest(req);
+    const { accessToken } = req.body;
+
+    const JWT_SECRET = process.env.JWT_SECRET || 'CHANGE_THIS_SECRET';
+    let payload: any;
+    try {
+      payload = jwt.verify(accessToken, JWT_SECRET);
+    } catch (err: any) {
+      throw new UnauthorizedError('QR code has expired or is invalid. Please scan a new code from the desktop.');
+    }
+
+    // Look up the live user to get fresh data and verify they're still active
+    const user = await prisma.user.findUnique({
+      where: { id: payload.sub },
+      select: {
+        id: true, email: true, firstName: true, lastName: true,
+        role: true, organizationId: true, avatarUrl: true, isActive: true,
+      },
+    });
+
+    if (!user || !user.isActive) {
+      throw new UnauthorizedError('Account not found or deactivated.');
+    }
+
+    // Issue a completely fresh session for the phone — desktop session is untouched
+    // Directly generate tokens (same as login but without password check)
+    const crypto = await import('crypto');
+    const newRefreshToken = crypto.randomUUID();
+    const newAccessToken = jwt.sign(
+      { sub: user.id, email: user.email, role: user.role,
+        organizationId: user.organizationId, firstName: user.firstName, lastName: user.lastName },
+      JWT_SECRET,
+      { expiresIn: (process.env.JWT_EXPIRES_IN || '7d') as any }
+    );
+    const refreshExpiresAt = new Date();
+    refreshExpiresAt.setDate(refreshExpiresAt.getDate() + 30);
+    await prisma.refreshToken.create({
+      data: { userId: user.id, token: newRefreshToken, expiresAt: refreshExpiresAt },
+    });
+
+    logger.info(`[QR Exchange] New mobile session issued for ${user.email}`);
+    res.json({
+      success: true,
+      data: {
+        accessToken: newAccessToken,
+        refreshToken: newRefreshToken,
+        expiresIn: 7 * 24 * 60 * 60,
+        user: { id: user.id, email: user.email, firstName: user.firstName,
+          lastName: user.lastName, role: user.role, organizationId: user.organizationId, avatarUrl: user.avatarUrl },
+      },
+    });
   }
 );
 

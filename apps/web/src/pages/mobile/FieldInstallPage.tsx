@@ -291,31 +291,48 @@ export function FieldInstallPage() {
     if (hydrated.current) return;
     hydrated.current = true;
 
-    // QR URL contains ?token=<refreshToken>&uid=<userId>
-    // We exchange the refresh token for a fresh access+refresh pair.
     const token = searchParams.get('token');
     const uid   = searchParams.get('uid');
+    const mode  = searchParams.get('mode'); // 'qr' = new accessToken flow
 
     if (!token || !uid) {
-      // No QR params — show a friendly error instead of bouncing to /login
       setAuthError('This link is missing authentication info. Go back to the desktop and scan the QR code again.');
       return;
     }
 
-    // Exchange the QR refresh token for a fresh session
     const base = import.meta.env.VITE_API_URL || '/api/v1';
-    axios.post(`${base}/auth/refresh`, { refreshToken: token }, { timeout: 10000 })
-      .then((res: any) => {
-        const { accessToken, refreshToken: newRefresh, user: userData } = res.data?.data ?? {};
-        if (!accessToken || !userData?.id) throw new Error('Invalid refresh response');
-        setUser(userData);
-        setTokens(accessToken, newRefresh ?? token);
-        setAuthDone(true);
-      })
-      .catch((err: any) => {
-        console.error('[FieldInstall] Token refresh failed', err?.response?.data ?? err.message);
-        setAuthError('This QR code has expired. Go back to the desktop and scan the QR code again — it refreshes every 30 seconds.');
-      });
+
+    if (mode === 'qr') {
+      // NEW: Use /auth/qr-exchange — verifies the JWT accessToken without revoking
+      // any desktop session. Issues a completely fresh session for this device.
+      axios.post(`${base}/auth/qr-exchange`, { accessToken: token }, { timeout: 10000 })
+        .then((res: any) => {
+          const { accessToken: newAccess, refreshToken: newRefresh, user: userData } = res.data?.data ?? {};
+          if (!newAccess || !userData?.id) throw new Error('Invalid qr-exchange response');
+          setUser(userData);
+          setTokens(newAccess, newRefresh ?? '');
+          setAuthDone(true);
+        })
+        .catch((err: any) => {
+          console.error('[FieldInstall] QR exchange failed', err?.response?.data ?? err.message);
+          const msg = err?.response?.data?.message || 'QR code is invalid or has expired.';
+          setAuthError(`${msg} Please close this page and scan a new QR code from the desktop app.`);
+        });
+    } else {
+      // LEGACY: old QR links used refreshToken — keep working for backward compatibility
+      axios.post(`${base}/auth/refresh`, { refreshToken: token }, { timeout: 10000 })
+        .then((res: any) => {
+          const { accessToken, refreshToken: newRefresh, user: userData } = res.data?.data ?? {};
+          if (!accessToken || !userData?.id) throw new Error('Invalid refresh response');
+          setUser(userData);
+          setTokens(accessToken, newRefresh ?? token);
+          setAuthDone(true);
+        })
+        .catch((err: any) => {
+          console.error('[FieldInstall] Token refresh failed', err?.response?.data ?? err.message);
+          setAuthError('This QR code has expired. Go back to the desktop and scan the QR code again.');
+        });
+    }
   }, [searchParams, setUser, setTokens]);
 
   const userName = user ? `${user.firstName} ${user.lastName}`.trim() : 'there';
