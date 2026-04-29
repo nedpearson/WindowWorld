@@ -9,6 +9,8 @@ import {
 import clsx from 'clsx';
 import { api } from '../../api/client';
 import apiClient from '../../api/client';
+import { useAuthStore } from '../../store/auth.store';
+import { isDemoMode } from '../../utils/isDemoMode';
 
 // ─── Types ────────────────────────────────────────────────
 interface CommissionTier {
@@ -185,8 +187,11 @@ export function CommissionPage() {
     placeholderData: keepPreviousData,
   });
 
-  // Show real rep data if available, otherwise fall back to demo reps
-  const REPS: Rep[] = (Array.isArray(repsData) && repsData.length > 0) ? repsData : DEMO_REPS;
+  const user = useAuthStore((s) => s.user);
+  // Show real rep data if available; only show demo data for the 'demo' org
+  const REPS: Rep[] = (Array.isArray(repsData) && repsData.length > 0)
+    ? repsData
+    : (isDemoMode(user) ? DEMO_REPS : []);
 
   const totalEarned   = REPS.reduce((s, r) => s + calcCommission(r.mtdRevenue, tiers).earned, 0);
   const totalPipeline = REPS.reduce((s, r) => s + r.openPipeline, 0);

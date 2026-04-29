@@ -18,6 +18,7 @@ import {
   usePipelineValueDrilldown, useRevenueDrilldown, useProposalsDrilldown,
   useApptsDrilldown, useGoalDrilldown, usePipelineDrilldown, useQueueDrilldown,
 } from '../../components/DashboardDrilldowns';
+import { isDemoMode } from '../../utils/isDemoMode';
 
 // ── Helpers ────────────────────────────────────────────────────
 function isSameDay(a: Date, b: Date) { return a.toDateString() === b.toDateString(); }
@@ -177,12 +178,9 @@ export function DashboardPage() {
   const rawPipelineTotal = rawPipeline.reduce((s: number, st: any) => s + (st.value ?? 0), 0);
   const rawMtdRevenue = dashData?.kpis?.mtdRevenue ?? 0;
 
-  // ── Determine if we need Demo Fallback ─────────────────────
-  // If the user's org is "demo" or if they have absolutely no pipeline, revenue, queue, or proposals, show demo data
-  const isSuperAdmin = user?.role?.toLowerCase().includes('super') || user?.role?.toLowerCase() === 'superadmin' || user?.isAdmin;
-  const isDemoFallback = 
-    user?.organization?.slug === 'demo' || 
-    (Number(rawPipelineTotal) === 0 && Number(rawMtdRevenue) === 0 && isSuperAdmin);
+  // ── Demo fallback: only for the 'demo' org, never for production accounts ──
+  // nedpearson@gmail.com and other production users always see real (empty) data.
+  const isDemoFallback = isDemoMode(user);
 
   const activeDashData = isDemoFallback ? DEMO_DASH_DATA : dashData;
   const activeProposals = isDemoFallback && proposals.length === 0 ? DEMO_PROPOSALS : proposals;

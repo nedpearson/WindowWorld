@@ -7,6 +7,8 @@ import { PlusIcon, MagnifyingGlassIcon,
   ArrowDownTrayIcon, XMarkIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
 import clsx from 'clsx';
 import { useProposals, useUpdateProposalStatus, type Proposal } from '../../api/proposals';
+import { useAuthStore } from '../../store/auth.store';
+import { isDemoMode } from '../../utils/isDemoMode';
 
 // ─── Constants ────────────────────────────────────────────────
 const STATUS_STYLES: Record<string, { badge: string; label: string; icon?: any }> = {
@@ -78,8 +80,11 @@ export function ProposalsPage() {
   const { data: apiData, isLoading } = useProposals({ status: statusFilter || undefined });
   const statusMutation = useUpdateProposalStatus();
 
-  // Use API data if available, else demo
-  const proposals: Proposal[] = Array.isArray(apiData?.data) ? apiData.data : DEMO_PROPOSALS;
+  const user = useAuthStore((s) => s.user);
+  // Use real API data if available; only show demo for the 'demo' org
+  const proposals: Proposal[] = (isDemoMode(user) && !Array.isArray(apiData?.data))
+    ? DEMO_PROPOSALS
+    : (Array.isArray(apiData?.data) ? apiData.data : []);
 
   const filtered = proposals.filter((p) => {
     const name = p.lead ? `${p.lead.firstName} ${p.lead.lastName}` : '';

@@ -8,6 +8,8 @@ import {
   ChevronRightIcon, CreditCardIcon } from '@heroicons/react/24/outline';
 import clsx from 'clsx';
 import { useInvoices, useRecordPayment, type Invoice } from '../../api/proposals';
+import { useAuthStore } from '../../store/auth.store';
+import { isDemoMode } from '../../utils/isDemoMode';
 
 // ─── Helpers ──────────────────────────────────────────────────
 function formatCurrency(n?: number) {
@@ -276,7 +278,10 @@ export function InvoicesPage() {
     status: statusFilter || undefined,
     overdueOnly: overdueOnly || undefined });
 
-  const invoices: Invoice[] = Array.isArray(apiData?.data) ? apiData.data : DEMO_INVOICES;
+  const user = useAuthStore((s) => s.user);
+  const invoices: Invoice[] = (isDemoMode(user) && !Array.isArray(apiData?.data))
+    ? DEMO_INVOICES
+    : (Array.isArray(apiData?.data) ? apiData.data : []);
 
   const filtered = invoices.filter((inv) => {
     const q = search.toLowerCase();

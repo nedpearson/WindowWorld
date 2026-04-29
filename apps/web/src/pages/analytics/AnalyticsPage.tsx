@@ -11,6 +11,7 @@ import { AreaChart, Area, BarChart, Bar,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import apiClient from '../../api/client';
 import { useAuthStore } from '../../store/auth.store';
+import { isDemoMode } from '../../utils/isDemoMode';
 
 type Period = '7d' | '30d' | '90d';
 type AnalyticsTab = 'overview' | 'reps' | 'sources' | 'win-loss' | 'velocity';
@@ -105,10 +106,9 @@ export function AnalyticsPage() {
 
   const rawMtdRevenue = dash?.kpis?.mtdRevenue ?? 0;
   
-  const isSuperAdmin = user?.role?.toLowerCase().includes('super') || user?.role?.toLowerCase() === 'superadmin' || user?.isAdmin;
-  const isDemoFallback = 
-    user?.organization?.slug === 'demo' || 
-    (Number(rawMtdRevenue) === 0 && isSuperAdmin);
+  // Demo fallback: ONLY for the 'demo' org — never for production accounts.
+  // nedpearson@gmail.com always sees real (empty) data.
+  const isDemoFallback = isDemoMode(user);
 
   const activeDash = isDemoFallback ? DEMO_ANALYTICS_DASH : dash;
   const activeRepPerf = isDemoFallback ? DEMO_REP_PERF : repPerf;

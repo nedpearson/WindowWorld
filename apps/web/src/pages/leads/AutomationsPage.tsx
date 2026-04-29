@@ -24,6 +24,8 @@ import {
   useUnenrollLead,
   type CampaignTemplate,
   type CampaignEnrollment } from '../../api/automations';
+import { useAuthStore } from '../../store/auth.store';
+import { isDemoMode } from '../../utils/isDemoMode';
 
 // ─── Types ────────────────────────────────────────────────────
 const TEMPLATE_COLORS: Record<string, string> = {
@@ -318,12 +320,16 @@ export function AutomationsPage() {
     staleTime: 5 * 60_000,
   });
 
-  const templates = Array.isArray(apiTemplates) ? apiTemplates : DEMO_TEMPLATES;
+  const user = useAuthStore((s) => s.user);
+  const inDemoMode = isDemoMode(user);
+
+  const templates = Array.isArray(apiTemplates) ? apiTemplates : (inDemoMode ? DEMO_TEMPLATES : []);
   const enrollments = useMemo(() => {
     if (Array.isArray(apiEnrollments) && apiEnrollments.length > 0) return apiEnrollments;
-    // Fall back to demo enrollments wired to real lead IDs
+    // Only fall back to demo enrollments for the demo org
+    if (!inDemoMode) return [];
     return buildDemoEnrollments(leadsData || []);
-  }, [apiEnrollments, leadsData]);
+  }, [apiEnrollments, leadsData, inDemoMode]);
 
   const filtered = enrollments.filter((e) => !statusFilter || e.status === statusFilter);
 
