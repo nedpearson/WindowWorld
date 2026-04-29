@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import {
   BanknotesIcon, CheckCircleIcon,
   PencilIcon, ChevronDownIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
@@ -46,6 +46,24 @@ const DEFAULT_TIERS: CommissionTier[] = [
   { minRevenue: 50001,  maxRevenue: 75000,  rate: 10,  label: 'Gold',    color: 'text-amber-400' },
   { minRevenue: 75001,  maxRevenue: null,   rate: 12,  label: 'Platinum', color: 'text-purple-400' },
 ];
+
+const DEMO_REPS: Rep[] = [
+  { id: 'r1', name: 'Jake Thibodaux', avatar: 'JT', mtdRevenue: 26400, ytdRevenue: 89700, openPipeline: 34200,
+    deals: [
+      { id: 'd1', customer: 'Michael Trosclair', amount: 14800, closedAt: 'Apr 24', repId: 'r1', status: 'PENDING', series: 'Series 4000' },
+      { id: 'd2', customer: 'James Hebert',      amount: 11600, closedAt: 'Apr 21', repId: 'r1', status: 'PAID',    series: 'Series 2000' },
+    ]},
+  { id: 'r2', name: 'Danielle Arceneaux', avatar: 'DA', mtdRevenue: 20800, ytdRevenue: 64300, openPipeline: 18600,
+    deals: [
+      { id: 'd3', customer: 'Monique Robichaux', amount: 10400, closedAt: 'Apr 25', repId: 'r2', status: 'PAID',    series: 'Series 4000' },
+      { id: 'd4', customer: 'Karen Guidry',      amount: 10400, closedAt: 'Apr 22', repId: 'r2', status: 'PENDING', series: 'Series 6000' },
+    ]},
+  { id: 'r3', name: 'Marie Fontenot',    avatar: 'MF', mtdRevenue: 11200, ytdRevenue: 41800, openPipeline: 22400,
+    deals: [
+      { id: 'd5', customer: 'Angela Mouton',  amount: 11200, closedAt: 'Apr 28', repId: 'r3', status: 'PENDING', series: 'Series 4000' },
+    ]},
+];
+
 
 function calcCommission(revenue: number, tiers: CommissionTier[]): { earned: number; tier: CommissionTier } {
   const tier = [...tiers].reverse().find(t => revenue >= t.minRevenue) || tiers[0];
@@ -160,24 +178,20 @@ export function CommissionPage() {
     },
     onError: () => toast.error('Failed to save commission tiers') });
 
-  const { data: repsData, isLoading } = useQuery({
+  const { data: repsData } = useQuery({
     queryKey: ['commissions'],
     queryFn: () => api.analytics.commissions().then((r: any) => r.data || []),
-    staleTime: 60_000 });
+    staleTime: 60_000,
+    placeholderData: keepPreviousData,
+  });
 
-  const REPS: Rep[] = repsData || [];
+  // Show real rep data if available, otherwise fall back to demo reps
+  const REPS: Rep[] = (Array.isArray(repsData) && repsData.length > 0) ? repsData : DEMO_REPS;
 
   const totalEarned   = REPS.reduce((s, r) => s + calcCommission(r.mtdRevenue, tiers).earned, 0);
   const totalPipeline = REPS.reduce((s, r) => s + r.openPipeline, 0);
   const topEarner     = [...REPS].sort((a, b) => b.mtdRevenue - a.mtdRevenue)[0]?.name.split(' ')[0] || '—';
-
   const saveTiers = () => persistTiers();
-
-  if (isLoading) return (
-    <div className="p-6 space-y-3">
-      {[...Array(3)].map((_, i) => <div key={i} className="h-40 bg-slate-800 rounded-xl animate-pulse" />)}
-    </div>
-  );
 
   return (
     <div className="p-6 space-y-5 page-transition">

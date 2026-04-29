@@ -239,27 +239,33 @@ export class AnalyticsService {
 
     const repData = await Promise.all(reps.map(async (rep) => {
       const [mtdLeads, ytdLeads, pipelineLeads] = await Promise.all([
+        // MTD closed — include all scalar fields + quotes relation
         prisma.lead.findMany({
           where: { assignedRepId: rep.id, status: { in: CLOSED }, updatedAt: { gte: mtdStart } } as any,
-          include: { quote: { select: { grandTotal: true, total: true } } } as any,
+          include: { quotes: { select: { grandTotal: true, total: true }, take: 1 } } as any,
           orderBy: { updatedAt: 'desc' }, take: 10,
         }),
+        // YTD closed — only need revenue value
         prisma.lead.findMany({
           where: { assignedRepId: rep.id, status: { in: CLOSED }, updatedAt: { gte: ytdStart } } as any,
-          select: { estimatedValue: true, estimatedRevenue: true, quote: { select: { grandTotal: true, total: true } } } as any,
+          select: { estimatedRevenue: true },
         }),
+        // Open pipeline — only need revenue value
         prisma.lead.findMany({
           where: { assignedRepId: rep.id, status: { in: ACTIVE } } as any,
-          select: { estimatedValue: true, estimatedRevenue: true } as any,
+          select: { estimatedRevenue: true },
         }),
       ]);
 
-      const val = (l: any) => Number((l as any).quote?.grandTotal || (l as any).quote?.total
-        || (l as any).estimatedValue || (l as any).estimatedRevenue || 0);
+      // Extract deal value: prefer quote grandTotal/total, fall back to estimatedRevenue
+      const val = (l: any) => Number(
+        l?.quotes?.[0]?.grandTotal || l?.quotes?.[0]?.total ||
+        l?.estimatedRevenue || 0
+      );
 
       const mtdRevenue   = mtdLeads.reduce((s: number, l: any) => s + val(l), 0);
-      const ytdRevenue   = ytdLeads.reduce((s: number, l: any) => s + val(l), 0);
-      const openPipeline = pipelineLeads.reduce((s: number, l: any) => s + val(l), 0);
+      const ytdRevenue   = ytdLeads.reduce((s: number, l: any) => s + (l.estimatedRevenue || 0), 0);
+      const openPipeline = pipelineLeads.reduce((s: number, l: any) => s + (l.estimatedRevenue || 0), 0);
 
       const deals = (mtdLeads as any[]).map((l: any) => ({
         id: l.id,
@@ -267,8 +273,8 @@ export class AnalyticsService {
         amount: val(l),
         closedAt: new Date(l.updatedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
         repId: rep.id,
-        status: ['INSTALLED', 'SOLD'].includes(l.status) ? 'PAID' : 'PENDING',
-        series: (l as any).quote?.series || 'WindowWorld',
+        status: ['INSTALLED', 'SOLD', 'PAID'].includes(l.status) ? 'PAID' : 'PENDING',
+        series: (l as any).quotes?.[0]?.series || 'WindowWorld',
       }));
 
       return {
@@ -282,7 +288,10 @@ export class AnalyticsService {
       };
     }));
 
-    return repData.sort((a, b) => b.mtdRevenue - a.mtdRevenue);
+    // Only return reps with MTD activity or open pipeline
+    return repData
+      .filter(r => r.mtdRevenue > 0 || r.openPipeline > 0 || r.deals.length > 0)
+      .sort((a, b) => b.mtdRevenue - a.mtdRevenue);
   }
 
   async getInstalledLeads(organizationId: string, limit = 60) {
