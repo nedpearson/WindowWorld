@@ -1,7 +1,18 @@
 import { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { toast } from 'sonner';\nimport {\n  BoltIcon as BoltOutline,\n  PlayIcon,\n  XMarkIcon,\n  PlusIcon,\n  CheckCircleIcon,\n  ClockIcon,\n  EnvelopeIcon,\n  ChatBubbleLeftRightIcon,\n  UserGroupIcon,\n  ChevronDownIcon } from '@heroicons/react/24/outline';
+import { toast } from 'sonner';
+import {
+  BoltIcon as BoltOutline,
+  PlayIcon,
+  XMarkIcon,
+  PlusIcon,
+  CheckCircleIcon,
+  ClockIcon,
+  EnvelopeIcon,
+  ChatBubbleLeftRightIcon,
+  UserGroupIcon,
+  ChevronDownIcon } from '@heroicons/react/24/outline';
 import { BoltIcon, SparklesIcon } from '@heroicons/react/24/solid';
 import clsx from 'clsx';
 import { useQuery } from '@tanstack/react-query';
