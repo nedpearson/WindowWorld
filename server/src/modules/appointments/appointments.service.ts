@@ -302,7 +302,13 @@ export class AppointmentsService {
       },
       orderBy: { scheduledAt: 'asc' },
       include: {
-        lead: { select: { id: true, firstName: true, lastName: true, address: true, city: true } },
+        lead: {
+          select: {
+            id: true, firstName: true, lastName: true,
+            phone: true, address: true, city: true, zip: true,
+            assignedRep: { select: { id: true, firstName: true, lastName: true } },
+          },
+        },
         createdBy: { select: { id: true, firstName: true, lastName: true } },
       },
     });

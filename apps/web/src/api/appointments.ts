@@ -1,5 +1,7 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import apiClient from './client';
+
+export { keepPreviousData };
 
 // ─── Types ────────────────────────────────────────────────────
 export interface Appointment {
@@ -79,6 +81,7 @@ export function useCalendarAppointments(start: string, end: string, repId?: stri
       return data.data as Appointment[];
     },
     staleTime: 60_000,
+    placeholderData: keepPreviousData,
     enabled: !!start && !!end,
   });
 }

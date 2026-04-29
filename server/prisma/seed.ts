@@ -748,6 +748,60 @@ async function main() {
     console.log(`⏭️  Appointments already seeded (${existingApptCount} total), skipping`);
   }
 
+  // ── Extra: ensure future appointments exist (relative to NOW) ──
+  // Runs every seed to keep calendar populated even after initial seed date passes
+  const futureApptCount = await prisma.appointment.count({
+    where: { lead: { organizationId: orgReal.id }, scheduledAt: { gte: new Date() } },
+  });
+  if (futureApptCount < 5) {
+    const allOrgLeads2 = await prisma.lead.findMany({
+      where: { organizationId: orgReal.id },
+      select: { id: true, firstName: true, address: true },
+      take: 12,
+    });
+    const L2 = (i: number) => allOrgLeads2[i % allOrgLeads2.length];
+    const df = (daysOffset: number, hour: number) => {
+      const dt = new Date(); dt.setHours(hour, 0, 0, 0);
+      dt.setDate(dt.getDate() + daysOffset); return dt;
+    };
+    const futureAppts = [
+      { lead: L2(0),  title: 'Initial Window Consultation', type: 'initial-consult', status: 'CONFIRMED',  scheduledAt: df(0, 9),  duration: 90, notes: 'Homeowner confirmed. Interested in full replacement — 12 openings.' },
+      { lead: L2(1),  title: 'Follow-Up on Proposal',       type: 'follow-up',       status: 'SCHEDULED',  scheduledAt: df(0, 14), duration: 60 },
+      { lead: L2(2),  title: 'Field Measurement Visit',     type: 'measurement',     status: 'CONFIRMED',  scheduledAt: df(1, 10), duration: 75, notes: '10 openings to measure. Side gate access required.' },
+      { lead: L2(3),  title: 'Proposal Presentation',       type: 'proposal',        status: 'CONFIRMED',  scheduledAt: df(1, 13), duration: 60, notes: 'Presenting 3-option proposal. Upsell Series 4000.' },
+      { lead: L2(4),  title: 'Contract Signing',            type: 'close',           status: 'SCHEDULED',  scheduledAt: df(2, 11), duration: 60, notes: 'Financing approved through GreenSky.' },
+      { lead: L2(5),  title: 'Initial Consultation',        type: 'initial-consult', status: 'SCHEDULED',  scheduledAt: df(3, 9),  duration: 90 },
+      { lead: L2(6),  title: 'Field Measurement',           type: 'measurement',     status: 'SCHEDULED',  scheduledAt: df(3, 14), duration: 75 },
+      { lead: L2(7),  title: 'Proposal Review',             type: 'proposal',        status: 'SCHEDULED',  scheduledAt: df(4, 10), duration: 60 },
+      { lead: L2(8),  title: 'Initial Consultation',        type: 'initial-consult', status: 'SCHEDULED',  scheduledAt: df(5, 9),  duration: 90 },
+      { lead: L2(9),  title: 'Follow-Up After Measurement', type: 'follow-up',       status: 'SCHEDULED',  scheduledAt: df(7, 9),  duration: 60 },
+      { lead: L2(10), title: 'Proposal Presentation',       type: 'proposal',        status: 'SCHEDULED',  scheduledAt: df(8, 10), duration: 75 },
+      { lead: L2(11), title: 'Contract Signing',            type: 'close',           status: 'SCHEDULED',  scheduledAt: df(9, 11), duration: 60 },
+      { lead: L2(0),  title: 'Initial Consultation',        type: 'initial-consult', status: 'SCHEDULED',  scheduledAt: df(10, 14), duration: 90 },
+      { lead: L2(2),  title: 'Field Measurement',           type: 'measurement',     status: 'SCHEDULED',  scheduledAt: df(11, 10), duration: 75 },
+      { lead: L2(4),  title: 'Proposal Presentation',       type: 'proposal',        status: 'SCHEDULED',  scheduledAt: df(14, 10), duration: 60 },
+      { lead: L2(6),  title: 'Contract Signing',            type: 'close',           status: 'SCHEDULED',  scheduledAt: df(15, 11), duration: 60 },
+    ];
+    for (const appt of futureAppts) {
+      try {
+        await prisma.appointment.create({
+          data: {
+            leadId: appt.lead.id, createdById: rep1.id,
+            title: appt.title, type: appt.type, status: appt.status as any,
+            scheduledAt: appt.scheduledAt, duration: appt.duration,
+            address: appt.lead.address ?? undefined,
+            notes: (appt as any).notes ?? null,
+            reminderSent: appt.status === 'CONFIRMED',
+            confirmationSent: appt.status === 'CONFIRMED',
+          },
+        });
+      } catch { /* skip duplicates */ }
+    }
+    console.log(`✅ Future appointments refreshed: ${futureAppts.length} created`);
+  } else {
+    console.log(`⏭️  Future appointments OK (${futureApptCount} ahead), skipping refresh`);
+  }
+
 
   // ─────────────────────────────────────────────
   // STORM EVENT (skip if already seeded)

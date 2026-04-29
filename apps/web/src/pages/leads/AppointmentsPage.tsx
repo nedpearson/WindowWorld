@@ -10,12 +10,14 @@ import {
   ListBulletIcon, Squares2X2Icon, MapIcon } from '@heroicons/react/24/outline';
 import { BoltIcon } from '@heroicons/react/24/solid';
 import clsx from 'clsx';
+import { keepPreviousData } from '@tanstack/react-query';
 import {
   useCalendarAppointments,
   useUpdateAppointmentStatus,
   type Appointment } from '../../api/appointments';
 import { BookAppointmentDrawer } from '../../components/scheduling/BookAppointmentDrawer';
 import { AppointmentPrepPanel } from '../../components/ai/AppointmentPrepPanel';
+
 
 // ─── Constants ────────────────────────────────────────────────
 const DAYS_OF_WEEK = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -447,9 +449,11 @@ export function AppointmentsPage() {
 
   const { data: calApts = [], isLoading } = useCalendarAppointments(rangeStart, rangeEnd);
 
-  // Stats
+  // Stats — use start-of-today for accurate day comparison
+  const todayStart = useMemo(() => { const d = new Date(today); d.setHours(0,0,0,0); return d; }, []);
   const todayApts = calApts.filter((a) => isSameDay(new Date(a.scheduledAt), today));
-  const upcoming = calApts.filter((a) => new Date(a.scheduledAt) >= today && a.status !== 'CANCELLED');
+  const upcoming = calApts.filter((a) => new Date(a.scheduledAt) >= todayStart && a.status !== 'CANCELLED');
+  const recent = calApts.filter((a) => new Date(a.scheduledAt) < todayStart && a.status !== 'CANCELLED');
   const confirmedToday = todayApts.filter((a) => a.status === 'CONFIRMED').length;
 
   // Grouped list by date
@@ -544,7 +548,7 @@ export function AppointmentsPage() {
                 {isLoading && (
                   <div className="card p-8 text-center text-slate-500">Loading appointments...</div>
                 )}
-                {!isLoading && Object.keys(groupedByDate).length === 0 && (
+                {!isLoading && Object.keys(groupedByDate).length === 0 && recent.length === 0 && (
                   <div className="card p-10 text-center">
                     <CalendarIcon className="h-10 w-10 text-slate-700 mx-auto mb-3" />
                     <p className="text-slate-500 mb-4">No upcoming appointments</p>
@@ -584,9 +588,13 @@ export function AppointmentsPage() {
                             <div className="flex items-start justify-between gap-3">
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2 flex-wrap">
-                                  <span className="font-semibold text-white text-sm">
+                                  <Link
+                                    to={`/leads/${apt.leadId}`}
+                                    onClick={(e) => e.stopPropagation()}
+                                    className="font-semibold text-white text-sm hover:text-brand-300 transition-colors"
+                                  >
                                     {apt.lead ? `${apt.lead.firstName} ${apt.lead.lastName}` : apt.title}
-                                  </span>
+                                  </Link>
                                   <span className={clsx(
                                     'text-[10px] px-1.5 py-0.5 rounded-full font-medium border',
                                     STATUS_STYLES[apt.status]?.badge || 'bg-slate-700 text-slate-400'
@@ -594,13 +602,13 @@ export function AppointmentsPage() {
                                     {STATUS_STYLES[apt.status]?.label || apt.status}
                                   </span>
                                   <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-500 capitalize">
-                                    {apt.type.replace('-', ' ')}
+                                    {apt.type.replace(/-/g, ' ')}
                                   </span>
                                 </div>
-                                <p className="text-xs text-slate-400 mt-0.5 truncate">{apt.title}</p>
+                                <p className="text-xs text-slate-400 mt-0.5 truncate">{apt.title}{apt.lead?.city ? ` · ${apt.lead.city}` : ''}</p>
                                 <div className="flex items-center gap-4 mt-2 text-xs text-slate-500">
                                   <span className="flex items-center gap-1"><ClockIcon className="h-3 w-3" />{formatTime(apt.scheduledAt)}{apt.duration && ` · ${apt.duration}m`}</span>
-                                  {apt.address && <span className="flex items-center gap-1 truncate"><MapPinIcon className="h-3 w-3 flex-shrink-0" /><span className="truncate">{apt.address.split(',').slice(-2).join(',').trim()}</span></span>}
+                                  {apt.address && <span className="flex items-center gap-1 truncate"><MapPinIcon className="h-3 w-3 flex-shrink-0" /><span className="truncate">{apt.address.split(',')[0]}</span></span>}
                                   {apt.createdBy && <span className="text-slate-600">{apt.createdBy.firstName}</span>}
                                 </div>
                               </div>
@@ -631,6 +639,41 @@ export function AppointmentsPage() {
                   </div>
                 ))}
               </div>
+
+              {/* Recent (past 7 days) — collapsed section */}
+              {recent.length > 0 && (
+                <div className="mt-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="text-xs font-semibold text-slate-600 px-2 py-1">Recent (last 7 days)</div>
+                    <div className="flex-1 h-px bg-slate-800" />
+                    <span className="text-xs text-slate-600">{recent.length} completed</span>
+                  </div>
+                  <div className="space-y-2">
+                    {[...recent].reverse().slice(0, 5).map((apt) => (
+                      <div key={apt.id}
+                        className={clsx('card p-4 border-l-4 opacity-60', TYPE_STRIPE[apt.type] || 'border-l-slate-600')}>
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <Link to={`/leads/${apt.leadId}`}
+                                className="text-sm font-semibold text-slate-300 hover:text-brand-300 transition-colors truncate">
+                                {apt.lead ? `${apt.lead.firstName} ${apt.lead.lastName}` : apt.title}
+                              </Link>
+                              <span className={clsx('text-[10px] px-1.5 py-0.5 rounded-full font-medium border',
+                                STATUS_STYLES[apt.status]?.badge || 'bg-slate-700 text-slate-400')}>
+                                {STATUS_STYLES[apt.status]?.label || apt.status}
+                              </span>
+                            </div>
+                            <div className="text-xs text-slate-500 mt-0.5">
+                              {apt.title} · {new Date(apt.scheduledAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} at {formatTime(apt.scheduledAt)}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* Mini calendar sidebar */}
               <div>
