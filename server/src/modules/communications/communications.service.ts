@@ -44,7 +44,7 @@ export async function sendSmsToLead(input: SendSmsInput) {
 
   });
   if (!lead) throw new Error('Lead not found');
-  if (lead.doNotCall) throw new Error(`${lead.firstName} ${lead.lastName} is on the Do Not Contact list`);
+  if ((lead as any).doNotCall) throw new Error(`${lead.firstName} ${lead.lastName} is on the Do Not Contact list`);
 
   const to = normalizePhone(phone);
 
@@ -106,7 +106,7 @@ export async function initiateCallToLead(input: InitiateCallInput) {
 
   });
   if (!lead) throw new Error('Lead not found');
-  if (lead.doNotCall) throw new Error(`${lead.firstName} ${lead.lastName} is on the Do Not Contact list`);
+  if ((lead as any).doNotCall) throw new Error(`${lead.firstName} ${lead.lastName} is on the Do Not Contact list`);
 
   const to = normalizePhone(phone);
   const result = await initiateCall(to, userId, leadId);

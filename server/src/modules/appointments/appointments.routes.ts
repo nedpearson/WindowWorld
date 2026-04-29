@@ -51,8 +51,26 @@ router.post('/',
   [body('leadId').notEmpty(), body('title').notEmpty(), body('scheduledAt').isISO8601()],
   async (req: Request, res: Response) => {
     const user = (req as AuthenticatedRequest).user;
-    const apt = await appointmentsService.create({ ...req.body, createdById: user.id });
-    res.status(201).json({ success: true, data: apt });
+    try {
+      const apt = await appointmentsService.create({
+        ...req.body,
+        createdById: user.id,
+        skipConflictCheck: req.body.skipConflictCheck === true,
+      });
+      res.status(201).json({ success: true, data: apt });
+    } catch (err: any) {
+      if (err.code === 'GCAL_CONFLICT') {
+        // 409 Conflict — frontend shows a dialog asking the user to confirm or cancel
+        res.status(409).json({
+          success: false,
+          code: 'GCAL_CONFLICT',
+          message: err.message,
+          conflicts: err.conflicts,
+        });
+        return;
+      }
+      throw err; // Let global error handler deal with anything else
+    }
   }
 );
 

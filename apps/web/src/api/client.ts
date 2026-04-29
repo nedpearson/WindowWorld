@@ -384,6 +384,22 @@ export const api = {
     getVoiceToken: () =>
       get<any>('/communications/token'),
   },
+
+  // ── Google Calendar ───────────────────────────────────────────────────
+  calendar: {
+    /** Check if the current user has Google Calendar connected */
+    getStatus: () => get<any>('/calendar/status'),
+    /** Returns the URL the user should open to connect Google Calendar */
+    getConnectUrl: () => `${import.meta.env.VITE_API_URL || ''}/api/v1/calendar/connect`,
+    /** Disconnect Google Calendar */
+    disconnect: () => post<any>('/calendar/disconnect', {}),
+    /** Get busy blocks for a time window (for the appointment picker) */
+    getBusy: (startAt: string, endAt: string, repId?: string) =>
+      get<any>('/calendar/busy', { params: { startAt, endAt, repId } }),
+    /** Check if a specific slot has a conflict before booking */
+    checkConflict: (startAt: string, endAt: string, repId?: string) =>
+      post<any>('/calendar/check-conflict', { startAt, endAt, repId }),
+  },
 };
 
 // ─── Attach api namespaces directly onto the axios instance ──

@@ -113,7 +113,7 @@ router.get(
     const limit = parseInt((req.query.limit as string) || '50', 10);
 
     const logs = await getLeadCommunications(
-      req.params.leadId,
+      String(req.params.leadId),
       user.organizationId,
       limit,
     );

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
 import clsx from 'clsx';
@@ -6,7 +6,8 @@ import {
   UserCircleIcon, BellIcon, ShieldCheckIcon, CreditCardIcon,
   BuildingOfficeIcon, LockClosedIcon, KeyIcon, CheckIcon,
   EyeIcon, EyeSlashIcon, ComputerDesktopIcon, DevicePhoneMobileIcon,
-  ArrowRightOnRectangleIcon, ClockIcon, GlobeAltIcon } from '@heroicons/react/24/outline';
+  ArrowRightOnRectangleIcon, ClockIcon, GlobeAltIcon, CalendarDaysIcon,
+  LinkIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline';
 import { useAuthStore } from '../../store/auth.store';
 import { useUpdateUser, useOrgStats } from '../../api/admin';
 import apiClient from '../../api/client';
@@ -575,13 +576,208 @@ function BillingTab() {
   );
 }
 
+// ─── Google Calendar Tab ───────────────────────────────────────
+function GoogleCalendarTab() {
+  const [status, setStatus] = useState<{
+    connected: boolean;
+    connectedAt: string | null;
+    calendarId: string;
+    enabled: boolean;
+  } | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [disconnecting, setDisconnecting] = useState(false);
+
+  useEffect(() => {
+    apiClient.calendar.getStatus()
+      .then((r: any) => setStatus(r?.data))
+      .catch(() => setStatus(null))
+      .finally(() => setLoading(false));
+
+    // Handle OAuth redirect back from Google
+    const params = new URLSearchParams(window.location.search);
+    const gcal = params.get('gcal');
+    if (gcal === 'connected') {
+      toast.success('Google Calendar connected! Appointments will now be checked for conflicts.');
+      // Remove query param without reload
+      window.history.replaceState({}, '', window.location.pathname);
+    } else if (gcal === 'denied') {
+      toast.info('Google Calendar access was denied.');
+      window.history.replaceState({}, '', window.location.pathname);
+    } else if (gcal === 'error') {
+      toast.error('Failed to connect Google Calendar. Please try again.');
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  }, []);
+
+  const handleConnect = () => {
+    // Redirect the browser to the OAuth consent URL
+    const url = apiClient.calendar.getConnectUrl();
+    window.location.href = url;
+  };
+
+  const handleDisconnect = async () => {
+    if (!confirm('Disconnect Google Calendar? Appointments will no longer be checked for conflicts.')) return;
+    setDisconnecting(true);
+    try {
+      await apiClient.calendar.disconnect();
+      setStatus((s) => s ? { ...s, connected: false, connectedAt: null } : s);
+      toast.success('Google Calendar disconnected');
+    } catch {
+      toast.error('Failed to disconnect');
+    } finally {
+      setDisconnecting(false);
+    }
+  };
+
+  return (
+    <div className="space-y-6 max-w-2xl">
+      <div>
+        <h3 className="text-sm font-semibold text-white">Google Calendar Integration</h3>
+        <p className="text-xs text-slate-500 mt-0.5">
+          Connect your personal Google Calendar so WindowWorld can detect scheduling conflicts
+          before any appointment is booked.
+        </p>
+      </div>
+
+      {/* Feature overview */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        {[
+          { icon: '🔍', title: 'Conflict Detection', desc: 'Warns when a proposed appointment overlaps a personal calendar block' },
+          { icon: '📅', title: 'Auto-Sync', desc: 'New WW appointments are added to your Google Calendar automatically' },
+          { icon: '🔒', title: 'Private & Secure', desc: 'Only free/busy times are read — event titles & details stay private' },
+        ].map((f) => (
+          <div key={f.title} className="p-3 bg-slate-800/50 border border-slate-700/50 rounded-xl">
+            <div className="text-lg mb-1.5">{f.icon}</div>
+            <div className="text-xs font-semibold text-white mb-1">{f.title}</div>
+            <div className="text-[11px] text-slate-500 leading-relaxed">{f.desc}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Connection card */}
+      {loading ? (
+        <div className="flex items-center gap-2 text-xs text-slate-500 py-6">
+          <div className="w-4 h-4 border-2 border-brand-500/30 border-t-brand-500 rounded-full animate-spin" />
+          Checking connection status…
+        </div>
+      ) : !status?.enabled ? (
+        <div className="p-4 bg-amber-500/5 border border-amber-500/20 rounded-xl flex items-start gap-3">
+          <ExclamationTriangleIcon className="h-5 w-5 text-amber-400 flex-shrink-0 mt-0.5" />
+          <div>
+            <div className="text-sm font-medium text-amber-300">Not Configured</div>
+            <div className="text-xs text-slate-400 mt-0.5">
+              Google Calendar integration hasn't been configured yet.
+              Contact your administrator to add the required API credentials.
+            </div>
+          </div>
+        </div>
+      ) : status?.connected ? (
+        <div className="p-5 bg-emerald-500/5 border border-emerald-500/20 rounded-xl space-y-4">
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex items-start gap-3">
+              {/* Google Calendar logo */}
+              <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center flex-shrink-0 shadow-sm">
+                <CalendarDaysIcon className="h-5 w-5 text-blue-600" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-semibold text-white">Google Calendar</span>
+                  <span className="text-[10px] bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 px-1.5 py-0.5 rounded-full font-medium">
+                    Connected
+                  </span>
+                </div>
+                <div className="text-xs text-slate-500 mt-0.5">
+                  Calendar: <span className="text-slate-300">{status.calendarId || 'primary'}</span>
+                </div>
+                {status.connectedAt && (
+                  <div className="text-xs text-slate-600 mt-0.5">
+                    Connected {new Date(status.connectedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                  </div>
+                )}
+              </div>
+            </div>
+            <button
+              onClick={handleDisconnect}
+              disabled={disconnecting}
+              className="btn-sm px-3 py-1.5 bg-red-500/10 text-red-400 border border-red-500/20 rounded-lg hover:bg-red-500/20 transition-colors text-xs font-medium whitespace-nowrap"
+            >
+              {disconnecting ? 'Disconnecting…' : 'Disconnect'}
+            </button>
+          </div>
+
+          {/* What happens now */}
+          <div className="border-t border-emerald-500/10 pt-3 space-y-1.5">
+            <div className="text-xs font-semibold text-emerald-400 mb-2">Active protections</div>
+            {[
+              'Conflict warning before any new appointment is booked',
+              'New WindowWorld appointments sync to your Google Calendar',
+              'Cancelled appointments are removed from your calendar',
+            ].map((item) => (
+              <div key={item} className="flex items-center gap-2 text-xs text-slate-400">
+                <CheckIcon className="h-3.5 w-3.5 text-emerald-400 flex-shrink-0" />
+                {item}
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : (
+        <div className="p-5 bg-slate-800/50 border border-slate-700 rounded-xl space-y-4">
+          <div className="flex items-start gap-3">
+            <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center flex-shrink-0 shadow-sm">
+              <CalendarDaysIcon className="h-5 w-5 text-blue-600" />
+            </div>
+            <div>
+              <div className="text-sm font-semibold text-white">Google Calendar</div>
+              <div className="text-xs text-slate-500 mt-0.5">Not connected</div>
+            </div>
+          </div>
+          <p className="text-xs text-slate-400 leading-relaxed">
+            Click below to authorize WindowWorld to read your calendar's free/busy information.
+            You will be taken to Google's sign-in page — WindowWorld only sees <strong className="text-slate-300">blocked time slots</strong>,
+            never your event titles or details.
+          </p>
+          <button
+            onClick={handleConnect}
+            className="btn-primary btn-sm flex items-center gap-2"
+            id="gcal-connect-btn"
+          >
+            <LinkIcon className="h-4 w-4" />
+            Connect Google Calendar
+          </button>
+        </div>
+      )}
+
+      {/* How it works */}
+      <div className="border-t border-slate-800 pt-5">
+        <div className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">How It Works</div>
+        <ol className="space-y-2">
+          {[
+            'Click "Connect Google Calendar" and sign in with your Google account',
+            'WindowWorld checks your calendar for conflicts before each appointment is saved',
+            'If a conflict is found, you see a warning and can choose to override or pick a different time',
+            'The new appointment is automatically added to your Google Calendar with customer details',
+          ].map((step, i) => (
+            <li key={i} className="flex items-start gap-2.5 text-xs text-slate-400">
+              <span className="w-5 h-5 rounded-full bg-brand-500/15 text-brand-300 flex items-center justify-center text-[10px] font-bold flex-shrink-0 mt-0.5">
+                {i + 1}
+              </span>
+              {step}
+            </li>
+          ))}
+        </ol>
+      </div>
+    </div>
+  );
+}
+
 // ─── Main ─────────────────────────────────────────────────────
 const TABS = [
-  { id: 'profile',  label: 'Profile',       icon: UserCircleIcon },
-  { id: 'security', label: 'Security',       icon: ShieldCheckIcon },
+  { id: 'profile',  label: 'Profile',           icon: UserCircleIcon },
+  { id: 'calendar', label: 'Google Calendar',    icon: CalendarDaysIcon },
+  { id: 'security', label: 'Security',           icon: ShieldCheckIcon },
   { id: 'notifications', label: 'Notifications', icon: BellIcon },
-  { id: 'organization', label: 'Organization', icon: BuildingOfficeIcon },
-  { id: 'billing',  label: 'Billing',        icon: CreditCardIcon },
+  { id: 'organization', label: 'Organization',   icon: BuildingOfficeIcon },
+  { id: 'billing',  label: 'Billing',            icon: CreditCardIcon },
 ] as const;
 
 type TabId = typeof TABS[number]['id'];
@@ -629,6 +825,7 @@ export function SettingsPage() {
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.15 }}>
             {activeTab === 'profile'       && <ProfileTab />}
+            {activeTab === 'calendar'      && <GoogleCalendarTab />}
             {activeTab === 'security'      && <SecurityTab />}
             {activeTab === 'notifications' && <NotificationsTab />}
             {activeTab === 'organization'  && <OrganizationTab />}

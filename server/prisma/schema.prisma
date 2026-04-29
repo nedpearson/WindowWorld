@@ -263,8 +263,17 @@ model User {
   role             UserRole  @default(SALES_REP)
   isActive         Boolean   @default(true)
   lastLoginAt      DateTime?
-  // Notification preferences stored as JSON — avoids a separate table for simple toggle sets
+  // Notification preferences stored as JSON
   notifPreferences Json?     @default("{}")
+
+  // Google Calendar OAuth
+  gcalAccessToken   String?   // Encrypted; expires quickly
+  gcalRefreshToken  String?   // Encrypted; long-lived, used to auto-refresh
+  gcalTokenExpiry   DateTime? // When the access token expires
+  gcalCalendarId    String?   // Calendar ID to check (defaults to 'primary')
+  gcalSyncEnabled   Boolean   @default(false) // User has opted in
+  gcalConnectedAt   DateTime? // When they last connected
+
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
 
@@ -599,6 +608,9 @@ model Appointment {
 
   reminderSent     Boolean @default(false)
   confirmationSent Boolean @default(false)
+
+  // Google Calendar sync
+  googleEventId String? // GCal event ID — set after syncing to rep's Google Calendar
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

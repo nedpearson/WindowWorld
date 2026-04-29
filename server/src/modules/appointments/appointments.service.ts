@@ -2,6 +2,11 @@ import { Prisma, AppointmentStatus } from '@prisma/client';
 import { prisma } from '../../shared/services/prisma';
 import { NotFoundError } from '../../shared/middleware/errorHandler';
 import { logger } from '../../shared/utils/logger';
+import {
+  checkForConflicts,
+  syncAppointmentToGoogle,
+  deleteGoogleEvent,
+} from '../../shared/services/google-calendar.service';
 
 export class AppointmentsService {
   async list(options: {
@@ -101,12 +106,42 @@ export class AppointmentsService {
     lat?: number;
     lng?: number;
     notes?: string;
+    /** If true, skip conflict check (user confirmed they want to book anyway) */
+    skipConflictCheck?: boolean;
   }) {
+    const startAt = new Date(data.scheduledAt);
+    // Default end = start + duration (or 90 min)
+    const endAt = data.endAt
+      ? new Date(data.endAt)
+      : new Date(startAt.getTime() + (data.duration || 90) * 60_000);
+
+    // ── Google Calendar conflict check (non-blocking) ──────────────────
+    // We warn but don't hard-block — the user can override via skipConflictCheck.
+    if (!data.skipConflictCheck) {
+      try {
+        const conflict = await checkForConflicts(data.createdById, startAt, endAt);
+        if (conflict.hasConflict) {
+          // Return a conflict warning so the frontend can show a confirmation dialog
+          const conflictInfo = conflict.conflicts.map(b =>
+            `${new Date(b.start).toLocaleTimeString()} – ${new Date(b.end).toLocaleTimeString()}`
+          ).join(', ');
+          const err: any = new Error(`Google Calendar conflict: ${conflictInfo}`);
+          err.code = 'GCAL_CONFLICT';
+          err.conflicts = conflict.conflicts;
+          throw err;
+        }
+      } catch (err: any) {
+        if (err.code === 'GCAL_CONFLICT') throw err;
+        // Any other GCal error — log and continue (fail open)
+        logger.warn(`[appointments] GCal conflict check error: ${err.message}`);
+      }
+    }
+
     const apt = await prisma.appointment.create({
       data: {
         ...data,
-        scheduledAt: new Date(data.scheduledAt),
-        endAt: data.endAt ? new Date(data.endAt) : undefined,
+        scheduledAt: startAt,
+        endAt,
       } as any,
       include: {
         lead: { select: { id: true, firstName: true, lastName: true, phone: true, address: true } },
@@ -155,6 +190,33 @@ export class AppointmentsService {
         // Non-fatal
         logger.warn(`[appointments] Email confirmation failed for apt ${apt.id}: ${err.message}`);
       }
+    }
+
+    // ── Sync to Google Calendar (non-blocking, best-effort) ──────────────
+    try {
+      const lead = await prisma.lead.findUnique({
+        where: { id: data.leadId },
+        select: { firstName: true, lastName: true, phone: true },
+      });
+      const googleEventId = await syncAppointmentToGoogle({
+        userId: data.createdById,
+        appointmentId: apt.id,
+        title: data.title,
+        description: data.notes,
+        location: data.address,
+        startAt,
+        endAt,
+        customerName: `${lead?.firstName || ''} ${lead?.lastName || ''}`.trim(),
+        customerPhone: lead?.phone || undefined,
+      });
+      if (googleEventId) {
+        await prisma.appointment.update({
+          where: { id: apt.id },
+          data: { googleEventId } as any,
+        });
+      }
+    } catch (err: any) {
+      logger.warn(`[appointments] GCal sync failed: ${err.message}`);
     }
 
     return apt;

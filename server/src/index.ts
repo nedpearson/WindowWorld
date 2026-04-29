@@ -45,6 +45,7 @@ import { pushRouter } from './modules/push/push.routes';
 import { siloAiRouter } from './modules/silo-ai/silo-ai.routes';
 import { jobExpensesRouter } from './modules/job-expenses/job-expenses.routes';
 import { communicationsRouter } from './modules/communications/communications.routes';
+import { calendarRouter } from './modules/calendar/calendar.routes';
 
 // Background jobs
 import { initializeJobQueues } from './jobs';
@@ -216,6 +217,7 @@ app.use(`${apiV1}/push`, pushRouter);
 app.use(`${apiV1}/silo`, siloAiRouter);
 app.use(`${apiV1}/job-expenses`, jobExpensesRouter);
 app.use(`${apiV1}/communications`, communicationsRouter);
+app.use(`${apiV1}/calendar`, calendarRouter);
 
 // ── SPA — serve built React app ─────────────────────────────────────────────
 // Must come AFTER all /api/ routes so they take priority.
