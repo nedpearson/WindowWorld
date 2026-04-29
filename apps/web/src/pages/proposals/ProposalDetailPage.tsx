@@ -185,6 +185,8 @@ export function ProposalDetailPage() {
   const [showInvoiceConfirm, setShowInvoiceConfirm] = useState(false);
 
   const { data: apiProposal, isLoading } = useProposal(id || '');
+  // isDemo = true when no real proposal exists in DB for this ID
+  const isDemo = !apiProposal;
   const proposal = apiProposal || DEMO_PROPOSAL;
 
   const generatePdf = useGeneratePdf();
@@ -192,15 +194,23 @@ export function ProposalDetailPage() {
   const createInvoice = useCreateInvoiceFromProposal();
 
   const handleGeneratePdf = async () => {
+    if (isDemo) {
+      toast.info('📄 Demo Mode — PDF would be generated and emailed to the customer. Connect a real proposal to enable this.', { duration: 5000 });
+      return;
+    }
     try {
       await generatePdf.mutateAsync(proposal.id);
       toast.success('PDF generation queued — will be ready shortly');
-    } catch {
-      toast.error('PDF generation failed');
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'PDF generation failed');
     }
   };
 
   const handleStatusChange = async (status: string) => {
+    if (isDemo) {
+      toast.info('Demo Mode — status changes are disabled on preview proposals.');
+      return;
+    }
     try {
       await statusMutation.mutateAsync({ id: proposal.id, status });
       toast.success(`Proposal ${status.toLowerCase()}`);
@@ -210,15 +220,21 @@ export function ProposalDetailPage() {
   };
 
   const handleCreateInvoice = async () => {
+    if (isDemo) {
+      toast.info('📋 Demo Mode — Invoice WW-2025-1001 would be created for $14,750 with a 30% deposit of $4,425 due at signing. Connect a real proposal to enable this.', { duration: 6000 });
+      setShowInvoiceConfirm(false);
+      return;
+    }
     try {
-      const invoice = await createInvoice.mutateAsync({
+      await createInvoice.mutateAsync({
         proposalId: proposal.id,
         leadId: proposal.leadId,
-        depositPct: 30 });
+        depositPct: 30,
+      });
       toast.success('Invoice created successfully');
       navigate('/invoices');
-    } catch {
-      toast.error('Failed to create invoice');
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Failed to create invoice');
     }
   };
 
@@ -235,7 +251,13 @@ export function ProposalDetailPage() {
 
   return (
     <div className="p-6 space-y-5 page-transition">
-      {/* Back nav + header */}
+      {/* Demo mode banner */}
+      {isDemo && (
+        <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-sm text-amber-400">
+          <BoltIcon className="h-4 w-4 flex-shrink-0" />
+          <span><strong>Preview Mode</strong> — This is a sample proposal. Actions like Generate PDF and Create Invoice are simulated. Create a real proposal from a lead to fully activate them.</span>
+        </div>
+      )}
       <div className="flex items-start gap-4">
         <Link to="/proposals" className="btn-icon btn-ghost mt-0.5">
           <ArrowLeftIcon className="h-5 w-5" />
