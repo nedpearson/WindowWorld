@@ -36,6 +36,24 @@
       html { background-color: #0f172a; color-scheme: dark; }
       body { margin: 0; }
     </style>
+    <!-- Robust fallback for stale PWA chunks: automatically clear SW and reload if chunks fail to fetch -->
+    <script>
+      window.addEventListener('error', function(e) {
+        if (e.target && e.target.tagName === 'SCRIPT' && e.target.src && e.target.src.includes('/assets/')) {
+          console.warn('[PWA] Stale chunk detected, unregistering service workers and reloading...');
+          if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.getRegistrations().then(function(registrations) {
+              for (var i = 0; i < registrations.length; i++) {
+                registrations[i].unregister();
+              }
+              window.location.reload(true);
+            });
+          } else {
+            window.location.reload(true);
+          }
+        }
+      }, true);
+    </script>
   </head>
   <body>
     <div id="root"></div>
