@@ -502,6 +502,99 @@ async function main() {
       createdLeads.push(lead);
     }
     console.log(`✅ Leads: ${createdLeads.length} demo leads created`);
+
+    // ── Contacts: one primary per lead + spouses for select leads ──
+    const spouseData: Record<string, { firstName: string; lastName: string; email?: string; phone?: string }> = {
+      // spouses keyed by lead firstName (for the demo data we know the first names)
+      'Michael':  { firstName: 'Susan',    lastName: 'Thibodaux',   email: 'sthibodaux@gmail.com',     phone: '(225) 555-0182' },
+      'Patricia': { firstName: 'Gerald',   lastName: 'Landry',      email: 'glandry@bellsouth.net',    phone: '(225) 555-0384' },
+      'William':  { firstName: 'Barbara',  lastName: 'Fontenot',    email: 'bfontenot@yahoo.com',      phone: '(225) 555-0721' },
+      'Angela':   { firstName: 'Marcus',   lastName: 'Mouton',      email: 'mmouton@cox.net',          phone: '(225) 555-0903' },
+      'Carol':    { firstName: 'Raymond',  lastName: 'Chauvin',     email: 'rchauvin@aol.com',         phone: '(985) 555-0412' },
+      'Robert':   { firstName: 'Beverly',  lastName: 'Duplessis',   email: 'bduplessis@gmail.com',     phone: '(225) 555-0588' },
+      'Theresa':  { firstName: 'Andre',    lastName: 'Broussard',   email: 'abroussard@yahoo.com',     phone: '(337) 555-0239' },
+      'Louis':    { firstName: 'Denise',   lastName: 'Badeaux',     email: 'dbadeaux@cox.net',         phone: '(504) 555-0867' },
+    };
+
+    const contactsToCreate = createdLeads.flatMap(lead => {
+      const primary = {
+        leadId: lead.id,
+        firstName: lead.firstName,
+        lastName: lead.lastName,
+        email: lead.email,
+        phone: lead.phone,
+        isOwner: true,
+        isSpouse: false,
+        isPrimary: true,
+        preferredContactMethod: 'PHONE' as const,
+        bestTimeToContact: 'Evenings after 5pm',
+      };
+      const spouse = spouseData[lead.firstName];
+      if (spouse) {
+        return [primary, {
+          leadId: lead.id,
+          firstName: spouse.firstName,
+          lastName: spouse.lastName,
+          email: spouse.email,
+          phone: spouse.phone,
+          isOwner: true,
+          isSpouse: true,
+          isPrimary: false,
+          preferredContactMethod: 'PHONE' as const,
+          bestTimeToContact: 'Weekends',
+          notes: 'Co-decision maker — must be present for final decisions',
+        }];
+      }
+      return [primary];
+    });
+
+      await prisma.contact.createMany({ data: contactsToCreate as any, skipDuplicates: true });
+      console.log(`✅ Contacts: ${contactsToCreate.length} contact records created (primary + spouses)`);
+  }
+
+  // ─────────────────────────────────────────────
+  // CONTACTS — idempotent, runs every time
+  // Creates contacts for any leads that don't have one yet
+  // ─────────────────────────────────────────────
+  const allLeads = await prisma.lead.findMany({
+    where: { organizationId: orgReal.id },
+    select: { id: true, firstName: true, lastName: true, email: true, phone: true, contacts: { select: { id: true } } },
+  });
+  const leadsWithoutContacts = allLeads.filter(l => l.contacts.length === 0);
+  if (leadsWithoutContacts.length > 0) {
+    const spouseMap: Record<string, { firstName: string; lastName: string; email?: string; phone?: string }> = {
+      'Michael':  { firstName: 'Susan',    lastName: 'Thibodaux',   email: 'sthibodaux@gmail.com',     phone: '(225) 555-0182' },
+      'Patricia': { firstName: 'Gerald',   lastName: 'Landry',      email: 'glandry@bellsouth.net',    phone: '(225) 555-0384' },
+      'William':  { firstName: 'Barbara',  lastName: 'Fontenot',    email: 'bfontenot@yahoo.com',      phone: '(225) 555-0721' },
+      'Angela':   { firstName: 'Marcus',   lastName: 'Mouton',      email: 'mmouton@cox.net',          phone: '(225) 555-0903' },
+      'Carol':    { firstName: 'Raymond',  lastName: 'Chauvin',     email: 'rchauvin@aol.com',         phone: '(985) 555-0412' },
+      'Robert':   { firstName: 'Beverly',  lastName: 'Duplessis',   email: 'bduplessis@gmail.com',     phone: '(225) 555-0588' },
+      'Theresa':  { firstName: 'Andre',    lastName: 'Broussard',   email: 'abroussard@yahoo.com',     phone: '(337) 555-0239' },
+      'Louis':    { firstName: 'Denise',   lastName: 'Badeaux',     email: 'dbadeaux@cox.net',         phone: '(504) 555-0867' },
+    };
+    const newContacts = leadsWithoutContacts.flatMap(lead => {
+      const primary = {
+        leadId: lead.id, firstName: lead.firstName, lastName: lead.lastName,
+        email: lead.email, phone: lead.phone,
+        isOwner: true, isSpouse: false, isPrimary: true,
+        preferredContactMethod: 'PHONE' as const, bestTimeToContact: 'Evenings after 5pm',
+      };
+      const spouse = spouseMap[lead.firstName];
+      if (spouse) {
+        return [primary, {
+          leadId: lead.id, firstName: spouse.firstName, lastName: spouse.lastName,
+          email: spouse.email, phone: spouse.phone,
+          isOwner: true, isSpouse: true, isPrimary: false,
+          preferredContactMethod: 'PHONE' as const, bestTimeToContact: 'Weekends',
+          notes: 'Co-decision maker — must be present for final decisions',
+        }];
+      }
+      return [primary];
+    });
+    await prisma.contact.createMany({ data: newContacts as any, skipDuplicates: true });
+    console.log(`✅ Contacts: ${newContacts.length} records created for ${leadsWithoutContacts.length} leads`);
+  } else {
+    console.log(`⏭️  Contacts already seeded (${allLeads.reduce((s, l) => s + l.contacts.length, 0)} total), skipping`);
   }
 
   // ─────────────────────────────────────────────
