@@ -183,6 +183,10 @@ export const api = {
   // Products
   products: {
     list: (params?: Record<string, any>) => get('/products', { params }),
+    legacyCatalog: () => get<any>('/products/legacy'),
+    getCategories: () => get<any>('/products/categories'),
+    getSubcategories: (params?: Record<string, any>) => get('/products/subcategories', { params }),
+    getSeries: (params?: Record<string, any>) => get('/products/series', { params }),
     getById: (id: string) => get(`/products/${id}`),
     create: (data: any) => post('/products', data),
     update: (id: string, data: any) => patch(`/products/${id}`, data),

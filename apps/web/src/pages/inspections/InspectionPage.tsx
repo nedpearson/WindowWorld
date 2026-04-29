@@ -12,6 +12,8 @@ import { api } from '../../api/client';
 
 // Window type options
 const WINDOW_TYPES = ['DOUBLE_HUNG', 'SINGLE_HUNG', 'CASEMENT', 'AWNING', 'SLIDER', 'FIXED', 'BAY', 'BOW', 'GARDEN', 'EGRESS'];
+const DOOR_TYPES = ['ENTRY', 'PATIO_SLIDER', 'FRENCH', 'STORM'];
+const SIDING_ELEVATIONS = ['FRONT_WALL', 'BACK_WALL', 'LEFT_WALL', 'RIGHT_WALL', 'GABLE', 'SOFFIT'];
 const CONDITIONS = ['EXCELLENT', 'GOOD', 'FAIR', 'POOR', 'CRITICAL'];
 
 const COND_COLORS: Record<string, string> = {
@@ -61,7 +63,21 @@ export function InspectionPage() {
   const [inspection, setInspection] = useState<any>(null);
   const [drawerMode, setDrawerMode] = useState<DrawerMode>('none');
   const [selectedOpeningId, setSelectedOpeningId] = useState<string | null>(null);
-  const [newOpening, setNewOpening] = useState({ roomLabel: '', windowType: 'DOUBLE_HUNG', condition: 'FAIR', floor: 'Main', hasScreen: false, isEgress: false, notes: '' });
+  const [newOpening, setNewOpening] = useState({ 
+    category: 'WINDOW', // WINDOW, DOOR, SIDING
+    roomLabel: '', 
+    windowType: 'DOUBLE_HUNG', 
+    doorType: 'ENTRY',
+    hingeSide: 'LEFT',
+    swingDirection: 'INSWING',
+    sidingElevation: 'FRONT_WALL',
+    sidingSqFt: '',
+    condition: 'FAIR', 
+    floor: 'Main', 
+    hasScreen: false, 
+    isEgress: false, 
+    notes: '' 
+  });
   const [measurementInput, setMeasurementInput] = useState({ width: '', widthFrac: '0', height: '', heightFrac: '0' });
 
   // Fetch real inspection from API
@@ -115,8 +131,8 @@ export function InspectionPage() {
       measurement: null };
     setInspection((prev) => ({ ...prev, openings: [...prev.openings, opening] }));
     await enqueue('OPENING_CREATE', { inspectionId: inspection.id, ...newOpening });
-    toast.success(`Opening added: ${newOpening.roomLabel}`);
-    setNewOpening({ roomLabel: '', windowType: 'DOUBLE_HUNG', condition: 'FAIR', floor: 'Main', hasScreen: false, isEgress: false, notes: '' });
+    toast.success(`${newOpening.category === 'SIDING' ? 'Elevation' : 'Opening'} added: ${newOpening.roomLabel}`);
+    setNewOpening({ category: 'WINDOW', roomLabel: '', windowType: 'DOUBLE_HUNG', doorType: 'ENTRY', hingeSide: 'LEFT', swingDirection: 'INSWING', sidingElevation: 'FRONT_WALL', sidingSqFt: '', condition: 'FAIR', floor: 'Main', hasScreen: false, isEgress: false, notes: '' });
     setDrawerMode('none');
   };
 
@@ -252,10 +268,18 @@ export function InspectionPage() {
                       {opening.isEgress && <span className="badge badge-yellow text-[10px]">Egress</span>}
                     </div>
                     <div className="flex items-center gap-2 mt-0.5 text-xs text-slate-500">
-                      <span>{opening.windowType?.replace(/_/g, ' ')}</span>
+                      <span className="font-bold text-brand-400">{opening.category || 'WINDOW'}</span>
                       <span>·</span>
+                      {opening.category === 'DOOR' && (
+                        <><span>{opening.doorType?.replace(/_/g, ' ')}</span><span>·</span><span>{opening.hingeSide} Hinge</span><span>·</span><span>{opening.swingDirection}</span><span>·</span></>
+                      )}
+                      {opening.category === 'SIDING' && (
+                        <><span>{opening.sidingElevation?.replace(/_/g, ' ')}</span><span>·</span><span>{opening.sidingSqFt} sq ft</span><span>·</span></>
+                      )}
+                      {(!opening.category || opening.category === 'WINDOW') && (
+                        <><span>{opening.windowType?.replace(/_/g, ' ')}</span><span>·</span><span>{opening.floor}</span>{opening.hasScreen && <span>· Screen</span>}<span>·</span></>
+                      )}
                       <span>{opening.floor}</span>
-                      {opening.hasScreen && <span>· Screen</span>}
                     </div>
                   </div>
 
@@ -356,9 +380,11 @@ export function InspectionPage() {
 
                     <div className="grid grid-cols-2 gap-3">
                       <div>
-                        <label className="label">Window Type</label>
-                        <select value={newOpening.windowType} onChange={(e) => setNewOpening((p) => ({ ...p, windowType: e.target.value }))} className="select">
-                          {WINDOW_TYPES.map((t) => <option key={t} value={t}>{t.replace(/_/g, ' ')}</option>)}
+                        <label className="label">Item Category</label>
+                        <select value={newOpening.category} onChange={(e) => setNewOpening((p) => ({ ...p, category: e.target.value }))} className="select border-brand-500/30 text-brand-400">
+                          <option value="WINDOW">Window</option>
+                          <option value="DOOR">Door</option>
+                          <option value="SIDING">Siding / Wall</option>
                         </select>
                       </div>
                       <div>
@@ -369,24 +395,76 @@ export function InspectionPage() {
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <label className="label">Floor</label>
-                        <select value={newOpening.floor} onChange={(e) => setNewOpening((p) => ({ ...p, floor: e.target.value }))} className="select">
-                          {['Main', 'Upper', 'Basement', 'Garage'].map((f) => <option key={f}>{f}</option>)}
-                        </select>
+                    {newOpening.category === 'WINDOW' && (
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="label">Window Type</label>
+                          <select value={newOpening.windowType} onChange={(e) => setNewOpening((p) => ({ ...p, windowType: e.target.value }))} className="select">
+                            {WINDOW_TYPES.map((t) => <option key={t} value={t}>{t.replace(/_/g, ' ')}</option>)}
+                          </select>
+                        </div>
+                        <div className="flex flex-col gap-2 pt-5">
+                          <label className="flex items-center gap-2 text-sm text-slate-400 cursor-pointer">
+                            <input type="checkbox" checked={newOpening.hasScreen} onChange={(e) => setNewOpening((p) => ({ ...p, hasScreen: e.target.checked }))} className="w-4 h-4 rounded accent-brand-500" />
+                            Has Screen
+                          </label>
+                          <label className="flex items-center gap-2 text-sm text-slate-400 cursor-pointer">
+                            <input type="checkbox" checked={newOpening.isEgress} onChange={(e) => setNewOpening((p) => ({ ...p, isEgress: e.target.checked }))} className="w-4 h-4 rounded accent-brand-500" />
+                            Egress Window
+                          </label>
+                        </div>
                       </div>
-                      <div className="flex flex-col gap-2 pt-5">
-                        <label className="flex items-center gap-2 text-sm text-slate-400 cursor-pointer">
-                          <input type="checkbox" checked={newOpening.hasScreen} onChange={(e) => setNewOpening((p) => ({ ...p, hasScreen: e.target.checked }))} className="w-4 h-4 rounded accent-brand-500" />
-                          Has Screen
-                        </label>
-                        <label className="flex items-center gap-2 text-sm text-slate-400 cursor-pointer">
-                          <input type="checkbox" checked={newOpening.isEgress} onChange={(e) => setNewOpening((p) => ({ ...p, isEgress: e.target.checked }))} className="w-4 h-4 rounded accent-brand-500" />
-                          Egress Window
-                        </label>
+                    )}
+
+                    {newOpening.category === 'DOOR' && (
+                      <>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <label className="label">Door Type</label>
+                            <select value={newOpening.doorType} onChange={(e) => setNewOpening((p) => ({ ...p, doorType: e.target.value }))} className="select">
+                              {DOOR_TYPES.map((t) => <option key={t} value={t}>{t.replace(/_/g, ' ')}</option>)}
+                            </select>
+                          </div>
+                          <div>
+                            <label className="label">Floor Level</label>
+                            <select value={newOpening.floor} onChange={(e) => setNewOpening((p) => ({ ...p, floor: e.target.value }))} className="select">
+                              {['Main', 'Upper', 'Basement', 'Garage'].map((f) => <option key={f}>{f}</option>)}
+                            </select>
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <label className="label">Hinge Side (Viewed from outside)</label>
+                            <select value={newOpening.hingeSide} onChange={(e) => setNewOpening((p) => ({ ...p, hingeSide: e.target.value }))} className="select">
+                              <option value="LEFT">Left</option>
+                              <option value="RIGHT">Right</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label className="label">Swing Direction</label>
+                            <select value={newOpening.swingDirection} onChange={(e) => setNewOpening((p) => ({ ...p, swingDirection: e.target.value }))} className="select">
+                              <option value="INSWING">Inswing</option>
+                              <option value="OUTSWING">Outswing</option>
+                            </select>
+                          </div>
+                        </div>
+                      </>
+                    )}
+
+                    {newOpening.category === 'SIDING' && (
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="label">Wall Elevation</label>
+                          <select value={newOpening.sidingElevation} onChange={(e) => setNewOpening((p) => ({ ...p, sidingElevation: e.target.value }))} className="select">
+                            {SIDING_ELEVATIONS.map((t) => <option key={t} value={t}>{t.replace(/_/g, ' ')}</option>)}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="label">Square Footage Estimate</label>
+                          <input type="number" placeholder="e.g. 500" value={newOpening.sidingSqFt} onChange={(e) => setNewOpening((p) => ({ ...p, sidingSqFt: e.target.value }))} className="input font-mono" />
+                        </div>
                       </div>
-                    </div>
+                    )}
 
                     <div>
                       <label className="label">Notes</label>

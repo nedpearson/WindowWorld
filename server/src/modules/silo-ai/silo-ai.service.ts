@@ -3,7 +3,7 @@ import { logger } from '../../shared/utils/logger';
 import { aiService } from '../ai-analysis/ai.service'; // Use existing provider
 
 export class SiloAiService {
-  
+
   // Phase 2: Morning Brief
   async generateMorningBrief(repId: string) {
     const today = new Date();
@@ -62,7 +62,7 @@ Return ONLY valid JSON:
     // Actually, I should update `ai.service.ts` to expose `generateText` or I can just use it directly.
     // For now, let's mock the response structure so the frontend can build against it, 
     // and we'll implement the real LLM call if the user wants to spend tokens on it.
-    
+
     // I will modify ai.service.ts to export the provider or add a generic askSilo method.
     const moneyLikelyThisWeek = proposals.reduce((acc, p) => acc + (p.quote?.total || 0), 0) * 0.4;
     const hasData = leads.length > 0 || appointments.length > 0 || proposals.length > 0;
@@ -97,21 +97,36 @@ Return ONLY valid JSON:
 
     if (!appointment) throw new Error("Appointment not found");
 
+    // Mocking an AI logic layer that determines the best exterior pitch
+    const propertyAge = appointment.lead.properties?.[0]?.yearBuilt ? new Date().getFullYear() - appointment.lead.properties[0].yearBuilt : 30;
+    let pitchAngle = "Energy Savings & Draft Reduction";
+    let productRec = "Series 4000 Double Hung Windows";
+    let upsellOpportunity = "Therma-Tru Classic Craft Entry Door (Curb Appeal Bundle)";
+
+    if (propertyAge > 40) {
+      pitchAngle = "Complete Exterior Transformation (Curb Appeal)";
+      productRec = "Premium Vinyl Siding + Window Bundle";
+    } else if (appointment.lead.city?.toLowerCase() === 'new orleans' || appointment.lead.city?.toLowerCase() === 'mandeville') {
+      pitchAngle = "Storm Protection & Coastal Durability";
+      productRec = "Series 6000 Impact Windows";
+      upsellOpportunity = "Impact-Rated Patio Doors";
+    }
+
     return {
-      homeownerSummary: `${appointment.lead.firstName} ${appointment.lead.lastName} is looking for replacement windows.`,
-      propertySummary: `${appointment.lead.properties?.[0]?.yearBuilt || 'Older'} home in ${appointment.lead.city}.`,
-      likelyNeeds: ["Energy efficiency", "Aesthetics"],
-      likelyObjections: ["Price too high", "Need to think about it"],
+      homeownerSummary: `${appointment.lead.firstName} ${appointment.lead.lastName} is looking for exterior home improvements.`,
+      propertySummary: `${appointment.lead.properties?.[0]?.yearBuilt || 'Older'} home in ${appointment.lead.city || 'local area'}.`,
+      likelyNeeds: ["Energy efficiency", "Curb appeal update", "Draft reduction"],
+      likelyObjections: ["Price too high", "Need to think about it", "HOA approval needed"],
       budgetSensitivityEstimate: "Medium",
       financingLikelihood: "High",
-      bestPitchAngle: "Energy Savings",
-      bestProductRecommendation: "Series 4000 Double Hung",
-      upsellOpportunity: "Premium Hardware",
-      trustBuildingTalkingPoints: ["Local company", "Lifetime warranty"],
-      opener: "Hi! Beautiful home you have here...",
-      closingStrategy: "Assume the close on financing.",
-      questionsToAsk: ["How long have you lived here?", "Are there drafts?"],
-      risksToWatchFor: ["Competitor quotes"]
+      bestPitchAngle: pitchAngle,
+      bestProductRecommendation: productRec,
+      upsellOpportunity: upsellOpportunity,
+      trustBuildingTalkingPoints: ["Local Baton Rouge company", "Lifetime transferable warranty", "Factory-direct pricing"],
+      opener: "Hi! Beautiful home you have here, I noticed...",
+      closingStrategy: "Assume the close on financing to get the project locked in.",
+      questionsToAsk: ["How long have you lived here?", "Are there drafts?", "Are you planning to paint the exterior soon?"],
+      risksToWatchFor: ["Competitor quotes", "HOA restrictions on exterior modifications"]
     };
   }
 
@@ -149,15 +164,63 @@ Return ONLY valid JSON:
 
   // Phase 6: Proposal Radar (Upsell/Risk)
   async analyzeProposal(proposalId: string) {
+    const proposal = await prisma.proposal.findUnique({
+      where: { id: proposalId },
+      include: {
+        quote: {
+          include: {
+            lineItems: { include: { product: true } }
+          }
+        }
+      }
+    });
+
+    if (!proposal || !proposal.quote) {
+      return {
+        underpricedOpportunities: false,
+        premiumUpgradeOpportunities: [],
+        financingAngleOpportunities: "Offer Financing",
+        packageBundleOpportunities: "None",
+        urgencyOpportunities: "Lock in pricing",
+        objectionRisks: [],
+        likelyDiscountTrapRisks: false,
+        recommendedAction: "Review proposal"
+      };
+    }
+
+    const lineItems = proposal.quote.lineItems || [];
+    const hasWindows = lineItems.some(l => l.product?.name.toLowerCase().includes('window') || l.description.toLowerCase().includes('window') || l.product?.categoryId != null);
+    const hasDoors = lineItems.some(l => l.product?.name.toLowerCase().includes('door') || l.description.toLowerCase().includes('door'));
+    const hasSiding = lineItems.some(l => l.product?.name.toLowerCase().includes('siding') || l.description.toLowerCase().includes('siding'));
+
+    let packageBundleOpportunities = [];
+    let premiumUpgradeOpportunities = [];
+    let bestPitchAngle = "Curb Appeal & Home Value";
+
+    if (hasWindows && !hasDoors && !hasSiding) {
+      packageBundleOpportunities.push("Bundle Entry or Patio Door (Whole House Exterior Bundle)");
+      premiumUpgradeOpportunities.push("Impact Glass Upgrade (Hurricane Protection)");
+      bestPitchAngle = "Energy Efficiency & Window Aesthetics";
+    } else if (hasWindows && hasDoors) {
+      packageBundleOpportunities.push("Complete Exterior Transformation (Add Siding)");
+      bestPitchAngle = "Complete Exterior Security & Comfort";
+    } else if (hasSiding) {
+      packageBundleOpportunities.push("Bundle Replacement Windows to maximize exterior thermal envelope");
+      bestPitchAngle = "Maximum Thermal Envelope Insulation";
+    } else {
+      packageBundleOpportunities.push("Cross-sell Siding and Shutters");
+      premiumUpgradeOpportunities.push("Lifetime Extended Warranty");
+    }
+
     return {
       underpricedOpportunities: true,
-      premiumUpgradeOpportunities: ["Series 6000 Glass Upgrade"],
-      financingAngleOpportunities: "Offer $120/mo",
-      packageBundleOpportunities: "Include patio door",
-      urgencyOpportunities: "Lock in pre-season pricing",
-      objectionRisks: ["Wife not present"],
+      premiumUpgradeOpportunities: premiumUpgradeOpportunities.length ? premiumUpgradeOpportunities : ["Extended Warranty Package"],
+      financingAngleOpportunities: "Offer 18-Mo Same-as-Cash",
+      packageBundleOpportunities: packageBundleOpportunities.length ? packageBundleOpportunities.join(', ') : "Include Storm Protection Add-ons",
+      urgencyOpportunities: "Lock in pre-season exterior product pricing",
+      objectionRisks: ["Wife not present", "HOA approval needed for exterior changes"],
       likelyDiscountTrapRisks: false,
-      recommendedAction: "Pitch premium-first version"
+      recommendedAction: `Pitch the ${bestPitchAngle} angle first.`
     };
   }
 }

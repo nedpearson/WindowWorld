@@ -23,6 +23,37 @@ import {
 function isSameDay(a: Date, b: Date) { return a.toDateString() === b.toDateString(); }
 function formatTime(s: string) { return new Date(s).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }); }
 
+// ── Demo Data Fallbacks ────────────────────────────────────────
+const DEMO_DASH_DATA = {
+  kpis: { mtdRevenue: 48500, monthlyTarget: 75000 },
+  pipeline: {
+    stages: [
+      { stage: 'LEAD', label: 'New Lead', count: 42, value: 125000, color: '#3b82f6' },
+      { stage: 'APPT_SET', label: 'Appointment Set', count: 18, value: 85000, color: '#8b5cf6' },
+      { stage: 'PROPOSAL_SENT', label: 'Proposal Sent', count: 12, value: 65000, color: '#f59e0b' },
+      { stage: 'CONTRACT_SIGNED', label: 'Contract Signed', count: 8, value: 48500, color: '#10b981' },
+    ]
+  }
+};
+
+const DEMO_PROPOSALS = [
+  { id: 'p1', lead: { firstName: 'John', lastName: 'Doe' }, status: 'SENT', quote: { grandTotal: 12500 }, sentAt: new Date(Date.now() - 2 * 86400000).toISOString() },
+  { id: 'p2', lead: { firstName: 'Sarah', lastName: 'Smith' }, status: 'VIEWED', viewCount: 3, quote: { grandTotal: 8400 }, sentAt: new Date(Date.now() - 4 * 86400000).toISOString() },
+  { id: 'p3', lead: { firstName: 'Mike', lastName: 'Johnson' }, status: 'SENT', quote: { grandTotal: 18200 }, sentAt: new Date(Date.now() - 6 * 86400000).toISOString() },
+];
+
+const DEMO_QUEUE = [
+  { id: 'l1', firstName: 'Emily', lastName: 'Davis', status: 'PROPOSAL_SENT', city: 'Dallas', estimatedValue: 15000, phone: '555-0101' },
+  { id: 'l2', firstName: 'Robert', lastName: 'Wilson', status: 'APPT_SET', city: 'Fort Worth', estimatedValue: 8500, phone: '555-0102', isStormLead: true },
+  { id: 'l3', firstName: 'Lisa', lastName: 'Taylor', status: 'LEAD', city: 'Arlington', estimatedValue: 12000, phone: '555-0103' },
+  { id: 'l4', firstName: 'James', lastName: 'Anderson', status: 'PROPOSAL_SENT', city: 'Plano', estimatedValue: 9500, phone: '555-0104' },
+];
+
+const DEMO_CAL_APTS = [
+  { id: 'a1', title: 'Consultation', type: 'initial-consult', scheduledAt: new Date(new Date().setHours(10, 0, 0, 0)).toISOString(), lead: { firstName: 'Emily', lastName: 'Davis', phone: '555-0101' }, address: '123 Main St, Dallas, TX' },
+  { id: 'a2', title: 'Measurement', type: 'measurement', scheduledAt: new Date(new Date().setHours(14, 30, 0, 0)).toISOString(), lead: { firstName: 'Robert', lastName: 'Wilson', phone: '555-0102' }, address: '456 Oak Ln, Fort Worth, TX' },
+];
+
 // ── Goal Ring ──────────────────────────────────────────────────
 function GoalRing({ pct }: { pct: number }) {
   const r = 30; const circ = 2 * Math.PI * r; const dash = (pct / 100) * circ;
@@ -144,13 +175,33 @@ export function DashboardPage() {
   const visibleQueue = (showAllQueue ? queue : queue.slice(0, 3)).filter((i: any) => !dismissedIds.has(i.id));
 
   // ── Pipeline data from analytics ───────────────────────────
-  const pipeline: any[] = dashData?.pipeline?.stages ?? [];
+  const rawPipeline: any[] = dashData?.pipeline?.stages ?? [];
+  const rawPipelineTotal = rawPipeline.reduce((s: number, st: any) => s + (st.value ?? 0), 0);
+  const rawMtdRevenue = dashData?.kpis?.mtdRevenue ?? 0;
+
+  // ── Determine if we need Demo Fallback ─────────────────────
+  // If the user's org is "demo" or if they have absolutely no pipeline, revenue, queue, or proposals, show demo data
+  const isDemoFallback = 
+    user?.organization?.slug === 'demo' || 
+    (rawPipelineTotal === 0 && rawMtdRevenue === 0 && queue.length === 0 && proposals.length === 0 && !dashLoading);
+
+  const activeDashData = isDemoFallback ? DEMO_DASH_DATA : dashData;
+  const activeProposals = isDemoFallback && proposals.length === 0 ? DEMO_PROPOSALS : proposals;
+  const activeQueue = isDemoFallback && queue.length === 0 ? DEMO_QUEUE : queue;
+  const activeCalApts = isDemoFallback && calApts.length === 0 ? DEMO_CAL_APTS : calApts;
+
+  const visibleQueue = (showAllQueue ? activeQueue : activeQueue.slice(0, 3)).filter((i: any) => !dismissedIds.has(i.id));
+
+  const pipeline: any[] = activeDashData?.pipeline?.stages ?? [];
   const pipelineTotal = pipeline.reduce((s: number, st: any) => s + (st.value ?? 0), 0);
 
   // ── Goals ──────────────────────────────────────────────────
-  const mtdRevenue = dashData?.kpis?.mtdRevenue ?? 0;
-  const monthlyTarget = dashData?.kpis?.monthlyTarget ?? 75000;
+  const mtdRevenue = activeDashData?.kpis?.mtdRevenue ?? 0;
+  const monthlyTarget = activeDashData?.kpis?.monthlyTarget ?? 75000;
   const goalPct = Math.min(100, Math.round((mtdRevenue / monthlyTarget) * 100));
+
+  const todayApts = activeCalApts.filter((a: any) => isSameDay(new Date(a.scheduledAt), today));
+
 
   const greeting = (() => {
     const h = new Date().getHours();
@@ -167,8 +218,9 @@ export function DashboardPage() {
             {greeting}, <span className="text-gradient">{user?.firstName}</span>
           </h1>
           <p className="text-slate-500 text-sm mt-0.5">{todayStr} · You have{' '}
-            <span className="text-amber-400 font-semibold">{queue.length} actions</span> and{' '}
+            <span className="text-amber-400 font-semibold">{activeQueue.length} actions</span> and{' '}
             <span className="text-brand-400 font-semibold">{todayApts.length} appointments</span> today
+            {isDemoFallback && <span className="ml-2 px-1.5 py-0.5 rounded bg-brand-500/20 text-brand-400 text-[10px] font-bold uppercase tracking-wider border border-brand-500/30">Demo Mode</span>}
           </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
@@ -206,15 +258,15 @@ export function DashboardPage() {
       {/* Quick stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {[
-          { label: 'Pipeline Value', value: dashLoading ? '—' : `$${(pipelineTotal / 1000).toFixed(0)}K`,
+          { label: 'Pipeline Value', value: (dashLoading && !isDemoFallback) ? '—' : `$${(pipelineTotal / 1000).toFixed(0)}K`,
             sub: `${pipeline.reduce((s: number, st: any) => s + (st.count ?? 0), 0)} leads`, icon: ArrowTrendingUpIcon, color: 'blue',
             onClick: () => drillPipelineValue(pipeline, pipelineTotal) },
-          { label: 'Closed This Month', value: dashLoading ? '—' : `$${(mtdRevenue / 1000).toFixed(0)}K`,
+          { label: 'Closed This Month', value: (dashLoading && !isDemoFallback) ? '—' : `$${(mtdRevenue / 1000).toFixed(0)}K`,
             sub: `${goalPct}% of goal`, icon: BanknotesIcon, color: 'green',
             onClick: () => drillRevenue(mtdRevenue, monthlyTarget, goalPct) },
-          { label: 'Proposals Pending', value: dashLoading ? '—' : String(proposals.length),
-            sub: `$${((proposals.reduce((s: number, p: any) => s + (p.quote?.grandTotal ?? 0), 0)) / 1000).toFixed(0)}K at stake`, icon: DocumentTextIcon, color: 'purple',
-            onClick: () => drillProposals(proposals) },
+          { label: 'Proposals Pending', value: (dashLoading && !isDemoFallback) ? '—' : String(activeProposals.length),
+            sub: `$${((activeProposals.reduce((s: number, p: any) => s + (p.quote?.grandTotal ?? 0), 0)) / 1000).toFixed(0)}K at stake`, icon: DocumentTextIcon, color: 'purple',
+            onClick: () => drillProposals(activeProposals) },
           { label: 'Appts Today', value: String(todayApts.length),
             sub: todayApts[0] ? `Next: ${formatTime(todayApts[0].scheduledAt)}` : 'None scheduled', icon: CalendarIcon, color: 'amber',
             onClick: () => drillAppts(todayApts) },
@@ -254,7 +306,7 @@ export function DashboardPage() {
               <div className="flex items-center gap-2">
                 <FireSolid className="h-4 w-4 text-red-400" />
                 <h2 className="text-sm font-semibold text-white">Today's Action Queue</h2>
-                <span className="text-[10px] px-2 py-0.5 rounded-full bg-red-500/15 text-red-400 border border-red-500/20 font-medium">{queue.length} items</span>
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-red-500/15 text-red-400 border border-red-500/20 font-medium">{activeQueue.length} items</span>
               </div>
               <div className="flex items-center gap-2">
                 <span className="text-xs text-slate-600">Priority AI-ranked</span>
@@ -262,7 +314,7 @@ export function DashboardPage() {
               </div>
             </div>
 
-            {queue.length === 0 ? (
+            {activeQueue.length === 0 ? (
               <div className="p-10 text-center">
                 <CheckCircleIcon className="h-10 w-10 text-emerald-400 mx-auto mb-3" />
                 <p className="text-white font-semibold text-sm">All clear! Queue is empty.</p>
@@ -296,11 +348,11 @@ export function DashboardPage() {
                     </div>
                   </motion.div>
                 ))}
-                {queue.length > 3 && (
+                {activeQueue.length > 3 && (
                   <div className="px-5 py-3 border-t border-slate-800">
                     <button onClick={() => setShowAllQueue(!showAllQueue)}
                       className="text-xs text-brand-400 hover:text-brand-300 font-medium">
-                      {showAllQueue ? '▲ Show less' : `▼ Show ${queue.length - 3} more actions`}
+                      {showAllQueue ? '▲ Show less' : `▼ Show ${activeQueue.length - 3} more actions`}
                     </button>
                   </div>
                 )}
@@ -317,11 +369,11 @@ export function DashboardPage() {
               </div>
               <Link to="/proposals" className="text-xs text-brand-400 hover:text-brand-300 font-medium">All proposals →</Link>
             </div>
-            {proposals.length === 0 ? (
+            {activeProposals.length === 0 ? (
               <div className="p-8 text-center text-slate-600 text-sm">No pending proposals</div>
             ) : (
               <div className="divide-y divide-slate-800/50">
-                {proposals.map((p: any) => {
+                {activeProposals.map((p: any) => {
                   const sentDays = p.sentAt ? Math.round((Date.now() - new Date(p.sentAt).getTime()) / 86400000) : 0;
                   return (
                     <div key={p.id} className="flex items-center gap-4 px-5 py-3.5 hover:bg-slate-800/30 transition-colors">
@@ -356,7 +408,7 @@ export function DashboardPage() {
               <h2 className="text-sm font-semibold text-white">Pipeline Breakdown</h2>
               <Link to="/pipeline" className="text-xs text-brand-400 hover:text-brand-300 font-medium">Kanban →</Link>
             </div>
-            {dashLoading ? (
+            {dashLoading && !isDemoFallback ? (
               <div className="space-y-3">{[0,1,2,3,4].map(i => <div key={i} className="h-8 bg-slate-800 rounded animate-pulse" />)}</div>
             ) : pipeline.length === 0 ? (
               <p className="text-slate-600 text-sm text-center py-4">No pipeline data</p>
@@ -454,10 +506,10 @@ export function DashboardPage() {
                 </div>
               </div>
 
-              {queue.slice(0, 3).length > 0 ? (
+              {activeQueue.slice(0, 3).length > 0 ? (
                 <div className="space-y-3">
                   <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Priority Actions</div>
-                  {queue.slice(0, 3).map((lead: any, i: number) => (
+                  {activeQueue.slice(0, 3).map((lead: any, i: number) => (
                     <div key={lead.id} className="flex gap-3 group">
                       <div className="w-6 h-6 rounded-full bg-brand-500/20 flex items-center justify-center flex-shrink-0">
                         <span className="text-xs font-bold text-brand-400">{i + 1}</span>

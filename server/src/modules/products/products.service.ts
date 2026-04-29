@@ -1,4 +1,7 @@
 import { NotFoundError } from '../../shared/middleware/errorHandler';
+import { PrismaClient } from '@prisma/client';
+
+const prisma = new PrismaClient();
 
 // â”€â”€â”€ Louisiana window series pricing (realistic Window World pricing) â”€â”€
 export const WINDOW_SERIES = {
@@ -150,6 +153,58 @@ export class ProductsService {
 
   financingOptions() {
     return FINANCING_OPTIONS;
+  }
+
+  // ─── NEW DATABASE CATALOG METHODS ───
+
+  async getCategories() {
+    return prisma.productCategory.findMany({
+      where: { isActive: true },
+      orderBy: { sortOrder: 'asc' },
+    });
+  }
+
+  async getSubcategories(categoryId?: string) {
+    return prisma.productSubcategory.findMany({
+      where: { 
+        isActive: true,
+        ...(categoryId ? { categoryId } : {})
+      },
+      orderBy: { sortOrder: 'asc' },
+      include: { category: true }
+    });
+  }
+
+  async getSeries(subcategoryId?: string) {
+    return prisma.productSeries.findMany({
+      where: {
+        isActive: true,
+        ...(subcategoryId ? { subcategoryId } : {})
+      },
+      orderBy: { sortOrder: 'asc' },
+      include: { subcategory: { include: { category: true } } }
+    });
+  }
+
+  async getProducts(filters: { categoryId?: string; subcategoryId?: string; seriesId?: string }) {
+    return prisma.product.findMany({
+      where: {
+        isActive: true,
+        ...(filters.categoryId ? { categoryId: filters.categoryId } : {}),
+        ...(filters.subcategoryId ? { subcategoryId: filters.subcategoryId } : {}),
+        ...(filters.seriesId ? { seriesId: filters.seriesId } : {})
+      },
+      orderBy: { sortOrder: 'asc' },
+      include: {
+        category: true,
+        subcategory: true,
+        series: true,
+        visuals: true,
+        extendedFeatures: true,
+        benefits: true,
+        options: true,
+      }
+    });
   }
 }
 

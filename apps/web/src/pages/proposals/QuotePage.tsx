@@ -2,11 +2,11 @@ import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
-import { CheckCircleIcon, ExclamationCircleIcon, DocumentTextIcon, ArrowLeftIcon,
-  BoltIcon as BoltOutline } from '@heroicons/react/24/outline';
+import { CheckCircleIcon, ExclamationCircleIcon, DocumentTextIcon, ArrowLeftIcon, PlusIcon, TrashIcon } from '@heroicons/react/24/outline';
 import { BoltIcon } from '@heroicons/react/24/solid';
 import clsx from 'clsx';
-import apiClient from '../../api/client';
+import { useQuery } from '@tanstack/react-query';
+import apiClient, { api } from '../../api/client';
 
 // ── Fallback demo data (shown while API loads) ──────────────────────────────
 const DEMO_LEAD = {
@@ -65,6 +65,15 @@ interface LineItem {
   measureStatus: string;
 }
 
+interface AdditionalProduct {
+  id: string;
+  productId: string;
+  name: string;
+  quantity: number;
+  unitPrice: number;
+  lineTotal: number;
+}
+
 export function QuotePage() {
   const { leadId } = useParams<{ leadId: string }>();
 
@@ -107,6 +116,12 @@ export function QuotePage() {
   const [saved, setSaved] = useState(false);
 
   const [lineItems, setLineItems] = useState<LineItem[]>([]);
+  const [additionalProducts, setAdditionalProducts] = useState<AdditionalProduct[]>([]);
+  
+  const { data: dbProducts } = useQuery({
+    queryKey: ['db-products'],
+    queryFn: () => api.products.list().then(r => r.data || [])
+  });
 
   // Re-init line items whenever openings load
   useEffect(() => {
@@ -148,11 +163,41 @@ export function QuotePage() {
   };
 
   const selectedItems = lineItems.filter((l) => l.selected);
-  const subtotal = selectedItems.reduce((s, l) => s + l.lineTotal, 0);
+  const windowsSubtotal = selectedItems.reduce((s, l) => s + l.lineTotal, 0);
+  const additionalSubtotal = additionalProducts.reduce((s, p) => s + p.lineTotal, 0);
+  const subtotal = windowsSubtotal + additionalSubtotal;
   const discountAmt = Math.round(subtotal * (discountPct / 100) * 100) / 100;
   const grandTotal = subtotal - discountAmt;
   const totalWindows = selectedItems.reduce((s, l) => s + l.quantity, 0);
   const aiWarningCount = selectedItems.filter((l) => l.isAiEstimated).length;
+
+  const addProduct = (productId: string) => {
+    if (!dbProducts) return;
+    const prod = dbProducts.find((p: any) => p.id === productId);
+    if (!prod) return;
+    setAdditionalProducts(prev => [...prev, {
+      id: Math.random().toString(36).substring(7),
+      productId: prod.id,
+      name: prod.name,
+      quantity: 1,
+      unitPrice: prod.basePrice || 0,
+      lineTotal: prod.basePrice || 0
+    }]);
+    toast.success(`Added ${prod.name}`);
+  };
+
+  const updateAdditionalProduct = (id: string, updates: Partial<AdditionalProduct>) => {
+    setAdditionalProducts(prev => prev.map(p => {
+      if (p.id !== id) return p;
+      const next = { ...p, ...updates };
+      next.lineTotal = next.unitPrice * next.quantity;
+      return next;
+    }));
+  };
+
+  const removeAdditionalProduct = (id: string) => {
+    setAdditionalProducts(prev => prev.filter(p => p.id !== id));
+  };
 
   const selectedFinancing = FINANCING_OPTS.find((f) => f.id === financingId)!;
   const monthly = calcMonthly(grandTotal, selectedFinancing.months, selectedFinancing.apr);
@@ -261,6 +306,71 @@ export function QuotePage() {
                   </div>
                 </div>
               ))}
+            </div>
+          </div>
+
+          {/* ADDITIONAL PRODUCTS (DOORS, SIDING, ETC) */}
+          <div className="card overflow-hidden mt-6">
+            <div className="px-4 py-3 border-b border-slate-700/50 bg-slate-800/50 flex items-center justify-between">
+              <span className="text-sm font-semibold text-white">Additional Exterior Products</span>
+              <span className="text-xs text-slate-500">${additionalSubtotal.toLocaleString()}</span>
+            </div>
+            
+            <div className="p-4 bg-slate-800/30 flex items-center gap-3 border-b border-slate-700/30">
+              <select 
+                className="select flex-1"
+                onChange={(e) => {
+                  if (e.target.value) {
+                    addProduct(e.target.value);
+                    e.target.value = '';
+                  }
+                }}
+              >
+                <option value="">+ Add Door, Siding, or Custom Product...</option>
+                {dbProducts?.filter((p: any) => p.categoryId || p.subcategoryId).map((prod: any) => (
+                  <option key={prod.id} value={prod.id}>{prod.name} (${prod.basePrice})</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="divide-y divide-slate-700/30">
+              {additionalProducts.length === 0 ? (
+                <div className="p-6 text-center text-sm text-slate-500">No additional products added.</div>
+              ) : (
+                additionalProducts.map((item) => (
+                  <div key={item.id} className="p-4 flex items-center gap-3">
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-medium text-slate-200">{item.name}</div>
+                    </div>
+                    <div className="flex items-center gap-3 flex-shrink-0">
+                      <div className="flex items-center gap-1">
+                        <span className="text-xs text-slate-500">Qty</span>
+                        <input
+                          value={item.quantity}
+                          onChange={(e) => updateAdditionalProduct(item.id, { quantity: parseInt(e.target.value) || 1 })}
+                          type="number" min="1"
+                          className="w-16 text-xs bg-slate-800 border border-slate-700 rounded px-2 py-1 text-center text-slate-300"
+                        />
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <span className="text-xs text-slate-500">Price</span>
+                        <input
+                          value={item.unitPrice}
+                          onChange={(e) => updateAdditionalProduct(item.id, { unitPrice: parseFloat(e.target.value) || 0 })}
+                          type="number" step="0.01" min="0"
+                          className="w-20 text-xs bg-slate-800 border border-slate-700 rounded px-2 py-1 text-center text-slate-300"
+                        />
+                      </div>
+                      <div className="text-right w-20">
+                        <div className="text-sm font-bold text-white">${item.lineTotal.toFixed(2)}</div>
+                      </div>
+                      <button onClick={() => removeAdditionalProduct(item.id)} className="p-1.5 text-slate-500 hover:text-red-400 hover:bg-red-400/10 rounded transition-colors">
+                        <TrashIcon className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
           </div>
         </div>

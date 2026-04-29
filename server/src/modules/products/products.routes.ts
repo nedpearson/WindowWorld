@@ -4,9 +4,38 @@ import { productsService } from './products.service';
 
 const router = Router();
 
-// GET /api/v1/products â€” full catalog
-router.get('/', auth.repOrAbove, (req: Request, res: Response) => {
+// GET /api/v1/products/legacy â€” old hardcoded catalog
+router.get('/legacy', auth.repOrAbove, (req: Request, res: Response) => {
   const data = productsService.catalog();
+  res.json({ success: true, data });
+});
+
+// GET /api/v1/products/categories
+router.get('/categories', auth.repOrAbove, async (req: Request, res: Response) => {
+  const data = await productsService.getCategories();
+  res.json({ success: true, data });
+});
+
+// GET /api/v1/products/subcategories
+router.get('/subcategories', auth.repOrAbove, async (req: Request, res: Response) => {
+  const data = await productsService.getSubcategories(req.query.categoryId as string);
+  res.json({ success: true, data });
+});
+
+// GET /api/v1/products/series
+router.get('/series', auth.repOrAbove, async (req: Request, res: Response) => {
+  const data = await productsService.getSeries(req.query.subcategoryId as string);
+  res.json({ success: true, data });
+});
+
+// GET /api/v1/products â€” full database catalog
+router.get('/', auth.repOrAbove, async (req: Request, res: Response) => {
+  const filters = {
+    categoryId: req.query.categoryId as string,
+    subcategoryId: req.query.subcategoryId as string,
+    seriesId: req.query.seriesId as string,
+  };
+  const data = await productsService.getProducts(filters);
   res.json({ success: true, data });
 });
 
