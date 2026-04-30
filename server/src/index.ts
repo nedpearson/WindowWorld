@@ -252,9 +252,16 @@ if (!webDistPath) {
 }
 const finalWebDistPath = webDistCandidates.find(p => fs.existsSync(path.join(p, 'index.html')));
 
+// noCache middleware used for SW files and index.html
+const noCache = (_req: any, res: any, next: any) => {
+  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+  next();
+};
+
 if (finalWebDistPath) {
-  // 1. Serve ONLY the hashed /assets/* files with long-lived immutable cache.
-  //    These filenames change on every build so stale cache is impossible.
+  // 1. Hashed /assets/* — long-lived immutable cache (filenames change per build)
   app.use(
     '/assets',
     express.static(path.join(finalWebDistPath, 'assets'), {
@@ -264,37 +271,52 @@ if (finalWebDistPath) {
     })
   );
 
-  // 2. Serve service-worker files with NO cache so the browser
-  //    always gets the latest entrypoint.
-  const noCache = (_req: any, res: any, next: any) => {
-    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
-    res.setHeader('Pragma', 'no-cache');
-    res.setHeader('Expires', '0');
-    next();
-  };
-
+  // 2. Service-worker files — no cache so browsers always get the latest SW
   app.get(['/sw.js', '/workbox-*.js', '/manifest.webmanifest'], noCache, express.static(finalWebDistPath));
 
-  app.use(
-    express.static(finalWebDistPath, {
-      maxAge: '1d',
-      index: false,
-    })
-  );
-
-  // SPA fallback — all remaining GETs serve index.html with no-cache
-  app.get('*', (_req, res) => {
-    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
-    res.setHeader('Pragma', 'no-cache');
-    res.setHeader('Expires', '0');
-    res.sendFile(path.join(finalWebDistPath, 'index.html'));
-  });
+  // 3. All other static files — short cache
+  app.use(express.static(finalWebDistPath, { maxAge: '1d', index: false }));
 
   logger.info(`[SPA] Serving React app from ${finalWebDistPath}`);
 } else {
   logger.warn('[SPA] No built frontend found — searched: ' + webDistCandidates.join(', '));
-  logger.warn('[SPA] SPA serving skipped (dev or separate web service)');
 }
+
+// ── SPA catch-all — ALWAYS registered ───────────────────────────────────────
+// This MUST exist unconditionally so Ctrl+Shift+R on any deep route (e.g.
+// /dashboard) never hits Express's default "Cannot GET /..." response.
+// If the frontend isn't built yet, serve a self-refreshing warm-up page.
+app.get('*', noCache, (_req, res) => {
+  if (finalWebDistPath) {
+    res.sendFile(path.join(finalWebDistPath, 'index.html'));
+  } else {
+    // Frontend not built yet — auto-refresh every 8 seconds
+    res.status(503).send(`<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="refresh" content="8">
+  <title>WindowWorld — Starting up…</title>
+  <style>
+    body { font-family: system-ui, sans-serif; background: #0f172a; color: #94a3b8;
+           display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; }
+    .card { text-align: center; padding: 2rem; }
+    h1 { color: #f8fafc; font-size: 1.5rem; margin-bottom: 0.5rem; }
+    p  { margin: 0.25rem 0; }
+    .dot { display: inline-block; animation: pulse 1.4s ease-in-out infinite; }
+    @keyframes pulse { 0%,100%{opacity:.3} 50%{opacity:1} }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>WindowWorld</h1>
+    <p>Server is warming up<span class="dot">…</span></p>
+    <p style="font-size:.8rem;margin-top:1rem">Refreshing automatically in 8 seconds</p>
+  </div>
+</body>
+</html>`);
+  }
+});
 
 app.use(errorHandler);
 

@@ -6,7 +6,7 @@ builder = "NIXPACKS"
 nixpacksConfigPath = "nixpacks.toml"
 
 [deploy]
-startCommand = "cd server && npx prisma db push --accept-data-loss && npx prisma db seed && node dist/index.js"
+startCommand = "npm run build --workspace=@windowworld/web; cd server && npx prisma db push --accept-data-loss && npx prisma db seed && node dist/index.js"
 healthcheckPath = "/health"
 healthcheckTimeout = 300
 restartPolicyType = "ON_FAILURE"
