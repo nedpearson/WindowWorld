@@ -67,16 +67,14 @@ async function main() {
         isActive: true,
       },
     }),
-    // ── Demo Preview Account (REAL ORG, non-super role) ─────────
-    // Thomas Broussard is the demo-preview account in the real org.
-    // He has SALES_MANAGER role (not SUPER_ADMIN) so the platform shows
-    // manager-level views. He sees all the seeded demo data in orgReal.
-    // nedpearson@gmail.com is excluded from demo data by isDemoMode().
+    // ── Demo Preview Accounts (DEMO ORG) ─────────────────────────
+    // All demo users are in orgDemo (slug:'demo') so Ned's orgReal is clean.
+    // Thomas Broussard is the demo-preview manager account.
     prisma.user.upsert({
       where: { email: 'admin@windowworldla.com' },
-      update: { passwordHash, isActive: true, organizationId: orgReal.id, role: UserRole.SALES_MANAGER },
+      update: { passwordHash, isActive: true, organizationId: orgDemo.id, role: UserRole.SALES_MANAGER },
       create: {
-        organizationId: orgReal.id,
+        organizationId: orgDemo.id,
         email: 'admin@windowworldla.com',
         passwordHash,
         firstName: 'Thomas',
@@ -88,9 +86,9 @@ async function main() {
     }),
     prisma.user.upsert({
       where: { email: 'manager@windowworldla.com' },
-      update: { passwordHash, isActive: true, organizationId: orgReal.id },
+      update: { passwordHash, isActive: true, organizationId: orgDemo.id },
       create: {
-        organizationId: orgReal.id,
+        organizationId: orgDemo.id,
         email: 'manager@windowworldla.com',
         passwordHash,
         firstName: 'Marie',
@@ -101,9 +99,9 @@ async function main() {
     }),
     prisma.user.upsert({
       where: { email: 'rep1@windowworldla.com' },
-      update: { passwordHash, isActive: true, organizationId: orgReal.id },
+      update: { passwordHash, isActive: true, organizationId: orgDemo.id },
       create: {
-        organizationId: orgReal.id,
+        organizationId: orgDemo.id,
         email: 'rep1@windowworldla.com',
         passwordHash,
         firstName: 'Jake',
@@ -114,9 +112,9 @@ async function main() {
     }),
     prisma.user.upsert({
       where: { email: 'rep2@windowworldla.com' },
-      update: { passwordHash, isActive: true, organizationId: orgReal.id },
+      update: { passwordHash, isActive: true, organizationId: orgDemo.id },
       create: {
-        organizationId: orgReal.id,
+        organizationId: orgDemo.id,
         email: 'rep2@windowworldla.com',
         passwordHash,
         firstName: 'Danielle',
@@ -127,9 +125,9 @@ async function main() {
     }),
     prisma.user.upsert({
       where: { email: 'tech@windowworldla.com' },
-      update: { passwordHash, isActive: true, organizationId: orgReal.id },
+      update: { passwordHash, isActive: true, organizationId: orgDemo.id },
       create: {
-        organizationId: orgReal.id,
+        organizationId: orgDemo.id,
         email: 'tech@windowworldla.com',
         passwordHash,
         firstName: 'Chad',
@@ -140,9 +138,9 @@ async function main() {
     }),
     prisma.user.upsert({
       where: { email: 'finance@windowworldla.com' },
-      update: { passwordHash, isActive: true, organizationId: orgReal.id },
+      update: { passwordHash, isActive: true, organizationId: orgDemo.id },
       create: {
-        organizationId: orgReal.id,
+        organizationId: orgDemo.id,
         email: 'finance@windowworldla.com',
         passwordHash,
         firstName: 'Lisa',
@@ -159,13 +157,14 @@ async function main() {
   // ─────────────────────────────────────────────
   // TERRITORIES (skip if already seeded)
   // ─────────────────────────────────────────────
-  const existingTerritoryCount = await prisma.territory.count({ where: { organizationId: orgReal.id } });
+  // Territories, leads, appointments all go into orgDemo so Ned's orgReal is clean
+  const existingTerritoryCount = await prisma.territory.count({ where: { organizationId: orgDemo.id } });
   let territories: any[] = [];
   if (existingTerritoryCount === 0) {
     territories = await Promise.all([
       prisma.territory.create({
         data: {
-          organizationId: orgReal.id,
+          organizationId: orgDemo.id,
           name: 'Baton Rouge Metro',
           parishes: ['East Baton Rouge', 'West Baton Rouge'],
           zipCodes: ['70801', '70802', '70806', '70808', '70810', '70816', '70817', '70818', '70820'],
@@ -177,7 +176,7 @@ async function main() {
       }),
       prisma.territory.create({
         data: {
-          organizationId: orgReal.id,
+          organizationId: orgDemo.id,
           name: 'Livingston / Denham Springs',
           parishes: ['Livingston'],
           zipCodes: ['70726', '70727', '70706', '70769'],
@@ -189,7 +188,7 @@ async function main() {
       }),
       prisma.territory.create({
         data: {
-          organizationId: orgReal.id,
+          organizationId: orgDemo.id,
           name: 'Lafayette Area',
           parishes: ['Lafayette', 'Iberia'],
           zipCodes: ['70501', '70503', '70506', '70508'],
@@ -200,7 +199,7 @@ async function main() {
       }),
       prisma.territory.create({
         data: {
-          organizationId: orgReal.id,
+          organizationId: orgDemo.id,
           name: 'Greater New Orleans Suburbs',
           parishes: ['Jefferson', 'St. Tammany', 'St. Bernard'],
           zipCodes: ['70056', '70062', '70072', '70065', '70433', '70448', '70460'],
@@ -212,7 +211,7 @@ async function main() {
     ]);
     console.log(`✅ Territories: ${territories.map((t: any) => t.name).join(', ')}`);
   } else {
-    territories = await prisma.territory.findMany({ where: { organizationId: orgReal.id }, orderBy: { createdAt: 'asc' } });
+    territories = await prisma.territory.findMany({ where: { organizationId: orgDemo.id }, orderBy: { createdAt: 'asc' } });
     console.log(`⏭️  Territories already seeded (${territories.length}), skipping`);
   }
 
@@ -224,7 +223,7 @@ async function main() {
       where: { sku: 'WW-2000-DH' },
       update: {},
       create: {
-        organizationId: orgReal.id,
+        organizationId: orgDemo.id,
         manufacturer: 'WindowWorld',
         productLine: 'Series 2000',
         name: 'Series 2000 Double Hung',
@@ -259,7 +258,7 @@ async function main() {
       where: { sku: 'WW-4000-DH' },
       update: {},
       create: {
-        organizationId: orgReal.id,
+        organizationId: orgDemo.id,
         manufacturer: 'WindowWorld',
         productLine: 'Series 4000',
         name: 'Series 4000 Premium Double Hung',
@@ -280,7 +279,7 @@ async function main() {
       where: { sku: 'WW-2000-SH' },
       update: {},
       create: {
-        organizationId: orgReal.id,
+        organizationId: orgDemo.id,
         manufacturer: 'WindowWorld',
         productLine: 'Series 2000',
         name: 'Series 2000 Single Hung',
@@ -299,7 +298,7 @@ async function main() {
       where: { sku: 'WW-3000-CS' },
       update: {},
       create: {
-        organizationId: orgReal.id,
+        organizationId: orgDemo.id,
         manufacturer: 'WindowWorld',
         productLine: 'Series 3000',
         name: 'Series 3000 Casement',
@@ -317,7 +316,7 @@ async function main() {
       where: { sku: 'WW-3000-PW' },
       update: {},
       create: {
-        organizationId: orgReal.id,
+        organizationId: orgDemo.id,
         manufacturer: 'WindowWorld',
         productLine: 'Series 3000',
         name: 'Series 3000 Picture Window',
@@ -483,12 +482,12 @@ async function main() {
 
   // Only create leads if none exist for our demo reps
   const demoLeadCount = await prisma.lead.count({ 
-    where: { organizationId: orgReal.id, assignedRepId: { in: [rep1.id, rep2.id] } } 
+    where: { organizationId: orgDemo.id, assignedRepId: { in: [rep1.id, rep2.id] } } 
   });
   let createdLeads: any[] = [];
   if (demoLeadCount > 0) {
     createdLeads = await prisma.lead.findMany({ 
-      where: { organizationId: orgReal.id, assignedRepId: { in: [rep1.id, rep2.id] } }, 
+      where: { organizationId: orgDemo.id, assignedRepId: { in: [rep1.id, rep2.id] } }, 
       orderBy: { createdAt: 'asc' }, take: 15 
     });
     console.log(`⏭️  Leads already seeded (${createdLeads.length}), skipping`);
@@ -498,7 +497,7 @@ async function main() {
       const lead = await prisma.lead.create({
         data: {
           ...rest,
-          organizationId: orgReal.id,
+          organizationId: orgDemo.id,
           assignedRepId,
           territoryId,
           state: 'Louisiana',
@@ -563,7 +562,7 @@ async function main() {
   // Creates contacts for any leads that don't have one yet
   // ─────────────────────────────────────────────
   const allLeads = await prisma.lead.findMany({
-    where: { organizationId: orgReal.id },
+    where: { organizationId: orgDemo.id },
     select: { id: true, firstName: true, lastName: true, email: true, phone: true, contacts: { select: { id: true } } },
   });
   const leadsWithoutContacts = allLeads.filter(l => l.contacts.length === 0);
@@ -674,7 +673,7 @@ async function main() {
   if (existingApptCount === 0) {
     // Fetch all org leads so we can link appointments even on a re-seed
     const allOrgLeads = await prisma.lead.findMany({
-      where: { organizationId: orgReal.id },
+      where: { organizationId: orgDemo.id },
       select: { id: true, firstName: true, lastName: true, address: true, lat: true, lng: true, phone: true },
     });
 
@@ -757,11 +756,11 @@ async function main() {
   // ── Extra: ensure future appointments exist (relative to NOW) ──
   // Runs every seed to keep calendar populated even after initial seed date passes
   const futureApptCount = await prisma.appointment.count({
-    where: { lead: { organizationId: orgReal.id }, scheduledAt: { gte: new Date() } },
+    where: { lead: { organizationId: orgDemo.id }, scheduledAt: { gte: new Date() } },
   });
   if (futureApptCount < 5) {
     const allOrgLeads2 = await prisma.lead.findMany({
-      where: { organizationId: orgReal.id },
+      where: { organizationId: orgDemo.id },
       select: { id: true, firstName: true, address: true },
       take: 12,
     });
