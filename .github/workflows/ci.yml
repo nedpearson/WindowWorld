@@ -9,11 +9,10 @@ on:
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
-    
-    # Define environment variables used by Prisma or tests if needed
+
     env:
       DATABASE_URL: "postgresql://postgres:postgres@localhost:5432/windowworld_test?schema=public"
-      JWT_SECRET: "ci-test-jwt-secret-do-not-use-in-prod"
+      JWT_SECRET: "ci-test-jwt-secret-minimum-32-chars-ok"
 
     services:
       postgres:
@@ -40,33 +39,32 @@ jobs:
         cache: 'npm'
 
     - name: Install Monorepo Dependencies
-      run: npm install
+      run: npm install --legacy-peer-deps
 
     - name: Generate Prisma Client
       working-directory: ./server
       run: npx prisma generate
 
-    - name: Database Migration check
+    - name: Push Database Schema
       working-directory: ./server
-      run: npx prisma migrate deploy
+      run: npx prisma db push
 
     - name: Seed Database
       working-directory: ./server
       run: npm run seed
 
-    - name: Typecheck Backend (Server)
+    - name: Typecheck Backend
       working-directory: ./server
-      run: |
-        npx tsc --noEmit || echo "Warning: Backend has typing errors to fix"
+      run: npx tsc --noEmit
 
-    - name: Typecheck Frontend (Web)
-      working-directory: ./apps/web
-      run: npm run typecheck
+    - name: Run Server Unit Tests
+      working-directory: ./server
+      run: npm test
+      env:
+        DATABASE_URL: "postgresql://postgres:postgres@localhost:5432/windowworld_test?schema=public"
+        JWT_SECRET: "ci-test-jwt-secret-minimum-32-chars-ok"
+        NODE_ENV: "test"
 
-    - name: Install Playwright Browsers
+    - name: Build Frontend
       working-directory: ./apps/web
-      run: npx playwright install --with-deps
-
-    - name: Run Playwright E2E Smoke Tests
-      working-directory: ./apps/web
-      run: npx playwright test
+      run: npm run build

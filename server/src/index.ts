@@ -109,27 +109,6 @@ app.get('/health', async (_req, res) => {
   });
 });
 
-// Debug endpoint — shows runtime paths so we can diagnose SPA serving in production
-app.get('/debug-paths', (_req, res) => {
-  const candidates = [
-    path.join(__dirname, '..', 'spa_build'),
-    path.join(__dirname, '..', 'public'),
-    path.join(__dirname, '..', '..', 'apps', 'web', 'dist'),
-    path.join(process.cwd(), 'apps', 'web', 'dist'),
-    path.join(process.cwd(), 'spa_build'),
-    path.join(process.cwd(), 'public'),
-  ];
-  res.json({
-    __dirname,
-    cwd: process.cwd(),
-    candidates: candidates.map(p => ({
-      path: p,
-      exists: fs.existsSync(p),
-      hasIndex: fs.existsSync(path.join(p, 'index.html')),
-    })),
-  });
-});
-
 
 // Force HTTPS in production
 // Railway sits behind exactly 1 reverse-proxy hop.
