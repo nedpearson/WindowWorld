@@ -242,33 +242,51 @@ app.use(`${apiV1}/calendar`, calendarRouter);
 
 // ── SPA — serve built React app ─────────────────────────────────────────────
 // Must come AFTER all /api/ routes so they take priority.
-// Search multiple candidate locations for the built frontend so this works
-// regardless of which build system (Nixpacks, Docker, local) placed the files.
+// On Railway: __dirname=/app/dist, cwd=/app (monorepo root)
+// Search candidates in order of likelihood.
 const webDistCandidates = [
-  path.join(__dirname, '..', 'spa_build'),          // nixpacks cp target
-  path.join(__dirname, '..', 'public'),              // legacy / old nixpacks
-  path.join(__dirname, '..', '..', 'apps', 'web', 'dist'), // monorepo root dev
-  path.join(process.cwd(), 'apps', 'web', 'dist'),  // Railway CWD = /app (repo root)
-  path.join(process.cwd(), 'spa_build'),             // Railway CWD fallback
-  path.join(process.cwd(), 'public'),                // Railway CWD legacy
+  path.join(process.cwd(), 'apps', 'web', 'dist'),  // /app/apps/web/dist  — nixpacks vite build output
+  path.join(process.cwd(), 'spa_build'),             // /app/spa_build      — nixpacks cp target
+  path.join(process.cwd(), 'public'),                // /app/public         — legacy
+  path.join(process.cwd(), 'server', 'spa_build'),   // /app/server/spa_build
+  path.join(process.cwd(), 'server', 'public'),      // /app/server/public
+  path.join(__dirname, '..', 'spa_build'),            // /app/spa_build
+  path.join(__dirname, '..', 'public'),               // /app/public
+  path.join(__dirname, '..', '..', 'apps', 'web', 'dist'), // /apps/web/dist
 ];
 const webDistPath = webDistCandidates.find(p => fs.existsSync(path.join(p, 'index.html')));
 
-if (webDistPath) {
+// If no pre-built frontend found, build it now at startup
+// This is a safety net for Railway deployments where the build step didn't run
+if (!webDistPath) {
+  const webSrcPath = path.join(process.cwd(), 'apps', 'web');
+  if (fs.existsSync(webSrcPath)) {
+    logger.info('[SPA] No pre-built frontend found — building Vite frontend now...');
+    try {
+      const { execSync } = require('child_process');
+      execSync('npm run build', { cwd: webSrcPath, stdio: 'inherit' });
+      logger.info('[SPA] Vite build complete');
+    } catch (buildErr) {
+      logger.error('[SPA] Vite build failed:', buildErr);
+    }
+  }
+}
+const finalWebDistPath = webDistCandidates.find(p => fs.existsSync(path.join(p, 'index.html')));
+
+if (finalWebDistPath) {
   // 1. Serve ONLY the hashed /assets/* files with long-lived immutable cache.
   //    These filenames change on every build so stale cache is impossible.
   app.use(
     '/assets',
-    express.static(path.join(webDistPath, 'assets'), {
+    express.static(path.join(finalWebDistPath, 'assets'), {
       maxAge: '1y',
       immutable: true,
       index: false,
     })
   );
 
-  // 2. Serve service-worker files and index.html with NO cache so the browser
-  //    always gets the latest entrypoint (which references the new chunk hashes).
-  //    Without this, browsers cache index.html for a year and request deleted chunks.
+  // 2. Serve service-worker files with NO cache so the browser
+  //    always gets the latest entrypoint.
   const noCache = (_req: any, res: any, next: any) => {
     res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
     res.setHeader('Pragma', 'no-cache');
@@ -276,12 +294,10 @@ if (webDistPath) {
     next();
   };
 
-  // sw.js + workbox runtime files must never be cached long-term
-  app.get(['/sw.js', '/workbox-*.js', '/manifest.webmanifest'], noCache, express.static(webDistPath));
+  app.get(['/sw.js', '/workbox-*.js', '/manifest.webmanifest'], noCache, express.static(finalWebDistPath));
 
-  // All other non-asset static files (icons, fonts, etc.) — short cache
   app.use(
-    express.static(webDistPath, {
+    express.static(finalWebDistPath, {
       maxAge: '1d',
       index: false,
     })
@@ -292,10 +308,10 @@ if (webDistPath) {
     res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
     res.setHeader('Pragma', 'no-cache');
     res.setHeader('Expires', '0');
-    res.sendFile(path.join(webDistPath, 'index.html'));
+    res.sendFile(path.join(finalWebDistPath, 'index.html'));
   });
 
-  logger.info(`[SPA] Serving React app from ${webDistPath}`);
+  logger.info(`[SPA] Serving React app from ${finalWebDistPath}`);
 } else {
   logger.warn('[SPA] No built frontend found — searched: ' + webDistCandidates.join(', '));
   logger.warn('[SPA] SPA serving skipped (dev or separate web service)');
