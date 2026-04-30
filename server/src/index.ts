@@ -221,8 +221,8 @@ app.use(`${apiV1}/calendar`, calendarRouter);
 
 // ── SPA — serve built React app ─────────────────────────────────────────────
 // Must come AFTER all /api/ routes so they take priority.
-// In production the frontend is built into apps/web/dist
-const webDistPath = path.join(__dirname, '..', '..', 'apps', 'web', 'dist');
+// In production the frontend is copied into ./public by the nixpacks build step.
+const webDistPath = path.join(__dirname, '..', 'public');
 if (fs.existsSync(webDistPath)) {
   // 1. Serve ONLY the hashed /assets/* files with long-lived immutable cache.
   //    These filenames change on every build so stale cache is impossible.

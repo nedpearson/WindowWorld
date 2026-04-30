@@ -15,7 +15,9 @@ cmds = [
   # of the TypeScript compiler bundled in node_modules/.bin/tsc.
   "cd server && npm run build",
   # Build Vite frontend → apps/web/dist/
-  "cd apps/web && npm run build"
+  "cd apps/web && npm run build",
+  # Move built frontend into server/public where Express expects it
+  "mkdir -p server/public && cp -r apps/web/dist/* server/public/"
 ]
 
 [start]
