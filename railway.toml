@@ -8,7 +8,7 @@ nixpacksConfigPath = "nixpacks.toml"
 # Start: apply DB schema, run seed, start Express (which serves the SPA).
 # The pre-built frontend is committed at apps/web/dist/ and the nixpacks
 # build phase copies it to server/spa_build/ so Express always finds it.
-startCommand = "cd server && npx prisma db push --accept-data-loss && npx prisma db seed && node dist/index.js"
+startCommand = "cd server && npx prisma db push --accept-data-loss && npx tsx prisma/purge-org-real.ts && npx prisma db seed && node dist/index.js"
 healthcheckPath = "/health"
 healthcheckTimeout = 300
 restartPolicyType = "ON_FAILURE"

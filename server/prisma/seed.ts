@@ -862,7 +862,7 @@ async function main() {
     const ago = (days: number) => new Date(Date.now() - days * 86_400_000);
 
     const autoStale = await prisma.automation.create({ data: {
-      organizationId: orgReal.id,
+      organizationId: orgDemo.id,
       name: 'Stale Lead Follow-Up — 7 Days',
       description: 'Send follow-up task when lead has no contact for 7 days',
       trigger: 'NO_CONTACT_DAYS' as any,
@@ -878,7 +878,7 @@ async function main() {
     ]});
 
     const autoAppt = await prisma.automation.create({ data: {
-      organizationId: orgReal.id,
+      organizationId: orgDemo.id,
       name: 'Appointment Reminder — 24 Hours',
       description: 'Send appointment reminder to homeowner 24 hours before scheduled visit',
       trigger: 'APPOINTMENT_SET' as any,
@@ -893,7 +893,7 @@ async function main() {
     ]});
 
     const autoProposal = await prisma.automation.create({ data: {
-      organizationId: orgReal.id,
+      organizationId: orgDemo.id,
       name: 'Proposal Follow-Up — 3 Days',
       description: 'Follow up 3 days after proposal is sent if no response',
       trigger: 'PROPOSAL_SENT' as any,
@@ -908,7 +908,7 @@ async function main() {
     ]});
 
     const autoStorm = await prisma.automation.create({ data: {
-      organizationId: orgReal.id,
+      organizationId: orgDemo.id,
       name: 'Storm Opportunity Alert',
       description: 'Notify managers when a storm event affects leads in territory',
       trigger: 'STORM_EVENT' as any,
@@ -922,7 +922,7 @@ async function main() {
     ]});
 
     const autoNewLead = await prisma.automation.create({ data: {
-      organizationId: orgReal.id,
+      organizationId: orgDemo.id,
       name: 'New Lead Welcome — Instant SMS',
       description: 'Send a welcome SMS within 5 minutes of new lead submission',
       trigger: 'LEAD_CREATED' as any,
@@ -938,7 +938,7 @@ async function main() {
     ]});
 
     const autoNurture = await prisma.automation.create({ data: {
-      organizationId: orgReal.id,
+      organizationId: orgDemo.id,
       name: 'Nurture — 30 Day Re-Engagement',
       description: 'Re-engage leads that have been in Nurture status for 30+ days',
       trigger: 'LEAD_STATUS_CHANGED' as any,
@@ -959,10 +959,10 @@ async function main() {
   // ─────────────────────────────────────────────
   // CAMPAIGNS — idempotent demo records
   // ─────────────────────────────────────────────
-  const existingCampaignCount = await prisma.campaign.count({ where: { organizationId: orgReal.id } });
+  const existingCampaignCount = await prisma.campaign.count({ where: { organizationId: orgDemo.id } });
   if (existingCampaignCount === 0) {
     const allOrgLeadsForCampaign = await prisma.lead.findMany({
-      where: { organizationId: orgReal.id },
+      where: { organizationId: orgDemo.id },
       select: { id: true, status: true, parish: true, zip: true },
     });
     const stormLeadIds = allOrgLeadsForCampaign.filter((_, i) => i < 4).map(l => l.id);
@@ -971,7 +971,7 @@ async function main() {
 
     await Promise.all([
       prisma.campaign.create({ data: {
-        organizationId: orgReal.id,
+        organizationId: orgDemo.id,
         name: 'Spring 2025 Storm Damage Blitz',
         type: 'storm-opportunity',
         status: 'active',
@@ -986,7 +986,7 @@ async function main() {
         leads: { connect: stormLeadIds.map(id => ({ id })) },
       }}),
       prisma.campaign.create({ data: {
-        organizationId: orgReal.id,
+        organizationId: orgDemo.id,
         name: 'New Lead Welcome Sequence — Q2',
         type: 'custom',
         status: 'active',
@@ -1000,7 +1000,7 @@ async function main() {
         leads: { connect: newLeadIds.map(id => ({ id })) },
       }}),
       prisma.campaign.create({ data: {
-        organizationId: orgReal.id,
+        organizationId: orgDemo.id,
         name: 'Spring Refresh — Referral Drive',
         type: 'referral',
         status: 'active',
@@ -1014,7 +1014,7 @@ async function main() {
         leads: { connect: nurLeadIds.map(id => ({ id })) },
       }}),
       prisma.campaign.create({ data: {
-        organizationId: orgReal.id,
+        organizationId: orgDemo.id,
         name: 'Nurture Re-Engagement — Q1 Leftovers',
         type: 'reengagement',
         status: 'paused',
@@ -1036,12 +1036,12 @@ async function main() {
   // ─────────────────────────────────────────────
   // TEMPLATES (skip if already seeded)
   // ─────────────────────────────────────────────
-  const existingTemplateCount = await prisma.template.count({ where: { organizationId: orgReal.id } });
+  const existingTemplateCount = await prisma.template.count({ where: { organizationId: orgDemo.id } });
   if (existingTemplateCount === 0) {
     await Promise.all([
-      prisma.template.create({ data: { organizationId: orgReal.id, type: 'email', name: 'Appointment Reminder', subject: 'Your Window Consultation Tomorrow — {{appointment_time}}', bodyHtml: '<p>Hi {{first_name}},</p><p>Just a reminder that your window consultation is scheduled for <strong>{{appointment_datetime}}</strong>.</p><p>Your consultant {{rep_name}} will arrive at {{address}}.</p><p>If you need to reschedule, please call {{company_phone}}.</p>', variables: ['first_name', 'appointment_datetime', 'appointment_time', 'rep_name', 'address', 'company_phone'], isDefault: true } }),
-      prisma.template.create({ data: { organizationId: orgReal.id, type: 'proposal', name: 'Standard Window Replacement Proposal', brandingMode: 'windowworld-compatible', bodyHtml: '<div class="proposal">{{proposal_content}}</div>', variables: ['customer_name', 'property_address', 'total_windows', 'quote_total', 'rep_name', 'valid_until'], isDefault: true } }),
-      prisma.template.create({ data: { organizationId: orgReal.id, type: 'email', name: 'Proposal Follow-Up', subject: '{{first_name}}, Did You Have a Chance to Review Your Window Proposal?', bodyHtml: '<p>Hi {{first_name}},</p><p>I wanted to follow up on the window replacement proposal I sent over {{days_ago}} days ago.</p><p>I know decisions like this take time. Do you have any questions I can answer?</p>', variables: ['first_name', 'days_ago', 'install_window', 'rep_name', 'rep_phone'], isDefault: true } }),
+      prisma.template.create({ data: { organizationId: orgDemo.id, type: 'email', name: 'Appointment Reminder', subject: 'Your Window Consultation Tomorrow — {{appointment_time}}', bodyHtml: '<p>Hi {{first_name}},</p><p>Just a reminder that your window consultation is scheduled for <strong>{{appointment_datetime}}</strong>.</p><p>Your consultant {{rep_name}} will arrive at {{address}}.</p><p>If you need to reschedule, please call {{company_phone}}.</p>', variables: ['first_name', 'appointment_datetime', 'appointment_time', 'rep_name', 'address', 'company_phone'], isDefault: true } }),
+      prisma.template.create({ data: { organizationId: orgDemo.id, type: 'proposal', name: 'Standard Window Replacement Proposal', brandingMode: 'windowworld-compatible', bodyHtml: '<div class="proposal">{{proposal_content}}</div>', variables: ['customer_name', 'property_address', 'total_windows', 'quote_total', 'rep_name', 'valid_until'], isDefault: true } }),
+      prisma.template.create({ data: { organizationId: orgDemo.id, type: 'email', name: 'Proposal Follow-Up', subject: '{{first_name}}, Did You Have a Chance to Review Your Window Proposal?', bodyHtml: '<p>Hi {{first_name}},</p><p>I wanted to follow up on the window replacement proposal I sent over {{days_ago}} days ago.</p><p>I know decisions like this take time. Do you have any questions I can answer?</p>', variables: ['first_name', 'days_ago', 'install_window', 'rep_name', 'rep_phone'], isDefault: true } }),
     ]);
     console.log(`✅ Email/Proposal templates created`);
   } else {
@@ -1051,7 +1051,7 @@ async function main() {
   // ─────────────────────────────────────────────
   // QUOTES, PROPOSALS & INVOICES (skip if already seeded)
   // ─────────────────────────────────────────────
-  const existingQuoteCount = await prisma.quote.count({ where: { lead: { organizationId: orgReal.id } } });
+  const existingQuoteCount = await prisma.quote.count({ where: { lead: { organizationId: orgDemo.id } } });
   if (createdLeads.length > 0 && existingQuoteCount === 0) {
     try {
     const leadWithProposal = createdLeads[1] || createdLeads[0]; // Use Patricia Landry if available
@@ -1101,7 +1101,7 @@ async function main() {
       where: { invoiceNumber: 'INV-1001' },
       update: {},
       create: {
-        organizationId: orgReal.id,
+        organizationId: orgDemo.id,
         leadId: leadWithProposal.id,
         proposalId: proposal.id,
         createdById: finance.id,

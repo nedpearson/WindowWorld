@@ -495,11 +495,11 @@ export function DashboardPage() {
               <div className="flex items-center justify-between mb-4 pb-4 border-b border-slate-800/50">
                 <div>
                   <div className="text-[10px] text-slate-500 uppercase font-semibold">Today's Score</div>
-                  <div className="text-2xl font-bold text-white">85<span className="text-sm text-slate-500 font-normal">/100</span></div>
+                  <div className="text-2xl font-bold text-white">{activeQueue.length > 0 ? Math.min(100, 50 + activeQueue.length * 5) : '—'}<span className="text-sm text-slate-500 font-normal">{activeQueue.length > 0 ? '/100' : ''}</span></div>
                 </div>
                 <div className="text-right">
                   <div className="text-[10px] text-slate-500 uppercase font-semibold">Follow-up Discipline</div>
-                  <div className="text-2xl font-bold text-emerald-400">Great</div>
+                  <div className="text-2xl font-bold text-emerald-400">{activeQueue.length > 0 ? 'Great' : '—'}</div>
                 </div>
               </div>
 
