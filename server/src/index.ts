@@ -109,6 +109,27 @@ app.get('/health', async (_req, res) => {
   });
 });
 
+// Debug endpoint — shows runtime paths so we can diagnose SPA serving in production
+app.get('/debug-paths', (_req, res) => {
+  const candidates = [
+    path.join(__dirname, '..', 'spa_build'),
+    path.join(__dirname, '..', 'public'),
+    path.join(__dirname, '..', '..', 'apps', 'web', 'dist'),
+    path.join(process.cwd(), 'apps', 'web', 'dist'),
+    path.join(process.cwd(), 'spa_build'),
+    path.join(process.cwd(), 'public'),
+  ];
+  res.json({
+    __dirname,
+    cwd: process.cwd(),
+    candidates: candidates.map(p => ({
+      path: p,
+      exists: fs.existsSync(p),
+      hasIndex: fs.existsSync(path.join(p, 'index.html')),
+    })),
+  });
+});
+
 
 // Force HTTPS in production
 // Railway sits behind exactly 1 reverse-proxy hop.
@@ -221,9 +242,19 @@ app.use(`${apiV1}/calendar`, calendarRouter);
 
 // ── SPA — serve built React app ─────────────────────────────────────────────
 // Must come AFTER all /api/ routes so they take priority.
-// In production the frontend is copied into ./spa_build by the nixpacks build step.
-const webDistPath = path.join(__dirname, '..', 'spa_build');
-if (fs.existsSync(webDistPath)) {
+// Search multiple candidate locations for the built frontend so this works
+// regardless of which build system (Nixpacks, Docker, local) placed the files.
+const webDistCandidates = [
+  path.join(__dirname, '..', 'spa_build'),          // nixpacks cp target
+  path.join(__dirname, '..', 'public'),              // legacy / old nixpacks
+  path.join(__dirname, '..', '..', 'apps', 'web', 'dist'), // monorepo root dev
+  path.join(process.cwd(), 'apps', 'web', 'dist'),  // Railway CWD = /app (repo root)
+  path.join(process.cwd(), 'spa_build'),             // Railway CWD fallback
+  path.join(process.cwd(), 'public'),                // Railway CWD legacy
+];
+const webDistPath = webDistCandidates.find(p => fs.existsSync(path.join(p, 'index.html')));
+
+if (webDistPath) {
   // 1. Serve ONLY the hashed /assets/* files with long-lived immutable cache.
   //    These filenames change on every build so stale cache is impossible.
   app.use(
@@ -266,7 +297,8 @@ if (fs.existsSync(webDistPath)) {
 
   logger.info(`[SPA] Serving React app from ${webDistPath}`);
 } else {
-  logger.warn('[SPA] No built frontend found at ./public — SPA serving skipped (dev or separate web service)');
+  logger.warn('[SPA] No built frontend found — searched: ' + webDistCandidates.join(', '));
+  logger.warn('[SPA] SPA serving skipped (dev or separate web service)');
 }
 
 app.use(errorHandler);
