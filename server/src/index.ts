@@ -225,25 +225,36 @@ app.use(`${apiV1}/calendar`, calendarRouter);
 // Both process.cwd() and __dirname variants are included because:
 //   - cwd may be /app (root) or /app/server (after cd server in startCommand)
 //   - __dirname may be /app/dist or /app/server/dist depending on nixpacks version
+// SPA candidate directories — ordered by likelihood on Railway after `cd server`.
+// The nixpacks build copies the pre-committed apps/web/dist/ → server/spa_build/.
 const webDistCandidates = [
-  '/app/apps/web/dist',                                          // absolute — always correct on Railway
+  path.join(process.cwd(), 'spa_build'),                         // cwd=/app/server (most likely after cd server)
+  '/app/server/spa_build',                                       // absolute fallback
+  '/app/apps/web/dist',                                          // absolute — if nixpacks doesn't prune
   path.join(process.cwd(), 'apps', 'web', 'dist'),              // cwd=/app
   path.join(process.cwd(), '..', 'apps', 'web', 'dist'),        // cwd=/app/server
-  path.join(__dirname, '..', 'apps', 'web', 'dist'),             // __dirname=/app/dist
-  path.join(__dirname, '..', '..', 'apps', 'web', 'dist'),       // __dirname=/app/server/dist
-  path.join(process.cwd(), 'spa_build'),
-  path.join(process.cwd(), '..', 'spa_build'),
-  path.join(__dirname, '..', 'spa_build'),
-  path.join(process.cwd(), 'server', 'spa_build'),
-  path.join(process.cwd(), 'public'),
+  path.join(__dirname, '..', 'spa_build'),                       // __dirname=/app/server/dist
+  path.join(__dirname, '..', '..', 'apps', 'web', 'dist'),      // __dirname=/app/server/dist
+  path.join(process.cwd(), 'server', 'spa_build'),              // cwd=/app
+  path.join(process.cwd(), 'public'),                           // legacy fallback
 ];
 
-// Mutable pointer updated once the Vite build completes (sync pre-check or async background)
+// Log environment for debugging deployment issues
+logger.info(`[SPA] Diagnostic: cwd=${process.cwd()}, __dirname=${__dirname}`);
+
+// Check each candidate and log results
+for (const candidate of webDistCandidates) {
+  const indexPath = path.join(candidate, 'index.html');
+  const exists = fs.existsSync(indexPath);
+  logger.info(`[SPA]   ${exists ? '✓' : '✗'} ${candidate}`);
+}
+
+// Mutable pointer — updated if a background build completes later
 let finalWebDistPath: string | undefined = webDistCandidates.find(p => fs.existsSync(path.join(p, 'index.html')));
 if (finalWebDistPath) {
   logger.info(`[SPA] Pre-built frontend found at ${finalWebDistPath}`);
 } else {
-  logger.warn('[SPA] No pre-built frontend found — will build in background after server starts');
+  logger.warn('[SPA] No pre-built frontend found — will attempt background build');
 }
 
 // noCache middleware — applied to SW files and all index.html responses

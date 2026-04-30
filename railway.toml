@@ -1,12 +1,14 @@
-# Root railway.toml — points Railway to the server nixpacks config
-# Build context is always the monorepo root.
-# All paths in nixpacks.toml are relative to monorepo root.
+# Root railway.toml — single source of truth for Railway deployment.
+# Build context is the monorepo root.
 [build]
 builder = "NIXPACKS"
 nixpacksConfigPath = "nixpacks.toml"
 
 [deploy]
-startCommand = "npm run build --workspace=@windowworld/web; cd server && npx prisma db push --accept-data-loss && npx prisma db seed && node dist/index.js"
+# Start: apply DB schema, run seed, start Express (which serves the SPA).
+# The pre-built frontend is committed at apps/web/dist/ and the nixpacks
+# build phase copies it to server/spa_build/ so Express always finds it.
+startCommand = "cd server && npx prisma db push --accept-data-loss && npx prisma db seed && node dist/index.js"
 healthcheckPath = "/health"
 healthcheckTimeout = 300
 restartPolicyType = "ON_FAILURE"
