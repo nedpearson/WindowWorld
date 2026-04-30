@@ -133,7 +133,7 @@ app.use(helmet({
       defaultSrc:              ["'self'"],
       // Google Sign-In (GSI) requires accounts.google.com for scripts, styles, frames
       // and googleapis.com / googleusercontent.com for token verification + avatars
-      scriptSrc:               ["'self'", 'https://accounts.google.com', 'https://apis.google.com'],
+      scriptSrc:               ["'self'", "'unsafe-inline'", 'https://accounts.google.com', 'https://apis.google.com'],
       styleSrc:                ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com', 'https://accounts.google.com'],
       fontSrc:                 ["'self'", 'https://fonts.gstatic.com'],
       imgSrc:                  ["'self'", 'data:', 'blob:', 'https:', 'https://lh3.googleusercontent.com'],
