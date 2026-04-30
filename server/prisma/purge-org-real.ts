@@ -120,7 +120,7 @@ async function main() {
     });
     if (invoices.length > 0) {
       const invoiceIds = invoices.map(i => i.id);
-      const payments = await prisma.invoicePayment.deleteMany({ where: { invoiceId: { in: invoiceIds } } });
+      const payments = await prisma.payment.deleteMany({ where: { invoiceId: { in: invoiceIds } } });
       console.log(`  ✓ InvoicePayment: ${payments.count} deleted`);
       const invLines = await prisma.invoiceLineItem.deleteMany({ where: { invoiceId: { in: invoiceIds } } });
       console.log(`  ✓ InvoiceLineItem: ${invLines.count} deleted`);
@@ -264,7 +264,7 @@ async function main() {
   });
   if (orgInvoices.length > 0) {
     const invIds = orgInvoices.map(i => i.id);
-    await prisma.invoicePayment.deleteMany({ where: { invoiceId: { in: invIds } } });
+    await prisma.payment.deleteMany({ where: { invoiceId: { in: invIds } } });
     await prisma.invoiceLineItem.deleteMany({ where: { invoiceId: { in: invIds } } });
     await prisma.invoice.deleteMany({ where: { id: { in: invIds } } });
     console.log(`  ✓ Org-level Invoice (direct): ${orgInvoices.length} deleted`);
