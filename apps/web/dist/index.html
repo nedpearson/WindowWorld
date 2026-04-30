@@ -40,21 +40,39 @@
     <script>
       window.addEventListener('error', function(e) {
         if (e.target && e.target.tagName === 'SCRIPT' && e.target.src && e.target.src.includes('/assets/')) {
-          console.warn('[PWA] Stale chunk detected, unregistering service workers and reloading...');
-          if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.getRegistrations().then(function(registrations) {
-              for (var i = 0; i < registrations.length; i++) {
-                registrations[i].unregister();
-              }
-              window.location.reload(true);
+          console.warn('[PWA] Stale chunk detected, attempting recovery...');
+          
+          if (sessionStorage.getItem('ww_reloading')) {
+            console.error('[PWA] Recovery loop detected. Stopping.');
+            return;
+          }
+          sessionStorage.setItem('ww_reloading', 'true');
+          
+          if ('serviceWorker' in navigator && caches) {
+            Promise.all([
+              navigator.serviceWorker.getRegistrations().then(function(registrations) {
+                return Promise.all(registrations.map(function(r) { return r.unregister(); }));
+              }),
+              caches.keys().then(function(names) {
+                return Promise.all(names.map(function(name) { return caches.delete(name); }));
+              })
+            ]).then(function() {
+              window.location.href = window.location.pathname + '?nocache=' + Date.now();
+            }).catch(function() {
+              window.location.reload();
             });
           } else {
-            window.location.reload(true);
+            window.location.reload();
           }
         }
       }, true);
+      
+      // Clear flag on successful load
+      window.addEventListener('load', function() {
+        sessionStorage.removeItem('ww_reloading');
+      });
     </script>
-    <script type="module" crossorigin src="/assets/index-CPTeycAj.js"></script>
+    <script type="module" crossorigin src="/assets/index-BpYht4jV.js"></script>
     <link rel="modulepreload" crossorigin href="/assets/rolldown-runtime-BYbx6iT9.js">
     <link rel="modulepreload" crossorigin href="/assets/charts-DTiDeYUm.js">
     <link rel="modulepreload" crossorigin href="/assets/client-BbhzZ9dx.js">
