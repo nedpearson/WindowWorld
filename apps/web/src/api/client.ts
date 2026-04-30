@@ -390,7 +390,10 @@ export const api = {
     /** Check if the current user has Google Calendar connected */
     getStatus: () => get<any>('/calendar/status'),
     /** Returns the URL the user should open to connect Google Calendar */
-    getConnectUrl: () => `${import.meta.env.VITE_API_URL || ''}/api/v1/calendar/connect`,
+    getConnectUrl: () => {
+      const token = useAuthStore.getState().accessToken;
+      return `${BASE_URL}/calendar/connect?token=${token}`;
+    },
     /** Disconnect Google Calendar */
     disconnect: () => post<any>('/calendar/disconnect', {}),
     /** Get busy blocks for a time window (for the appointment picker) */
