@@ -1,3 +1,5 @@
+providers = ["node"]
+
 [phases.setup]
 # Node 22 LTS — required by Prisma and node dist/index.js
 nixPkgs = ["nodejs_22"]
