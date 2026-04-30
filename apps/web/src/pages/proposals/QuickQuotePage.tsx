@@ -8,6 +8,9 @@ import {
 import clsx from 'clsx';
 import { SmsTemplateDrawer } from '../../components/sms/SmsTemplateDrawer';
 
+import { useAuthStore } from '../../store/auth.store';
+import { isDemoMode } from '../../utils/isDemoMode';
+
 // ─── Product series ────────────────────────────────────────
 const SERIES = [
   { id: 'S2000', label: 'Series 2000', desc: 'Entry-level vinyl, single-pane replacement', basePerWindow: 380, earnmark: 'Builder & Rental Grade', color: 'border-slate-600 hover:border-slate-500' },
@@ -23,11 +26,36 @@ const FINANCING_OPTS = [
 ];
 
 export function QuickQuotePage() {
+  const user = useAuthStore((s) => s.user);
+  const isDemoFallback = isDemoMode(user);
+
   const [windowCount, setWindowCount] = useState(8);
   const [seriesId, setSeriesId] = useState('S3000');
   const [finIdx, setFinIdx] = useState(0);
   const [smsOpen, setSmsOpen] = useState(false);
   const [copied, setCopied] = useState(false);
+
+  // EMPTY STATE for production users with no products
+  if (!isDemoFallback) {
+    return (
+      <div className="p-6 space-y-6 page-transition max-w-4xl">
+        <div className="flex items-center gap-2">
+          <BoltIcon className="h-5 w-5 text-amber-400" />
+          <h1 className="text-xl font-bold text-white">Quick Quote</h1>
+        </div>
+        <div className="card p-12 text-center border-dashed border-2 border-slate-700 bg-slate-800/20">
+          <BoltIcon className="h-12 w-12 text-slate-500 mx-auto mb-4 opacity-50" />
+          <h2 className="text-lg font-bold text-white mb-2">No Products Configured</h2>
+          <p className="text-slate-400 max-w-md mx-auto text-sm">
+            You need to add products and pricing to your catalog before you can use the Quick Quote calculator.
+          </p>
+          <div className="mt-6">
+            <Link to="/settings" className="btn-primary">Go to Settings</Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const series = SERIES.find(s => s.id === seriesId)!;
   const fin = FINANCING_OPTS[finIdx];

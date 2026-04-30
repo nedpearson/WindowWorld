@@ -6,6 +6,8 @@ import { HomeIcon, ArrowRightIcon } from '@heroicons/react/24/outline';
 import { BoltIcon, SparklesIcon, SwatchIcon } from '@heroicons/react/24/solid';
 import clsx from 'clsx';
 import { api } from '../../api/client';
+import { useAuthStore } from '../../store/auth.store';
+import { isDemoMode } from '../../utils/isDemoMode';
 
 // ─── Instant placeholder data (mirrors server-side WINDOW_SERIES fallback) ────
 // Prevents ANY loading skeleton — the catalog renders immediately on mount
@@ -43,6 +45,9 @@ const PLACEHOLDER_SERIES: Record<string, any[]> = {
 };
 
 export function ProductCatalogPage() {
+  const user = useAuthStore((s) => s.user);
+  const isDemoFallback = isDemoMode(user);
+
   const [activeCategoryId, setActiveCategoryId] = useState<string | null>(null);
   const [activeSubcategoryId, setActiveSubcategoryId] = useState<string | null>(null);
   const [activeSeriesId, setActiveSeriesId] = useState<string | null>(null);
@@ -50,14 +55,14 @@ export function ProductCatalogPage() {
   const { data: categories } = useQuery({
     queryKey: ['product-categories'],
     queryFn: () => api.products.getCategories().then((r: any) => (r?.data ?? r) || []),
-    placeholderData: PLACEHOLDER_CATEGORIES,
+    placeholderData: isDemoFallback ? PLACEHOLDER_CATEGORIES : [],
     staleTime: 5 * 60 * 1000, // 5 min — avoid re-fetching on every tab focus
   });
 
   const { data: subcategories, isLoading: isSubLoading } = useQuery({
     queryKey: ['product-subcategories', activeCategoryId],
     queryFn: () => api.products.getSubcategories({ categoryId: activeCategoryId }).then((r: any) => (r?.data ?? r) || []),
-    placeholderData: activeCategoryId ? (PLACEHOLDER_SUBCATS[activeCategoryId] ?? []) : [],
+    placeholderData: activeCategoryId && isDemoFallback ? (PLACEHOLDER_SUBCATS[activeCategoryId] ?? []) : [],
     enabled: !!activeCategoryId,
     staleTime: 5 * 60 * 1000,
   });
@@ -65,7 +70,7 @@ export function ProductCatalogPage() {
   const { data: seriesList, isLoading: isSeriesLoading } = useQuery({
     queryKey: ['product-series', activeSubcategoryId],
     queryFn: () => api.products.getSeries({ subcategoryId: activeSubcategoryId }).then((r: any) => (r?.data ?? r) || []),
-    placeholderData: activeSubcategoryId ? (PLACEHOLDER_SERIES[activeSubcategoryId] ?? []) : [],
+    placeholderData: activeSubcategoryId && isDemoFallback ? (PLACEHOLDER_SERIES[activeSubcategoryId] ?? []) : [],
     enabled: !!activeSubcategoryId,
     staleTime: 5 * 60 * 1000,
   });
