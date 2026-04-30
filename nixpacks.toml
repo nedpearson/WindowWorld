@@ -1,0 +1,24 @@
+[phases.setup]
+# Node 22 LTS — required by Prisma and node dist/index.js
+nixPkgs = ["nodejs_22"]
+
+[phases.install]
+# Single npm install at monorepo root installs all workspace packages
+cmds = [
+  "npm install --legacy-peer-deps"
+]
+
+[phases.build]
+cmds = [
+  # Build TypeScript server (prisma generate && tsc)
+  # Uses the local TypeScript binary in node_modules/.bin/tsc, NOT npx tsc
+  "cd server && npm run build",
+  # Build Vite frontend into apps/web/dist/
+  "cd apps/web && npm run build",
+  # Copy frontend into server/spa_build/ so Express can find and serve it
+  "mkdir -p server/spa_build && cp -r apps/web/dist/. server/spa_build/"
+]
+
+[start]
+# Apply schema, seed, then start the Express server
+cmd = "cd server && npx prisma db push --accept-data-loss && npx prisma db seed && node dist/index.js"

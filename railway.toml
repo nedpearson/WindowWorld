@@ -3,7 +3,7 @@
 # All paths in nixpacks.toml are relative to monorepo root.
 [build]
 builder = "NIXPACKS"
-nixpacksConfigPath = "server/nixpacks.toml"
+nixpacksConfigPath = "nixpacks.toml"
 
 [deploy]
 startCommand = "cd server && npx prisma db push --accept-data-loss && npx prisma db seed && node dist/index.js"
