@@ -4,7 +4,7 @@ test.describe('WindowWorld Core Revenue Flow Smoke Test', () => {
   
   test('should load the login page and authenticate to dashboard', async ({ page }) => {
     // Navigate to local dev server
-    await page.goto('http://127.0.0.1:5173/login');
+    await page.goto('http://127.0.0.1:5174/login');
 
     // View login form assertions
     await expect(page).toHaveTitle(/WindowWorld/);
