@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
   PlusIcon, MagnifyingGlassIcon, CloudIcon,
@@ -67,12 +67,14 @@ function leadAge(createdAt: string): { days: number; badge: string; color: strin
 
 export function LeadsPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const stormMode = useAppStore((s) => s.stormModeActive);
 
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [parishFilter, setParishFilter] = useState('');
   const [stormFilter, setStormFilter] = useState(stormMode);
+  const [sourceFilter, setSourceFilter] = useState(searchParams.get('source') || '');
   const [sortBy, setSortBy] = useState<'leadScore' | 'urgencyScore' | 'createdAt' | 'estimatedRevenue'>('leadScore');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
   const [page, setPage] = useState(1);
@@ -80,12 +82,13 @@ export function LeadsPage() {
 
   // Real-time lead list from server — all filters passed as query params
   const { data: leadsResp, isLoading, isFetching } = useQuery({
-    queryKey: ['leads', { search, statusFilter, parishFilter, stormFilter, sortBy, sortDir, page }],
+    queryKey: ['leads', { search, statusFilter, parishFilter, stormFilter, sourceFilter, sortBy, sortDir, page }],
     queryFn: () => api.leads.list({
       search: search || undefined,
       status: statusFilter || undefined,
       parish: parishFilter || undefined,
       isStormLead: stormFilter || undefined,
+      source: sourceFilter || undefined,
       sortBy,
       sortDir,
       page,
@@ -176,7 +179,7 @@ export function LeadsPage() {
         </select>
 
         <button
-          onClick={() => { setSearch(''); setStatusFilter(''); setParishFilter(''); setStormFilter(false); }}
+          onClick={() => { setSearch(''); setStatusFilter(''); setParishFilter(''); setStormFilter(false); setSourceFilter(''); }}
           className="btn-ghost btn-sm"
         >
           <ArrowPathIcon className="h-4 w-4" />

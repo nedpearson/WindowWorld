@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   MegaphoneIcon, MapPinIcon, FireIcon, HomeModernIcon, 
@@ -128,9 +129,19 @@ export function MarketingPlaybooksPage() {
             </p>
 
             <div className="mt-5 pt-4 border-t border-slate-700/50 flex items-center justify-between">
-              <div className="text-xs text-slate-400">
-                <strong className="text-white">{playbook.stats.generated}</strong> leads generated
-              </div>
+              {playbook.stats.generated > 0 ? (
+                <Link
+                  to={`/leads?source=${playbook.id}`}
+                  onClick={(e) => e.stopPropagation()}
+                  className="text-xs text-slate-400 hover:text-brand-400 transition-colors"
+                >
+                  <strong className="text-white group-hover:text-brand-400 transition-colors">{playbook.stats.generated}</strong> leads generated →
+                </Link>
+              ) : (
+                <div className="text-xs text-slate-400">
+                  <strong className="text-white">0</strong> leads generated
+                </div>
+              )}
               <button className="text-xs font-semibold uppercase tracking-wider flex items-center gap-1 hover:text-white transition-colors">
                 Configure <Cog6ToothIcon className="h-3.5 w-3.5" />
               </button>
