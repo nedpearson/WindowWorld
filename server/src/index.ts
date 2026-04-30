@@ -221,38 +221,32 @@ app.use(`${apiV1}/calendar`, calendarRouter);
 
 // ── SPA — serve built React app ─────────────────────────────────────────────
 // Must come AFTER all /api/ routes so they take priority.
-// On Railway: __dirname=/app/dist, cwd=/app (monorepo root)
-// Search candidates in order of likelihood.
+// Candidates cover every known Railway/nixpacks filesystem layout.
+// Both process.cwd() and __dirname variants are included because:
+//   - cwd may be /app (root) or /app/server (after cd server in startCommand)
+//   - __dirname may be /app/dist or /app/server/dist depending on nixpacks version
 const webDistCandidates = [
-  path.join(process.cwd(), 'apps', 'web', 'dist'),  // /app/apps/web/dist  — nixpacks vite build output
-  path.join(process.cwd(), 'spa_build'),             // /app/spa_build      — nixpacks cp target
-  path.join(process.cwd(), 'public'),                // /app/public         — legacy
-  path.join(process.cwd(), 'server', 'spa_build'),   // /app/server/spa_build
-  path.join(process.cwd(), 'server', 'public'),      // /app/server/public
-  path.join(__dirname, '..', 'spa_build'),            // /app/spa_build
-  path.join(__dirname, '..', 'public'),               // /app/public
-  path.join(__dirname, '..', '..', 'apps', 'web', 'dist'), // /apps/web/dist
+  '/app/apps/web/dist',                                          // absolute — always correct on Railway
+  path.join(process.cwd(), 'apps', 'web', 'dist'),              // cwd=/app
+  path.join(process.cwd(), '..', 'apps', 'web', 'dist'),        // cwd=/app/server
+  path.join(__dirname, '..', 'apps', 'web', 'dist'),             // __dirname=/app/dist
+  path.join(__dirname, '..', '..', 'apps', 'web', 'dist'),       // __dirname=/app/server/dist
+  path.join(process.cwd(), 'spa_build'),
+  path.join(process.cwd(), '..', 'spa_build'),
+  path.join(__dirname, '..', 'spa_build'),
+  path.join(process.cwd(), 'server', 'spa_build'),
+  path.join(process.cwd(), 'public'),
 ];
-const webDistPath = webDistCandidates.find(p => fs.existsSync(path.join(p, 'index.html')));
 
-// If no pre-built frontend found, build it now at startup
-// This is a safety net for Railway deployments where the build step didn't run
-if (!webDistPath) {
-  const webSrcPath = path.join(process.cwd(), 'apps', 'web');
-  if (fs.existsSync(webSrcPath)) {
-    logger.info('[SPA] No pre-built frontend found — building Vite frontend now...');
-    try {
-      const { execSync } = require('child_process');
-      execSync('npm run build', { cwd: webSrcPath, stdio: 'inherit' });
-      logger.info('[SPA] Vite build complete');
-    } catch (buildErr) {
-      logger.error('[SPA] Vite build failed:', buildErr);
-    }
-  }
+// Mutable pointer updated once the Vite build completes (sync pre-check or async background)
+let finalWebDistPath: string | undefined = webDistCandidates.find(p => fs.existsSync(path.join(p, 'index.html')));
+if (finalWebDistPath) {
+  logger.info(`[SPA] Pre-built frontend found at ${finalWebDistPath}`);
+} else {
+  logger.warn('[SPA] No pre-built frontend found — will build in background after server starts');
 }
-const finalWebDistPath = webDistCandidates.find(p => fs.existsSync(path.join(p, 'index.html')));
 
-// noCache middleware used for SW files and index.html
+// noCache middleware — applied to SW files and all index.html responses
 const noCache = (_req: any, res: any, next: any) => {
   res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
   res.setHeader('Pragma', 'no-cache');
@@ -260,61 +254,32 @@ const noCache = (_req: any, res: any, next: any) => {
   next();
 };
 
-if (finalWebDistPath) {
-  // 1. Hashed /assets/* — long-lived immutable cache (filenames change per build)
-  app.use(
-    '/assets',
-    express.static(path.join(finalWebDistPath, 'assets'), {
-      maxAge: '1y',
-      immutable: true,
-      index: false,
-    })
-  );
-
-  // 2. Service-worker files — no cache so browsers always get the latest SW
-  app.get(['/sw.js', '/workbox-*.js', '/manifest.webmanifest'], noCache, express.static(finalWebDistPath));
-
-  // 3. All other static files — short cache
-  app.use(express.static(finalWebDistPath, { maxAge: '1d', index: false }));
-
-  logger.info(`[SPA] Serving React app from ${finalWebDistPath}`);
-} else {
-  logger.warn('[SPA] No built frontend found — searched: ' + webDistCandidates.join(', '));
+// Register static middleware immediately if we already have a built frontend.
+// These are re-registered after a background build completes (see buildFrontendInBackground).
+function mountSpaStatic(distPath: string) {
+  app.use('/assets', express.static(path.join(distPath, 'assets'), { maxAge: '1y', immutable: true, index: false }));
+  app.get(['/sw.js', '/workbox-*.js', '/manifest.webmanifest'], noCache, express.static(distPath));
+  app.use(express.static(distPath, { maxAge: '1d', index: false }));
+  logger.info(`[SPA] Static files mounted from ${distPath}`);
 }
+if (finalWebDistPath) mountSpaStatic(finalWebDistPath);
 
-// ── SPA catch-all — ALWAYS registered ───────────────────────────────────────
-// This MUST exist unconditionally so Ctrl+Shift+R on any deep route (e.g.
-// /dashboard) never hits Express's default "Cannot GET /..." response.
-// If the frontend isn't built yet, serve a self-refreshing warm-up page.
+// ── SPA catch-all — ALWAYS registered unconditionally ───────────────────────
+// Uses the mutable `finalWebDistPath` at call-time so it automatically starts
+// serving the real app once the background build finishes.
+const WARMUP_HTML = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta http-equiv="refresh" content="8">
+  <title>WindowWorld — Starting up…</title>
+  <style>body{font-family:system-ui,sans-serif;background:#0f172a;color:#94a3b8;display:flex;align-items:center;justify-content:center;height:100vh;margin:0}.card{text-align:center;padding:2rem}h1{color:#f8fafc;font-size:1.5rem;margin-bottom:.5rem}.dot{animation:pulse 1.4s ease-in-out infinite;display:inline-block}@keyframes pulse{0%,100%{opacity:.3}50%{opacity:1}}</style>
+</head><body><div class="card"><h1>WindowWorld</h1><p>Starting up<span class="dot">…</span></p><p style="font-size:.8rem;margin-top:1rem">Auto-refreshing in 8 s</p></div></body></html>`;
+
 app.get('*', noCache, (_req, res) => {
   if (finalWebDistPath) {
     res.sendFile(path.join(finalWebDistPath, 'index.html'));
   } else {
-    // Frontend not built yet — auto-refresh every 8 seconds
-    res.status(503).send(`<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta http-equiv="refresh" content="8">
-  <title>WindowWorld — Starting up…</title>
-  <style>
-    body { font-family: system-ui, sans-serif; background: #0f172a; color: #94a3b8;
-           display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; }
-    .card { text-align: center; padding: 2rem; }
-    h1 { color: #f8fafc; font-size: 1.5rem; margin-bottom: 0.5rem; }
-    p  { margin: 0.25rem 0; }
-    .dot { display: inline-block; animation: pulse 1.4s ease-in-out infinite; }
-    @keyframes pulse { 0%,100%{opacity:.3} 50%{opacity:1} }
-  </style>
-</head>
-<body>
-  <div class="card">
-    <h1>WindowWorld</h1>
-    <p>Server is warming up<span class="dot">…</span></p>
-    <p style="font-size:.8rem;margin-top:1rem">Refreshing automatically in 8 seconds</p>
-  </div>
-</body>
-</html>`);
+    res.status(503).send(WARMUP_HTML);
   }
 });
 
@@ -364,6 +329,41 @@ async function start() {
       logger.info(`Environment: ${process.env.NODE_ENV}`);
       logger.info(`API: http://localhost:${PORT}/api/v1`);
       logger.info(`Health: http://localhost:${PORT}/health`);
+
+      // If no pre-built frontend was found at startup, build it now in the background.
+      // The server is already listening so health checks pass while the build runs.
+      // The mutable `finalWebDistPath` is set once done, and the SPA catch-all starts
+      // serving index.html automatically (no restart needed).
+      if (!finalWebDistPath) {
+        const webSrcCandidates = [
+          '/app/apps/web',
+          path.join(process.cwd(), 'apps', 'web'),
+          path.join(process.cwd(), '..', 'apps', 'web'),
+          path.join(__dirname, '..', 'apps', 'web'),
+          path.join(__dirname, '..', '..', 'apps', 'web'),
+        ];
+        const webSrcPath = webSrcCandidates.find(p => fs.existsSync(path.join(p, 'package.json')));
+        if (webSrcPath) {
+          logger.info(`[SPA] Building frontend from ${webSrcPath} in background…`);
+          const { exec } = require('child_process');
+          exec('npm run build', { cwd: webSrcPath }, (err: any) => {
+            if (err) {
+              logger.error('[SPA] Background Vite build failed:', err.message);
+              return;
+            }
+            const built = webDistCandidates.find(p => fs.existsSync(path.join(p, 'index.html')));
+            if (built) {
+              finalWebDistPath = built;
+              mountSpaStatic(built);
+              logger.info(`[SPA] Background build complete — serving from ${built}`);
+            } else {
+              logger.error('[SPA] Build finished but index.html not found in any candidate');
+            }
+          });
+        } else {
+          logger.warn('[SPA] Frontend source directory not found — SPA will remain unavailable');
+        }
+      }
     });
   } catch (error) {
     logger.error('Failed to start server:', error);
