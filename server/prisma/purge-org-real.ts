@@ -251,11 +251,8 @@ async function main() {
     }
   }
 
-  // ── RefreshTokens (clean login state) ─────────────────────────
-  if (ned) {
-    const tokens = await prisma.refreshToken.deleteMany({ where: { userId: ned.id } });
-    console.log(`  ✓ RefreshToken: ${tokens.count} deleted`);
-  }
+  // NOTE: Do NOT delete refresh tokens here — that would log the user
+  // out on every deploy. The purge is for demo DATA, not auth state.
 
   // ── Invoices with organizationId directly (not via lead) ──────
   const orgInvoices = await prisma.invoice.findMany({
