@@ -286,6 +286,25 @@ const WARMUP_HTML = `<!DOCTYPE html>
   <style>body{font-family:system-ui,sans-serif;background:#0f172a;color:#94a3b8;display:flex;align-items:center;justify-content:center;height:100vh;margin:0}.card{text-align:center;padding:2rem}h1{color:#f8fafc;font-size:1.5rem;margin-bottom:.5rem}.dot{animation:pulse 1.4s ease-in-out infinite;display:inline-block}@keyframes pulse{0%,100%{opacity:.3}50%{opacity:1}}</style>
 </head><body><div class="card"><h1>WindowWorld</h1><p>Starting up<span class="dot">…</span></p><p style="font-size:.8rem;margin-top:1rem">Auto-refreshing in 8 s</p></div></body></html>`;
 
+app.get('/assets/*.js', noCache, (_req, res) => {
+  // If express.static didn't find it, it's a stale PWA chunk request.
+  // Return a script that blows away the old SW and reloads the page.
+  res.setHeader('Content-Type', 'application/javascript');
+  res.send(`
+    console.warn('[Server] Stale JS chunk requested. Forcing PWA cache flush...');
+    if ('serviceWorker' in navigator && caches) {
+      Promise.all([
+        navigator.serviceWorker.getRegistrations().then(function(r) { return Promise.all(r.map(function(sw) { return sw.unregister(); })); }),
+        caches.keys().then(function(names) { return Promise.all(names.map(function(name) { return caches.delete(name); })); })
+      ]).then(function() {
+        window.location.href = window.location.pathname + '?nocache=' + Date.now();
+      });
+    } else {
+      window.location.reload();
+    }
+  `);
+});
+
 app.get('*', noCache, (_req, res) => {
   if (finalWebDistPath) {
     res.sendFile(path.join(finalWebDistPath, 'index.html'));
