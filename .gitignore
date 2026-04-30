@@ -1,10 +1,10 @@
 node_modules/
 
-# Build outputs — Railway builds these from source at deploy time (nixpacks.toml)
-# Never commit pre-built assets; source code changes will be picked up automatically.
+# Server compiled TypeScript — Railway rebuilds this from source
 server/dist/
 server/public/
-apps/web/dist/
+# apps/web/dist is intentionally committed so Railway can serve it directly
+# without requiring a Vite build step in the container
 apps/mobile/dist/
 build/
 
