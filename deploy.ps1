@@ -1,42 +1,49 @@
 #!/usr/bin/env pwsh
-# deploy.ps1 — Full build + commit + push for WindowWorld
-# Run this from the repo root: .\deploy.ps1 "your commit message"
-# Or with no args for a timestamped auto-message: .\deploy.ps1
+# ─────────────────────────────────────────────────────────────
+#  WindowWorld Deploy Script
+#  Rebuilds the frontend dist AND pushes to git (Railway auto-deploys)
+#  Usage:  .\deploy.ps1 "your commit message"
+# ─────────────────────────────────────────────────────────────
 
 param(
-    [string]$Message = ""
+  [string]$Message = "chore: rebuild and deploy"
 )
 
-$ErrorActionPreference = "Stop"
-$root = $PSScriptRoot
+Write-Host ""
+Write-Host "═══════════════════════════════════════════════" -ForegroundColor Cyan
+Write-Host "  WindowWorld Deploy — $(Get-Date -Format 'hh:mm tt')" -ForegroundColor Cyan
+Write-Host "═══════════════════════════════════════════════" -ForegroundColor Cyan
+Write-Host ""
 
-Write-Host "`n🚀 WindowWorld Deploy Script`n" -ForegroundColor Cyan
-
-# ── 1. Frontend build ─────────────────────────────────────────
-Write-Host "📦 Building frontend (Vite)..." -ForegroundColor Yellow
-Set-Location "$root\apps\web"
+# ── Step 1: Build frontend ──────────────────────────────────
+Write-Host "1/3  Building frontend dist..." -ForegroundColor Yellow
+Set-Location apps/web
 npm run build
-if ($LASTEXITCODE -ne 0) { Write-Host "❌ Frontend build failed" -ForegroundColor Red; exit 1 }
-Write-Host "✅ Frontend built`n" -ForegroundColor Green
-
-# ── 2. Back to root ───────────────────────────────────────────
-Set-Location $root
-
-# ── 3. Git stage everything ───────────────────────────────────
-Write-Host "📝 Staging changes..." -ForegroundColor Yellow
-git add -A
-if ($LASTEXITCODE -ne 0) { Write-Host "❌ git add failed" -ForegroundColor Red; exit 1 }
-
-# ── 4. Commit ─────────────────────────────────────────────────
-if ($Message -eq "") {
-    $ts = Get-Date -Format "yyyy-MM-dd HH:mm"
-    $Message = "chore: deploy $ts"
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "✗ Build failed. Aborting." -ForegroundColor Red
+    exit 1
 }
-Write-Host "💾 Committing: $Message" -ForegroundColor Yellow
-git commit -m $Message
-if ($LASTEXITCODE -ne 0) { Write-Host "⚠️  Nothing to commit (working tree clean)" -ForegroundColor Gray }
+Set-Location ../..
+Write-Host "     ✓ Frontend built" -ForegroundColor Green
 
-# ── 5. Push ───────────────────────────────────────────────────
-Write-Host "🚢 Pushing to origin/main..." -ForegroundColor Yellow
-git push
-Write-Host "`n✅ Deployed! Railway will build and restart automatically.`n" -ForegroundColor Green
+# ── Step 2: Stage everything (src changes + new dist) ───────
+Write-Host "2/3  Staging all changes..." -ForegroundColor Yellow
+git add -A
+Write-Host "     ✓ Staged" -ForegroundColor Green
+
+# ── Step 3: Commit + Push to GitHub → triggers Railway deploy
+Write-Host "3/3  Committing and pushing..." -ForegroundColor Yellow
+git commit -m $Message
+git push origin main
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "✗ Push failed." -ForegroundColor Red
+    exit 1
+}
+
+Write-Host ""
+Write-Host "═══════════════════════════════════════════════" -ForegroundColor Green
+Write-Host "  ✓ Deployed!  Railway is building now (~2 min)" -ForegroundColor Green
+Write-Host "  Local:  http://localhost:3000" -ForegroundColor Green
+Write-Host "  Prod:   https://windowworld.bridgebox.ai" -ForegroundColor Green
+Write-Host "═══════════════════════════════════════════════" -ForegroundColor Green
+Write-Host ""
