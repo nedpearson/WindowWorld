@@ -906,16 +906,16 @@ export function LeadDetailPage({ isNew = false }: { isNew?: boolean }) {
       <SmsTemplateDrawer
         isOpen={smsOpen}
         onClose={() => setSmsOpen(false)}
-        contactName={`${lead.firstName} ${lead.lastName}`}
+        contactName={`${lead.firstName || ''} ${lead.lastName || ''}`.trim()}
         contactPhone={lead.phone}
-        repName={`${lead.assignedRep.firstName} ${lead.assignedRep.lastName}`}
+        repName={lead.assignedRep ? `${lead.assignedRep.firstName} ${lead.assignedRep.lastName}` : 'Window World'}
       />
       <EmailTemplateDrawer
         isOpen={emailOpen}
         onClose={() => setEmailOpen(false)}
-        contactName={`${lead.firstName} ${lead.lastName}`}
+        contactName={`${lead.firstName || ''} ${lead.lastName || ''}`.trim()}
         contactEmail={lead.email}
-        repName={`${lead.assignedRep.firstName} ${lead.assignedRep.lastName}`}
+        repName={lead.assignedRep ? `${lead.assignedRep.firstName} ${lead.assignedRep.lastName}` : 'Window World'}
       />
     </div>
   );
