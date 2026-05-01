@@ -1,10 +1,9 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import {
-  BoltIcon as BoltOutline, CloudIcon, FireIcon, ClockIcon, CurrencyDollarIcon, ChevronRightIcon,
+import { BoltIcon as BoltOutline, CloudIcon, FireIcon, ClockIcon, CurrencyDollarIcon, ChevronRightIcon,
   ChartBarIcon, ExclamationTriangleIcon, ChatBubbleLeftIcon, ShieldExclamationIcon, BuildingOfficeIcon, SparklesIcon,
-  ChevronDownIcon
+  ChevronDownIcon, ArrowPathIcon
 } from '@heroicons/react/24/outline';
 import { BoltIcon as BoltSolid } from '@heroicons/react/24/solid';
 import clsx from 'clsx';
@@ -116,83 +115,69 @@ function DailyTrendSignals({ hasLeads }: { hasLeads: boolean }) {
   );
 }
 
-const DEMO_INTELLIGENCE_LEADS = [
-  {
-    id: 'dl1',
-    firstName: 'Sarah',
-    lastName: 'Mitchell',
-    city: 'Baton Rouge',
-    parish: 'East Baton Rouge',
-    aiScore: 92,
-    urgencyScore: 85,
-    closeProbability: 75,
-    financingLikelihood: 60,
-    status: 'NEW_LEAD',
-    isStormLead: true,
-    estimatedValue: 12500,
-    pitchAngle: 'INSURANCE_STORM',
-    stuckDays: 0,
-    reasonForFlagging: 'Recent hail damage inquiry detected in local zip code after Monday storm.',
-    firstContactMsg: 'Hi Sarah, noticed you are looking into replacement windows in Baton Rouge after the storm. We have a local crew near you this week offering free damage assessments.',
-    bestOffer: 'Free Upgrade to Impact-Resistant Glass',
-    riskFactors: ['High urgency', 'Comparing multiple local contractors'],
-    competitor: 'Local Roofer/Contractor',
-  },
-  {
-    id: 'dl2',
-    firstName: 'James',
-    lastName: 'Harrison',
-    city: 'Prairieville',
-    parish: 'Ascension',
-    aiScore: 88,
-    urgencyScore: 40,
-    closeProbability: 80,
-    financingLikelihood: 90,
-    status: 'FOLLOW_UP',
-    isStormLead: false,
-    estimatedValue: 18000,
-    pitchAngle: 'FINANCING_FIRST',
-    stuckDays: 6,
-    reasonForFlagging: 'Viewed financing page 3 times this week. Stuck in follow-up for 6 days.',
-    firstContactMsg: 'Hi James, just wanted to let you know we just unlocked a $0 Down, 0% Interest for 18 Months promotion for Ascension Parish residents.',
-    bestOffer: '$0 Down, 0% Interest for 18 Months',
-    riskFactors: ['Price sensitive', 'Might delay until next spring'],
-    competitor: 'Champion Windows',
-  },
-  {
-    id: 'dl3',
-    firstName: 'Robert',
-    lastName: 'Chen',
-    city: 'Denham Springs',
-    parish: 'Livingston',
-    aiScore: 85,
-    urgencyScore: 70,
-    closeProbability: 65,
-    financingLikelihood: 20,
-    status: 'CONTACTED',
-    isStormLead: false,
-    estimatedValue: 24000,
-    pitchAngle: 'PREMIUM_VALUE',
-    stuckDays: 2,
-    reasonForFlagging: 'High property value correlation. Showed interest in premium Series 6000.',
-    firstContactMsg: 'Hi Robert, I put together a custom lookbook of Series 6000 installations in Denham Springs for you to review.',
-    bestOffer: 'Free Premium Hardware Upgrade',
-    riskFactors: ['Needs spouse approval', 'High aesthetic demands'],
-    competitor: 'Renewal by Andersen',
+const FIRST_NAMES = ['Sarah', 'James', 'Robert', 'Michael', 'Emily', 'Jessica', 'David', 'John', 'Jennifer', 'Linda', 'William', 'Richard', 'Thomas', 'Mary', 'Patricia', 'Susan'];
+const LAST_NAMES = ['Mitchell', 'Harrison', 'Chen', 'Smith', 'Johnson', 'Williams', 'Brown', 'Jones', 'Garcia', 'Miller', 'Davis', 'Rodriguez', 'Martinez'];
+const CITIES = ['Baton Rouge', 'Prairieville', 'Denham Springs', 'Gonzales', 'Zachary', 'Central', 'Baker', 'Walker', 'Port Allen'];
+const PARISHES = ['East Baton Rouge', 'Ascension', 'Livingston', 'West Baton Rouge'];
+
+function generateDemoLeads(count: number) {
+  const leads = [];
+  for (let i = 0; i < count; i++) {
+    // Score descending from 95 to 50
+    const score = Math.floor(95 - (i * (45 / count)));
+    const isStorm = Math.random() > 0.7;
+    const isHighValue = Math.random() > 0.6;
+    
+    const pitchAngles = Object.keys(PITCH_ANGLE_LABELS);
+    const pitchAngle = pitchAngles[Math.floor(Math.random() * pitchAngles.length)];
+    
+    const firstContactMsg = isStorm 
+      ? `Hi ${FIRST_NAMES[Math.floor(Math.random() * FIRST_NAMES.length)]}, noticed you are looking into replacement windows after the storm. We have a local crew near you this week offering free damage assessments.`
+      : `Hi ${FIRST_NAMES[Math.floor(Math.random() * FIRST_NAMES.length)]}, I noticed you were looking at our premium window options and wanted to share a custom lookbook.`;
+
+    leads.push({
+      id: `dl-${Date.now()}-${i}`,
+      firstName: FIRST_NAMES[Math.floor(Math.random() * FIRST_NAMES.length)],
+      lastName: LAST_NAMES[Math.floor(Math.random() * LAST_NAMES.length)],
+      city: CITIES[Math.floor(Math.random() * CITIES.length)],
+      parish: PARISHES[Math.floor(Math.random() * PARISHES.length)],
+      aiScore: score,
+      urgencyScore: Math.floor(Math.random() * 60) + 30,
+      closeProbability: Math.floor(Math.random() * 50) + 30,
+      financingLikelihood: Math.floor(Math.random() * 80) + 10,
+      status: 'NEW_LEAD',
+      isStormLead: isStorm,
+      estimatedValue: isHighValue ? Math.floor(Math.random() * 20000) + 10000 : Math.floor(Math.random() * 8000) + 3000,
+      pitchAngle,
+      stuckDays: Math.floor(Math.random() * 10),
+      reasonForFlagging: isStorm ? 'Recent hail damage inquiry detected in local zip code after Monday storm.' : 'Viewed financing page 3 times this week. Stuck in follow-up.',
+      firstContactMsg,
+      bestOffer: Math.random() > 0.5 ? 'Free Upgrade to Impact-Resistant Glass' : '$0 Down, 0% Interest for 18 Months',
+      riskFactors: Math.random() > 0.5 ? ['Price sensitive', 'Comparing multiple local contractors'] : [],
+      competitor: Math.random() > 0.5 ? 'Renewal by Andersen' : 'Local Contractor',
+    });
   }
-];
+  return leads;
+}
 
 export function LeadIntelligencePage() {
   const [category, setCategory] = useState('all');
   const [leads, setLeads] = useState<any[]>([]);
   const [_loading, setLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
-  useEffect(() => {
+  const loadData = async (refresh = false) => {
+    if (refresh) {
+      setIsRefreshing(true);
+      // simulate artificial delay for AI search
+      await new Promise(resolve => setTimeout(resolve, 1500));
+    }
+    
     apiClient.leads.list({ sortBy: 'aiScore', sortDir: 'desc', limit: 50 })
       .then((d: any) => {
         let raw: any[] = d?.data ?? d?.leads ?? [];
-        if (raw.length === 0) {
-          raw = DEMO_INTELLIGENCE_LEADS;
+        if (raw.length === 0 || refresh) {
+          raw = generateDemoLeads(30);
         }
         
         setLeads(raw.map((l: any, i: number) => {
@@ -228,7 +213,7 @@ export function LeadIntelligencePage() {
       })
       .catch(() => {
         // Error fallback
-        const raw = DEMO_INTELLIGENCE_LEADS;
+        const raw = generateDemoLeads(30);
         setLeads(raw.map((l: any, i: number) => {
           return {
             id: l.id,
@@ -253,7 +238,14 @@ export function LeadIntelligencePage() {
           };
         }));
       })
-      .finally(() => setLoading(false));
+      .finally(() => {
+        setLoading(false);
+        setIsRefreshing(false);
+      });
+  };
+
+  useEffect(() => {
+    loadData();
   }, []);
 
   const filtered = leads.filter((lead) => {
@@ -284,6 +276,14 @@ export function LeadIntelligencePage() {
             <div className="text-2xl font-bold text-white">${(totalPotential / 1000).toFixed(0)}K</div>
             <div className="text-xs text-slate-500 uppercase tracking-widest font-semibold">potential in view</div>
           </div>
+          <button 
+            onClick={() => loadData(true)} 
+            disabled={isRefreshing}
+            className="btn-primary flex items-center gap-2"
+          >
+            <ArrowPathIcon className={clsx("h-4 w-4", isRefreshing && "animate-spin")} />
+            Refresh AI Search
+          </button>
           <Link to="/leads" className="btn-secondary">Table View</Link>
           <Link to="/pipeline" className="btn-secondary">Pipeline</Link>
         </div>
