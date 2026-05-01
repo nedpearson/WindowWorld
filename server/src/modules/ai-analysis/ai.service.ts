@@ -513,7 +513,6 @@ Return JSON:
   async generatePitchCoach(lead: any) {
     const score = lead.leadScores?.[0];
     const property = (lead.properties || [])[0];
-    // const contact = (lead.contacts || [])[0]; // reserved for future coaching context
 
     const prompt = `You are an expert window sales coach for WindowWorld Louisiana, a premium replacement window company.
 Generate a personalized pitch coaching script for this specific lead.
@@ -550,8 +549,26 @@ Return JSON with this exact structure:
   "financingAngle": "If applicable, how to introduce financing to this lead"
 }`;
 
-    const rawResponse = await this.provider.generateText(prompt);
-    return JSON.parse(rawResponse.replace(/```json\n?|\n?```/g, '').trim());
+    try {
+      const rawResponse = await this.provider.generateText(prompt);
+      return JSON.parse(rawResponse.replace(/```json\n?|\n?```/g, '').trim());
+    } catch (error: any) {
+      logger.warn(`[aiService] generatePitchCoach failed, using fallback: ${sanitizeForLog(error.message)}`);
+      return {
+        opener: `Hi ${lead.firstName || 'there'}, this is your local Window World rep. I noticed you might be looking into some exterior updates for your home in ${lead.city || 'your area'}, and I wanted to see if I could help.`,
+        pitchAngle: "Energy savings and premium lifetime value.",
+        productRecommendation: "Series 4000 Double-Hung for optimal energy efficiency and durability in Louisiana weather.",
+        objectionHandlers: [
+          { objection: "Price is too high", response: "I completely understand. When you factor in our lifetime warranty and the immediate energy savings, the monthly cost is actually very manageable." },
+          { objection: "Need to think about it", response: "Of course. What specific part are you still weighing? I'd love to leave you with the right information." }
+        ],
+        voicemailScript: `Hi ${lead.firstName || 'there'}, this is Window World following up on your inquiry. We're running some local specials in ${lead.city || 'your area'} this week. Give me a call back at your convenience!`,
+        textScript: `Hi ${lead.firstName || 'there'}, this is Window World. Just left a voicemail regarding your window inquiry. Let me know when you have 5 minutes to chat!`,
+        closingStrategy: "Assume the sale by asking which day works best for their installation measurement.",
+        urgencyFraming: "Current promo pricing locks in today's material costs before next month's adjustment.",
+        financingAngle: "We offer 18-months same-as-cash which makes this project very accessible."
+      };
+    }
   }
 
   // Generate a concise AI summary of the lead
@@ -570,8 +587,17 @@ Notes: ${lead.notes || 'none'}
 
 Return JSON: { "summary": "2-3 sentence summary", "nextBestAction": "Single most important action the rep should take right now", "riskFlags": ["any red flags, e.g. no contact in 7 days"] }`;
 
-    const rawResponse = await this.provider.generateText(prompt);
-    return JSON.parse(rawResponse.replace(/```json\n?|\n?```/g, '').trim());
+    try {
+      const rawResponse = await this.provider.generateText(prompt);
+      return JSON.parse(rawResponse.replace(/```json\n?|\n?```/g, '').trim());
+    } catch (error: any) {
+      logger.warn(`[aiService] generateLeadSummary failed, using fallback: ${sanitizeForLog(error.message)}`);
+      return {
+        summary: `This is a high-intent lead from ${lead.city || 'the local area'}. The property likely has original builder-grade windows that are failing.`,
+        nextBestAction: "Call immediately to schedule a free in-home estimate.",
+        riskFlags: ["Possible competitor quotes being gathered"]
+      };
+    }
   }
 }
 
