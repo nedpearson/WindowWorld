@@ -3,11 +3,30 @@ import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { BoltIcon as BoltOutline, CloudIcon, FireIcon, ClockIcon, CurrencyDollarIcon, ChevronRightIcon,
   ChartBarIcon, ExclamationTriangleIcon, ChatBubbleLeftIcon, ShieldExclamationIcon, BuildingOfficeIcon, SparklesIcon,
-  ChevronDownIcon, ArrowPathIcon
+  ChevronDownIcon, ArrowPathIcon, MapPinIcon
 } from '@heroicons/react/24/outline';
 import { BoltIcon as BoltSolid } from '@heroicons/react/24/solid';
 import clsx from 'clsx';
 import apiClient from '../../api/client';
+
+// WindowWorld Baton Rouge HQ — used as origin for proximity sorting
+const HQ_LAT = 30.4515;
+const HQ_LNG = -91.1871;
+
+function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const R = 6371;
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLng = ((lng2 - lng1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) * Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+function distanceMiles(lat?: number, lng?: number): number {
+  if (!lat || !lng) return 9999;
+  return haversineKm(HQ_LAT, HQ_LNG, lat, lng) * 0.621371;
+}
 
 const PITCH_ANGLE_LABELS: Record<string, { label: string; color: string }> = {
   PREMIUM_VALUE:    { label: 'Premium Value', color: 'badge-purple' },
@@ -188,18 +207,20 @@ export function LeadIntelligencePage() {
           const mockRisks = l.aiScore < 70 ? ["Comparing 3+ quotes", "High price sensitivity"] : ["Might delay until next spring"];
           const mockCompetitor = i % 3 === 0 ? "Renewal by Andersen" : i % 2 === 0 ? "Champion Windows" : "Local Contractor";
           
+          const lat = l.lat ?? l.latitude ?? null;
+          const lng = l.lng ?? l.longitude ?? null;
           return {
             id: l.id,
             name: `${l.firstName} ${l.lastName}`,
             city: l.city ?? '',
             parish: l.parish ?? l.county ?? l.city ?? '',
-            score: l.aiScore ?? 50,
+            score: l.aiScore ?? l.leadScore ?? 50,
             urgency: l.urgencyScore ?? l.urgency ?? 50,
             closePct: l.closeProbability ?? l.closePct ?? 50,
             financingPct: l.financingLikelihood ?? l.financingPct ?? 30,
             status: l.status,
             isStorm: l.isStormLead ?? false,
-            est: l.estimatedValue ?? 0,
+            est: l.estimatedValue ?? l.estimatedRevenue ?? 0,
             signals: l.aiSignals ?? l.signals ?? [],
             pitchAngle: l.pitchAngle ?? 'CONSULTATIVE',
             stuckDays: l.stuckDays ?? 0,
@@ -208,25 +229,30 @@ export function LeadIntelligencePage() {
             bestOffer: l.bestOffer ?? mockOffer,
             riskFactors: l.riskFactors ?? mockRisks,
             competitor: l.competitor ?? mockCompetitor,
+            lat,
+            lng,
+            distMiles: distanceMiles(lat, lng),
           };
         }));
       })
       .catch(() => {
         // Error fallback
         const raw = generateDemoLeads(30);
-        setLeads(raw.map((l: any, i: number) => {
+        setLeads(raw.map((l: any) => {
+          const lat = l.lat ?? l.latitude ?? null;
+          const lng = l.lng ?? l.longitude ?? null;
           return {
             id: l.id,
             name: `${l.firstName} ${l.lastName}`,
             city: l.city ?? '',
             parish: l.parish ?? l.county ?? l.city ?? '',
-            score: l.aiScore ?? 50,
+            score: l.aiScore ?? l.leadScore ?? 50,
             urgency: l.urgencyScore ?? l.urgency ?? 50,
             closePct: l.closeProbability ?? l.closePct ?? 50,
             financingPct: l.financingLikelihood ?? l.financingPct ?? 30,
             status: l.status,
             isStorm: l.isStormLead ?? false,
-            est: l.estimatedValue ?? 0,
+            est: l.estimatedValue ?? l.estimatedRevenue ?? 0,
             signals: l.aiSignals ?? l.signals ?? [],
             pitchAngle: l.pitchAngle ?? 'CONSULTATIVE',
             stuckDays: l.stuckDays ?? 0,
@@ -235,6 +261,9 @@ export function LeadIntelligencePage() {
             bestOffer: l.bestOffer,
             riskFactors: l.riskFactors,
             competitor: l.competitor,
+            lat,
+            lng,
+            distMiles: distanceMiles(lat, lng),
           };
         }));
       })
@@ -248,13 +277,22 @@ export function LeadIntelligencePage() {
     loadData();
   }, []);
 
-  const filtered = leads.filter((lead) => {
-    if (category === 'storm') return lead.isStorm;
-    if (category === 'hot') return lead.score >= 80;
-    if (category === 'stuck') return lead.stuckDays >= 5;
-    if (category === 'high-value') return lead.est >= 8000;
-    return true;
-  });
+  // Filter (score >= 50 enforced), then sort: score DESC, then distMiles ASC
+  const filtered = leads
+    .filter((lead) => {
+      if (lead.score < 50) return false;
+      if (category === 'storm') return lead.isStorm;
+      if (category === 'hot') return lead.score >= 80;
+      if (category === 'stuck') return lead.stuckDays >= 5;
+      if (category === 'high-value') return lead.est >= 8000;
+      return true;
+    })
+    .sort((a, b) => {
+      // Primary: score descending
+      if (b.score !== a.score) return b.score - a.score;
+      // Secondary: distance from Baton Rouge HQ ascending
+      return a.distMiles - b.distMiles;
+    });
 
   const totalPotential = filtered.reduce((sum, l) => sum + l.est, 0);
 
@@ -343,6 +381,12 @@ export function LeadIntelligencePage() {
                   <div className="text-center mt-2">
                     <div className="font-bold text-white text-lg">{lead.name || 'Anonymous Homeowner'}</div>
                     <div className="text-sm text-slate-400 mt-0.5">{lead.city || 'Baton Rouge'} {lead.parish ? `· ${lead.parish}` : ''}</div>
+                    {lead.distMiles < 9999 && (
+                      <div className="flex items-center justify-center gap-1 mt-1">
+                        <MapPinIcon className="h-3 w-3 text-slate-500" />
+                        <span className="text-[10px] text-slate-500">{lead.distMiles.toFixed(1)} mi away</span>
+                      </div>
+                    )}
                   </div>
                   <div className="mt-3 text-center">
                     <div className="text-xs text-slate-500 uppercase tracking-widest font-semibold mb-1">Predicted Value</div>
