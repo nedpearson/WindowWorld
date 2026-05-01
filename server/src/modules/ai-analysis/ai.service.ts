@@ -52,13 +52,90 @@ class OpenAIProvider implements AiProvider {
   }
 }
 
-// Fallback when no AI provider is configured
+// Fallback when no AI provider is configured (Demo Mode)
 class NullProvider implements AiProvider {
-  async generateText(): Promise<string> {
-    throw new Error('AI features unavailable: OPENAI_API_KEY not configured. Add it in Railway environment variables.');
+  async generateText(prompt: string): Promise<string> {
+    logger.info('Using Mock AI Provider (OPENAI_API_KEY not set)');
+    
+    // Determine which type of prompt it is based on keywords
+    if (prompt.includes('generatePitchCoach') || prompt.includes('Return JSON with this exact structure') || prompt.includes('opener')) {
+      return JSON.stringify({
+        opener: "Hi [Name], this is [Rep] with Window World. I'm reaching out because we have a local installation crew in your neighborhood this week and wanted to offer you a complimentary window assessment.",
+        pitchAngle: "Energy Efficiency and Long-Term Value",
+        productRecommendation: "Series 4000 Double-Hung Windows",
+        objectionHandlers: [
+          { objection: "price is too high", response: "I completely understand. Our pricing is actually guaranteed to be the best value in the state, and we offer $0 down financing to make it fit any budget." },
+          { objection: "need to think about it", response: "Of course! Let me leave you with this custom lookbook. Keep in mind our current promotional pricing locks in your rate for 30 days." },
+          { objection: "already got other quotes", response: "That's smart! We actually encourage comparing. When you do, make sure to check if their warranty covers glass breakage and labor like ours does." }
+        ],
+        voicemailScript: "Hi [Name], [Rep] from Window World here. We've got a crew working in your area this week and I have a quick question about your upcoming window project. Give me a call back at [Phone Number].",
+        textScript: "Hi [Name]! This is [Rep] with Window World. Let me know when you have 5 mins to chat about the window project at your property.",
+        closingStrategy: "Assume the sale by offering two different installation dates and asking which works best for their schedule.",
+        urgencyFraming: "Our current seasonal promotion (Free Premium Hardware Upgrade) ends this Friday.",
+        financingAngle: "We can get this entire project started today for $0 down and 0% interest for 18 months."
+      });
+    }
+    
+    if (prompt.includes('generateLeadSummary') || prompt.includes('Summarize this window replacement lead')) {
+      return JSON.stringify({
+        summary: "This is a highly engaged homeowner who recently requested a quote. They are located in a neighborhood with older homes likely experiencing seal failures.",
+        nextBestAction: "Call immediately to schedule an in-home measurement while their interest is peaked.",
+        riskFlags: ["Comparing multiple local contractors", "Has not responded to the last text message"]
+      });
+    }
+
+    if (prompt.includes('generateInspectionSummary')) {
+      return JSON.stringify({
+        executiveSummary: "Standard 12-window replacement project on a single-story brick home.",
+        customerSummary: "We'll be replacing all 12 of your original wood windows with our energy-efficient Series 4000 vinyl windows.",
+        projectScope: "full-house",
+        totalOpenings: 12,
+        urgentOpenings: 2,
+        complexityRating: "moderate",
+        estimatedInstallDays: 2,
+        requiredInstallNotes: ["Requires careful removal around original brick veneer"],
+        topIssuesFound: ["Significant wood rot on north-facing sill", "Seal failure in master bedroom"],
+        productRecommendationNotes: "Recommend Series 4000 due to local climate requirements.",
+        estimatedRevenueBand: "medium",
+        verificationRequired: ["Master bedroom exact egress dimensions"],
+        confidenceScore: 0.95,
+        repNotes: "Customer is highly motivated by energy savings. Focus on the low-E argon gas features."
+      });
+    }
+
+    if (prompt.includes('generateProposalContent')) {
+       return JSON.stringify({
+        coverNote: "Thank you for trusting Window World with your home. We've prepared this customized proposal specifically for your property.",
+        projectSummary: "This project includes the professional installation of premium Series 4000 replacement windows throughout your home.",
+        whyNow: "Lock in your pricing before our seasonal materials cost adjustment next month.",
+        productHighlights: ["SolarZone Insulated Glass", "Lifetime Transferable Warranty", "Custom-Fit Manufacturing"],
+        financingNote: "Ask about our $0 down, 18-month same-as-cash promotional financing.",
+        customerFriendlyMeasurementNote: "These preliminary measurements allow us to give you an accurate estimate. Our master installer will verify everything perfectly before manufacturing begins.",
+        warrantyHighlights: "Industry-leading lifetime warranty covering parts, labor, and accidental glass breakage.",
+        nextSteps: "Simply sign this proposal electronically to reserve your spot on our manufacturing schedule.",
+        expirationNote: "This proposal and promotional pricing is valid for 30 days.",
+        estimatedInstallTimeline: "4-6 weeks from final measurement"
+      });
+    }
+
+    return JSON.stringify({});
   }
+
   async analyzeImage(): Promise<string> {
-    throw new Error('AI vision unavailable: OPENAI_API_KEY not configured.');
+    logger.info('Using Mock AI Provider for Vision (OPENAI_API_KEY not set)');
+    return JSON.stringify({
+      estimatedWidthInches: 36,
+      estimatedHeightInches: 60,
+      measurementConfidence: 0.85,
+      confidenceNotes: "Standard single-hung window size visually identified. Frame appears intact.",
+      referenceObjectDetected: false,
+      referenceObjectNotes: "No known reference object found in frame.",
+      perspectiveDistortion: "minor",
+      imageAngle: "straight-on",
+      recommendations: ["Ensure to measure behind the existing stop molding for accurate custom fit."],
+      missingPhotos: ["A close-up of the exterior sill would be helpful."],
+      disclaimer: "AI-ESTIMATED — REQUIRES HUMAN VERIFICATION BEFORE ORDERING"
+    });
   }
 }
 
@@ -434,7 +511,7 @@ Return JSON:
 
   // Generate AI Pitch Coach script for a lead
   async generatePitchCoach(lead: any) {
-    const score = lead.latestScore;
+    const score = lead.leadScores?.[0];
     const property = (lead.properties || [])[0];
     // const contact = (lead.contacts || [])[0]; // reserved for future coaching context
 

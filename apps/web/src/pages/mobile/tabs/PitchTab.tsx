@@ -157,7 +157,8 @@ function AIPitchCoach({ leadId, leadName }: { leadId: string; leadName: string }
     enabled: !!leadId,
   });
 
-  const summary = (data as any)?.data;
+  const rawData = (data as any)?.data;
+  const summary = rawData?.analysis || rawData;
 
   if (isLoading) {
     return (
@@ -170,39 +171,48 @@ function AIPitchCoach({ leadId, leadName }: { leadId: string; leadName: string }
 
   if (!summary) {
     return (
-      <div className="p-4 rounded-2xl bg-slate-800/40 border border-slate-700/30 text-xs text-slate-500">
-        No AI analysis available yet. Complete an inspection to unlock AI insights.
+      <div className="p-4 rounded-2xl bg-slate-800/40 border border-slate-700/30 text-xs text-slate-500 text-center">
+        <SparklesIcon className="h-6 w-6 text-brand-500/50 mx-auto mb-2" />
+        Silo AI is analyzing this lead profile.<br/>Check back shortly for insights.
       </div>
     );
   }
 
+  // Handle both flat summary and nested pitchOutput (from database)
+  const pitchData = summary.pitchOutput || summary;
+
   return (
     <div className="space-y-3">
-      {summary.recommendedPitchAngle && (
+      {pitchData.recommendedPitchAngle && (
         <div className="flex items-start gap-3 p-3.5 rounded-2xl bg-brand-500/10 border border-brand-500/20">
           <SparklesIcon className="h-4 w-4 text-brand-400 flex-shrink-0 mt-0.5" />
           <div>
             <div className="text-[10px] font-bold text-brand-400 uppercase tracking-wide mb-1">Recommended Pitch</div>
-            <div className="text-sm text-white font-medium">{summary.recommendedPitchAngle.replace(/_/g, ' ')}</div>
+            <div className="text-sm text-white font-medium">{pitchData.recommendedPitchAngle.replace(/_/g, ' ')}</div>
           </div>
         </div>
       )}
-      {summary.likelyObjections?.length > 0 && (
+      {pitchData.likelyObjections?.length > 0 && (
         <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20">
           <div className="text-[10px] font-bold text-amber-400 uppercase tracking-wide mb-2">Likely Objections</div>
-          {summary.likelyObjections.map((obj: string) => (
-            <div key={obj} className="flex items-center gap-2 text-xs text-amber-200 mb-1">
-              <ExclamationTriangleIcon className="h-3 w-3 text-amber-400 flex-shrink-0" />
-              {obj}
+          {pitchData.likelyObjections.map((obj: any, idx: number) => (
+            <div key={idx} className="flex items-start gap-2 text-xs text-amber-200 mb-2 last:mb-0">
+              <ExclamationTriangleIcon className="h-3 w-3 text-amber-400 flex-shrink-0 mt-0.5" />
+              <div>
+                <span className="font-semibold block">{typeof obj === 'string' ? obj : obj.objection}</span>
+                {typeof obj === 'object' && obj.rebuttal && (
+                  <span className="text-amber-400/80 mt-0.5 block italic">"{obj.rebuttal}"</span>
+                )}
+              </div>
             </div>
           ))}
         </div>
       )}
-      {summary.estimatedRevenue && (
+      {pitchData.estimatedRevenueBand && (
         <div className="flex items-center justify-between p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
-          <span className="text-xs text-emerald-300">Estimated Revenue</span>
-          <span className="text-sm font-bold text-emerald-400">
-            ${Number(summary.estimatedRevenue).toLocaleString()}
+          <span className="text-xs text-emerald-300">Est. Project Size</span>
+          <span className="text-sm font-bold text-emerald-400 capitalize">
+            {pitchData.estimatedRevenueBand}
           </span>
         </div>
       )}

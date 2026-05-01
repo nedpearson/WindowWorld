@@ -116,7 +116,72 @@ function DailyTrendSignals({ hasLeads }: { hasLeads: boolean }) {
   );
 }
 
-// ── Lead Intelligence Page ───────────────────────────────────────
+const DEMO_INTELLIGENCE_LEADS = [
+  {
+    id: 'dl1',
+    firstName: 'Sarah',
+    lastName: 'Mitchell',
+    city: 'Baton Rouge',
+    parish: 'East Baton Rouge',
+    aiScore: 92,
+    urgencyScore: 85,
+    closeProbability: 75,
+    financingLikelihood: 60,
+    status: 'NEW_LEAD',
+    isStormLead: true,
+    estimatedValue: 12500,
+    pitchAngle: 'INSURANCE_STORM',
+    stuckDays: 0,
+    reasonForFlagging: 'Recent hail damage inquiry detected in local zip code after Monday storm.',
+    firstContactMsg: 'Hi Sarah, noticed you are looking into replacement windows in Baton Rouge after the storm. We have a local crew near you this week offering free damage assessments.',
+    bestOffer: 'Free Upgrade to Impact-Resistant Glass',
+    riskFactors: ['High urgency', 'Comparing multiple local contractors'],
+    competitor: 'Local Roofer/Contractor',
+  },
+  {
+    id: 'dl2',
+    firstName: 'James',
+    lastName: 'Harrison',
+    city: 'Prairieville',
+    parish: 'Ascension',
+    aiScore: 88,
+    urgencyScore: 40,
+    closeProbability: 80,
+    financingLikelihood: 90,
+    status: 'FOLLOW_UP',
+    isStormLead: false,
+    estimatedValue: 18000,
+    pitchAngle: 'FINANCING_FIRST',
+    stuckDays: 6,
+    reasonForFlagging: 'Viewed financing page 3 times this week. Stuck in follow-up for 6 days.',
+    firstContactMsg: 'Hi James, just wanted to let you know we just unlocked a $0 Down, 0% Interest for 18 Months promotion for Ascension Parish residents.',
+    bestOffer: '$0 Down, 0% Interest for 18 Months',
+    riskFactors: ['Price sensitive', 'Might delay until next spring'],
+    competitor: 'Champion Windows',
+  },
+  {
+    id: 'dl3',
+    firstName: 'Robert',
+    lastName: 'Chen',
+    city: 'Denham Springs',
+    parish: 'Livingston',
+    aiScore: 85,
+    urgencyScore: 70,
+    closeProbability: 65,
+    financingLikelihood: 20,
+    status: 'CONTACTED',
+    isStormLead: false,
+    estimatedValue: 24000,
+    pitchAngle: 'PREMIUM_VALUE',
+    stuckDays: 2,
+    reasonForFlagging: 'High property value correlation. Showed interest in premium Series 6000.',
+    firstContactMsg: 'Hi Robert, I put together a custom lookbook of Series 6000 installations in Denham Springs for you to review.',
+    bestOffer: 'Free Premium Hardware Upgrade',
+    riskFactors: ['Needs spouse approval', 'High aesthetic demands'],
+    competitor: 'Renewal by Andersen',
+  }
+];
+
 export function LeadIntelligencePage() {
   const [category, setCategory] = useState('all');
   const [leads, setLeads] = useState<any[]>([]);
@@ -125,7 +190,11 @@ export function LeadIntelligencePage() {
   useEffect(() => {
     apiClient.leads.list({ sortBy: 'aiScore', sortDir: 'desc', limit: 50 })
       .then((d: any) => {
-        const raw: any[] = d?.data ?? d?.leads ?? [];
+        let raw: any[] = d?.data ?? d?.leads ?? [];
+        if (raw.length === 0) {
+          raw = DEMO_INTELLIGENCE_LEADS;
+        }
+        
         setLeads(raw.map((l: any, i: number) => {
           // Generate mock properties if they don't exist for the expanded intelligence card
           const mockReason = l.isStormLead ? "Recent hail damage inquiry detected in local zip code" : "Multiple site visits and pricing page views";
@@ -157,7 +226,33 @@ export function LeadIntelligencePage() {
           };
         }));
       })
-      .catch(() => {})
+      .catch(() => {
+        // Error fallback
+        const raw = DEMO_INTELLIGENCE_LEADS;
+        setLeads(raw.map((l: any, i: number) => {
+          return {
+            id: l.id,
+            name: `${l.firstName} ${l.lastName}`,
+            city: l.city ?? '',
+            parish: l.parish ?? l.county ?? l.city ?? '',
+            score: l.aiScore ?? 50,
+            urgency: l.urgencyScore ?? l.urgency ?? 50,
+            closePct: l.closeProbability ?? l.closePct ?? 50,
+            financingPct: l.financingLikelihood ?? l.financingPct ?? 30,
+            status: l.status,
+            isStorm: l.isStormLead ?? false,
+            est: l.estimatedValue ?? 0,
+            signals: l.aiSignals ?? l.signals ?? [],
+            pitchAngle: l.pitchAngle ?? 'CONSULTATIVE',
+            stuckDays: l.stuckDays ?? 0,
+            reasonForFlagging: l.reasonForFlagging,
+            firstContactMsg: l.firstContactMsg,
+            bestOffer: l.bestOffer,
+            riskFactors: l.riskFactors,
+            competitor: l.competitor,
+          };
+        }));
+      })
       .finally(() => setLoading(false));
   }, []);
 

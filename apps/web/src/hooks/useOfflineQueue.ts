@@ -15,7 +15,9 @@ export type QueuedActionType =
   | 'ACTIVITY_LOG'
   | 'LEAD_STATUS_UPDATE'
   | 'OPENING_CREATE'
-  | 'INSPECTION_UPDATE';
+  | 'INSPECTION_UPDATE'
+  | 'APPOINTMENT_STATUS'
+  | 'LEAD_CREATE';
 
 export interface QueuedAction {
   id: string;
@@ -129,6 +131,24 @@ async function executeAction(action: QueuedAction, token: string): Promise<void>
     case 'OPENING_CREATE': {
       // Correct endpoint: POST /openings with inspectionId in the body (not a nested route)
       const res = await fetch(`${base}/openings`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(action.payload),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      break;
+    }
+    case 'APPOINTMENT_STATUS': {
+      const res = await fetch(`${base}/appointments/${action.payload.appointmentId}/status`, {
+        method: 'PATCH',
+        headers,
+        body: JSON.stringify({ status: action.payload.status }),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      break;
+    }
+    case 'LEAD_CREATE': {
+      const res = await fetch(`${base}/leads`, {
         method: 'POST',
         headers,
         body: JSON.stringify(action.payload),

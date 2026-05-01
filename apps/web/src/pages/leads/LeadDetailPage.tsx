@@ -250,7 +250,7 @@ export function LeadDetailPage({ isNew = false }: { isNew?: boolean }) {
       stories: property.stories,
       propertyType: property.propertyType || 'single-family' } } : null;
 
-  if (isLoading || !lead) return (
+  if (isLoading) return (
     <div className="p-6 space-y-4 animate-pulse">
       <div className="h-8 bg-slate-800 rounded w-48" />
       <div className="h-40 bg-slate-800 rounded-xl" />
@@ -260,7 +260,7 @@ export function LeadDetailPage({ isNew = false }: { isNew?: boolean }) {
     </div>
   );
 
-  if (error) return (
+  if (error || !lead) return (
     <div className="p-6 text-center">
       <p className="text-red-400 font-medium">Could not load lead.</p>
       <button onClick={() => window.history.back()} className="btn-secondary btn-sm mt-3">Go back</button>
@@ -516,7 +516,7 @@ export function LeadDetailPage({ isNew = false }: { isNew?: boolean }) {
                       { label: 'Stories', value: property.stories },
                       { label: 'Type', value: property.propertyType },
                       { label: 'Windows', value: property.estimatedWindowCount },
-                      { label: 'Est. Value', value: `$${(property.estimatedValue! / 1000).toFixed(0)}K` },
+                      { label: 'Est. Value', value: lead.property.estimatedValue ? `$${(lead.property.estimatedValue / 1000).toFixed(0)}K` : '—' },
                       { label: 'Condition', value: property.windowCondition },
                       { label: 'Openings', value: property.openings.length },
                     ].map(({ label, value }) => (
