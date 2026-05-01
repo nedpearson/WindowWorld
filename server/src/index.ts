@@ -290,8 +290,13 @@ const WARMUP_HTML = `<!DOCTYPE html>
   <style>body{font-family:system-ui,sans-serif;background:#0f172a;color:#94a3b8;display:flex;align-items:center;justify-content:center;height:100vh;margin:0}.card{text-align:center;padding:2rem}h1{color:#f8fafc;font-size:1.5rem;margin-bottom:.5rem}.dot{animation:pulse 1.4s ease-in-out infinite;display:inline-block}@keyframes pulse{0%,100%{opacity:.3}50%{opacity:1}}</style>
 </head><body><div class="card"><h1>WindowWorld</h1><p>Starting up<span class="dot">…</span></p><p style="font-size:.8rem;margin-top:1rem">Auto-refreshing in 8 s</p></div></body></html>`;
 
-// SPA catch-all — serve index.html for all non-asset routes
-// express.static above handles actual files; this handles client-side routes
+// Explicit 404 for missing assets — prevents serving index.html as JS/CSS
+// which causes the blank-screen reload loop when the SW serves stale chunk paths
+app.get('/assets/*', (_req, res) => {
+  res.status(404).end();
+});
+
+// SPA catch-all — serve index.html for all non-asset, non-API page routes
 app.get('*', noCache, (_req, res) => {
   if (finalWebDistPath) {
     res.sendFile(path.join(finalWebDistPath, 'index.html'));
