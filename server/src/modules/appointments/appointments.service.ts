@@ -272,7 +272,10 @@ export class AppointmentsService {
 
     const appointments = await prisma.appointment.findMany({
       where: {
-        createdById: repId,
+        OR: [
+          { createdById: repId },
+          { lead: { assignedRepId: repId } },
+        ],
         lead: { organizationId },
         scheduledAt: { gte: today, lte: end },
         status: { in: ['SCHEDULED', 'CONFIRMED'] },
@@ -355,7 +358,7 @@ export class AppointmentsService {
     return prisma.appointment.findMany({
       where: {
         lead: { organizationId },
-        ...(repId && { createdById: repId }),
+        ...(repId && { OR: [{ createdById: repId }, { lead: { assignedRepId: repId } }] }),
         scheduledAt: {
           gte: new Date(startDate),
           lte: new Date(endDate),
