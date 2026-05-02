@@ -196,15 +196,13 @@ router.get('/lead-summary/:leadId', auth.repOrAbove, async (req: Request, res: R
 router.post('/property-scan', auth.repOrAbove, async (req: Request, res: Response) => {
   const user = (req as AuthenticatedRequest).user;
   const { leadId, inspectionId, images, autoPopulateOpenings = true } = req.body as {
-    leadId: string;
-    inspectionId: string;
+    leadId?: string;
+    inspectionId?: string;
     images: Array<{ base64: string; elevation: string }>;
     autoPopulateOpenings?: boolean;
   };
 
-  // Validate
-  if (!leadId) return res.status(400).json({ success: false, message: 'leadId is required' });
-  if (!inspectionId) return res.status(400).json({ success: false, message: 'inspectionId is required' });
+  // Validate images only — leadId/inspectionId are optional (standalone field scan)
   if (!Array.isArray(images) || images.length < 2 || images.length > 20) {
     return res.status(400).json({ success: false, message: 'images must be an array of 2–20 items' });
   }
@@ -212,13 +210,14 @@ router.post('/property-scan', auth.repOrAbove, async (req: Request, res: Respons
   try {
     const result = await aiService.analyzePropertyPhotos({
       images: images as Array<{ base64: string; elevation: 'front' | 'rear' | 'left' | 'right' | 'closeup' }>,
-      leadId,
+      leadId: leadId ?? 'standalone',
       organizationId: user.organizationId,
       analyzedById: user.id,
     });
 
-    if (!autoPopulateOpenings) {
-      return res.json({ success: true, data: { analysis: result } });
+    // Skip DB population when no inspection is linked (standalone scan)
+    if (!autoPopulateOpenings || !inspectionId || !leadId) {
+      return res.json({ success: true, data: { analysis: result, populated: 0, unmatched: result.windows?.length ?? 0, standalone: !inspectionId } });
     }
 
     // Auto-populate openings whose roomLabel matches a detected window label (case-insensitive)

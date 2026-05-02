@@ -678,6 +678,8 @@ function MeasureTab({
   const [heightFrac, setHeightFrac] = useState('0');
   const [saved, setSaved] = useState<Array<{ label: string; width: string; height: string }>>([]);
   const [scanDone, setScanDone] = useState(false);
+  const [selectedStopId, setSelectedStopId] = useState<string | null>(null);
+  const [scanResult, setScanResult] = useState<any | null>(null);
 
   const fractions = ['0', '1/8', '1/4', '3/8', '1/2', '5/8', '3/4', '7/8'];
 
@@ -689,6 +691,12 @@ function MeasureTab({
 
   const finalWidth  = parseFloat(widthInt  || '0') + fracToDecimal(widthFrac);
   const finalHeight = parseFloat(heightInt || '0') + fracToDecimal(heightFrac);
+
+  // Use explicitly selected stop, fall back to route's active stop, then null
+  const resolvedStopId = selectedStopId ?? activeStopId ?? null;
+  const resolvedStop   = stops.find((s: any) => s.id === resolvedStopId) ?? null;
+  const measureLeadId       = resolvedStop?.lead?.id ?? '';
+  const measureInspectionId = resolvedStop?.inspections?.[0]?.id ?? '';
 
   const handleSave = async () => {
     if (!selectedOpening) return;
@@ -703,7 +711,16 @@ function MeasureTab({
       status: 'REVIEWED',
       isAiEstimated: false,
       measurementMethod: 'FIELD_TAPE',
-      notes: 'Field-measured via MobileFieldApp',
+      notes: measureLeadId
+        ? 'Field-measured via MobileFieldApp — linked to stop'
+        : 'Field-measured via MobileFieldApp — standalone',
+      ...(measureLeadId && { leadId: measureLeadId }),
+      ...(measureInspectionId && { inspectionId: measureInspectionId }),
+      ...(selectedOpening?.id &&
+        !selectedOpening.id.startsWith('ref-') &&
+        !selectedOpening.id.startsWith('standalone') &&
+        selectedOpening.id !== 'standalone' &&
+        { openingId: selectedOpening.id }),
     };
 
     try {
@@ -736,13 +753,54 @@ function MeasureTab({
     'Front Exterior', 'Back Exterior', 'Side Exterior', 'Garage',
   ];
 
-  // Active stop context (for AI scan leadId/inspectionId)
-  const activeStopData = stops.find((s: any) => s.id === activeStopId);
-  const activeLeadId = activeStopData?.lead?.id ?? '';
-  const activeInspectionId = activeStopData?.inspections?.[0]?.id ?? '';
+  // Active stop context (for AI scan leadId/inspectionId) — kept for reference only
+  // resolvedStop/measureLeadId/measureInspectionId are the authoritative values above
 
   return (
     <div className="space-y-4">
+
+      {/* ── Assignment context indicator ────────────────────────── */}
+      {resolvedStop ? (
+        <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-brand-500/10 border border-brand-500/20 text-xs text-brand-300">
+          <MapPinIcon className="h-3.5 w-3.5 flex-shrink-0" />
+          Measuring for: <strong className="text-white ml-1">{resolvedStop.lead?.name ?? 'Stop'}</strong>
+        </div>
+      ) : (
+        <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-800/40 border border-slate-700/30 text-xs text-slate-500">
+          <MapPinIcon className="h-3.5 w-3.5 flex-shrink-0" />
+          Standalone — not linked to any stop
+        </div>
+      )}
+
+      {/* ── Optional stop picker ────────────────────────────────── */}
+      {stops.length > 0 && (
+        <div className="flex items-center gap-2">
+          <select
+            value={selectedStopId ?? ''}
+            onChange={(e) => {
+              haptic.selection();
+              setSelectedStopId(e.target.value || null);
+            }}
+            className="flex-1 text-xs bg-slate-800/60 border border-slate-700/40 rounded-xl text-slate-300 px-3 py-2.5 appearance-none focus:outline-none focus:border-brand-500/50 cursor-pointer"
+          >
+            <option value="">📍 No stop selected — standalone measure</option>
+            {stops.map((s: any) => (
+              <option key={s.id} value={s.id}>
+                {s.order}. {s.lead?.name ?? 'Stop'} · {s.time ?? ''}
+              </option>
+            ))}
+          </select>
+          {selectedStopId && (
+            <button
+              onClick={() => { haptic.tap(); setSelectedStopId(null); }}
+              className="p-2.5 rounded-xl bg-slate-800/60 border border-slate-700/40 text-slate-500 active:text-white transition-colors"
+              title="Clear stop selection"
+            >
+              <XMarkIcon className="h-4 w-4" />
+            </button>
+          )}
+        </div>
+      )}
 
       {/* ── Method toggle ─────────────────────────────────────── */}
       <div className="grid grid-cols-3 gap-2">
@@ -776,37 +834,63 @@ function MeasureTab({
                 <SparklesIcon className="h-4 w-4 flex-shrink-0 mt-0.5" />
                 <div>
                   <div className="font-semibold mb-0.5">HOVER Replacement — $0/month</div>
-                  <div className="text-brand-400/80">Take 4 exterior photos. AI pre-fills every opening on this inspection. Same accuracy — no subscription.</div>
+                  <div className="text-brand-400/80">Take 4 exterior photos. AI pre-fills measurements for every window detected. Optionally assign results to a route stop when done.</div>
                 </div>
               </div>
-              {activeLeadId && activeInspectionId ? (
-                <PropertyScanCapture
-                  leadId={activeLeadId}
-                  inspectionId={activeInspectionId}
-                  onComplete={() => {
-                    setScanDone(true);
-                    haptic.success();
-                  }}
-                />
-              ) : (
-                <div className="p-4 rounded-2xl bg-slate-800/60 border border-slate-700/30 text-center space-y-2">
-                  <p className="text-sm text-slate-400">Select a stop on the Route tab first.</p>
-                  <p className="text-xs text-slate-600">The AI scan is linked to the active inspection on your current stop.</p>
-                </div>
-              )}
+              <PropertyScanCapture
+                leadId={measureLeadId}
+                inspectionId={measureInspectionId}
+                onComplete={(result) => {
+                  setScanDone(true);
+                  setScanResult(result ?? null);
+                  haptic.success();
+                }}
+              />
             </>
           ) : (
-            <div className="p-5 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-center space-y-2">
-              <CheckCircleIcon className="h-10 w-10 text-emerald-400 mx-auto" />
-              <p className="text-sm font-bold text-white">AI Scan Complete</p>
-              <p className="text-xs text-emerald-400">Openings pre-filled with ESTIMATED measurements.</p>
-              <p className="text-xs text-slate-500">Switch to Tape to verify each one before approving for order.</p>
-              <button
-                onClick={() => { setMethod('tape'); setScanDone(false); }}
-                className="btn-secondary w-full mt-2 text-xs"
-              >
-                Switch to Tape Verify →
-              </button>
+            <div className="space-y-3">
+              <div className="p-5 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-center space-y-2">
+                <CheckCircleIcon className="h-10 w-10 text-emerald-400 mx-auto" />
+                <p className="text-sm font-bold text-white">AI Scan Complete</p>
+                <p className="text-xs text-emerald-400">Openings pre-filled with ESTIMATED measurements.</p>
+                <p className="text-xs text-slate-500">Switch to Tape to verify each one before approving for order.</p>
+                <button
+                  onClick={() => { setMethod('tape'); setScanDone(false); setScanResult(null); }}
+                  className="btn-secondary w-full mt-2 text-xs"
+                >
+                  Switch to Tape Verify →
+                </button>
+              </div>
+              {/* Optional post-scan stop assignment */}
+              {!measureLeadId && stops.length > 0 && (
+                <div className="p-4 rounded-2xl bg-slate-800/60 border border-slate-700/30 space-y-3">
+                  <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Assign Scan to a Stop (optional)</p>
+                  <select
+                    value={selectedStopId ?? ''}
+                    onChange={(e) => { haptic.selection(); setSelectedStopId(e.target.value || null); }}
+                    className="w-full text-xs bg-slate-900 border border-slate-700 rounded-xl text-slate-300 px-3 py-2.5 appearance-none focus:outline-none"
+                  >
+                    <option value="">Keep as standalone — no stop linked</option>
+                    {stops.map((s: any) => (
+                      <option key={s.id} value={s.id}>{s.order}. {s.lead?.name ?? 'Stop'}</option>
+                    ))}
+                  </select>
+                  {selectedStopId && (
+                    <button
+                      onClick={() => {
+                        haptic.tap();
+                        toast.success('Scan assigned to stop — results linked to inspection.');
+                        setScanDone(false);
+                        setScanResult(null);
+                        setMethod('tape');
+                      }}
+                      className="w-full btn-primary text-xs py-2.5"
+                    >
+                      Confirm Assignment →
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -819,10 +903,22 @@ function MeasureTab({
             <SparklesIcon className="h-4 w-4 flex-shrink-0 mt-0.5 text-brand-400" />
             <span>More accurate than HOVER for individual windows. Uses a known physical reference (iPhone, credit card, dollar bill) as a ruler.</span>
           </div>
+          {!selectedOpening && (
+            <div>
+              <label className="block text-xs font-semibold text-slate-400 mb-1.5">Room / Window Label</label>
+              <input
+                type="text"
+                value={customLabel}
+                onChange={(e) => setCustomLabel(e.target.value)}
+                placeholder="e.g. Living Room, Front Left, Master Bedroom..."
+                className="w-full text-sm bg-slate-800/60 border border-slate-700/40 rounded-xl text-white px-3 py-2.5 placeholder-slate-600 focus:outline-none focus:border-brand-500/50"
+              />
+            </div>
+          )}
           <ReferenceObjectMeasure
-            openingId={selectedOpening?.id ?? 'field-app'}
-            leadId={activeLeadId}
-            roomLabel={selectedOpening?.label ?? ''}
+            openingId={selectedOpening?.id ?? 'standalone'}
+            leadId={measureLeadId}
+            roomLabel={selectedOpening?.label ?? customLabel ?? ''}
             onMeasured={(w, h) => {
               setWidthInt(String(Math.floor(w)));
               setWidthFrac('0');
@@ -830,11 +926,12 @@ function MeasureTab({
               setHeightFrac('0');
               setMethod('tape');
               if (!selectedOpening) {
-                setSelectedOpening({ id: 'ref-measured', label: 'Reference Measured Window', floor: 'Floor 1', type: 'WINDOW' });
+                const label = customLabel.trim() || 'Field Measurement';
+                setSelectedOpening({ id: `ref-${Date.now()}`, label, floor: 'Floor 1', type: 'WINDOW' });
               }
               setStep('confirm');
               haptic.success();
-              toast.success('AI estimate pre-filled — review and save.');
+              toast.success('AI estimate ready — review and save.');
             }}
           />
         </div>
