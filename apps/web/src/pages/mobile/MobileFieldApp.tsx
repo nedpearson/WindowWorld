@@ -1217,6 +1217,22 @@ export function MobileFieldApp() {
     return () => window.removeEventListener('resize', handler);
   }, []);
 
+  // ── Identity guard: verify stored user matches current token ──
+  // Guards against stale localStorage identity (e.g. previous Jake session).
+  // Fires once on mount; corrects the store silently if the server disagrees.
+  useEffect(() => {
+    const { accessToken: token, user: storedUser } = useAuthStore.getState();
+    if (!token) return;
+    (apiClient as any).auth.me().then((res: any) => {
+      const freshUser = res?.data ?? res; // server returns { success, data } — get() strips one level
+      if (freshUser?.id && freshUser.id !== storedUser?.id) {
+        useAuthStore.getState().setUser(freshUser);
+      }
+    }).catch(() => {
+      // non-fatal — user may be offline; stored identity is used as-is
+    });
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   // ─── Real today's route from the server ──────────
   const { data: routeData, isLoading: routeLoading, refetch: refetchRoute } = useQuery({
     queryKey: ['field-today-route'],

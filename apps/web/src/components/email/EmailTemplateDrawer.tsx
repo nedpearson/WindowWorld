@@ -6,6 +6,7 @@ import {
   CheckCircleIcon, ChevronRightIcon, MagnifyingGlassIcon,
 } from '@heroicons/react/24/outline';
 import clsx from 'clsx';
+import { useAuthStore } from '../../store/auth.store';
 
 // ─── Email template data ───────────────────────────────────
 interface EmailTemplate {
@@ -123,8 +124,13 @@ interface EmailTemplateDrawerProps {
 
 export function EmailTemplateDrawer({
   isOpen, onClose, contactName = 'Customer', contactEmail = '',
-  repName = 'Jake Thibodaux', prefilledData = {},
+  repName = '', prefilledData = {},
 }: EmailTemplateDrawerProps) {
+  // Fall back to the authenticated user's full name when no repName is passed
+  const authUser = useAuthStore((s) => s.user);
+  const effectiveRepName = repName || (authUser
+    ? `${authUser.firstName ?? ''} ${authUser.lastName ?? ''}`.trim()
+    : '') || 'Your Rep';
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [selectedTemplate, setSelectedTemplate] = useState<EmailTemplate | null>(null);
   const [editedSubject, setEditedSubject] = useState('');
@@ -138,7 +144,7 @@ export function EmailTemplateDrawer({
   const applyMerge = (text: string) =>
     text
       .replace(/{{firstName}}/g, firstName)
-      .replace(/{{repName}}/g, repName)
+      .replace(/{{repName}}/g, effectiveRepName)
       .replace(/{{repPhone}}/g, prefilledData.repPhone || '(225) 555-0103')
       .replace(/{{address}}/g, prefilledData.address || '[Property Address]')
       .replace(/{{city}}/g, prefilledData.city || 'Baton Rouge')
