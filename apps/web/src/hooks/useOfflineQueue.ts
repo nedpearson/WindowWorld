@@ -93,6 +93,14 @@ async function executeAction(action: QueuedAction, token: string): Promise<void>
 
   switch (action.type) {
     case 'MEASUREMENT_SAVE': {
+      // If no real openingId (UUID), this was a standalone tape entry — skip DB sync
+      // The measurement was already shown to the user in-session; no persistent opening to attach to
+      const oid = action.payload.openingId;
+      const hasRealOpeningId = oid && oid.length > 20 && !oid.includes(' ');
+      if (!hasRealOpeningId) {
+        console.info('[OfflineQueue] MEASUREMENT_SAVE skipped — no real openingId (standalone tape entry)');
+        return; // treated as success, will be deleted from queue
+      }
       const res = await fetch(`${base}/measurements`, {
         method: 'POST',
         headers,
@@ -157,10 +165,15 @@ async function executeAction(action: QueuedAction, token: string): Promise<void>
       break;
     }
     case 'INSPECTION_UPDATE': {
-      const res = await fetch(`${base}/inspections/${action.payload.inspectionId}/${action.payload.action}`, {
+      const { inspectionId, action: subAction, ...rest } = action.payload;
+      // If subAction is provided use nested route, otherwise PATCH base endpoint
+      const url = subAction
+        ? `${base}/inspections/${inspectionId}/${subAction}`
+        : `${base}/inspections/${inspectionId}`;
+      const res = await fetch(url, {
         method: 'PATCH',
         headers,
-        body: JSON.stringify(action.payload),
+        body: JSON.stringify(rest),
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       break;

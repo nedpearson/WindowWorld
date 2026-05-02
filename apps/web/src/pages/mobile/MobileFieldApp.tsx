@@ -1,4 +1,4 @@
-﻿import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
@@ -125,8 +125,26 @@ function UpdateBanner() {
 }
 
 // ─── Offline Banner ───────────────────────────────────────────
-function OfflineBanner({ pendingCount, isSyncing, syncNow, isOnline }: any) {
-  if (isOnline && pendingCount === 0) return null;
+function OfflineBanner({ pendingCount, failedCount, isSyncing, syncNow, clearFailed, isOnline }: any) {
+  if (isOnline && pendingCount === 0 && failedCount === 0) return null;
+
+  if (failedCount > 0 && isOnline) {
+    return (
+      <motion.div
+        initial={{ height: 0 }}
+        animate={{ height: 'auto' }}
+        className="flex items-center gap-2 px-4 py-2 text-xs font-medium overflow-hidden bg-red-500/15 text-red-300 border-b border-red-500/20"
+      >
+        <ExclamationCircleIcon className="h-3.5 w-3.5 flex-shrink-0" />
+        {failedCount} sync error{failedCount > 1 ? 's' : ''} — actions could not be sent
+        <div className="ml-auto flex items-center gap-2">
+          <button onClick={() => { haptic.tap(); syncNow(); }} className="underline font-semibold">Retry</button>
+          <button onClick={() => { haptic.tap(); clearFailed(); }} className="underline font-semibold text-red-400">Clear</button>
+        </div>
+      </motion.div>
+    );
+  }
+
   return (
     <motion.div
       initial={{ height: 0 }}
@@ -149,6 +167,7 @@ function OfflineBanner({ pendingCount, isSyncing, syncNow, isOnline }: any) {
     </motion.div>
   );
 }
+
 
 // ─── Stop Card ────────────────────────────────────────────────
 function StopCard({ stop, isActive, onSelect }: any) {
@@ -1182,7 +1201,7 @@ export function MobileFieldApp() {
   const [activeTab, setActiveTab] = useState<FieldTab>('route');
   const [activeStop, setActiveStop] = useState<string | null>(null);
   const [isDesktop, setIsDesktop] = useState(() => window.innerWidth >= 768);
-  const { enqueue, pendingCount, isSyncing, syncNow, isOnline, failedCount } = useOfflineQueue();
+  const { enqueue, pendingCount, isSyncing, syncNow, isOnline, failedCount, clearFailed } = useOfflineQueue();
   const stormMode = useAppStore((s) => s.stormModeActive);
   const { isInstallable, isInstalled, isUpdateAvailable, isIOS, install, dismissInstall } = usePWA();
   const user = useAuthStore((s) => s.user);
@@ -1306,7 +1325,7 @@ export function MobileFieldApp() {
           </div>
         </div>
 
-        <OfflineBanner pendingCount={pendingCount} isSyncing={isSyncing} syncNow={syncNow} isOnline={isOnline} />
+        <OfflineBanner pendingCount={pendingCount} failedCount={failedCount} isSyncing={isSyncing} syncNow={syncNow} clearFailed={clearFailed} isOnline={isOnline} />
 
         {activeTab === 'route' && (
           <div className="px-4 py-3 border-b border-slate-800 bg-gradient-to-r from-slate-900 to-brand-950/20">
