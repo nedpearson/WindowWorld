@@ -164,9 +164,10 @@ export function usePWA(): PWAState {
   }, []);
 
   return {
-    // Show banner when: native prompt available OR iOS manual share,
-    // but NOT if already installed as standalone OR user dismissed
-    isInstallable: (isInstallable || isIOS) && !isStandalone && !dismissed,
+    // Show install banner ONLY when the browser fired beforeinstallprompt (Android).
+    // iOS never fires this event — banner was informational-only and caused friction
+    // (couldn't dismiss reliably). iOS users can still use Safari Share → Add to Home Screen.
+    isInstallable: isInstallable && !isStandalone && !dismissed,
     isInstalled,
     isOnline,
     isUpdateAvailable,

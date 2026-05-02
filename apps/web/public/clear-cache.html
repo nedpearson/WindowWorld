@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>WindowWorld — Clearing cache…</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #0f172a;
+      color: #f1f5f9;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+    .card {
+      max-width: 360px;
+      width: 100%;
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 20px;
+      padding: 32px 24px;
+      text-align: center;
+    }
+    .icon {
+      width: 64px;
+      height: 64px;
+      border-radius: 16px;
+      background: #7c3aed;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 20px;
+      font-size: 32px;
+    }
+    h1 { font-size: 20px; font-weight: 700; margin-bottom: 8px; }
+    p  { font-size: 14px; color: #94a3b8; line-height: 1.6; margin-bottom: 16px; }
+    .status {
+      font-size: 13px;
+      color: #7c3aed;
+      font-weight: 600;
+      min-height: 20px;
+      margin-bottom: 24px;
+    }
+    .progress {
+      height: 4px;
+      background: #334155;
+      border-radius: 99px;
+      overflow: hidden;
+      margin-bottom: 24px;
+    }
+    .progress-bar {
+      height: 100%;
+      background: #7c3aed;
+      border-radius: 99px;
+      width: 0%;
+      transition: width 0.4s ease;
+    }
+    .btn {
+      display: inline-block;
+      background: #7c3aed;
+      color: #fff;
+      font-size: 15px;
+      font-weight: 700;
+      padding: 14px 32px;
+      border-radius: 12px;
+      border: none;
+      cursor: pointer;
+      width: 100%;
+      text-decoration: none;
+      transition: background 0.15s;
+    }
+    .btn:active { background: #6d28d9; }
+    .btn-secondary {
+      background: transparent;
+      border: 1px solid #475569;
+      color: #94a3b8;
+      margin-top: 10px;
+      font-size: 13px;
+      padding: 12px;
+    }
+    .hidden { display: none; }
+    .done-icon { color: #10b981; font-size: 40px; margin-bottom: 8px; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="icon" id="main-icon">🔄</div>
+
+    <h1 id="title">Clearing app cache…</h1>
+    <p id="subtitle">
+      Removing the old cached version so your phone loads the latest app.
+      This takes just a second.
+    </p>
+
+    <div class="status" id="status">Starting…</div>
+    <div class="progress"><div class="progress-bar" id="bar"></div></div>
+
+    <a href="/field" class="btn hidden" id="go-btn">Open Field App →</a>
+    <button class="btn btn-secondary hidden" id="retry-btn" onclick="location.reload()">
+      Try again
+    </button>
+  </div>
+
+  <script>
+    const status  = document.getElementById('status');
+    const bar     = document.getElementById('bar');
+    const title   = document.getElementById('title');
+    const subtitle= document.getElementById('subtitle');
+    const icon    = document.getElementById('main-icon');
+    const goBtn   = document.getElementById('go-btn');
+    const retryBtn= document.getElementById('retry-btn');
+
+    function setProgress(pct, msg) {
+      bar.style.width = pct + '%';
+      status.textContent = msg;
+    }
+
+    function done() {
+      icon.textContent = '✅';
+      title.textContent = 'Cache cleared!';
+      subtitle.textContent = 'Your phone will now load the latest version of WindowWorld.';
+      status.textContent = '';
+      bar.style.width = '100%';
+      goBtn.classList.remove('hidden');
+
+      // Auto-redirect after 1.5s
+      setTimeout(() => { window.location.href = '/field'; }, 1500);
+    }
+
+    function fail(msg) {
+      icon.textContent = '⚠️';
+      title.textContent = 'Partial clear';
+      status.textContent = msg;
+      goBtn.classList.remove('hidden');
+      retryBtn.classList.remove('hidden');
+    }
+
+    async function clearEverything() {
+      try {
+        setProgress(15, 'Unregistering service workers…');
+        await new Promise(r => setTimeout(r, 300));
+
+        // 1. Unregister ALL service workers
+        if ('serviceWorker' in navigator) {
+          const regs = await navigator.serviceWorker.getRegistrations();
+          await Promise.all(regs.map(r => r.unregister()));
+          setProgress(40, `Removed ${regs.length} service worker(s)`);
+        } else {
+          setProgress(40, 'No service workers found');
+        }
+
+        await new Promise(r => setTimeout(r, 300));
+
+        // 2. Delete ALL caches
+        setProgress(60, 'Clearing cached files…');
+        if ('caches' in window) {
+          const keys = await caches.keys();
+          await Promise.all(keys.map(k => caches.delete(k)));
+          setProgress(80, `Cleared ${keys.length} cache(s)`);
+        } else {
+          setProgress(80, 'Cache API not available');
+        }
+
+        await new Promise(r => setTimeout(r, 300));
+
+        // 3. Clear relevant localStorage / sessionStorage keys
+        setProgress(90, 'Clearing local storage…');
+        const keysToRemove = ['pwa-install-dismissed'];
+        keysToRemove.forEach(k => {
+          localStorage.removeItem(k);
+          sessionStorage.removeItem(k);
+        });
+        // Keep auth tokens — don't log user out
+
+        await new Promise(r => setTimeout(r, 300));
+        setProgress(100, 'Done!');
+        await new Promise(r => setTimeout(r, 400));
+
+        done();
+      } catch (err) {
+        console.error('Cache clear error:', err);
+        fail('Some items could not be cleared. Tap "Open Field App" to continue.');
+      }
+    }
+
+    // Start immediately
+    clearEverything();
+  </script>
+</body>
+</html>
