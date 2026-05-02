@@ -36,7 +36,7 @@ export interface ReferenceObjectAnalysis {
 // â”€â”€â”€ Provider abstraction â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 interface AiProvider {
   generateText(prompt: string, systemPrompt?: string): Promise<string>;
-  analyzeImage(imageBase64: string, prompt: string): Promise<string>;
+  analyzeImage(imageBase64: string, prompt: string, systemPrompt?: string): Promise<string>;
   analyzeImages(images: Array<{ base64: string; elevation: string }>, prompt: string, systemPrompt?: string): Promise<string>;
 }
 
@@ -66,15 +66,16 @@ class OpenAIProvider implements AiProvider {
     return response.choices[0]?.message?.content || '';
   }
 
-  async analyzeImage(imageBase64: string, prompt: string): Promise<string> {
+  async analyzeImage(imageBase64: string, prompt: string, systemPrompt?: string): Promise<string> {
     const response = await this.client.chat.completions.create({
       model: process.env.AI_VISION_MODEL || 'gpt-4o',
       messages: [
+        ...(systemPrompt ? [{ role: 'system' as const, content: systemPrompt }] : []),
         {
           role: 'user',
           content: [
-            { type: 'image_url', image_url: { url: `data:image/jpeg;base64,${imageBase64}`, detail: 'high' } },
-            { type: 'text', text: prompt },
+            { type: 'image_url', image_url: { url: `data:image/jpeg;base64,${imageBase64}`, detail: 'high' } } as const,
+            { type: 'text', text: prompt } as const,
           ],
         },
       ],
@@ -790,87 +791,169 @@ Return JSON: { "summary": "2-3 sentence summary", "nextBestAction": "Single most
     openingId: string;
     leadId: string;
     analyzedById: string;
+    distanceFeet?: number;
+    referenceDimensions?: { widthIn: number; heightIn: number; widthMm: number; heightMm: number };
   }): Promise<ReferenceObjectAnalysis> {
-    const { imageBase64, referenceObject, openingId, leadId } = params;
+    const { imageBase64, referenceObject, openingId, leadId, distanceFeet, referenceDimensions } = params;
     const startMs = Date.now();
 
-    // Known reference dimensions (mm → inches)
-    const REF_DIMS: Record<string, { widthIn: number; heightIn: number; label: string }> = {
-      iphone:      { widthIn: 2.81, heightIn: 5.78, label: 'iPhone 14' },
-      credit_card: { widthIn: 3.37, heightIn: 2.13, label: 'credit card' },
-      dollar_bill: { widthIn: 6.14, heightIn: 2.61, label: 'US dollar bill' },
-    };
-    const ref = REF_DIMS[referenceObject];
-    const refWidth  = ref.widthIn;
-    const refHeight = ref.heightIn;
-    const refLabel  = ref.label;
+    // ── Lightweight JPEG EXIF extraction (no extra npm dep) ──────────────────
+    let exifFocalLengthMm: number | null = null;
+    let exifFocalLength35mm: number | null = null;
 
-    const prompt =
-      `This photo shows a window with a ${refLabel} held against the frame as a size reference.\n\n` +
-      `Known reference dimensions:\n` +
-      `- ${refLabel} is exactly ${refWidth}" wide × ${refHeight}" tall\n\n` +
-      `Using the reference object as a ruler, calculate:\n` +
-      `1. The window rough opening WIDTH in inches (to nearest 1/8 inch)\n` +
-      `2. The window rough opening HEIGHT in inches (to nearest 1/8 inch)\n` +
-      `3. Your confidence in these measurements (0.0–1.0)\n` +
-      `4. Whether the reference object placement is valid ` +
-      `(is it flush against frame? fully visible? not distorted?)\n` +
-      `5. The window type visible\n` +
-      `6. Any measurement caveats\n\n` +
-      `Return ONLY valid JSON:\n` +
-      `{\n` +
-      `  "estimatedWidth": number,\n` +
-      `  "estimatedHeight": number,\n` +
-      `  "confidence": number,\n` +
-      `  "referenceValid": boolean,\n` +
-      `  "referenceWarning": string | null,\n` +
-      `  "windowType": string,\n` +
-      `  "measurementNotes": string\n` +
-      `}`;
+    if (referenceObject === 'iphone') {
+      try {
+        const buf = Buffer.from(imageBase64, 'base64');
+        for (let i = 0; i < buf.length - 1; i++) {
+          if (buf[i] === 0xFF && buf[i + 1] === 0xE1) {
+            const app1Len = buf.readUInt16BE(i + 2);
+            const app1    = buf.slice(i + 4, i + 2 + app1Len);
+            if (app1.toString('ascii', 0, 4) === 'Exif') {
+              const tiff      = app1.slice(6);
+              const littleEnd = tiff[0] === 0x49;
+              const u16 = (o: number) => littleEnd ? tiff.readUInt16LE(o) : tiff.readUInt16BE(o);
+              const u32 = (o: number) => littleEnd ? tiff.readUInt32LE(o) : tiff.readUInt32BE(o);
+              const ifdOff = u32(4);
+              const count  = u16(ifdOff);
+              for (let e = 0; e < count; e++) {
+                const eOff = ifdOff + 2 + e * 12;
+                if (eOff + 12 > tiff.length) break;
+                const tag  = u16(eOff);
+                const type = u16(eOff + 2);
+                if (tag === 0x920A && type === 5) {
+                  const vOff = u32(eOff + 8);
+                  if (vOff + 8 <= tiff.length) {
+                    const num = u32(vOff); const den = u32(vOff + 4);
+                    if (den > 0) exifFocalLengthMm = num / den;
+                  }
+                }
+                if (tag === 0xA405 && (type === 3 || type === 4)) {
+                  exifFocalLength35mm = type === 3 ? u16(eOff + 8) : u32(eOff + 8);
+                }
+              }
+            }
+            break;
+          }
+        }
+      } catch (_) { /* non-fatal — AI uses perspective fallback */ }
+    }
+
+    // ── System prompt (shared) ───────────────────────────────────────────────
+    const systemPrompt = `You are a precision window measurement AI for a window replacement company.
+Your job is to analyze photos and return accurate width and height measurements of windows in decimal inches.
+Always return valid JSON only:
+{
+  "estimatedWidth": number,
+  "estimatedHeight": number,
+  "confidence": number,
+  "referenceValid": boolean,
+  "referenceWarning": string | null,
+  "windowType": string,
+  "measurementNotes": string
+}`;
+
+    // ── Method-specific user prompt ──────────────────────────────────────────
+    let userPrompt: string;
+
+    if (referenceObject === 'iphone') {
+      const ftBack     = distanceFeet ?? 6;
+      const distanceMm = ftBack * 304.8;
+      const focalNote  = exifFocalLengthMm
+        ? `EXIF FocalLength: ${exifFocalLengthMm.toFixed(2)}mm` +
+          (exifFocalLength35mm ? ` (${exifFocalLength35mm}mm 35mm-equiv).` : '.')
+        : 'No EXIF focal length — use perspective geometry and architectural proportion estimation.';
+
+      userPrompt = `MEASUREMENT METHOD: Camera Focal Length Calibration (no physical reference in photo)
+
+CAMERA CALIBRATION DATA:
+- ${focalNote}
+- Standback distance: ${ftBack} feet (${Math.round(distanceMm)}mm)
+- Reference sensor: iPhone 6 — 67.0mm wide × 138.1mm tall, 4.15mm focal length, 4.80×3.60mm sensor
+
+PINHOLE FORMULA (when EXIF available):
+  real_mm = (pixel_dim / image_pixel_dim) × sensor_mm × distance_mm / focal_mm
+  Inches: mm / 25.4
+
+INSTRUCTIONS:
+1. Identify full window frame (sill, header, both jambs)
+2. Measure pixel width/height of window
+3. Apply formula if EXIF present; else use proportion estimation (standard heights: 36"/48"/60"/72")
+4. Confidence: 0.90+ EXIF available, 0.70–0.89 EXIF absent with strong cues, <0.70 poor quality
+5. referenceValid true if EXIF available OR strong perspective cues present
+6. referenceWarning if photo angled >15°, window cut off, or EXIF absent`;
+
+    } else if (referenceObject === 'credit_card') {
+      const cardWidthMm  = referenceDimensions?.widthMm  ?? 85.60;
+      const cardHeightMm = referenceDimensions?.heightMm ?? 53.98;
+
+      userPrompt = `MEASUREMENT METHOD: Virtual Credit Card Detection (ISO/IEC 7810 ID-1)
+
+CARD DIMENSIONS (exact ISO standard):
+- Width:  ${cardWidthMm}mm = ${(cardWidthMm / 25.4).toFixed(4)}" (3.375" exactly)
+- Height: ${cardHeightMm}mm = ${(cardHeightMm / 25.4).toFixed(4)}" (2.125" exactly)
+- Aspect ratio: 1.5858 (confirm card detection with this ratio)
+
+INSTRUCTIONS:
+1. Locate the credit card — white/light rectangular, ~1.586:1 ratio, lower portion of frame
+2. Scale: px_per_mm = card_pixel_width / ${cardWidthMm}
+   window_width_mm = window_pixel_width / px_per_mm
+   window_height_mm = window_pixel_height / px_per_mm
+3. Card not detectable: referenceValid=false, referenceWarning="Card not clearly detected", use proportion fallback
+4. Convert to inches (÷ 25.4)
+5. Confidence: 0.88+ card square-on, 0.65–0.87 slight angle, <0.65 card absent`;
+
+    } else {
+      userPrompt = `MEASUREMENT METHOD: Physical Dollar Bill Reference
+
+BILL DIMENSIONS (US Treasury):
+- Width:  156.0mm = 6.141" · Height: 66.4mm = 2.614" · Aspect: 2.349
+
+INSTRUCTIONS:
+1. Locate bill pressed against lower corner of window frame
+2. Scale: real_mm_per_px = 156.0 / bill_pixel_width; apply to window dims; convert to inches (÷ 25.4)
+3. Bill not in corner: referenceValid=false, use proportion fallback
+4. Confidence: 0.85+ if bill flat in corner, lower if angled or partial`;
+    }
 
     let rawResponse = '';
     let parsed: any = null;
 
     try {
-      rawResponse = await this.provider.analyzeImage(imageBase64, prompt);
+      rawResponse = await this.provider.analyzeImage(imageBase64, userPrompt, systemPrompt);
       parsed = JSON.parse(rawResponse.replace(/```json\n?|\n?```/g, '').trim());
     } catch (parseErr) {
       logger.warn('[analyzeWithReferenceObject] JSON parse failed:', parseErr);
       parsed = {
-        estimatedWidth: 0,
-        estimatedHeight: 0,
-        confidence: 0,
+        estimatedWidth: 0, estimatedHeight: 0, confidence: 0,
         referenceValid: false,
         referenceWarning: 'Analysis returned unparseable response — please retake photo.',
-        windowType: 'UNKNOWN',
-        measurementNotes: 'Parse failure',
+        windowType: 'UNKNOWN', measurementNotes: 'Parse failure',
       };
     }
 
     const analysis = await prisma.aiAnalysis.create({
       data: {
-        leadId,
-        openingId,
+        leadId, openingId,
         analysisType: 'REFERENCE_OBJECT_MEASUREMENT',
         provider: process.env.AI_PROVIDER || 'openai',
         model: process.env.AI_VISION_MODEL || 'gpt-4o',
         rawResponse: parsed,
-        estimatedWidth: parsed.estimatedWidth ?? null,
+        estimatedWidth:  parsed.estimatedWidth  ?? null,
         estimatedHeight: parsed.estimatedHeight ?? null,
-        confidenceScore: parsed.confidence ?? null,
+        confidenceScore: parsed.confidence      ?? null,
         status: 'COMPLETED',
         processingMs: Date.now() - startMs,
       } as any,
     });
 
     return {
-      estimatedWidth:    Number(parsed.estimatedWidth  ?? 0),
-      estimatedHeight:   Number(parsed.estimatedHeight ?? 0),
-      confidence:        Number(parsed.confidence      ?? 0),
-      referenceValid:    Boolean(parsed.referenceValid),
-      referenceWarning:  parsed.referenceWarning ?? null,
-      windowType:        String(parsed.windowType ?? 'UNKNOWN'),
-      measurementNotes:  String(parsed.measurementNotes ?? ''),
+      estimatedWidth:   Number(parsed.estimatedWidth  ?? 0),
+      estimatedHeight:  Number(parsed.estimatedHeight ?? 0),
+      confidence:       Number(parsed.confidence      ?? 0),
+      referenceValid:   Boolean(parsed.referenceValid),
+      referenceWarning: parsed.referenceWarning ?? null,
+      windowType:       String(parsed.windowType ?? 'UNKNOWN'),
+      measurementNotes: String(parsed.measurementNotes ?? ''),
       aiAnalysisId: analysis.id,
     };
   }

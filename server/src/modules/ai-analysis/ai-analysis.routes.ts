@@ -266,11 +266,16 @@ router.post('/property-scan', auth.repOrAbove, async (req: Request, res: Respons
  */
 router.post('/reference-object', auth.repOrAbove, async (req: Request, res: Response) => {
   const user = (req as AuthenticatedRequest).user;
-  const { openingId, leadId, imageBase64, referenceObject } = req.body as {
+  const {
+    openingId, leadId, imageBase64, referenceObject,
+    distanceFeet, referenceDimensions,
+  } = req.body as {
     openingId?: string;
     leadId?: string;
     imageBase64: string;
     referenceObject: 'iphone' | 'credit_card' | 'dollar_bill';
+    distanceFeet?: number;
+    referenceDimensions?: { widthIn: number; heightIn: number; widthMm: number; heightMm: number };
   };
 
   // Validate required fields
@@ -282,9 +287,8 @@ router.post('/reference-object', auth.repOrAbove, async (req: Request, res: Resp
     });
   }
 
-  // openingId is optional — when sent as a placeholder from field-app with no opening selected,
-  // we still run the AI analysis but skip the DB upsert
-  const isRealOpeningId = openingId && openingId !== 'field-app' && openingId.length > 8;
+  // openingId is optional — skip DB upsert when no real opening is linked
+  const isRealOpeningId = openingId && openingId !== 'field-app' && openingId !== 'standalone' && openingId.length > 8;
 
   try {
     const result = await aiService.analyzeWithReferenceObject({
@@ -293,6 +297,8 @@ router.post('/reference-object', auth.repOrAbove, async (req: Request, res: Resp
       openingId: openingId || 'standalone',
       leadId: leadId ?? '',
       analyzedById: user.id,
+      distanceFeet: distanceFeet ? Number(distanceFeet) : undefined,
+      referenceDimensions,
     });
 
     let savedMeasurement: any = null;
