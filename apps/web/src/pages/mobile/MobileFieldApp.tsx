@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+﻿import { useState, useRef, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
@@ -633,14 +633,22 @@ function NewLeadTab({ enqueue }: { enqueue: (type: any, payload: any) => void })
   );
 }
 
-// ─── Guided Measurement Tool ──────────────────────────────────
+// ─── Guided Measurement Tool (AI-Enhanced) ───────────────────
+import { PropertyScanCapture } from '../../components/field/PropertyScanCapture';
+import { ReferenceObjectMeasure } from '../../components/field/ReferenceObjectMeasure';
+
+type MeasureMethod = 'tape' | 'ref' | 'scan';
+
 function MeasureTab({
   enqueue,
+  stops,
+  activeStopId,
 }: {
   enqueue: (type: any, payload: any) => void;
   stops: any[];
   activeStopId: string | null;
 }) {
+  const [method, setMethod] = useState<MeasureMethod>('tape');
   const [step, setStep] = useState<MeasureStep>('select-opening');
   const [selectedOpening, setSelectedOpening] = useState<{ id: string; label: string; floor: string; type: string } | null>(null);
   const [customLabel, setCustomLabel] = useState('');
@@ -649,6 +657,7 @@ function MeasureTab({
   const [heightInt, setHeightInt] = useState('');
   const [heightFrac, setHeightFrac] = useState('0');
   const [saved, setSaved] = useState<Array<{ label: string; width: string; height: string }>>([]);
+  const [scanDone, setScanDone] = useState(false);
 
   const fractions = ['0', '1/8', '1/4', '3/8', '1/2', '5/8', '3/4', '7/8'];
 
@@ -658,7 +667,7 @@ function MeasureTab({
     return n / d;
   };
 
-  const finalWidth = parseFloat(widthInt || '0') + fracToDecimal(widthFrac);
+  const finalWidth  = parseFloat(widthInt  || '0') + fracToDecimal(widthFrac);
   const finalHeight = parseFloat(heightInt || '0') + fracToDecimal(heightFrac);
 
   const handleSave = async () => {
@@ -707,8 +716,112 @@ function MeasureTab({
     'Front Exterior', 'Back Exterior', 'Side Exterior', 'Garage',
   ];
 
+  // Active stop context (for AI scan leadId/inspectionId)
+  const activeStopData = stops.find((s: any) => s.id === activeStopId);
+  const activeLeadId = activeStopData?.lead?.id ?? '';
+  const activeInspectionId = activeStopData?.inspections?.[0]?.id ?? '';
+
   return (
     <div className="space-y-4">
+
+      {/* ── Method toggle ─────────────────────────────────────── */}
+      <div className="grid grid-cols-3 gap-2">
+        {([
+          { id: 'tape' as const, label: 'Tape', emoji: '📏' },
+          { id: 'ref'  as const, label: 'Reference', emoji: '📱' },
+          { id: 'scan' as const, label: 'AI Scan', emoji: '✨' },
+        ] as const).map(({ id, label, emoji }) => (
+          <button
+            key={id}
+            onClick={() => { haptic.selection(); setMethod(id); setScanDone(false); }}
+            className={clsx(
+              'flex flex-col items-center gap-1 py-3 rounded-2xl border text-xs font-semibold transition-all active:scale-95',
+              method === id
+                ? 'bg-brand-600 border-brand-500 text-white shadow-lg shadow-brand-500/20'
+                : 'bg-slate-800/60 border-slate-700/40 text-slate-400',
+            )}
+          >
+            <span className="text-lg">{emoji}</span>
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {/* ── AI Property Scan ───────────────────────────────────── */}
+      {method === 'scan' && (
+        <div className="space-y-3">
+          {!scanDone ? (
+            <>
+              <div className="flex items-start gap-2 p-3 rounded-xl bg-brand-500/10 border border-brand-500/20 text-xs text-brand-300">
+                <SparklesIcon className="h-4 w-4 flex-shrink-0 mt-0.5" />
+                <div>
+                  <div className="font-semibold mb-0.5">HOVER Replacement — $0/month</div>
+                  <div className="text-brand-400/80">Take 4 exterior photos. AI pre-fills every opening on this inspection. Same accuracy — no subscription.</div>
+                </div>
+              </div>
+              {activeLeadId && activeInspectionId ? (
+                <PropertyScanCapture
+                  leadId={activeLeadId}
+                  inspectionId={activeInspectionId}
+                  onComplete={() => {
+                    setScanDone(true);
+                    haptic.success();
+                  }}
+                />
+              ) : (
+                <div className="p-4 rounded-2xl bg-slate-800/60 border border-slate-700/30 text-center space-y-2">
+                  <p className="text-sm text-slate-400">Select a stop on the Route tab first.</p>
+                  <p className="text-xs text-slate-600">The AI scan is linked to the active inspection on your current stop.</p>
+                </div>
+              )}
+            </>
+          ) : (
+            <div className="p-5 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-center space-y-2">
+              <CheckCircleIcon className="h-10 w-10 text-emerald-400 mx-auto" />
+              <p className="text-sm font-bold text-white">AI Scan Complete</p>
+              <p className="text-xs text-emerald-400">Openings pre-filled with ESTIMATED measurements.</p>
+              <p className="text-xs text-slate-500">Switch to Tape to verify each one before approving for order.</p>
+              <button
+                onClick={() => { setMethod('tape'); setScanDone(false); }}
+                className="btn-secondary w-full mt-2 text-xs"
+              >
+                Switch to Tape Verify →
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── Reference Object Measure ───────────────────────────── */}
+      {method === 'ref' && (
+        <div className="space-y-3">
+          <div className="flex items-start gap-2 p-3 rounded-xl bg-slate-800/50 border border-slate-700/30 text-xs text-slate-400">
+            <SparklesIcon className="h-4 w-4 flex-shrink-0 mt-0.5 text-brand-400" />
+            <span>More accurate than HOVER for individual windows. Uses a known physical reference (iPhone, credit card, dollar bill) as a ruler.</span>
+          </div>
+          <ReferenceObjectMeasure
+            openingId={selectedOpening?.id ?? 'field-app'}
+            leadId={activeLeadId}
+            roomLabel={selectedOpening?.label ?? ''}
+            onMeasured={(w, h) => {
+              setWidthInt(String(Math.floor(w)));
+              setWidthFrac('0');
+              setHeightInt(String(Math.floor(h)));
+              setHeightFrac('0');
+              setMethod('tape');
+              if (!selectedOpening) {
+                setSelectedOpening({ id: 'ref-measured', label: 'Reference Measured Window', floor: 'Floor 1', type: 'WINDOW' });
+              }
+              setStep('confirm');
+              haptic.success();
+              toast.success('AI estimate pre-filled — review and save.');
+            }}
+          />
+        </div>
+      )}
+
+      {/* ── Tape Measure ──────────────────────────────────────── */}
+      {method === 'tape' && (
       <AnimatePresence mode="wait">
 
         {step === 'select-opening' && (
@@ -855,7 +968,7 @@ function MeasureTab({
               </div>
             </div>
             <button onClick={() => stepTo('confirm')} disabled={!heightInt} className="btn-primary w-full">
-              Review & Save →
+              Review &amp; Save →
             </button>
           </motion.div>
         )}
@@ -884,10 +997,10 @@ function MeasureTab({
           </motion.div>
         )}
       </AnimatePresence>
+      )}
     </div>
   );
 }
-
 
 // ─── Desktop QR Panel ────────────────────────────────────────
 function DesktopQRPanel({
