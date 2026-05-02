@@ -1201,7 +1201,7 @@ export function MobileFieldApp() {
   const [activeTab, setActiveTab] = useState<FieldTab>('route');
   const [activeStop, setActiveStop] = useState<string | null>(null);
   const [isDesktop, setIsDesktop] = useState(() => window.innerWidth >= 768);
-  const { enqueue, pendingCount, isSyncing, syncNow, isOnline, failedCount, clearFailed } = useOfflineQueue();
+  const { enqueue, pendingCount, isSyncing, syncNow, isOnline, failedCount, deadCount, clearFailed } = useOfflineQueue();
   const stormMode = useAppStore((s) => s.stormModeActive);
   const { isInstallable, isInstalled, isUpdateAvailable, isIOS, install, dismissInstall } = usePWA();
   const user = useAuthStore((s) => s.user);
@@ -1306,6 +1306,28 @@ export function MobileFieldApp() {
               }
               {isSyncing ? 'Syncing...' : pendingCount > 0 ? `${pendingCount} pending` : isOnline ? 'Synced' : 'Offline'}
             </button>
+
+            {/* Failed sync badge — tap to retry */}
+            {failedCount > 0 && !isSyncing && (
+              <button
+                onClick={() => { haptic.tap(); syncNow(); }}
+                className="flex items-center gap-1 text-[10px] px-2 py-1.5 rounded-lg bg-red-500/15 text-red-400 border border-red-500/25 transition-colors active:bg-red-500/25"
+                title={`${failedCount} sync error${failedCount > 1 ? 's' : ''} — tap to retry`}
+              >
+                <span className="font-bold">{failedCount}</span> err
+              </button>
+            )}
+
+            {/* Dead action badge — tap to discard permanently */}
+            {deadCount > 0 && !isSyncing && (
+              <button
+                onClick={() => { haptic.tap(); clearFailed(); }}
+                className="flex items-center gap-1 text-[10px] px-2 py-1.5 rounded-lg bg-rose-900/40 text-rose-400 border border-rose-800/40 transition-colors active:bg-rose-900/60"
+                title={`${deadCount} permanently failed — tap to discard`}
+              >
+                ! <span className="font-bold">{deadCount}</span>
+              </button>
+            )}
 
             {stormMode && (
               <div className="flex items-center gap-1 text-[10px] px-2 py-1.5 rounded-lg bg-purple-500/15 text-purple-400 border border-purple-500/25">

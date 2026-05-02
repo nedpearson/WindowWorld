@@ -3,6 +3,7 @@ import { body, query, validationResult } from 'express-validator';
 import { auth, AuthenticatedRequest } from '../../shared/middleware/auth';
 import { leadService } from './leads.service';
 import { ValidationError } from '../../shared/middleware/errorHandler';
+import { wsService } from '../../shared/services/websocket.service';
 
 const router = Router();
 
@@ -158,6 +159,18 @@ router.patch(
       req.body.reason,
       user.id
     );
+
+    // Notify desktop clients of field-synced status change
+    try {
+      wsService.broadcastToOrg(user.organizationId, 'mobile:sync', {
+        type: 'LEAD_STATUS_UPDATE',
+        entityId: (lead as any).id,
+        leadId: (lead as any).id,
+        updatedAt: new Date().toISOString(),
+        organizationId: user.organizationId,
+      });
+    } catch { /* fire-and-forget */ }
+
     res.json({ success: true, data: lead });
   }
 );

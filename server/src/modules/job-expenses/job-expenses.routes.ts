@@ -4,6 +4,7 @@ import rateLimit from 'express-rate-limit';
 import { auth, AuthenticatedRequest } from '../../shared/middleware/auth';
 import { jobExpensesService } from './job-expenses.service';
 import { ExpenseCategory } from '@prisma/client';
+import { wsService } from '../../shared/services/websocket.service';
 
 const router = Router();
 
@@ -76,6 +77,18 @@ router.post(
       user.id,
       user.organizationId,
     );
+
+    // Notify desktop clients of field-synced expense
+    try {
+      wsService.broadcastToOrg(user.organizationId, 'mobile:sync', {
+        type: 'EXPENSE_SAVE',
+        entityId: (expense as any).id,
+        leadId: req.body.leadId ?? null,
+        updatedAt: new Date().toISOString(),
+        organizationId: user.organizationId,
+      });
+    } catch { /* fire-and-forget */ }
+
     res.status(201).json({ success: true, data: expense });
   },
 );

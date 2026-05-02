@@ -253,7 +253,20 @@ export const api = {
     getForInspection: (inspectionId: string) => get(`/ai-analysis/inspection/${inspectionId}`),
     submitOverride: (id: string, override: any) => patch(`/ai-analysis/${id}/override`, { override }),
     retry: (id: string) => post(`/ai-analysis/${id}/retry`),
+    propertyScan: (data: {
+      leadId: string;
+      inspectionId: string;
+      images: Array<{ base64: string; elevation: string }>;
+      autoPopulateOpenings?: boolean;
+    }) => post('/ai-analysis/property-scan', data),
+    referenceObject: (data: {
+      openingId?: string;
+      leadId?: string;
+      imageBase64: string;
+      referenceObject: 'iphone' | 'credit_card' | 'dollar_bill';
+    }) => post('/ai-analysis/reference-object', data),
   },
+
 
   // Analytics
   analytics: {

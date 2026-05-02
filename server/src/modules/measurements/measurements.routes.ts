@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { auth, AuthenticatedRequest } from '../../shared/middleware/auth';
 import { measurementsService } from './measurements.service';
+import { wsService } from '../../shared/services/websocket.service';
 
 const router = Router();
 
@@ -20,8 +21,21 @@ router.get('/property/:propertyId/summary', auth.repOrAbove, async (req: Request
 router.post('/', auth.repOrAbove, async (req: Request, res: Response) => {
   const user = (req as AuthenticatedRequest).user;
   const data = await measurementsService.upsert({ ...req.body, measuredById: user.id });
+
+  // Notify desktop clients that a measurement was synced from field
+  try {
+    wsService.broadcastToOrg(user.organizationId, 'mobile:sync', {
+      type: 'MEASUREMENT_SAVE',
+      entityId: (data as any).id,
+      leadId: req.body.leadId ?? null,
+      updatedAt: new Date().toISOString(),
+      organizationId: user.organizationId,
+    });
+  } catch { /* fire-and-forget — never break the HTTP response */ }
+
   res.status(200).json({ success: true, data });
 });
+
 
 // POST /api/v1/measurements/opening/:openingId/verify
 router.post('/opening/:openingId/verify', auth.repOrAbove, async (req: Request, res: Response) => {
