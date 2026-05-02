@@ -191,10 +191,11 @@ app.use(cors({
 }));
 
 app.use(compression());
-// JSON limit is 2mb â€” file uploads are handled by multer separately (not limited here)
+// JSON limit is 50mb â€” file uploads are handled by multer separately (not limited here)
 // 50mb JSON bodies would be a DDoS amplification vector
-app.use(express.json({ limit: '2mb' }));
-app.use(express.urlencoded({ extended: true, limit: '2mb' }));
+  // Increase body limits for multi-photo base64 AI payloads
+  app.use(express.json({ limit: '50mb' }));
+  app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.use(morgan('combined', { stream: { write: (msg) => logger.http(msg.trim()) } }));
 app.use(requestId);
 // Rate limiting is applied selectively to API routes instead of globally
