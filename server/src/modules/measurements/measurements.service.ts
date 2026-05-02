@@ -11,7 +11,9 @@ export class MeasurementsService {
   }
 
   async upsert(data: {
-    openingId: string;
+    openingId?: string; // Made optional to support standalone / on-the-fly measurements
+    inspectionId?: string;
+    roomLabel?: string;
     roughWidth?: number;
     roughHeight?: number;
     finalWidth?: number;
@@ -25,7 +27,20 @@ export class MeasurementsService {
     notes?: string;
     measuredById: string;
   }) {
-    const { openingId, measuredById, ...measureData } = data;
+    let { openingId, inspectionId, roomLabel, measuredById, leadId, ...measureData } = data as any;
+
+    // If no openingId is provided (standalone measurement), create a new Opening on the fly
+    if (!openingId) {
+      const newOpening = await prisma.opening.create({
+        data: {
+          inspectionId: inspectionId || null,
+          roomLabel: roomLabel || 'Standalone Measurement',
+          windowType: 'UNKNOWN',
+          frameMaterial: 'UNKNOWN',
+        } as any,
+      });
+      openingId = newOpening.id;
+    }
 
     // Verify opening exists
     const opening = await prisma.opening.findUnique({ where: { id: openingId } });
