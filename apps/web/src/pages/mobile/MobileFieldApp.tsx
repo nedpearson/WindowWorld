@@ -83,7 +83,9 @@ function InstallBanner({ onInstall, onDismiss, isIOS }: { onInstall: () => void;
       <div className="flex-1 min-w-0">
         <div className="text-xs font-semibold text-white">Install WindowWorld</div>
         <div className="text-[10px] text-brand-200 leading-snug">
-          {isIOS ? 'Tap Share → Add to Home Screen' : 'Add to home screen for offline access'}
+          {isIOS
+            ? 'Tap Share (⎙) → Add to Home Screen for offline access'
+            : 'Add to home screen for offline access'}
         </div>
       </div>
       <div className="flex items-center gap-2 flex-shrink-0">
@@ -95,8 +97,13 @@ function InstallBanner({ onInstall, onDismiss, isIOS }: { onInstall: () => void;
             Install
           </button>
         )}
-        <button onClick={() => { haptic.tap(); onDismiss(); }} className="text-brand-200 active:text-white">
-          <XMarkIcon className="h-4 w-4" />
+        {/* 44×44px touch target — Apple HIG minimum for reliable iOS taps */}
+        <button
+          onClick={() => { haptic.tap(); onDismiss(); }}
+          className="flex items-center justify-center w-11 h-11 -mr-2 text-brand-200 active:text-white transition-colors"
+          aria-label="Dismiss install prompt"
+        >
+          <XMarkIcon className="h-5 w-5" />
         </button>
       </div>
     </motion.div>
@@ -1405,7 +1412,7 @@ export function MobileFieldApp() {
       {/* Banners */}
       <AnimatePresence>
         {isUpdateAvailable && <UpdateBanner key="update" />}
-        {!isInstalled && (isInstallable || isIOS) && (
+        {isInstallable && (
           <InstallBanner key="install" isIOS={isIOS} onInstall={install} onDismiss={dismissInstall} />
         )}
       </AnimatePresence>

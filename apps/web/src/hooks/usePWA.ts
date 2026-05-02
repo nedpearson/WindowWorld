@@ -87,14 +87,24 @@ export function usePWA(): PWAState {
     return outcome === 'accepted';
   }, [deferredPrompt]);
 
+  // Reactive dismissed state — sessionStorage alone doesn't re-render React on iOS
+  // (isInstallable stays false on iOS since beforeinstallprompt never fires,
+  //  so dismissInstall's setIsInstallable(false) was a no-op and the banner persisted)
+  const [dismissed, setDismissed] = useState(
+    () => !!sessionStorage.getItem('pwa-install-dismissed')
+  );
+
   const dismissInstall = useCallback(() => {
     setIsInstallable(false);
     setDeferredPrompt(null);
+    setDismissed(true);
     sessionStorage.setItem('pwa-install-dismissed', '1');
   }, []);
 
   return {
-    isInstallable: isInstallable && !sessionStorage.getItem('pwa-install-dismissed'),
+    // Show banner when: native prompt available OR iOS (manual share), but only if not
+    // already installed as a standalone app AND user hasn't dismissed this session
+    isInstallable: (isInstallable || isIOS) && !isStandalone && !dismissed,
     isInstalled,
     isOnline,
     isUpdateAvailable,
