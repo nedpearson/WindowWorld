@@ -29,11 +29,11 @@ export function MobileAccessQR({ className = '' }: MobileAccessQRProps) {
     if (user && accessToken) {
       // Build the deep-link URL for the mobile field app
       // Includes a short-lived token in the URL so the iPhone can auto-login
-      const base = 'https://windowworld.bridgebox.ai/field';
+      const base = 'https://windowworld.bridgebox.ai/field-install';
       const params = new URLSearchParams({
         token: accessToken,
         uid: user.id,
-        role: user.role,
+        mode: 'qr',
       });
       setQrUrl(`${base}?${params.toString()}`);
     }
@@ -167,7 +167,7 @@ export function MobileAccessQR({ className = '' }: MobileAccessQRProps) {
 
             {/* Direct link button */}
             <a
-              href="https://windowworld.bridgebox.ai/field"
+              href={qrUrl || 'https://windowworld.bridgebox.ai/field-install'}
               target="_blank"
               rel="noopener noreferrer"
               className="btn-primary w-full text-sm py-2.5 flex items-center justify-center gap-2"
