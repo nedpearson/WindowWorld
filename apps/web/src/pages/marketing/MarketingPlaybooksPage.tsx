@@ -143,7 +143,7 @@ const PLAYBOOKS: Playbook[] = [
     color: 'from-rose-600/20 to-rose-800/10 border-rose-500/30 text-rose-400',
     stats: { active: 0, generated: 0 },
     inputs: [
-      { label: 'Agent Name / Brokerage', type: 'text', placeholder: 'e.g. Jane Smith — RE/MAX' },
+      { label: 'Agent Name', type: 'text', placeholder: 'e.g. Jane Smith' },
       { label: 'Target Area', type: 'select', options: ['East Baton Rouge', 'West Baton Rouge', 'Ascension', 'Livingston', 'St. Tammany', 'Jefferson', 'All Parishes'] },
       { label: 'Turnaround Guarantee', type: 'select', options: ['3 Business Days', '5 Business Days', '7 Business Days', '10 Business Days'], hint: 'Shown on co-branded collateral sent to the agent' },
       { label: 'Referral Commission', type: 'select', options: ['3%', '5%', '7%', '10%'] },
