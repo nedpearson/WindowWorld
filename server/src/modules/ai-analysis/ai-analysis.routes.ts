@@ -268,14 +268,13 @@ router.post('/property-scan', auth.repOrAbove, async (req: Request, res: Respons
 router.post('/reference-object', auth.repOrAbove, async (req: Request, res: Response) => {
   const user = (req as AuthenticatedRequest).user;
   const { openingId, leadId, imageBase64, referenceObject } = req.body as {
-    openingId: string;
-    leadId: string;
+    openingId?: string;
+    leadId?: string;
     imageBase64: string;
     referenceObject: 'iphone' | 'credit_card' | 'dollar_bill';
   };
 
-  // Validate
-  if (!openingId) return res.status(400).json({ success: false, message: 'openingId is required' });
+  // Validate required fields
   if (!imageBase64) return res.status(400).json({ success: false, message: 'imageBase64 is required' });
   if (!['iphone', 'credit_card', 'dollar_bill'].includes(referenceObject)) {
     return res.status(400).json({
@@ -284,28 +283,39 @@ router.post('/reference-object', auth.repOrAbove, async (req: Request, res: Resp
     });
   }
 
+  // openingId is optional — when sent as a placeholder from field-app with no opening selected,
+  // we still run the AI analysis but skip the DB upsert
+  const isRealOpeningId = openingId && openingId !== 'field-app' && openingId.length > 8;
+
   try {
     const result = await aiService.analyzeWithReferenceObject({
       imageBase64,
       referenceObject,
-      openingId,
-      leadId,
+      openingId: openingId || 'standalone',
+      leadId: leadId ?? '',
       analyzedById: user.id,
     });
 
-    // Auto-save measurement at REVIEWED status
-    const warningNote = result.referenceWarning ? ` ${result.referenceWarning}` : '';
-    const savedMeasurement = await measurementsService.upsert({
-      openingId,
-      finalWidth: result.estimatedWidth,
-      finalHeight: result.estimatedHeight,
-      measurementMethod: 'reference-object',
-      isAiEstimated: true,
-      aiConfidenceScore: result.confidence,
-      status: 'REVIEWED',
-      measuredById: user.id,
-      notes: `Reference-object estimate using ${referenceObject}.${warningNote} REQUIRES TAPE VERIFICATION BEFORE ORDERING.`,
-    });
+    let savedMeasurement: any = null;
+
+    // Only persist to DB if we have a real opening ID that exists
+    if (isRealOpeningId) {
+      const opening = await prisma.opening.findUnique({ where: { id: openingId! } }).catch(() => null);
+      if (opening) {
+        const warningNote = result.referenceWarning ? ` ${result.referenceWarning}` : '';
+        savedMeasurement = await measurementsService.upsert({
+          openingId: openingId!,
+          finalWidth: result.estimatedWidth,
+          finalHeight: result.estimatedHeight,
+          measurementMethod: 'reference-object',
+          isAiEstimated: true,
+          aiConfidenceScore: result.confidence,
+          status: 'REVIEWED',
+          measuredById: user.id,
+          notes: `Reference-object estimate using ${referenceObject}.${warningNote} REQUIRES TAPE VERIFICATION BEFORE ORDERING.`,
+        });
+      }
+    }
 
     return res.json({ success: true, data: { analysis: result, measurement: savedMeasurement } });
   } catch (err: any) {
