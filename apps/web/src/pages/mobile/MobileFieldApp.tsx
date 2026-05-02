@@ -69,43 +69,42 @@ function toOpeningTemplate(o: any) {
 }
 
 // ─── PWA Install Banner ───────────────────────────────────────
-function InstallBanner({ onInstall, onDismiss, isIOS }: { onInstall: () => void; onDismiss: () => void; isIOS: boolean }) {
+function InstallBanner({ onDismiss }: { onDismiss: () => void }) {
   return (
     <motion.div
       initial={{ y: -60, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
       exit={{ y: -60, opacity: 0 }}
-      className="flex items-center gap-3 px-4 py-3 bg-brand-600/95 backdrop-blur-sm border-b border-brand-500/30 z-50"
+      className="flex items-center gap-3 pl-4 pr-1 py-2 bg-brand-600/95 backdrop-blur-sm border-b border-brand-500/30 z-50"
     >
-      <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center flex-shrink-0">
-        <ArrowDownTrayIcon className="h-4 w-4 text-white" />
-      </div>
-      <div className="flex-1 min-w-0">
-        <div className="text-xs font-semibold text-white">Install WindowWorld</div>
-        <div className="text-[10px] text-brand-200 leading-snug">
-          {isIOS
-            ? 'Tap Share (⎙) → Add to Home Screen for offline access'
-            : 'Add to home screen for offline access'}
+      {/* Clickable body — navigates to the full install guide */}
+      <Link
+        to="/field-install"
+        onClick={() => haptic.tap()}
+        className="flex items-center gap-3 flex-1 min-w-0 active:opacity-80"
+      >
+        <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center flex-shrink-0">
+          <ArrowDownTrayIcon className="h-4 w-4 text-white" />
         </div>
-      </div>
-      <div className="flex items-center gap-2 flex-shrink-0">
-        {!isIOS && (
-          <button
-            onClick={() => { haptic.tap(); onInstall(); }}
-            className="text-xs font-semibold text-white bg-white/20 px-3 py-1.5 rounded-lg active:bg-white/30 transition-colors"
-          >
-            Install
-          </button>
-        )}
-        {/* 44×44px touch target — Apple HIG minimum for reliable iOS taps */}
-        <button
-          onClick={() => { haptic.tap(); onDismiss(); }}
-          className="flex items-center justify-center w-11 h-11 -mr-2 text-brand-200 active:text-white transition-colors"
-          aria-label="Dismiss install prompt"
-        >
-          <XMarkIcon className="h-5 w-5" />
-        </button>
-      </div>
+        <div className="flex-1 min-w-0">
+          <div className="text-xs font-semibold text-white">Install WindowWorld</div>
+          <div className="text-[10px] text-brand-200 leading-snug">
+            Tap to add to home screen · works offline
+          </div>
+        </div>
+        <div className="text-brand-300 text-[10px] font-semibold pr-1 flex-shrink-0">
+          View →
+        </div>
+      </Link>
+
+      {/* 44×44px dismiss — independent from the navigate action */}
+      <button
+        onClick={(e) => { e.preventDefault(); haptic.tap(); onDismiss(); }}
+        className="flex items-center justify-center w-11 h-11 flex-shrink-0 text-brand-200 active:text-white transition-colors"
+        aria-label="Dismiss install prompt"
+      >
+        <XMarkIcon className="h-5 w-5" />
+      </button>
     </motion.div>
   );
 }
@@ -1413,7 +1412,7 @@ export function MobileFieldApp() {
       <AnimatePresence>
         {isUpdateAvailable && <UpdateBanner key="update" onUpdate={forceUpdate} />}
         {isInstallable && (
-          <InstallBanner key="install" isIOS={isIOS} onInstall={install} onDismiss={dismissInstall} />
+          <InstallBanner key="install" onDismiss={dismissInstall} />
         )}
       </AnimatePresence>
 
