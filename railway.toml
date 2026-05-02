@@ -5,11 +5,26 @@ builder = "NIXPACKS"
 nixpacksConfigPath = "nixpacks.toml"
 
 [deploy]
-# Start: apply only PENDING migrations (safe, idempotent, no data loss),
-# then boot Express (which serves the pre-built SPA from spa_build/).
-# IMPORTANT: prisma db push --accept-data-loss, purge-org-real.ts, and
-# prisma db seed have been REMOVED — they caused data loss on every deploy.
+# ── preDeployCommand: Baseline existing migrations ──────────────────────────
+# The production database was previously managed with `prisma db push`, which
+# never created a _prisma_migrations history table. Running `migrate deploy`
+# directly would fail with P3005 ("database schema is not empty").
+#
+# Fix: `prisma migrate resolve --applied <name>` marks each migration as
+# already applied WITHOUT re-running any SQL. It also creates the
+# _prisma_migrations table if it doesn't exist yet.
+# `|| true` makes each resolve idempotent — if a migration is already recorded,
+# the command exits non-zero but we continue safely.
+#
+# After this runs once, all future deploys will find the table already populated
+# and all resolves will no-op (|| true keeps them silent and safe).
+preDeployCommand = "cd server && npx prisma migrate resolve --applied 20260428194919_test || true && npx prisma migrate resolve --applied 20260428234759_add_exterior_catalog_taxonomy || true && npx prisma migrate resolve --applied 20260429015242_add_job_expenses || true && npx prisma migrate resolve --applied 20260429171224_add_gcal_sync || true"
+
+# ── startCommand: deploy any NEW migrations then boot the server ─────────────
+# After baseline above, migrate deploy will find 0 pending migrations and exit 0.
+# Any future migrations committed to prisma/migrations/ will be applied here.
 startCommand = "cd server && npx prisma migrate deploy && node dist/index.js"
+
 healthcheckPath = "/health"
 healthcheckTimeout = 300
 restartPolicyType = "ON_FAILURE"
