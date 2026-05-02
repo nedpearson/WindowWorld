@@ -1024,10 +1024,10 @@ function MeasureTab({
 
 // ─── Desktop QR Panel ────────────────────────────────────────
 function DesktopQRPanel({
-  user, isOnline, pendingCount, isSyncing, stopCount, confirmedCount, refreshToken
+  user, isOnline, pendingCount, isSyncing, stopCount, confirmedCount, accessToken
 }: {
   user: any; isOnline: boolean; pendingCount: number; isSyncing: boolean;
-  stopCount: number; confirmedCount: number; refreshToken: string | null;
+  stopCount: number; confirmedCount: number; accessToken: string | null;
 }) {
   const [tick, setTick] = useState(0);
   const [copied, setCopied] = useState(false);
@@ -1038,12 +1038,13 @@ function DesktopQRPanel({
     return () => clearInterval(id);
   }, []);
 
-  // Build the deep-link — embed refreshToken (long-lived) so the phone can
-  // call POST /auth/refresh and get a fresh access token on arrival.
+  // Build the deep-link — embed accessToken (JWT) + mode=qr so FieldInstallPage
+  // routes to /auth/qr-exchange which resolves identity from the JWT sub claim.
   const baseUrl = window.location.origin;
   const qrUrl = new URL('/field-install', baseUrl);
-  if (user?.id)     qrUrl.searchParams.set('uid', user.id);
-  if (refreshToken) qrUrl.searchParams.set('token', refreshToken);
+  if (user?.id)   qrUrl.searchParams.set('uid', user.id);
+  if (accessToken) qrUrl.searchParams.set('token', accessToken);
+  qrUrl.searchParams.set('mode', 'qr');
   qrUrl.searchParams.set('ts', Math.floor(Date.now() / 30_000).toString()); // rotates every 30s
   const qrString = qrUrl.toString();
 
@@ -1270,7 +1271,7 @@ export function MobileFieldApp() {
     return (
       <DesktopInstallPortal
         user={user}
-        refreshToken={refreshToken}
+        accessToken={accessToken}
         isOnline={isOnline}
         stopCount={TODAY_STOPS.length}
         confirmedCount={confirmedCount}

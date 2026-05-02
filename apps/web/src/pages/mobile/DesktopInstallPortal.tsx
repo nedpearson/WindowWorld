@@ -11,7 +11,7 @@ import clsx from 'clsx';
 
 interface DesktopInstallPortalProps {
   user: { id?: string; firstName?: string; lastName?: string; email?: string } | null;
-  refreshToken: string | null;
+  accessToken: string | null;
   isOnline: boolean;
   stopCount: number;
   confirmedCount: number;
@@ -20,7 +20,7 @@ interface DesktopInstallPortalProps {
 }
 
 export function DesktopInstallPortal({
-  user, refreshToken, isOnline, stopCount, confirmedCount, pendingCount, isSyncing,
+  user, accessToken, isOnline, stopCount, confirmedCount, pendingCount, isSyncing,
 }: DesktopInstallPortalProps) {
   const [tick, setTick] = useState(0);
   const [copied, setCopied] = useState(false);
@@ -32,12 +32,13 @@ export function DesktopInstallPortal({
     return () => clearInterval(id);
   }, []);
 
-  // Build the authenticated deep-link — embed refreshToken (long-lived) so the
-  // phone can call POST /auth/refresh and get a fresh access token on arrival.
+  // Build the authenticated deep-link — embed accessToken (JWT) so the phone
+  // calls POST /auth/qr-exchange and gets a fresh session bound to this user.
   const origin = window.location.origin;
   const qrUrl = new URL('/field-install', origin);
-  if (user?.id)      qrUrl.searchParams.set('uid', user.id);
-  if (refreshToken)  qrUrl.searchParams.set('token', refreshToken);
+  if (user?.id)    qrUrl.searchParams.set('uid', user.id);
+  if (accessToken) qrUrl.searchParams.set('token', accessToken);
+  qrUrl.searchParams.set('mode', 'qr');
   qrUrl.searchParams.set('ts', Math.floor(Date.now() / 30_000).toString());
   const qrString = qrUrl.toString();
 

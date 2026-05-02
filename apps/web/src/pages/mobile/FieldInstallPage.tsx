@@ -361,9 +361,19 @@ export function FieldInstallPage() {
         .then((res: any) => {
           const { accessToken: newAccess, refreshToken: newRefresh, user: userData } = res.data?.data ?? {};
           if (!newAccess || !userData?.id) throw new Error('Invalid qr-exchange response');
+          // Flush any stale identity before writing the new one
+          useAuthStore.getState().logout();
           setUser(userData);
           setTokens(newAccess, newRefresh ?? '');
           setAuthDone(true);
+          // Fire-and-forget /auth/me to guarantee freshest user object
+          axios.get(`${base}/auth/me`, {
+            headers: { Authorization: `Bearer ${newAccess}` },
+            timeout: 5000,
+          }).then((meRes: any) => {
+            const freshUser = meRes.data?.data;
+            if (freshUser?.id) useAuthStore.getState().setUser(freshUser);
+          }).catch(() => { /* non-fatal — identity already set from exchange */ });
         })
         .catch((err: any) => {
           console.error('[FieldInstall] QR exchange failed', err?.response?.data ?? err.message);
@@ -376,9 +386,19 @@ export function FieldInstallPage() {
         .then((res: any) => {
           const { accessToken, refreshToken: newRefresh, user: userData } = res.data?.data ?? {};
           if (!accessToken || !userData?.id) throw new Error('Invalid refresh response');
+          // Flush any stale identity before writing the new one
+          useAuthStore.getState().logout();
           setUser(userData);
           setTokens(accessToken, newRefresh ?? token);
           setAuthDone(true);
+          // Fire-and-forget /auth/me to guarantee freshest user object
+          axios.get(`${base}/auth/me`, {
+            headers: { Authorization: `Bearer ${accessToken}` },
+            timeout: 5000,
+          }).then((meRes: any) => {
+            const freshUser = meRes.data?.data;
+            if (freshUser?.id) useAuthStore.getState().setUser(freshUser);
+          }).catch(() => { /* non-fatal — identity already set from refresh */ });
         })
         .catch((err: any) => {
           console.error('[FieldInstall] Token refresh failed', err?.response?.data ?? err.message);
