@@ -687,6 +687,8 @@ Return JSON: { "summary": "2-3 sentence summary", "nextBestAction": "Single most
     const { images, leadId, analyzedById } = params;
     const startMs = Date.now();
 
+    const safeLeadId = (!leadId || leadId === 'standalone' || leadId.length < 8) ? null : leadId;
+
     const systemPrompt =
       'You are an expert window replacement estimator with 20 years of field experience in Louisiana. ' +
       'You are analyzing exterior home photos to identify and measure every window visible.';
@@ -754,7 +756,7 @@ Return JSON: { "summary": "2-3 sentence summary", "nextBestAction": "Single most
 
     const analysis = await prisma.aiAnalysis.create({
       data: {
-        leadId,
+        leadId: safeLeadId,
         analysisType: 'PROPERTY_PHOTO_SCAN',
         provider: process.env.AI_PROVIDER || 'openai',
         model: process.env.AI_VISION_MODEL || 'gpt-4o',
@@ -796,6 +798,9 @@ Return JSON: { "summary": "2-3 sentence summary", "nextBestAction": "Single most
   }): Promise<ReferenceObjectAnalysis> {
     const { imageBase64, referenceObject, openingId, leadId, distanceFeet, referenceDimensions } = params;
     const startMs = Date.now();
+
+    const safeLeadId = (!leadId || leadId === 'standalone' || leadId.length < 8) ? null : leadId;
+    const safeOpeningId = (!openingId || openingId === 'standalone' || openingId.length < 8) ? null : openingId;
 
     // ── Lightweight JPEG EXIF extraction (no extra npm dep) ──────────────────
     let exifFocalLengthMm: number | null = null;
@@ -933,7 +938,8 @@ INSTRUCTIONS:
 
     const analysis = await prisma.aiAnalysis.create({
       data: {
-        leadId, openingId,
+        leadId: safeLeadId,
+        openingId: safeOpeningId,
         analysisType: 'REFERENCE_OBJECT_MEASUREMENT',
         provider: process.env.AI_PROVIDER || 'openai',
         model: process.env.AI_VISION_MODEL || 'gpt-4o',

@@ -215,15 +215,13 @@ router.post('/property-scan', auth.repOrAbove, async (req: Request, res: Respons
       analyzedById: user.id,
     });
 
-    // Skip DB population when no inspection is linked (standalone scan)
-    if (!autoPopulateOpenings || !inspectionId || !leadId) {
+    if (!autoPopulateOpenings) {
       return res.json({ success: true, data: { analysis: result, populated: 0, unmatched: result.windows?.length ?? 0, standalone: !inspectionId } });
     }
 
-    // Auto-populate openings whose roomLabel matches a detected window label (case-insensitive)
-    const openings = await prisma.opening.findMany({
+    const openings = inspectionId ? await prisma.opening.findMany({
       where: { inspectionId: inspectionId as string } as any,
-    }) as any[];
+    }) as any[] : [];
 
     let populated = 0;
     let unmatched = 0;
@@ -248,7 +246,27 @@ router.post('/property-scan', auth.repOrAbove, async (req: Request, res: Respons
         });
         populated++;
       } else {
-        unmatched++;
+        // Create new opening for unmatched or standalone scan
+        const newOpening = await prisma.opening.create({
+          data: {
+            inspectionId: inspectionId || null,
+            roomLabel: win.locationLabel || `Unknown Window (${win.elevation})`,
+            windowType: 'UNKNOWN',
+            frameMaterial: 'UNKNOWN',
+          } as any,
+        });
+        await measurementsService.upsert({
+          openingId: newOpening.id,
+          finalWidth: win.estimatedWidth,
+          finalHeight: win.estimatedHeight,
+          measurementMethod: 'multi-photo-ai',
+          isAiEstimated: true,
+          aiConfidenceScore: win.confidence,
+          status: 'ESTIMATED',
+          measuredById: user.id,
+          notes: `AI estimate from standalone property photo scan. Elevation: ${win.elevation}. REQUIRES TAPE VERIFICATION.`,
+        });
+        populated++;
       }
     }
 

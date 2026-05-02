@@ -849,6 +849,14 @@ function MeasureTab({
                 onComplete={(result) => {
                   setScanDone(true);
                   setScanResult(result ?? null);
+                  if (result?.analysis?.windows) {
+                    const mapped = result.analysis.windows.map((w: any) => ({
+                      label: w.locationLabel || `Unknown Window (${w.elevation})`,
+                      width: String(w.estimatedWidth),
+                      height: String(w.estimatedHeight),
+                    }));
+                    setSaved((prev) => [...prev, ...mapped]);
+                  }
                   haptic.success();
                 }}
               />
