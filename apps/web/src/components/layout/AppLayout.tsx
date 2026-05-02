@@ -209,6 +209,34 @@ export function AppLayout() {
       queryClient.invalidateQueries({ queryKey: ['lead', leadId] });
     });
 
+    // Mobile field sync — a rep synced offline work from the /field app
+    socket.on('mobile:sync', (payload: {
+      type: string;
+      entityId: string;
+      leadId: string;
+      organizationId: string;
+    }) => {
+      if (payload.leadId) {
+        queryClient.invalidateQueries({ queryKey: ['lead', payload.leadId] });
+        queryClient.invalidateQueries({ queryKey: ['leads'] });
+      }
+      if (payload.type === 'MEASUREMENT_SAVE' || payload.type === 'MEASUREMENT_SAVED') {
+        queryClient.invalidateQueries({ queryKey: ['opening'] });
+        queryClient.invalidateQueries({ queryKey: ['measurements'] });
+      }
+      if (payload.type === 'EXPENSE_SAVE' || payload.type === 'EXPENSE_SAVED') {
+        queryClient.invalidateQueries({ queryKey: ['job-expenses'] });
+      }
+      if (payload.type === 'LEAD_STATUS_UPDATE' || payload.type === 'LEAD_UPDATED') {
+        queryClient.invalidateQueries({ queryKey: ['pipeline'] });
+        queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+      }
+      if (payload.type === 'OPENING_UPDATE' || payload.type === 'OPENING_UPDATED') {
+        queryClient.invalidateQueries({ queryKey: ['opening'] });
+        queryClient.invalidateQueries({ queryKey: ['inspections'] });
+      }
+    });
+
     return () => { socket.disconnect(); };
   }, [queryClient]);
 

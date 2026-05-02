@@ -27,6 +27,7 @@ import { RouteTab } from './tabs/RouteTab';
 import { NotesTab } from './tabs/NotesTab';
 import { DesktopInstallPortal } from './DesktopInstallPortal';
 import { ReceiptCapture } from '../../components/field/ReceiptCapture';
+import { ErrorBoundary } from '../../components/ErrorBoundary';
 
 // ─── Types ────────────────────────────────────────────────────
 type FieldTab = 'map' | 'route' | 'capture' | 'measure' | 'pitch' | 'notes' | 'lead' | 'receipt';
@@ -1207,6 +1208,7 @@ export function MobileFieldApp() {
   const user = useAuthStore((s) => s.user);
   const accessToken = useAuthStore((s) => s.accessToken);
   const refreshToken = useAuthStore((s) => s.refreshToken);
+  const isAuthenticated = useAuthStore((s) => !!s.accessToken && !!s.user);
 
   useEffect(() => {
     const handler = () => setIsDesktop(window.innerWidth >= 768);
@@ -1228,6 +1230,24 @@ export function MobileFieldApp() {
 
   const now = new Date();
   const greeting = now.getHours() < 12 ? 'Good morning' : now.getHours() < 17 ? 'Good afternoon' : 'Good evening';
+
+  // ─── Session expired — show recovery banner instead of silent redirect ─────
+  if (!isAuthenticated) {
+    return (
+      <div className="fixed inset-0 bg-slate-900 flex items-center justify-center p-6">
+        <div className="text-center max-w-xs">
+          <div className="w-16 h-16 rounded-full bg-red-500/10 flex items-center justify-center mx-auto mb-4">
+            <ExclamationCircleIcon className="h-8 w-8 text-red-400" />
+          </div>
+          <p className="text-white font-semibold mb-2">Session expired</p>
+          <p className="text-slate-400 text-sm mb-6 leading-relaxed">
+            Your session has timed out. Any offline work is safely queued and will sync after you log back in.
+          </p>
+          <a href="/login" className="btn-primary inline-block">Log In Again</a>
+        </div>
+      </div>
+    );
+  }
 
   const TABS: Array<{ key: FieldTab; icon: any; label: string }> = [
     { key: 'map',     icon: GlobeAltIcon,              label: 'Map' },
@@ -1383,53 +1403,121 @@ export function MobileFieldApp() {
               exit={{ opacity: 0, y: -6 }}
               transition={{ duration: 0.12 }}
             >
+              {/* Each tab is isolated in its own ErrorBoundary so a single crash doesn't kill the whole app */}
               {activeTab === 'map' && (
-                <MapTab
-                  stops={TODAY_STOPS}
-                  activeStopId={activeStop}
-                  onSelectStop={(id) => { setActiveStop(id); handleTabChange('route'); }}
-                />
+                <ErrorBoundary fallback={
+                  <div className="p-6 text-center">
+                    <p className="text-red-400 font-medium mb-2">Map failed to load</p>
+                    <button onClick={() => window.location.reload()} className="btn-secondary text-xs">Reload</button>
+                  </div>
+                }>
+                  <MapTab
+                    stops={TODAY_STOPS}
+                    activeStopId={activeStop}
+                    onSelectStop={(id) => { setActiveStop(id); handleTabChange('route'); }}
+                  />
+                </ErrorBoundary>
               )}
               {activeTab === 'route' && (
-                <RouteTab
-                  stops={TODAY_STOPS}
-                  activeStopId={activeStop}
-                  onSelectStop={(id) => setActiveStop(id)}
-                  estimatedMiles={estimatedMiles}
-                  isLoading={routeLoading}
-                  refetch={refetchRoute}
-                  greeting={greeting}
-                  userName={`${user?.firstName ?? ''} ${user?.lastName ?? ''}`.trim()}
-                  stormMode={stormMode}
-                  enqueue={enqueue}
-                />
+                <ErrorBoundary fallback={
+                  <div className="p-6 text-center">
+                    <p className="text-red-400 font-medium mb-2">Route tab failed to load</p>
+                    <button onClick={() => window.location.reload()} className="btn-secondary text-xs">Reload</button>
+                  </div>
+                }>
+                  <RouteTab
+                    stops={TODAY_STOPS}
+                    activeStopId={activeStop}
+                    onSelectStop={(id) => setActiveStop(id)}
+                    estimatedMiles={estimatedMiles}
+                    isLoading={routeLoading}
+                    refetch={refetchRoute}
+                    greeting={greeting}
+                    userName={`${user?.firstName ?? ''} ${user?.lastName ?? ''}`.trim()}
+                    stormMode={stormMode}
+                    enqueue={enqueue}
+                  />
+                </ErrorBoundary>
               )}
-              {activeTab === 'capture' && <CaptureTab enqueue={enqueue} />}
+              {activeTab === 'capture' && (
+                <ErrorBoundary fallback={
+                  <div className="p-6 text-center">
+                    <p className="text-red-400 font-medium mb-2">Camera tab failed to load</p>
+                    <button onClick={() => window.location.reload()} className="btn-secondary text-xs">Reload</button>
+                  </div>
+                }>
+                  <CaptureTab enqueue={enqueue} />
+                </ErrorBoundary>
+              )}
               {activeTab === 'receipt' && (
-                activeStop
-                  ? (() => {
-                      const activeStopData = TODAY_STOPS.find((s: any) => s.id === activeStop);
-                      const leadId = activeStopData?.lead?.id;
-                      return leadId
-                        ? (
-                          <div className="space-y-3">
-                            <div className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
-                              Receipt Capture · {activeStopData?.lead?.name}
+                <ErrorBoundary fallback={
+                  <div className="p-6 text-center">
+                    <p className="text-red-400 font-medium mb-2">Receipt tab failed to load</p>
+                    <button onClick={() => window.location.reload()} className="btn-secondary text-xs">Reload</button>
+                  </div>
+                }>
+                  {activeStop
+                    ? (() => {
+                        const activeStopData = TODAY_STOPS.find((s: any) => s.id === activeStop);
+                        const leadId = activeStopData?.lead?.id;
+                        return leadId
+                          ? (
+                            <div className="space-y-3">
+                              <div className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                                Receipt Capture · {activeStopData?.lead?.name}
+                              </div>
+                              <ReceiptCapture
+                                leadId={leadId}
+                                onExpenseSaved={() => toast.success('Expense saved to job!')}
+                              />
                             </div>
-                            <ReceiptCapture
-                              leadId={leadId}
-                              onExpenseSaved={() => toast.success('Expense saved to job!')}
-                            />
-                          </div>
-                        )
-                        : <p className="text-xs text-slate-500 text-center py-6">Select a stop on the Route tab first.</p>;
-                    })()
-                  : <p className="text-xs text-slate-500 text-center py-6">Select a stop on the Route tab to capture a receipt.</p>
+                          )
+                          : <p className="text-xs text-slate-500 text-center py-6">Select a stop on the Route tab first.</p>;
+                      })()
+                    : <p className="text-xs text-slate-500 text-center py-6">Select a stop on the Route tab to capture a receipt.</p>
+                  }
+                </ErrorBoundary>
               )}
-              {activeTab === 'measure' && <MeasureTab enqueue={enqueue} stops={TODAY_STOPS} activeStopId={activeStop} />}
-              {activeTab === 'lead' && <NewLeadTab enqueue={enqueue} />}
-              {activeTab === 'pitch' && <PitchTab stops={TODAY_STOPS} activeStopId={activeStop} />}
-              {activeTab === 'notes' && <NotesTab stops={TODAY_STOPS} activeStopId={activeStop} />}
+              {activeTab === 'measure' && (
+                <ErrorBoundary fallback={
+                  <div className="p-6 text-center">
+                    <p className="text-red-400 font-medium mb-2">Measure tab failed to load</p>
+                    <button onClick={() => window.location.reload()} className="btn-secondary text-xs">Reload</button>
+                  </div>
+                }>
+                  <MeasureTab enqueue={enqueue} stops={TODAY_STOPS} activeStopId={activeStop} />
+                </ErrorBoundary>
+              )}
+              {activeTab === 'lead' && (
+                <ErrorBoundary fallback={
+                  <div className="p-6 text-center">
+                    <p className="text-red-400 font-medium mb-2">New Lead tab failed to load</p>
+                    <button onClick={() => window.location.reload()} className="btn-secondary text-xs">Reload</button>
+                  </div>
+                }>
+                  <NewLeadTab enqueue={enqueue} />
+                </ErrorBoundary>
+              )}
+              {activeTab === 'pitch' && (
+                <ErrorBoundary fallback={
+                  <div className="p-6 text-center">
+                    <p className="text-red-400 font-medium mb-2">Pitch tab failed to load</p>
+                    <button onClick={() => window.location.reload()} className="btn-secondary text-xs">Reload</button>
+                  </div>
+                }>
+                  <PitchTab stops={TODAY_STOPS} activeStopId={activeStop} />
+                </ErrorBoundary>
+              )}
+              {activeTab === 'notes' && (
+                <ErrorBoundary fallback={
+                  <div className="p-6 text-center">
+                    <p className="text-red-400 font-medium mb-2">Notes tab failed to load</p>
+                    <button onClick={() => window.location.reload()} className="btn-secondary text-xs">Reload</button>
+                  </div>
+                }>
+                  <NotesTab stops={TODAY_STOPS} activeStopId={activeStop} />
+                </ErrorBoundary>
+              )}
             </motion.div>
           </AnimatePresence>
         </div>

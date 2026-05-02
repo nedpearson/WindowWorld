@@ -102,6 +102,41 @@ router.post('/:id/retrigger-ai', auth.repOrAbove, async (req: Request, res: Resp
   res.json({ success: true, data: result });
 });
 
+// POST /api/v1/documents/upload-base64 — JSON body with base64-encoded file
+// Used by the offline queue PHOTO_UPLOAD action when blob URLs have expired.
+router.post('/upload-base64', auth.repOrAbove, async (req: Request, res: Response) => {
+  const user = (req as AuthenticatedRequest).user;
+  const { base64, filename, mimeType, leadId, openingId, inspectionId, type, notes } = req.body;
+
+  if (!base64 || !filename) {
+    res.status(400).json({ success: false, error: { message: 'base64 and filename are required' } });
+    return;
+  }
+
+  // Decode and upload via the same storage pipeline as multipart
+  const buffer = Buffer.from(base64, 'base64');
+  const safeMime = typeof mimeType === 'string' && mimeType.startsWith('image/') ? mimeType : 'image/jpeg';
+  const { url } = await storageService.upload(buffer, filename, safeMime);
+
+  const doc = await documentsService.createFromUpload({
+    filename,
+    originalName: filename,
+    mimeType: safeMime,
+    size: buffer.length,
+    url,
+    localPath: undefined,
+    type: type || 'FIELD_PHOTO',
+    leadId,
+    openingId,
+    inspectionId,
+    uploadedById: user.id,
+    triggerAiAnalysis: ['PHOTO_EXTERIOR', 'PHOTO_INTERIOR'].includes(type),
+    notes,
+  });
+
+  res.status(201).json({ success: true, data: doc });
+});
+
 // DELETE /api/v1/documents/:id
 router.delete('/:id', auth.repOrAbove, async (req: Request, res: Response) => {
   const user = (req as AuthenticatedRequest).user;

@@ -255,7 +255,6 @@ async function executeAction(action: QueuedAction, token: string): Promise<void>
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       break;
     }
-
     case 'PHOTO_UPLOAD': {
       const { base64, filename, mimeType, leadId, openingId, inspectionId, type: docType } = action.payload;
 
@@ -265,7 +264,7 @@ async function executeAction(action: QueuedAction, token: string): Promise<void>
         return; // treated as success
       }
 
-      const res = await fetch(`${base}/documents`, {
+      const res = await fetch(`${base}/documents/upload-base64`, {
         method: 'POST',
         headers,
         body: JSON.stringify({

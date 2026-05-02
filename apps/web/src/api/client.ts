@@ -7,7 +7,7 @@ const BASE_URL = import.meta.env.VITE_API_URL || '/api/v1';
 // ─── API Client ──────────────────────────────────────────────
 const apiClient: AxiosInstance = axios.create({
   baseURL: BASE_URL,
-  timeout: 30000,
+  timeout: 15000, // 15s — field networks are slow; AI endpoints override per-call
   headers: {
     'Content-Type': 'application/json',
   },
@@ -258,13 +258,13 @@ export const api = {
       inspectionId: string;
       images: Array<{ base64: string; elevation: string }>;
       autoPopulateOpenings?: boolean;
-    }) => post('/ai-analysis/property-scan', data),
+    }) => post('/ai-analysis/property-scan', data, { timeout: 60000 } as AxiosRequestConfig),
     referenceObject: (data: {
       openingId?: string;
       leadId?: string;
       imageBase64: string;
       referenceObject: 'iphone' | 'credit_card' | 'dollar_bill';
-    }) => post('/ai-analysis/reference-object', data),
+    }) => post('/ai-analysis/reference-object', data, { timeout: 30000 } as AxiosRequestConfig),
   },
 
 

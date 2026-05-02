@@ -52,17 +52,21 @@ import { initializeJobQueues } from './jobs';
 
 dotenv.config();
 
-// â”€â”€â”€ Startup Validation (fail fast, fail loud) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-const REQUIRED_ENV = ['DATABASE_URL', 'JWT_SECRET'];
-const missingEnv = REQUIRED_ENV.filter(k => !process.env[k]);
-if (missingEnv.length) {
-  console.error(`FATAL: Missing required environment variables: ${missingEnv.join(', ')}`);
-  console.error('Set these in your .env file or Railway environment variables.');
+// ─── Startup Validation (fail fast, fail loud) ─────────────────────────────
+// DATABASE_URL — exit(1) in all envs if missing
+if (!process.env.DATABASE_URL) {
+  console.error('FATAL: DATABASE_URL is not set. Refusing to start.');
   process.exit(1);
 }
-if (process.env.NODE_ENV === 'production' && (process.env.JWT_SECRET || '').length < 32) {
-  console.warn('WARNING: JWT_SECRET should be at least 32 characters in production.');
-  console.warn('Generate a better one with: node -e "console.log(require(\'crypto\').randomBytes(48).toString(\'hex\'))"');
+// JWT_SECRET — exit(1) in production if missing or too short
+if (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 32) {
+  if (process.env.NODE_ENV === 'production') {
+    console.error('FATAL: JWT_SECRET missing or too short (<32 chars). Refusing to start.');
+    console.error('Generate one with: node -e "console.log(require(\'crypto\').randomBytes(48).toString(\'hex\'))"');
+    process.exit(1);
+  } else {
+    console.warn('WARNING: JWT_SECRET missing or weak. Set it before deploying to production.');
+  }
 }
 
 const app = express();
@@ -80,9 +84,18 @@ if (process.env.SENTRY_DSN) {
 }
 
 const PORT = process.env.PORT || 3001;
-const CORS_ORIGINS = (process.env.CORS_ORIGIN || 'http://localhost:5173')
+
+// Build CORS allowlist: env var + Railway public domain + hardcoded production domain
+const _corsBase = (process.env.CORS_ORIGIN || '')
   .split(',')
-  .map((o) => o.trim());
+  .map((o) => o.trim())
+  .filter(Boolean);
+const _railwayDomain = process.env.RAILWAY_PUBLIC_DOMAIN
+  ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}` : null;
+const PROD_DOMAIN = 'https://windowworld.bridgebox.ai';
+const CORS_ORIGINS: string[] = [..._corsBase];
+if (_railwayDomain && !CORS_ORIGINS.includes(_railwayDomain)) CORS_ORIGINS.push(_railwayDomain);
+if (!CORS_ORIGINS.includes(PROD_DOMAIN)) CORS_ORIGINS.push(PROD_DOMAIN);
 
 // â”€â”€â”€ Middleware â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // â”€â”€â”€ Health check (MUST be first - before HTTPS redirect or any middleware) â”€
@@ -142,6 +155,7 @@ app.use(helmet({
                                 'https://accounts.google.com',
                                 'https://oauth2.googleapis.com',
                                 'https://identitytoolkit.googleapis.com',
+                                'https://windowworld.bridgebox.ai',
                                 'wss:', 'ws:'],
       frameSrc:                ["'self'", 'https://accounts.google.com'],
       objectSrc:               ["'none'"],
@@ -161,7 +175,16 @@ app.use(helmet({
 }));
 
 app.use(cors({
-  origin: CORS_ORIGINS,
+  origin: (origin, callback) => {
+    // Allow no-origin requests (mobile PWA, curl, same-origin)
+    if (!origin) return callback(null, true);
+    if (CORS_ORIGINS.includes(origin)) return callback(null, true);
+    // In development allow all localhost origins
+    if (process.env.NODE_ENV !== 'production' && origin.startsWith('http://localhost')) {
+      return callback(null, true);
+    }
+    callback(new Error(`CORS blocked: ${origin}`));
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Request-Id', 'X-Device-Id'],

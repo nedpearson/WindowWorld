@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
@@ -105,14 +105,16 @@ export function MeasurementPage() {
     }
   };
 
-  // Pre-fill from existing measurement once loaded
+  // Pre-fill from existing measurement once loaded (useEffect prevents setState-in-render)
   const existingMeas = opening?.measurement;
   const [prefilledFromApi, setPrefilledFromApi] = useState(false);
-  if (existingMeas && !prefilledFromApi) {
-    setWidthInt(String(Math.floor(existingMeas.finalWidth || 0)));
-    setHeightInt(String(Math.floor(existingMeas.finalHeight || 0)));
-    setPrefilledFromApi(true);
-  }
+  useEffect(() => {
+    if (existingMeas && !prefilledFromApi) {
+      setWidthInt(String(Math.floor(existingMeas.finalWidth || 0)));
+      setHeightInt(String(Math.floor(existingMeas.finalHeight || 0)));
+      setPrefilledFromApi(true);
+    }
+  }, [existingMeas, prefilledFromApi]);
 
   if (isLoading) return (
     <div className="p-6 space-y-4 animate-pulse max-w-lg mx-auto">

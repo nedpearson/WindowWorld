@@ -79,10 +79,14 @@ interface MapTabProps {
 const DEFAULT_CENTER: [number, number] = [30.4515, -91.1871];
 
 export function MapTab({ stops, activeStopId, onSelectStop }: MapTabProps) {
+  // Guard against SSR / service worker pre-render environments
+  if (typeof window === 'undefined') return null;
+
   const [gpsPos, setGpsPos] = useState<[number, number] | null>(null);
   const [gpsError, setGpsError] = useState('');
   const [mapType, setMapType] = useState<'street' | 'satellite'>('street');
   const watchId = useRef<number | null>(null);
+
 
   // Geocode stop addresses that lack lat/lng using Nominatim
   const [geocoded, setGeocoded] = useState<Map<string, [number, number]>>(new Map());
