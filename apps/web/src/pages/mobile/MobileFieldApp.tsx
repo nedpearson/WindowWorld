@@ -111,7 +111,7 @@ function InstallBanner({ onInstall, onDismiss, isIOS }: { onInstall: () => void;
 }
 
 // ─── Update Banner ────────────────────────────────────────────
-function UpdateBanner() {
+function UpdateBanner({ onUpdate }: { onUpdate: () => void }) {
   return (
     <motion.div
       initial={{ y: -40, opacity: 0 }}
@@ -120,13 +120,13 @@ function UpdateBanner() {
     >
       <BellAlertIcon className="h-4 w-4 text-amber-900 flex-shrink-0" />
       <div className="flex-1 text-xs font-medium text-amber-900">
-        Update available — reload for latest features
+        New update available — tap to reload
       </div>
       <button
-        onClick={() => { haptic.tap(); window.location.reload(); }}
+        onClick={() => { haptic.tap(); onUpdate(); }}
         className="text-[11px] font-bold text-amber-900 bg-amber-900/15 px-3 py-1.5 rounded-lg active:bg-amber-900/25"
       >
-        Reload
+        Update Now
       </button>
     </motion.div>
   );
@@ -1309,7 +1309,7 @@ export function MobileFieldApp() {
   const [isDesktop, setIsDesktop] = useState(() => window.innerWidth >= 768);
   const { enqueue, pendingCount, isSyncing, syncNow, isOnline, failedCount, deadCount, clearFailed } = useOfflineQueue();
   const stormMode = useAppStore((s) => s.stormModeActive);
-  const { isInstallable, isInstalled, isUpdateAvailable, isIOS, install, dismissInstall } = usePWA();
+  const { isInstallable, isInstalled, isUpdateAvailable, isIOS, install, dismissInstall, forceUpdate } = usePWA();
   const user = useAuthStore((s) => s.user);
   const accessToken = useAuthStore((s) => s.accessToken);
   const refreshToken = useAuthStore((s) => s.refreshToken);
@@ -1411,7 +1411,7 @@ export function MobileFieldApp() {
       >
       {/* Banners */}
       <AnimatePresence>
-        {isUpdateAvailable && <UpdateBanner key="update" />}
+        {isUpdateAvailable && <UpdateBanner key="update" onUpdate={forceUpdate} />}
         {isInstallable && (
           <InstallBanner key="install" isIOS={isIOS} onInstall={install} onDismiss={dismissInstall} />
         )}
@@ -1446,6 +1446,15 @@ export function MobileFieldApp() {
                 : isOnline ? <WifiIcon className="h-3 w-3" /> : <XMarkIcon className="h-3 w-3" />
               }
               {isSyncing ? 'Syncing...' : pendingCount > 0 ? `${pendingCount} pending` : isOnline ? 'Synced' : 'Offline'}
+            </button>
+
+            {/* Route refresh button */}
+            <button
+              onClick={() => { haptic.tap(); refetchRoute(); }}
+              className="flex items-center justify-center w-8 h-8 rounded-lg bg-slate-800 border border-slate-700 text-slate-400 active:text-white active:bg-slate-700 transition-colors"
+              title="Refresh today's route"
+            >
+              <ArrowPathIcon className="h-3.5 w-3.5" />
             </button>
 
             {/* Failed sync badge — tap to retry */}
