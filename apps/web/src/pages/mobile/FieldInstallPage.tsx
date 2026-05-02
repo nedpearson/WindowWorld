@@ -19,6 +19,19 @@ import { toast } from 'sonner';
 // ─── Step type ────────────────────────────────────────────────
 type SetupStep = 'welcome' | 'install' | 'notifications' | 'done';
 
+// ─── Browser detection ───────────────────────────────────────
+function detectBrowser() {
+  const ua = navigator.userAgent;
+  const isIOS   = /iphone|ipad|ipod/i.test(ua);
+  const isEdge   = /Edg\/|EdgA\/|EdgiOS\//i.test(ua);
+  const isChrome = /CriOS\/|Chrome\//i.test(ua) && !isEdge;
+  const isFirefox = /FxiOS\/|Firefox\//i.test(ua);
+  // Safari: has 'Safari' in UA but NOT Chrome/Edge/Firefox tokens
+  const isSafari = /Safari\//i.test(ua) && !isChrome && !isEdge && !isFirefox;
+  const isAndroid = /android/i.test(ua);
+  return { isIOS, isAndroid, isSafari, isChrome, isEdge, isFirefox };
+}
+
 // ─── Safe Safari Share arrow SVG ─────────────────────────────
 function SafariShareIcon({ className }: { className?: string }) {
   return (
@@ -29,27 +42,79 @@ function SafariShareIcon({ className }: { className?: string }) {
 }
 
 // ─── Install Step ─────────────────────────────────────────────
-function InstallStep({ isIOS, isInstallable, isInstalled, install, onNext }: {
-  isIOS: boolean; isInstallable: boolean; isInstalled: boolean;
+function InstallStep({ isInstallable, isInstalled, install, onNext }: {
+  isInstallable: boolean; isInstalled: boolean;
   install: () => Promise<boolean>; onNext: () => void;
 }) {
   const [installing, setInstalling] = useState(false);
-  const [showArrow, setShowArrow] = useState(false);
+  const [showArrow, setShowArrow]   = useState(false);
+  const { isIOS, isSafari, isEdge, isChrome, isFirefox } = detectBrowser();
 
   useEffect(() => {
     if (isInstalled) onNext();
   }, [isInstalled, onNext]);
 
   const handleInstall = async () => {
-    if (isIOS) {
-      setShowArrow(true);
-      return;
+    setShowArrow(true);
+    if (!isIOS && isInstallable) {
+      setInstalling(true);
+      const accepted = await install();
+      setInstalling(false);
+      if (accepted) onNext();
     }
-    setInstalling(true);
-    const accepted = await install();
-    setInstalling(false);
-    if (accepted) onNext();
   };
+
+  // ── Per-browser manual install steps (iOS — no native prompt available) ──
+  let iosSteps: Array<{ n: number; icon: React.ReactNode; text: React.ReactNode }> = [];
+  let iosButtonLabel = 'Show me where to tap';
+  let iosButtonIcon = <SafariShareIcon className="h-5 w-5" />;
+  let arrowLabel = '';
+
+  if (isSafari) {
+    iosSteps = [
+      { n: 1, icon: <SafariShareIcon className="h-5 w-5 text-sky-400" />, text: <>Tap the <strong className="text-white">Share ⎙</strong> button at the bottom of Safari</> },
+      { n: 2, icon: <PlusCircleIcon  className="h-5 w-5 text-brand-400" />,  text: <><strong className="text-white">Add to Home Screen</strong></> },
+      { n: 3, icon: <CheckCircleIcon className="h-5 w-5 text-emerald-400" />, text: <>Tap <strong className="text-white">Add</strong> in the top right corner</> },
+    ];
+    iosButtonLabel = 'Where is the Share button?';
+    arrowLabel = 'Tap Share ⎙ in Safari\'s bottom toolbar';
+  } else if (isEdge) {
+    iosSteps = [
+      { n: 1, icon: <span className="text-base">⋯</span>, text: <>Tap the <strong className="text-white">⋯ menu</strong> at the bottom of Edge</> },
+      { n: 2, icon: <ArrowDownTrayIcon className="h-5 w-5 text-brand-400" />, text: <><strong className="text-white">Add to Phone</strong> or <strong className="text-white">Add to Home Screen</strong></> },
+      { n: 3, icon: <CheckCircleIcon className="h-5 w-5 text-emerald-400" />, text: <>Tap <strong className="text-white">Add</strong> to confirm</> },
+    ];
+    iosButtonLabel = 'Where is the ⋯ menu?';
+    iosButtonIcon  = <span className="text-lg">⋯</span>;
+    arrowLabel = 'Tap the ⋯ menu button at the bottom of Edge';
+  } else if (isChrome) {
+    iosSteps = [
+      { n: 1, icon: <span className="text-base">⋮</span>, text: <>Tap the <strong className="text-white">⋮ menu</strong> (top right of Chrome)</> },
+      { n: 2, icon: <ArrowDownTrayIcon className="h-5 w-5 text-brand-400" />, text: <><strong className="text-white">Add to Home Screen</strong></> },
+      { n: 3, icon: <CheckCircleIcon className="h-5 w-5 text-emerald-400" />, text: <>Tap <strong className="text-white">Add</strong> to confirm</> },
+    ];
+    iosButtonLabel = 'Where is the ⋮ menu?';
+    iosButtonIcon  = <span className="text-lg">⋮</span>;
+    arrowLabel = 'Tap ⋮ in the top-right corner of Chrome';
+  } else if (isFirefox) {
+    iosSteps = [
+      { n: 1, icon: <span className="text-base">⋯</span>, text: <>Tap the <strong className="text-white">⋯ menu</strong> at the bottom of Firefox</> },
+      { n: 2, icon: <ShareIcon className="h-5 w-5 text-brand-400" />, text: <><strong className="text-white">Share</strong> → <strong className="text-white">Add to Home Screen</strong></> },
+      { n: 3, icon: <CheckCircleIcon className="h-5 w-5 text-emerald-400" />, text: <>Tap <strong className="text-white">Add</strong></> },
+    ];
+    iosButtonLabel = 'Show me where';
+    arrowLabel = 'Tap ⋯ at the bottom of Firefox';
+  } else {
+    // Unknown iOS browser — generic
+    iosSteps = [
+      { n: 1, icon: <ShareIcon className="h-5 w-5 text-sky-400" />, text: <>Open your browser menu or Share button</> },
+      { n: 2, icon: <PlusCircleIcon className="h-5 w-5 text-brand-400" />, text: <><strong className="text-white">Add to Home Screen</strong></> },
+      { n: 3, icon: <CheckCircleIcon className="h-5 w-5 text-emerald-400" />, text: <>Tap <strong className="text-white">Add</strong> to confirm</> },
+    ];
+  }
+
+  // Browser label for the tip banner
+  const browserName = isSafari ? 'Safari' : isEdge ? 'Edge' : isChrome ? 'Chrome' : isFirefox ? 'Firefox' : 'your browser';
 
   return (
     <motion.div
@@ -62,36 +127,34 @@ function InstallStep({ isIOS, isInstallable, isInstalled, install, onNext }: {
         </div>
         <h2 className="text-xl font-bold text-white">Add to Home Screen</h2>
         <p className="text-sm text-slate-400 mt-2">
-          Install the WindowWorld app for instant access — works offline too.
+          Install WindowWorld for instant access — works offline too.
         </p>
+        {isIOS && (
+          <p className="text-xs text-slate-600 mt-1">Detected: {browserName}</p>
+        )}
       </div>
 
-      {/* iOS step-by-step */}
+      {/* iOS — browser-specific manual steps (no beforeinstallprompt on iOS) */}
       {isIOS && (
         <div className="space-y-3">
-          {[
-            { n: 1, icon: <SafariShareIcon className="h-5 w-5 text-sky-400" />, text: <>Tap the <strong className="text-white">Share</strong> button below ↓</> },
-            { n: 2, icon: <PlusCircleIcon className="h-5 w-5 text-brand-400" />, text: <><strong className="text-white">Add to Home Screen</strong></> },
-            { n: 3, icon: <CheckCircleIcon className="h-5 w-5 text-emerald-400" />, text: <>Tap <strong className="text-white">Add</strong> in the top right</> },
-          ].map(({ n, icon, text }) => (
+          {iosSteps.map(({ n, icon, text }) => (
             <div key={n} className="flex items-center gap-4 p-3.5 rounded-2xl bg-slate-800/60 border border-slate-700/40">
               <div className="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center text-xs font-bold text-slate-300 flex-shrink-0">{n}</div>
-              <div className="w-6 flex-shrink-0">{icon}</div>
+              <div className="w-6 flex-shrink-0 flex items-center justify-center">{icon}</div>
               <div className="text-sm text-slate-300">{text}</div>
             </div>
           ))}
 
-          {/* Animated bouncing arrow pointing to Safari share bar */}
           <AnimatePresence>
-            {showArrow && (
+            {showArrow && arrowLabel && (
               <motion.div
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: [0, 10, 0] }}
                 transition={{ repeat: Infinity, duration: 1.5 }}
-                className="flex flex-col items-center gap-2 pt-4"
+                className="flex flex-col items-center gap-2 pt-2"
               >
-                <div className="text-xs text-sky-400 font-semibold">Tap Share ↓ in Safari's toolbar</div>
-                <div className="text-3xl">⬇️</div>
+                <div className="text-xs text-sky-400 font-semibold text-center">{arrowLabel}</div>
+                <div className="text-3xl">{isSafari ? '⬇️' : isEdge ? '⬇️' : '⬆️'}</div>
               </motion.div>
             )}
           </AnimatePresence>
@@ -100,13 +163,13 @@ function InstallStep({ isIOS, isInstallable, isInstalled, install, onNext }: {
             onClick={() => setShowArrow((v) => !v)}
             className="w-full flex items-center justify-center gap-2.5 py-4 rounded-2xl bg-sky-600 hover:bg-sky-500 text-white font-semibold text-sm transition-colors shadow-lg shadow-sky-600/20"
           >
-            <SafariShareIcon className="h-5 w-5" />
-            Show me where to tap
+            {iosButtonIcon}
+            {iosButtonLabel}
           </button>
         </div>
       )}
 
-      {/* Android / Desktop install */}
+      {/* Android/Desktop — native install prompt (Chrome, Edge, Samsung) */}
       {!isIOS && isInstallable && (
         <button
           onClick={handleInstall}
@@ -121,13 +184,11 @@ function InstallStep({ isIOS, isInstallable, isInstalled, install, onNext }: {
         </button>
       )}
 
-      {/* Already installed or no install prompt */}
+      {/* Android — no install prompt (Firefox, etc.) */}
       {!isIOS && !isInstallable && (
-        <div className="flex flex-col items-center gap-3">
-          <div className="flex items-center gap-2 p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 w-full">
-            <CheckBadgeIcon className="h-5 w-5 text-emerald-400 flex-shrink-0" />
-            <span className="text-sm text-emerald-300">App may already be installed — check your home screen</span>
-          </div>
+        <div className="flex items-center gap-2 p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 w-full">
+          <CheckBadgeIcon className="h-5 w-5 text-emerald-400 flex-shrink-0" />
+          <span className="text-sm text-emerald-300">App may already be installed — check your home screen</span>
         </div>
       )}
 
@@ -253,7 +314,7 @@ function DoneStep({ userName, onGo, leadId, inspectionId }: {
 
       <div>
         <h2 className="text-2xl font-black text-white">You're all set, {userName.split(' ')[0]}!</h2>
-        <p className="text-sm text-slate-400 mt-2">WindowWorld Field Mode is ready on your iPhone.</p>
+        <p className="text-sm text-slate-400 mt-2">WindowWorld Field Mode is ready on this device.</p>
       </div>
 
       {/* ── AI Property Scan banner ── */}
@@ -336,7 +397,7 @@ export function FieldInstallPage() {
   const [authError, setAuthError] = useState('');
   const hydrated = useRef(false);
 
-  const { isIOS, isInstallable, isInstalled, install } = usePWA();
+  const { isInstallable, isInstalled, install } = usePWA();
 
   // ── Auto-authenticate from QR token ──────────────────────
   useEffect(() => {
@@ -473,7 +534,7 @@ export function FieldInstallPage() {
                 </div>
                 <h1 className="text-2xl font-black text-white">Welcome, {userName.split(' ')[0]}!</h1>
                 <p className="text-sm text-slate-400 mt-2">
-                  You're setting up <strong className="text-white">WindowWorld Field Mode</strong> on this iPhone. It takes about 30 seconds.
+                  You're setting up <strong className="text-white">WindowWorld Field Mode</strong> on this device. It takes about 30 seconds.
                 </p>
               </div>
 
@@ -519,7 +580,6 @@ export function FieldInstallPage() {
           {step === 'install' && (
             <InstallStep
               key="install"
-              isIOS={isIOS}
               isInstallable={isInstallable}
               isInstalled={isInstalled}
               install={install}
