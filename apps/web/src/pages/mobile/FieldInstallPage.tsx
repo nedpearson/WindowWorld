@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   CheckCircleIcon, DevicePhoneMobileIcon, BellAlertIcon,
   ArrowDownTrayIcon, WifiIcon, BoltIcon, XMarkIcon,
-  ShareIcon, PlusCircleIcon, ArrowRightIcon,
+  ShareIcon, PlusCircleIcon, ArrowRightIcon, CameraIcon,
 } from '@heroicons/react/24/outline';
 import { BoltIcon as BoltSolid, CheckBadgeIcon } from '@heroicons/react/24/solid';
 import { useAuthStore } from '../../store/auth.store';
@@ -12,6 +12,7 @@ import { usePushNotifications } from '../../hooks/usePushNotifications';
 import { usePWA } from '../../hooks/usePWA';
 import axios from 'axios';
 import apiClient from '../../api/client';
+import { PropertyScanCapture } from '../../components/field/PropertyScanCapture';
 
 import { toast } from 'sonner';
 
@@ -224,7 +225,12 @@ function NotificationsStep({ onNext, onSkip }: { onNext: () => void; onSkip: () 
 }
 
 // ─── Done Step ────────────────────────────────────────────────
-function DoneStep({ userName, onGo }: { userName: string; onGo: () => void }) {
+function DoneStep({ userName, onGo, leadId, inspectionId }: {
+  userName: string; onGo: () => void; leadId?: string; inspectionId?: string;
+}) {
+  const [showPropertyScan, setShowPropertyScan] = useState(false);
+  const [scanComplete,     setScanComplete    ] = useState(false);
+
   const features = [
     { icon: '📍', text: "Today's route & stops" },
     { icon: '📸', text: 'Camera + AI window analysis' },
@@ -249,6 +255,52 @@ function DoneStep({ userName, onGo }: { userName: string; onGo: () => void }) {
         <h2 className="text-2xl font-black text-white">You're all set, {userName.split(' ')[0]}!</h2>
         <p className="text-sm text-slate-400 mt-2">WindowWorld Field Mode is ready on your iPhone.</p>
       </div>
+
+      {/* ── AI Property Scan banner ── */}
+      {leadId && inspectionId && (
+        <div className="w-full">
+          {showPropertyScan ? (
+            <PropertyScanCapture
+              leadId={leadId}
+              inspectionId={inspectionId}
+              onComplete={() => {
+                setScanComplete(true);
+                setShowPropertyScan(false);
+                toast.success('AI estimates pre-filled. Verify each window before ordering.');
+              }}
+            />
+          ) : !scanComplete ? (
+            <div className="card border border-brand-500/30 bg-brand-500/5 p-4 text-left">
+              <div className="flex items-start justify-between">
+                <div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <CameraIcon className="h-4 w-4 text-brand-400" />
+                    <span className="text-sm font-semibold text-white">AI Property Scan</span>
+                    <span className="text-[10px] bg-brand-500/20 text-brand-300 px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">
+                      Recommended
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-400">
+                    Take 4 exterior photos to pre-fill measurements for all windows.
+                    Faster than measuring each window individually.
+                  </p>
+                </div>
+                <button
+                  onClick={() => setShowPropertyScan(true)}
+                  className="btn-primary btn-sm ml-3 whitespace-nowrap text-xs"
+                >
+                  Start Scan
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-400">
+              <CheckCircleIcon className="h-4 w-4 flex-shrink-0" />
+              AI scan complete — verify each opening with a tape measure.
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="grid grid-cols-2 gap-2 w-full">
         {features.map(({ icon, text }) => (
@@ -466,7 +518,13 @@ export function FieldInstallPage() {
 
           {/* ── Done ── */}
           {step === 'done' && (
-            <DoneStep key="done" userName={userName} onGo={goToField} />
+            <DoneStep
+              key="done"
+              userName={userName}
+              onGo={goToField}
+              leadId={searchParams.get('leadId') ?? undefined}
+              inspectionId={searchParams.get('inspectionId') ?? undefined}
+            />
           )}
 
         </AnimatePresence>

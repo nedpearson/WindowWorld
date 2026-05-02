@@ -1,13 +1,16 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
 import { useQuery } from '@tanstack/react-query';
 import {
-  ArrowLeftIcon, CheckCircleIcon, ExclamationCircleIcon } from '@heroicons/react/24/outline';
+  ArrowLeftIcon, CheckCircleIcon, ExclamationCircleIcon, CameraIcon,
+  SparklesIcon, DevicePhoneMobileIcon,
+} from '@heroicons/react/24/outline';
 import clsx from 'clsx';
 import { useOfflineQueue } from '../../hooks/useOfflineQueue';
-import { api } from '../../api/client';
+import { api, post } from '../../api/client';
+import { ReferenceObjectMeasure } from '../../components/field/ReferenceObjectMeasure';
 
 const DEMO_OPENING = {
   id: 'o3',
@@ -46,6 +49,61 @@ export function MeasurementPage() {
   const [heightInt, setHeightInt] = useState('');
   const [heightFrac, setHeightFrac] = useState('0');
   const [saved, setSaved] = useState(false);
+
+  // ── Quick Methods ──────────────────────────────────────────────────────────
+  const [activeMethod, setActiveMethod] = useState<'ai' | 'ref' | 'tape'>('tape');
+
+  // ── Photo attachment ───────────────────────────────────────────────────────
+  const [attachedPhotoUrl, setAttachedPhotoUrl] = useState<string | null>(null);
+  const [photoUploading, setPhotoUploading] = useState(false);
+  const photoInputRef = useRef<HTMLInputElement>(null);
+
+  const handlePhotoAttach = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = '';
+    const previewUrl = URL.createObjectURL(file);
+    setAttachedPhotoUrl(previewUrl);
+    setPhotoUploading(true);
+    try {
+      // Resize to max 1920px at 0.85 JPEG quality before upload (matches ReceiptCapture pattern)
+      const base64 = await new Promise<string>((resolve, reject) => {
+        const img = new Image();
+        const reader = new FileReader();
+        reader.onload = (ev) => { img.src = ev.target?.result as string; };
+        reader.onerror = reject;
+        img.onload = () => {
+          const MAX = 1920;
+          let { width, height } = img;
+          if (width > MAX || height > MAX) {
+            if (width > height) { height = Math.round((height * MAX) / width); width = MAX; }
+            else { width = Math.round((width * MAX) / height); height = MAX; }
+          }
+          const canvas = document.createElement('canvas');
+          canvas.width = width; canvas.height = height;
+          const ctx = canvas.getContext('2d')!;
+          ctx.drawImage(img, 0, 0, width, height);
+          resolve(canvas.toDataURL('image/jpeg', 0.85).replace(/^data:image\/jpeg;base64,/, ''));
+        };
+        img.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+
+      await post('/documents', {
+        leadId:       opening?.leadId,
+        openingId:    opening?.id,
+        inspectionId: opening?.inspectionId,
+        type:         'MEASUREMENT_PHOTO',
+        base64,
+        filename:     `measurement-${opening?.id}-${Date.now()}.jpg`,
+      });
+      toast.success('Photo attached to this opening.');
+    } catch {
+      toast.error('Photo upload failed — it will not be saved.');
+    } finally {
+      setPhotoUploading(false);
+    }
+  };
 
   // Pre-fill from existing measurement once loaded
   const existingMeas = opening?.measurement;
@@ -144,7 +202,49 @@ export function MeasurementPage() {
         </div>
       )}
 
-      {/* Measurement entry */}
+      {/* ── Quick Methods toggle ── */}
+      <div className="flex gap-2">
+        {([
+          { id: 'tape' as const, label: 'Tape Measure', icon: <span className="text-sm">📏</span>, check: true },
+          { id: 'ref'  as const, label: 'Reference Object', icon: <DevicePhoneMobileIcon className="h-4 w-4" /> },
+          { id: 'ai'   as const, label: 'AI Photo', icon: <SparklesIcon className="h-4 w-4" /> },
+        ] as const).map(({ id, label, icon, check }) => (
+          <button
+            key={id}
+            onClick={() => setActiveMethod(id)}
+            className={clsx(
+              'flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-medium border transition-all',
+              activeMethod === id
+                ? 'bg-brand-600 border-brand-500 text-white'
+                : 'bg-slate-800 border-slate-700/50 text-slate-400 hover:text-slate-300',
+            )}
+          >
+            {icon}
+            <span className="hidden sm:inline">{label}</span>
+            {check && activeMethod === id && <span className="text-brand-200">✓</span>}
+          </button>
+        ))}
+      </div>
+
+      {/* ── Reference Object method ── */}
+      {activeMethod === 'ref' && (
+        <div className="card p-5">
+          <ReferenceObjectMeasure
+            openingId={opening.id}
+            leadId={opening.leadId || ''}
+            roomLabel={opening.roomLabel || ''}
+            onMeasured={(w, h) => {
+              setWidthInt(String(Math.floor(w)));
+              setHeightInt(String(Math.floor(h)));
+              setActiveMethod('tape');
+              toast.success('AI estimate pre-filled — review and save when ready.');
+            }}
+          />
+        </div>
+      )}
+
+      {/* ── Tape Measure entry ── */}
+      {activeMethod === 'tape' && (
       <div className="card p-5 space-y-5">
         <div className="flex items-center gap-2">
           <div className="w-2 h-2 rounded-full bg-brand-400" />
@@ -214,9 +314,39 @@ export function MeasurementPage() {
             ))}
           </div>
         </div>
+
+        {/* ── Photo attach button (Feature C) ── */}
+        <div className="pt-2 border-t border-slate-700/30">
+          <label className="flex items-center gap-2 text-xs text-slate-400 cursor-pointer hover:text-white transition-colors">
+            {photoUploading
+              ? <div className="w-4 h-4 border-2 border-slate-400/30 border-t-slate-400 rounded-full animate-spin" />
+              : <CameraIcon className="h-4 w-4" />
+            }
+            <span>{photoUploading ? 'Uploading photo…' : 'Attach photo of this window'}</span>
+            <input
+              ref={photoInputRef}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              className="hidden"
+              onChange={handlePhotoAttach}
+            />
+          </label>
+          {attachedPhotoUrl && !photoUploading && (
+            <div className="mt-2 flex items-center gap-2">
+              <img src={attachedPhotoUrl} alt="Attached" className="w-12 h-12 rounded-lg object-cover border border-slate-700" />
+              <div className="flex items-center gap-1 text-xs text-emerald-400">
+                <CheckCircleIcon className="h-3.5 w-3.5" />
+                Photo saved
+              </div>
+            </div>
+          )}
+        </div>
       </div>
+      )}{/* end tape block */}
 
       {/* Final readout */}
+      {activeMethod === 'tape' && (
       <div className="card p-5 text-center bg-slate-800/60">
         <div className="text-xs text-slate-500 mb-2">Final Dimensions</div>
         <div className="text-4xl font-bold font-mono text-white">
@@ -224,14 +354,17 @@ export function MeasurementPage() {
         </div>
         <div className="text-xs text-slate-600 mt-2">Field measurement · VERIFIED_ONSITE status</div>
       </div>
+      )}
 
       {/* Disclaimer */}
+      {activeMethod === 'tape' && (
       <div className="flex items-start gap-2 p-3 rounded-xl bg-slate-800/40 border border-slate-700/30 text-xs text-slate-500">
         <ExclamationCircleIcon className="h-4 w-4 flex-shrink-0" />
         <span>
           Saving as <strong className="text-white">VERIFIED_ONSITE</strong>. A manager must approve before this measurement can be used to place a window order. Never order windows from AI estimates alone.
         </span>
       </div>
+      )}
 
       {/* Actions */}
       {!saved ? (

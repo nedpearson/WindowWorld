@@ -2,10 +2,42 @@ import OpenAI from 'openai';
 import { logger, sanitizeForLog } from '../../shared/utils/logger';
 import { prisma } from '../../shared/services/prisma';
 
+// ─── Measurement Intelligence Interfaces ─────────────────────────────────────
+
+export interface PropertyPhotoAnalysis {
+  totalWindowsDetected: number;
+  windows: Array<{
+    locationLabel: string;
+    elevation: string;
+    estimatedWidth: number;
+    estimatedHeight: number;
+    windowType: string;
+    condition: string;
+    confidence: number;
+    issues: string[];
+    notes: string;
+  }>;
+  propertyNotes: string;
+  imageQualityWarnings: string[];
+  aiAnalysisId: string;
+}
+
+export interface ReferenceObjectAnalysis {
+  estimatedWidth: number;
+  estimatedHeight: number;
+  confidence: number;
+  referenceValid: boolean;
+  referenceWarning: string | null;
+  windowType: string;
+  measurementNotes: string;
+  aiAnalysisId: string;
+}
+
 // â”€â”€â”€ Provider abstraction â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 interface AiProvider {
   generateText(prompt: string, systemPrompt?: string): Promise<string>;
   analyzeImage(imageBase64: string, prompt: string): Promise<string>;
+  analyzeImages(images: Array<{ base64: string; elevation: string }>, prompt: string, systemPrompt?: string): Promise<string>;
 }
 
 class OpenAIProvider implements AiProvider {
@@ -50,10 +82,54 @@ class OpenAIProvider implements AiProvider {
     });
     return response.choices[0]?.message?.content || '';
   }
+
+  async analyzeImages(
+    images: Array<{ base64: string; elevation: string }>,
+    prompt: string,
+    systemPrompt?: string,
+  ): Promise<string> {
+    // Build content array: interleave each image with its elevation label, then the main prompt
+    const imageContent: OpenAI.Chat.Completions.ChatCompletionContentPart[] = images.map((img) => ({
+      type: 'image_url' as const,
+      image_url: { url: `data:image/jpeg;base64,${img.base64}`, detail: 'high' as const },
+    }));
+
+    const response = await this.client.chat.completions.create({
+      model: process.env.AI_VISION_MODEL || 'gpt-4o',
+      messages: [
+        ...(systemPrompt ? [{ role: 'system' as const, content: systemPrompt }] : []),
+        {
+          role: 'user',
+          content: [
+            ...imageContent,
+            { type: 'text' as const, text: prompt },
+          ],
+        },
+      ],
+      max_tokens: 8192,
+    });
+    return response.choices[0]?.message?.content || '';
+  }
 }
 
 // Fallback when no AI provider is configured (Demo Mode)
 class NullProvider implements AiProvider {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  async analyzeImages(_images: Array<{ base64: string; elevation: string }>, _prompt: string): Promise<string> {
+    logger.info('Using Mock AI Provider for multi-image (OPENAI_API_KEY not set)');
+    return JSON.stringify({
+      totalWindowsDetected: 8,
+      windows: [
+        { locationLabel: 'Front Left', elevation: 'front', estimatedWidth: 36, estimatedHeight: 54, windowType: 'DOUBLE_HUNG', condition: 'FAIR', confidence: 0.72, issues: ['minor seal failure'], notes: 'Builder-grade aluminum' },
+        { locationLabel: 'Front Center', elevation: 'front', estimatedWidth: 30, estimatedHeight: 48, windowType: 'SINGLE_HUNG', condition: 'FAIR', confidence: 0.70, issues: [], notes: '' },
+        { locationLabel: 'Front Right', elevation: 'front', estimatedWidth: 36, estimatedHeight: 54, windowType: 'DOUBLE_HUNG', condition: 'GOOD', confidence: 0.75, issues: [], notes: '' },
+        { locationLabel: 'Left Side Upper', elevation: 'left', estimatedWidth: 28, estimatedHeight: 40, windowType: 'SINGLE_HUNG', condition: 'POOR', confidence: 0.65, issues: ['condensation'], notes: '' },
+        { locationLabel: 'Rear Bedroom', elevation: 'rear', estimatedWidth: 36, estimatedHeight: 60, windowType: 'DOUBLE_HUNG', condition: 'FAIR', confidence: 0.68, issues: [], notes: '' },
+      ],
+      propertyNotes: 'Mock AI scan — demo mode. Connect OPENAI_API_KEY for real results.',
+      imagQualityWarnings: ['Demo mode — no real image analysis performed'],
+    });
+  }
   async generateText(prompt: string): Promise<string> {
     logger.info('Using Mock AI Provider (OPENAI_API_KEY not set)');
     
@@ -598,6 +674,205 @@ Return JSON: { "summary": "2-3 sentence summary", "nextBestAction": "Single most
         riskFlags: ["Possible competitor quotes being gathered"]
       };
     }
+  }
+
+  // ─── Feature A: Multi-Photo Property Scan ─────────────────────────────────
+  async analyzePropertyPhotos(params: {
+    images: Array<{ base64: string; elevation: 'front' | 'rear' | 'left' | 'right' | 'closeup' }>;
+    leadId: string;
+    organizationId: string;
+    analyzedById: string;
+  }): Promise<PropertyPhotoAnalysis> {
+    const { images, leadId, analyzedById } = params;
+    const startMs = Date.now();
+
+    const systemPrompt =
+      'You are an expert window replacement estimator with 20 years of field experience in Louisiana. ' +
+      'You are analyzing exterior home photos to identify and measure every window visible.';
+
+    const userPrompt =
+      `I am providing ${images.length} exterior photos of this home ` +
+      `(${images.map((i) => i.elevation).join(', ')}).\n\n` +
+      `For EVERY window visible across ALL photos, provide:\n` +
+      `1. A unique location label (e.g. 'Front Left', 'Front Center', 'Left Side Upper', 'Rear Bedroom')\n` +
+      `2. Estimated rough opening width in inches (nearest 0.5 inch)\n` +
+      `3. Estimated rough opening height in inches (nearest 0.5 inch)\n` +
+      `4. Window type (SINGLE_HUNG, DOUBLE_HUNG, SLIDER, CASEMENT, FIXED, BAY, BOW, AWNING, HOPPER, JALOUSIE, PICTURE, SKYLIGHT, GARDEN, UNKNOWN)\n` +
+      `5. Frame condition (EXCELLENT, GOOD, FAIR, POOR, CRITICAL)\n` +
+      `6. Confidence score 0.0–1.0\n` +
+      `7. Any visible issues (condensation, seal failure, damaged trim, rot, broken glass)\n\n` +
+      `IMPORTANT RULES:\n` +
+      `- If the same window appears in multiple photos, count it ONCE and use the clearest photo for measurement\n` +
+      `- Louisiana homes often have standard sizes: 24×36, 28×54, 30×54, 32×48, 36×60 — use these as anchors when uncertain\n` +
+      `- If a window is partially obstructed, note it and give your best estimate with lower confidence\n` +
+      `- DO NOT count doors as windows\n\n` +
+      `Return ONLY valid JSON:\n` +
+      `{\n` +
+      `  "totalWindowsDetected": number,\n` +
+      `  "windows": [{\n` +
+      `    "locationLabel": string,\n` +
+      `    "elevation": string,\n` +
+      `    "estimatedWidth": number,\n` +
+      `    "estimatedHeight": number,\n` +
+      `    "windowType": string,\n` +
+      `    "condition": string,\n` +
+      `    "confidence": number,\n` +
+      `    "issues": string[],\n` +
+      `    "notes": string\n` +
+      `  }],\n` +
+      `  "propertyNotes": string,\n` +
+      `  "imagQualityWarnings": string[]\n` +
+      `}`;
+
+    let rawResponse = '';
+    let parsed: any = null;
+
+    try {
+      rawResponse = await this.provider.analyzeImages(images, userPrompt, systemPrompt);
+      parsed = JSON.parse(rawResponse.replace(/```json\n?|\n?```/g, '').trim());
+    } catch (parseErr) {
+      logger.warn('[analyzePropertyPhotos] JSON parse failed, using partial result:', parseErr);
+      // Attempt to extract any partial JSON
+      parsed = {
+        totalWindowsDetected: 0,
+        windows: [],
+        propertyNotes: 'Analysis returned unparseable response — please retry.',
+        imagQualityWarnings: ['Response parse failure — raw AI response was not valid JSON'],
+      };
+    }
+
+    // Normalise spelling variant in prompt (imagQualityWarnings → imageQualityWarnings)
+    const imageQualityWarnings: string[] =
+      parsed.imageQualityWarnings ?? parsed.imagQualityWarnings ?? [];
+
+    const avgConfidence =
+      parsed.windows?.length > 0
+        ? (parsed.windows as any[]).reduce((s: number, w: any) => s + (w.confidence ?? 0), 0) /
+          parsed.windows.length
+        : 0;
+
+    const analysis = await prisma.aiAnalysis.create({
+      data: {
+        leadId,
+        analysisType: 'PROPERTY_PHOTO_SCAN',
+        provider: process.env.AI_PROVIDER || 'openai',
+        model: process.env.AI_VISION_MODEL || 'gpt-4o',
+        rawResponse: parsed,
+        confidenceScore: avgConfidence,
+        status: 'COMPLETED',
+        processingMs: Date.now() - startMs,
+      } as any,
+    });
+
+    return {
+      totalWindowsDetected: parsed.totalWindowsDetected ?? parsed.windows?.length ?? 0,
+      windows: (parsed.windows ?? []).map((w: any) => ({
+        locationLabel: String(w.locationLabel ?? ''),
+        elevation: String(w.elevation ?? ''),
+        estimatedWidth: Number(w.estimatedWidth ?? 0),
+        estimatedHeight: Number(w.estimatedHeight ?? 0),
+        windowType: String(w.windowType ?? 'UNKNOWN'),
+        condition: String(w.condition ?? 'UNKNOWN'),
+        confidence: Number(w.confidence ?? 0),
+        issues: Array.isArray(w.issues) ? w.issues.map(String) : [],
+        notes: String(w.notes ?? ''),
+      })),
+      propertyNotes: String(parsed.propertyNotes ?? ''),
+      imageQualityWarnings,
+      aiAnalysisId: analysis.id,
+    };
+  }
+
+  // ─── Feature B: Reference-Object Single Window Measurement ────────────────
+  async analyzeWithReferenceObject(params: {
+    imageBase64: string;
+    referenceObject: 'iphone' | 'credit_card' | 'dollar_bill';
+    openingId: string;
+    leadId: string;
+    analyzedById: string;
+  }): Promise<ReferenceObjectAnalysis> {
+    const { imageBase64, referenceObject, openingId, leadId } = params;
+    const startMs = Date.now();
+
+    // Known reference dimensions (mm → inches)
+    const REF_DIMS: Record<string, { widthIn: number; heightIn: number; label: string }> = {
+      iphone:      { widthIn: 2.81, heightIn: 5.78, label: 'iPhone 14' },
+      credit_card: { widthIn: 3.37, heightIn: 2.13, label: 'credit card' },
+      dollar_bill: { widthIn: 6.14, heightIn: 2.61, label: 'US dollar bill' },
+    };
+    const ref = REF_DIMS[referenceObject];
+    const refWidth  = ref.widthIn;
+    const refHeight = ref.heightIn;
+    const refLabel  = ref.label;
+
+    const prompt =
+      `This photo shows a window with a ${refLabel} held against the frame as a size reference.\n\n` +
+      `Known reference dimensions:\n` +
+      `- ${refLabel} is exactly ${refWidth}" wide × ${refHeight}" tall\n\n` +
+      `Using the reference object as a ruler, calculate:\n` +
+      `1. The window rough opening WIDTH in inches (to nearest 1/8 inch)\n` +
+      `2. The window rough opening HEIGHT in inches (to nearest 1/8 inch)\n` +
+      `3. Your confidence in these measurements (0.0–1.0)\n` +
+      `4. Whether the reference object placement is valid ` +
+      `(is it flush against frame? fully visible? not distorted?)\n` +
+      `5. The window type visible\n` +
+      `6. Any measurement caveats\n\n` +
+      `Return ONLY valid JSON:\n` +
+      `{\n` +
+      `  "estimatedWidth": number,\n` +
+      `  "estimatedHeight": number,\n` +
+      `  "confidence": number,\n` +
+      `  "referenceValid": boolean,\n` +
+      `  "referenceWarning": string | null,\n` +
+      `  "windowType": string,\n` +
+      `  "measurementNotes": string\n` +
+      `}`;
+
+    let rawResponse = '';
+    let parsed: any = null;
+
+    try {
+      rawResponse = await this.provider.analyzeImage(imageBase64, prompt);
+      parsed = JSON.parse(rawResponse.replace(/```json\n?|\n?```/g, '').trim());
+    } catch (parseErr) {
+      logger.warn('[analyzeWithReferenceObject] JSON parse failed:', parseErr);
+      parsed = {
+        estimatedWidth: 0,
+        estimatedHeight: 0,
+        confidence: 0,
+        referenceValid: false,
+        referenceWarning: 'Analysis returned unparseable response — please retake photo.',
+        windowType: 'UNKNOWN',
+        measurementNotes: 'Parse failure',
+      };
+    }
+
+    const analysis = await prisma.aiAnalysis.create({
+      data: {
+        leadId,
+        openingId,
+        analysisType: 'REFERENCE_OBJECT_MEASUREMENT',
+        provider: process.env.AI_PROVIDER || 'openai',
+        model: process.env.AI_VISION_MODEL || 'gpt-4o',
+        rawResponse: parsed,
+        estimatedWidth: parsed.estimatedWidth ?? null,
+        estimatedHeight: parsed.estimatedHeight ?? null,
+        confidenceScore: parsed.confidence ?? null,
+        status: 'COMPLETED',
+        processingMs: Date.now() - startMs,
+      } as any,
+    });
+
+    return {
+      estimatedWidth:    Number(parsed.estimatedWidth  ?? 0),
+      estimatedHeight:   Number(parsed.estimatedHeight ?? 0),
+      confidence:        Number(parsed.confidence      ?? 0),
+      referenceValid:    Boolean(parsed.referenceValid),
+      referenceWarning:  parsed.referenceWarning ?? null,
+      windowType:        String(parsed.windowType ?? 'UNKNOWN'),
+      measurementNotes:  String(parsed.measurementNotes ?? ''),
+      aiAnalysisId: analysis.id,
+    };
   }
 }
 

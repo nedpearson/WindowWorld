@@ -5,6 +5,7 @@ import { leadScoringQueue, aiQueue } from '../../jobs';
 import { prisma } from '../../shared/services/prisma';
 import { logger, sanitizeForLog } from '../../shared/utils/logger';
 import { NotFoundError } from '../../shared/middleware/errorHandler';
+import { measurementsService } from '../measurements/measurements.service';
 
 const router = Router();
 
@@ -182,6 +183,134 @@ router.get('/lead-summary/:leadId', auth.repOrAbove, async (req: Request, res: R
   } catch (err: any) {
     logger.error(`[ai/lead-summary] Error: ${sanitizeForLog(err.message)}`);
     return res.status(500).json({ success: false, message: err.message || 'AI lead summary generation failed' });
+  }
+});
+
+// ─── Measurement Intelligence Routes ────────────────────────────────────────
+
+/**
+ * POST /api/v1/ai-analysis/property-scan
+ * Takes 2–20 exterior photos, runs GPT-4o multi-image analysis, and optionally
+ * pre-populates existing openings on the inspection with ESTIMATED measurements.
+ */
+router.post('/property-scan', auth.repOrAbove, async (req: Request, res: Response) => {
+  const user = (req as AuthenticatedRequest).user;
+  const { leadId, inspectionId, images, autoPopulateOpenings = true } = req.body as {
+    leadId: string;
+    inspectionId: string;
+    images: Array<{ base64: string; elevation: string }>;
+    autoPopulateOpenings?: boolean;
+  };
+
+  // Validate
+  if (!leadId) return res.status(400).json({ success: false, message: 'leadId is required' });
+  if (!inspectionId) return res.status(400).json({ success: false, message: 'inspectionId is required' });
+  if (!Array.isArray(images) || images.length < 2 || images.length > 20) {
+    return res.status(400).json({ success: false, message: 'images must be an array of 2–20 items' });
+  }
+
+  try {
+    const result = await aiService.analyzePropertyPhotos({
+      images: images as Array<{ base64: string; elevation: 'front' | 'rear' | 'left' | 'right' | 'closeup' }>,
+      leadId,
+      organizationId: user.organizationId,
+      analyzedById: user.id,
+    });
+
+    if (!autoPopulateOpenings) {
+      return res.json({ success: true, data: { analysis: result } });
+    }
+
+    // Auto-populate openings whose roomLabel matches a detected window label (case-insensitive)
+    const openings = await prisma.opening.findMany({
+      where: { inspectionId: inspectionId as string } as any,
+    }) as any[];
+
+    let populated = 0;
+    let unmatched = 0;
+
+    for (const win of result.windows) {
+      const match = openings.find(
+        (o: any) =>
+          o.roomLabel?.toLowerCase().trim() === win.locationLabel?.toLowerCase().trim(),
+      );
+
+      if (match) {
+        await measurementsService.upsert({
+          openingId: match.id,
+          finalWidth: win.estimatedWidth,
+          finalHeight: win.estimatedHeight,
+          measurementMethod: 'multi-photo-ai',
+          isAiEstimated: true,
+          aiConfidenceScore: win.confidence,
+          status: 'ESTIMATED',
+          measuredById: user.id,
+          notes: `AI estimate from property photo scan. Elevation: ${win.elevation}. REQUIRES TAPE VERIFICATION BEFORE ORDERING.`,
+        });
+        populated++;
+      } else {
+        unmatched++;
+      }
+    }
+
+    return res.json({ success: true, data: { analysis: result, populated, unmatched } });
+  } catch (err: any) {
+    logger.error(`[ai-analysis/property-scan] Error: ${sanitizeForLog(err.message)}`);
+    return res.status(500).json({ success: false, message: err.message || 'Property scan failed' });
+  }
+});
+
+/**
+ * POST /api/v1/ai-analysis/reference-object
+ * Analyzes a single photo where a known object (iPhone, credit card, dollar bill)
+ * is used as a size reference. Auto-saves the measurement at REVIEWED status.
+ */
+router.post('/reference-object', auth.repOrAbove, async (req: Request, res: Response) => {
+  const user = (req as AuthenticatedRequest).user;
+  const { openingId, leadId, imageBase64, referenceObject } = req.body as {
+    openingId: string;
+    leadId: string;
+    imageBase64: string;
+    referenceObject: 'iphone' | 'credit_card' | 'dollar_bill';
+  };
+
+  // Validate
+  if (!openingId) return res.status(400).json({ success: false, message: 'openingId is required' });
+  if (!imageBase64) return res.status(400).json({ success: false, message: 'imageBase64 is required' });
+  if (!['iphone', 'credit_card', 'dollar_bill'].includes(referenceObject)) {
+    return res.status(400).json({
+      success: false,
+      message: 'referenceObject must be iphone, credit_card, or dollar_bill',
+    });
+  }
+
+  try {
+    const result = await aiService.analyzeWithReferenceObject({
+      imageBase64,
+      referenceObject,
+      openingId,
+      leadId,
+      analyzedById: user.id,
+    });
+
+    // Auto-save measurement at REVIEWED status
+    const warningNote = result.referenceWarning ? ` ${result.referenceWarning}` : '';
+    const savedMeasurement = await measurementsService.upsert({
+      openingId,
+      finalWidth: result.estimatedWidth,
+      finalHeight: result.estimatedHeight,
+      measurementMethod: 'reference-object',
+      isAiEstimated: true,
+      aiConfidenceScore: result.confidence,
+      status: 'REVIEWED',
+      measuredById: user.id,
+      notes: `Reference-object estimate using ${referenceObject}.${warningNote} REQUIRES TAPE VERIFICATION BEFORE ORDERING.`,
+    });
+
+    return res.json({ success: true, data: { analysis: result, measurement: savedMeasurement } });
+  } catch (err: any) {
+    logger.error(`[ai-analysis/reference-object] Error: ${sanitizeForLog(err.message)}`);
+    return res.status(500).json({ success: false, message: err.message || 'Reference-object measurement failed' });
   }
 });
 
