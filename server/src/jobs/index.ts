@@ -5,6 +5,8 @@
  */
 
 import { logger, sanitizeForLog } from '../shared/utils/logger';
+import { startWeatherStormCron } from './weather-storm.cron';
+import { startAutomationsCron } from './automations.cron';
 
 // â”€â”€ Lazy queue singletons â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 let _pdfQueue: any = null;
@@ -304,8 +306,10 @@ export async function initializeJobQueues(): Promise<void> {
 
   if (!process.env.REDIS_URL) {
     logger.warn('REDIS_URL not set — background jobs running in mock mode');
-    // Appointment reminders don’t need Redis — start the cron regardless
+    // These crons don't need Redis — start them regardless
     startAppointmentReminderCron();
+    startWeatherStormCron();
+    startAutomationsCron();
     return;
   }
 
@@ -358,10 +362,12 @@ export async function initializeJobQueues(): Promise<void> {
     });
 
     queuesInitialized = true;
-    logger.info('All job queues and workers initialized (lead-scoring, ai-photo, pdf, email, automations, sync)');
+    logger.info('All job queues and workers initialized (lead-scoring, ai-photo, pdf, email, automations, sync, weather-storm)');
 
-    // Start the appointment reminder cron (also works without Redis)
+    // Start crons that work with or without Redis
     startAppointmentReminderCron();
+    startWeatherStormCron();
+    startAutomationsCron();
 
   } catch (error: any) {
     logger.error('Failed to initialize job queues:', sanitizeForLog(error.message));

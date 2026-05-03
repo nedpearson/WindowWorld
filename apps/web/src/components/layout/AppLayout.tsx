@@ -1,7 +1,7 @@
 import { Outlet, useLocation, Link, useNavigate } from 'react-router-dom';
 import { useAuthStore, useAppStore } from '../../store/auth.store';
-import { useState } from 'react';
-import { motion } from 'framer-motion';
+import { useState, useCallback } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   HomeIcon, UsersIcon, MapPinIcon, CalendarIcon, ChartBarIcon,
   DocumentTextIcon, BanknotesIcon, BeakerIcon, Cog6ToothIcon,
@@ -152,8 +152,14 @@ export function AppLayout() {
   const [wsNotifications, setWsNotifications] = useState<any[]>([]);
   const [searchOpen, setSearchOpen] = useState(false);
   const [showFieldModal, setShowFieldModal] = useState(false);
+  const [stormAlert, setStormAlert] = useState<{
+    event: string; headline: string; affectedParishes: string[];
+    leadsUpdated: number; leadsEnrolled: number;
+  } | null>(null);
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+
+  const dismissStormAlert = useCallback(() => setStormAlert(null), []);
 
   // ── Mobile redirect: phone users belong in /field ──
   useEffect(() => {
@@ -235,6 +241,38 @@ export function AppLayout() {
         queryClient.invalidateQueries({ queryKey: ['opening'] });
         queryClient.invalidateQueries({ queryKey: ['inspections'] });
       }
+    });
+
+    // Weather storm auto-activation — NWS cron flagged leads in this territory
+    socket.on('storm:activated', (payload: {
+      territoryName: string;
+      alertEvent: string;
+      alertSeverity: string;
+      headline: string;
+      affectedParishes: string[];
+      leadsUpdated: number;
+      leadsEnrolled: number;
+      expiresAt: string;
+    }) => {
+      // Auto-enable Storm Mode in the UI
+      setStormMode(true);
+      // Show the alert banner
+      setStormAlert({
+        event: payload.alertEvent,
+        headline: payload.headline,
+        affectedParishes: payload.affectedParishes,
+        leadsUpdated: payload.leadsUpdated,
+        leadsEnrolled: payload.leadsEnrolled,
+      });
+      // Add to notification feed
+      setWsNotifications(prev => [{
+        title: `⚡ Storm Alert: ${payload.alertEvent}`,
+        desc: `${payload.leadsUpdated} leads flagged in ${payload.territoryName}`,
+        time: 'Just now',
+        unread: true,
+      }, ...prev].slice(0, 10));
+      queryClient.invalidateQueries({ queryKey: ['leads'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     });
 
     return () => { socket.disconnect(); };
@@ -493,6 +531,90 @@ export function AppLayout() {
       <GlobalSearch isOpen={searchOpen} onClose={() => setSearchOpen(false)} />
       <SiloCommandBar />
       {showFieldModal && <FieldModeQRModal onClose={() => setShowFieldModal(false)} />}
+
+      {/* ── NWS Auto-Storm Alert Toast ─────────────────────────────────── */}
+      <AnimatePresence>
+        {stormAlert && (
+          <motion.div
+            initial={{ opacity: 0, y: 80, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 80, scale: 0.95 }}
+            transition={{ type: 'spring', stiffness: 300, damping: 28 }}
+            className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 w-full max-w-lg"
+          >
+            <div className="mx-4 bg-gradient-to-r from-purple-900/95 to-slate-900/95 backdrop-blur-md border border-purple-500/40 rounded-2xl shadow-2xl shadow-purple-900/50 overflow-hidden">
+              {/* Pulse header */}
+              <div className="flex items-center gap-3 px-5 py-3 bg-purple-600/20 border-b border-purple-500/30">
+                <span className="relative flex h-3 w-3">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-purple-400 opacity-75" />
+                  <span className="relative inline-flex rounded-full h-3 w-3 bg-purple-500" />
+                </span>
+                <span className="text-purple-200 font-bold text-sm tracking-wide">⚡ LIVE STORM ALERT — NWS</span>
+                <button
+                  onClick={dismissStormAlert}
+                  className="ml-auto text-purple-400 hover:text-white transition-colors"
+                  aria-label="Dismiss storm alert"
+                >
+                  <XMarkIcon className="h-4 w-4" />
+                </button>
+              </div>
+
+              <div className="px-5 py-4 space-y-3">
+                <p className="text-white font-semibold text-sm leading-snug">{stormAlert.event}</p>
+                <p className="text-purple-200/80 text-xs leading-relaxed line-clamp-2">{stormAlert.headline}</p>
+
+                <div className="flex flex-wrap gap-1.5">
+                  {stormAlert.affectedParishes.slice(0, 5).map((p) => (
+                    <span key={p} className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/25">
+                      {p}
+                    </span>
+                  ))}
+                  {stormAlert.affectedParishes.length > 5 && (
+                    <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/25">
+                      +{stormAlert.affectedParishes.length - 5} more
+                    </span>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-4 pt-1">
+                  <div className="text-center">
+                    <div className="text-xl font-black text-purple-300">{stormAlert.leadsUpdated}</div>
+                    <div className="text-[10px] text-purple-400/70 uppercase tracking-wide">Leads Flagged</div>
+                  </div>
+                  <div className="w-px h-8 bg-purple-700/50" />
+                  <div className="text-center">
+                    <div className="text-xl font-black text-purple-300">{stormAlert.leadsEnrolled}</div>
+                    <div className="text-[10px] text-purple-400/70 uppercase tracking-wide">Campaign Enrolled</div>
+                  </div>
+                  <div className="w-px h-8 bg-purple-700/50" />
+                  <div className="flex-1 text-right">
+                    <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-emerald-400">
+                      <span className="w-2 h-2 rounded-full bg-emerald-400 inline-block" />
+                      Storm Mode Active
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex gap-2 pt-1">
+                  <Link
+                    to="/leads?stormLeads=true"
+                    onClick={dismissStormAlert}
+                    className="flex-1 text-center text-xs font-semibold px-4 py-2 rounded-lg bg-purple-600 hover:bg-purple-500 text-white transition-colors"
+                  >
+                    View Storm Leads →
+                  </Link>
+                  <button
+                    onClick={dismissStormAlert}
+                    className="text-xs font-medium px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-slate-200 transition-colors"
+                  >
+                    Dismiss
+                  </button>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
