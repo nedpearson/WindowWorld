@@ -222,6 +222,8 @@ async function processOverdueInvoices() {
     });
 
     for (const inv of overdue) {
+      // Skip if either FK is null (shouldn't happen, but guards strict TS)
+      if (!inv.organizationId || !inv.leadId) continue;
       const sysUser = await getSystemUser(inv.organizationId, prisma);
       if (!sysUser) continue;
 
@@ -261,7 +263,7 @@ async function processPreAppointmentPrep() {
       status: { in: ['SCHEDULED', 'CONFIRMED'] },
       scheduledAt: { gte: twoHoursFromNow, lte: twoHoursAndFifteenFromNow },
     },
-    select: { id: true, leadId: true, organizationId: true, createdById: true },
+    select: { id: true, leadId: true, createdById: true },
   });
 
   for (const apt of upcomingApts) {
