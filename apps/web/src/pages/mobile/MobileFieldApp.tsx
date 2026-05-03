@@ -499,7 +499,7 @@ function NewLeadTab({ enqueue }: { enqueue: (type: any, payload: any) => void })
       source: form.source || 'FIELD',
       notes: form.notes.trim() || undefined,
       isStormLead: form.isStormLead,
-      status: 'NEW',
+      status: 'NEW_LEAD',
     };
 
     try {
@@ -515,10 +515,16 @@ function NewLeadTab({ enqueue }: { enqueue: (type: any, payload: any) => void })
       setSaved(true);
       setForm({ firstName: '', lastName: '', phone: '', email: '', address: '', city: '', zip: '', source: '', notes: '', isStormLead: false });
       setTimeout(() => setSaved(false), 3000);
-    } catch (err) {
+    } catch (err: any) {
       console.error('[NewLeadTab]', err);
-      await enqueue('LEAD_CREATE', payload);
-      toast.error('Saved to queue — will sync when connection is restored');
+      // If we're offline, or it's a TypeError (Network Error), queue it
+      if (!navigator.onLine || err.message === 'Failed to fetch' || err.name === 'TypeError') {
+        await enqueue('LEAD_CREATE', payload);
+        toast.error('Saved to queue — will sync when connection is restored');
+      } else {
+        // Otherwise it's an API validation error (e.g. duplicate), show the real error
+        toast.error(err?.response?.data?.error?.message || err.message || 'Failed to create lead');
+      }
     } finally {
       setSaving(false);
     }
