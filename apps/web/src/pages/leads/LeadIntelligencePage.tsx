@@ -8,6 +8,53 @@ import { BoltIcon as BoltOutline, CloudIcon, FireIcon, ClockIcon, CurrencyDollar
 import { BoltIcon as BoltSolid } from '@heroicons/react/24/solid';
 import clsx from 'clsx';
 import apiClient from '../../api/client';
+import { useAuthStore } from '../../store/auth.store';
+import { isDemoMode } from '../../utils/isDemoMode';
+
+const FIRST_NAMES = ['Sarah', 'James', 'Robert', 'Michael', 'Emily', 'Jessica', 'David', 'John', 'Jennifer', 'Linda', 'William', 'Richard', 'Thomas', 'Mary', 'Patricia', 'Susan'];
+const LAST_NAMES = ['Mitchell', 'Harrison', 'Chen', 'Smith', 'Johnson', 'Williams', 'Brown', 'Jones', 'Garcia', 'Miller', 'Davis', 'Rodriguez', 'Martinez'];
+const CITIES = ['Baton Rouge', 'Prairieville', 'Denham Springs', 'Gonzales', 'Zachary', 'Central', 'Baker', 'Walker', 'Port Allen'];
+const PARISHES = ['East Baton Rouge', 'Ascension', 'Livingston', 'West Baton Rouge'];
+
+function generateDemoLeads(count: number) {
+  const leads = [];
+  for (let i = 0; i < count; i++) {
+    // Score descending from 95 to 50
+    const score = Math.floor(95 - (i * (45 / count)));
+    const isStorm = Math.random() > 0.7;
+    const isHighValue = Math.random() > 0.6;
+    
+    const pitchAngles = Object.keys(PITCH_ANGLE_LABELS);
+    const pitchAngle = pitchAngles[Math.floor(Math.random() * pitchAngles.length)];
+    
+    const firstContactMsg = isStorm 
+      ? `Hi ${FIRST_NAMES[Math.floor(Math.random() * FIRST_NAMES.length)]}, noticed you are looking into replacement windows after the storm. We have a local crew near you this week offering free damage assessments.`
+      : `Hi ${FIRST_NAMES[Math.floor(Math.random() * FIRST_NAMES.length)]}, I noticed you were looking at our premium window options and wanted to share a custom lookbook.`;
+
+    leads.push({
+      id: `dl-${Date.now()}-${i}`,
+      firstName: FIRST_NAMES[Math.floor(Math.random() * FIRST_NAMES.length)],
+      lastName: LAST_NAMES[Math.floor(Math.random() * LAST_NAMES.length)],
+      city: CITIES[Math.floor(Math.random() * CITIES.length)],
+      parish: PARISHES[Math.floor(Math.random() * PARISHES.length)],
+      aiScore: score,
+      urgencyScore: Math.floor(Math.random() * 60) + 30,
+      closeProbability: Math.floor(Math.random() * 50) + 30,
+      financingLikelihood: Math.floor(Math.random() * 80) + 10,
+      status: 'NEW_LEAD',
+      isStormLead: isStorm,
+      estimatedValue: isHighValue ? Math.floor(Math.random() * 20000) + 10000 : Math.floor(Math.random() * 8000) + 3000,
+      pitchAngle,
+      stuckDays: Math.floor(Math.random() * 10),
+      reasonForFlagging: isStorm ? 'Recent hail damage inquiry detected in local zip code after Monday storm.' : 'Viewed financing page 3 times this week. Stuck in follow-up.',
+      firstContactMsg,
+      bestOffer: Math.random() > 0.5 ? 'Free Upgrade to Impact-Resistant Glass' : '$0 Down, 0% Interest for 18 Months',
+      riskFactors: Math.random() > 0.5 ? ['Price sensitive', 'Comparing multiple local contractors'] : [],
+      competitor: Math.random() > 0.5 ? 'Renewal by Andersen' : 'Local Contractor',
+    });
+  }
+  return leads;
+}
 
 // WindowWorld Baton Rouge HQ — used as origin for proximity sorting
 const HQ_LAT = 30.4515;
@@ -137,6 +184,8 @@ function DailyTrendSignals({ hasLeads }: { hasLeads: boolean }) {
 
 
 export function LeadIntelligencePage() {
+  const user = useAuthStore((s) => s.user);
+  const isDemoFallback = isDemoMode(user);
   const [category, setCategory] = useState('all');
   const [leads, setLeads] = useState<any[]>([]);
   const [_loading, setLoading] = useState(true);
@@ -152,6 +201,9 @@ export function LeadIntelligencePage() {
     apiClient.leads.list({ sortBy: 'aiScore', sortDir: 'desc', limit: 50 })
       .then((d: any) => {
         let raw: any[] = d?.data ?? d?.leads ?? [];
+        if (isDemoFallback && (raw.length === 0 || refresh)) {
+          raw = generateDemoLeads(30);
+        }
         
         setLeads(raw.map((l: any, i: number) => {
           const lat = l.lat ?? l.latitude ?? null;
@@ -183,7 +235,33 @@ export function LeadIntelligencePage() {
         }));
       })
       .catch(() => {
-        setLeads([]);
+        if (isDemoFallback) {
+          const raw = generateDemoLeads(30);
+          setLeads(raw.map((l: any) => ({
+            id: l.id,
+            name: `${l.firstName} ${l.lastName}`,
+            city: l.city ?? '',
+            parish: l.parish ?? l.county ?? l.city ?? '',
+            score: l.aiScore ?? l.leadScore ?? 50,
+            urgency: l.urgencyScore ?? l.urgency ?? 50,
+            closePct: l.closeProbability ?? l.closePct ?? 50,
+            financingPct: l.financingLikelihood ?? l.financingPct ?? 30,
+            status: l.status,
+            isStorm: l.isStormLead ?? false,
+            est: l.estimatedValue ?? l.estimatedRevenue ?? 0,
+            signals: l.aiSignals ?? l.signals ?? [],
+            pitchAngle: l.pitchAngle ?? 'CONSULTATIVE',
+            stuckDays: l.stuckDays ?? 0,
+            reasonForFlagging: l.reasonForFlagging ?? 'High intent indicators detected.',
+            firstContactMsg: l.firstContactMsg ?? 'Consultation',
+            bestOffer: l.bestOffer ?? 'Consultation',
+            riskFactors: l.riskFactors ?? [],
+            competitor: l.competitor ?? 'Unknown',
+            lat: null, lng: null, distMiles: 9999
+          })));
+        } else {
+          setLeads([]);
+        }
       })
       .finally(() => {
         setLoading(false);
