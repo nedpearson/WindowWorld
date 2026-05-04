@@ -265,14 +265,14 @@ export class AppointmentsService {
   }
 
   async getTodayRoute(repId: string, organizationId: string) {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const end = new Date(today);
-    end.setHours(23, 59, 59, 999);
+    // 1. Calculate a wide window to fetch from DB
+    const now = new Date();
+    const gte = new Date(now.getTime() - 48 * 60 * 60 * 1000);
+    const lte = new Date(now.getTime() + 48 * 60 * 60 * 1000);
 
-    const appointments = await prisma.appointment.findMany({
+    const allAppointments = await prisma.appointment.findMany({
       where: {
-        scheduledAt: { gte: today, lte: end },
+        scheduledAt: { gte, lte },
         status: { in: ['SCHEDULED', 'CONFIRMED'] },
         lead: { organizationId },
         OR: [
@@ -288,16 +288,25 @@ export class AppointmentsService {
             address: true, city: true, zip: true, lat: true, lng: true,
             status: true, leadScore: true,
             contacts: { where: { isPrimary: true }, take: 1 },
-          },
-        },
-      },
+          }
+        }
+      }
+    });
+
+    // 2. Filter exactly to "Today" in the user's timezone
+    const timeZone = process.env.DEFAULT_TIMEZONE || 'America/Chicago';
+    const targetDateStr = now.toLocaleString('en-US', { timeZone, year: 'numeric', month: 'numeric', day: 'numeric' });
+
+    const appointments = allAppointments.filter(apt => {
+      const aptDateStr = apt.scheduledAt.toLocaleString('en-US', { timeZone, year: 'numeric', month: 'numeric', day: 'numeric' });
+      return aptDateStr === targetDateStr;
     });
 
     // Simple nearest-neighbor route optimization
     const optimized = this.optimizeRoute(appointments);
 
     return {
-      date: today.toISOString().split('T')[0],
+      date: targetDateStr,
       total: appointments.length,
       appointments: optimized,
       estimatedMiles: this.estimateMiles(optimized),
