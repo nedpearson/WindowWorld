@@ -276,7 +276,6 @@ export function LeadIntelligencePage() {
   // Filter (score >= 50 enforced), then sort: score DESC, then distMiles ASC
   const filtered = leads
     .filter((lead) => {
-      if (lead.score < 50) return false;
       if (category === 'storm') return lead.isStorm;
       if (category === 'hot') return lead.score >= 80;
       if (category === 'stuck') return lead.stuckDays >= 5;
