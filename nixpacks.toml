@@ -23,4 +23,4 @@ cmds = [
 
 [start]
 # Apply schema, run idempotent seed, start server
-cmd = "cd server && npx prisma db push --accept-data-loss && npx tsx prisma/purge-org-real.ts && npx prisma db seed && node dist/index.js"
+cmd = "cd server && npx prisma db push --accept-data-loss && npx tsx prisma/purge-org-real.ts && npx prisma db seed && npx tsx prisma/seed-advanced-catalog.ts && node dist/index.js"
