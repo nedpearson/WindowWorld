@@ -137,9 +137,11 @@ export class AppointmentsService {
       }
     }
 
+    const { skipConflictCheck, ...prismaData } = data;
+
     const apt = await prisma.appointment.create({
       data: {
-        ...data,
+        ...prismaData,
         scheduledAt: startAt,
         endAt,
       } as any,
