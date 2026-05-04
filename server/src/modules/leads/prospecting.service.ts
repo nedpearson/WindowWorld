@@ -64,7 +64,17 @@ export class LeadProspectingService {
       let parsedLeads: any[] = [];
       try {
         const jsonStr = aiResponse.replace(/```json\n/g, '').replace(/```/g, '').trim();
-        parsedLeads = JSON.parse(jsonStr);
+        let parsed = JSON.parse(jsonStr);
+        if (Array.isArray(parsed)) {
+          parsedLeads = parsed;
+        } else if (parsed && Array.isArray(parsed.leads)) {
+          parsedLeads = parsed.leads;
+        } else if (parsed && typeof parsed === 'object' && Object.keys(parsed).length === 0) {
+          parsedLeads = [];
+        } else {
+          // If it returned a single object instead of an array
+          parsedLeads = [parsed];
+        }
       } catch (e) {
         logger.error('Failed to parse AI prospects JSON', e);
         return [];
