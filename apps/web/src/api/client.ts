@@ -417,6 +417,60 @@ export const api = {
     checkConflict: (startAt: string, endAt: string, repId?: string) =>
       post<any>('/calendar/check-conflict', { startAt, endAt, repId }),
   },
+
+  // ── Market Intelligence System ────────────────────────────────────────
+  intelligence: {
+    /** Get the market summary dashboard */
+    getDashboard: () => get<any>('/intelligence/dashboard/market-summary'),
+    /** Trigger a full research run (manager+) */
+    runResearch: (location?: string, skipSocial?: boolean) =>
+      post<any>('/intelligence/research/run', { location, skipSocial }),
+    /** Seed known competitors */
+    seedCompetitors: () => post<any>('/intelligence/competitors/seed', {}),
+    /** List all competitors */
+    getCompetitors: () => get<any>('/intelligence/competitors'),
+    /** Scrape a specific competitor */
+    scrapeCompetitor: (id: string) => post<any>(`/intelligence/competitors/${id}/scrape`, {}),
+    /** Get all battlecards */
+    getBattlecards: () => get<any>('/intelligence/battlecards'),
+    /** Get a single battlecard by competitor slug */
+    getBattlecard: (slug: string) => get<any>(`/intelligence/battlecards/${slug}`),
+    /** Refresh/regenerate a battlecard */
+    refreshBattlecard: (slug: string) => post<any>(`/intelligence/battlecards/${slug}/refresh`, {}),
+    /** Get topic clusters */
+    getClusters: (product?: string, themeType?: string) =>
+      get<any>('/intelligence/clusters', { params: { product, themeType } }),
+    /** Get messaging opportunities */
+    getOpportunities: (channel?: string, product?: string, priority?: string) =>
+      get<any>('/intelligence/opportunities', { params: { channel, product, priority } }),
+    /** Mark opportunity as acted on */
+    actOnOpportunity: (id: string) => patch<any>(`/intelligence/opportunities/${id}/act`, {}),
+    /** Get social creative patterns */
+    getSocialPatterns: (platform?: string, product?: string, level?: string) =>
+      get<any>('/intelligence/social/patterns', { params: { platform, product, level } }),
+    /** Get objection library */
+    getObjections: (category?: string, product?: string) =>
+      get<any>('/intelligence/objections', { params: { category, product } }),
+    /** Get campaign angles */
+    getCampaigns: (segment?: string, product?: string, channel?: string) =>
+      get<any>('/intelligence/campaigns', { params: { segment, product, channel } }),
+    /** Get intent profile for a known lead */
+    getLeadIntent: (leadId: string) => get<any>(`/intelligence/intent/leads/${leadId}`),
+    /** Get anonymous intent segments */
+    getAnonymousSegments: () => get<any>('/intelligence/intent/anonymous/segments'),
+    /** Track a first-party intent signal */
+    trackSignal: (data: {
+      signalType: string; sessionId?: string; leadId?: string;
+      pageUrl?: string; sourceChannel?: string; utmSource?: string;
+      utmMedium?: string; utmCampaign?: string; metadata?: Record<string, any>;
+    }) => post<any>('/intelligence/intent/signal', data),
+    /** Get review intelligence */
+    getReviews: (params?: { competitorId?: string; sentiment?: string; product?: string }) =>
+      get<any>('/intelligence/reviews', { params }),
+    /** Get forum insights */
+    getForums: (params?: { product?: string; intent?: string }) =>
+      get<any>('/intelligence/forums', { params }),
+  },
 };
 
 // ─── Attach api namespaces directly onto the axios instance ──

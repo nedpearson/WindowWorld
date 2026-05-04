@@ -80,6 +80,9 @@ const navSections = [
     label: 'Leads & Sales',
     items: [
       { label: 'Lead Intelligence', path: '/lead-intelligence', icon: BeakerIcon },
+      { label: 'Market Intelligence', path: '/market-intelligence', icon: MagnifyingGlassIcon },
+      { label: 'Battlecards',        path: '/battlecards',         icon: ShieldCheckIcon },
+      { label: 'Intent Dashboard',  path: '/intent',             icon: BoltIcon },
       { label: 'All Leads',         path: '/leads',             icon: UsersIcon },
       { label: 'Marketing Playbooks',path: '/playbooks',        icon: MegaphoneIcon },
       { label: 'Contacts',          path: '/contacts',          icon: UserGroupIcon },
@@ -163,10 +166,10 @@ export function AppLayout() {
 
   // ── Mobile redirect: phone users belong in /field ──
   useEffect(() => {
-    if (window.innerWidth < 768) {
+    if (window.innerWidth < 768 && (location.pathname === '/' || location.pathname === '/dashboard')) {
       navigate('/field', { replace: true });
     }
-  }, [navigate]);
+  }, [navigate, location.pathname]);
 
   // Fetch notifications from API on mount + every 5 min
   const { data: notifData } = useQuery({

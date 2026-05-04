@@ -9,6 +9,9 @@ import { LeadsPage } from './pages/leads/LeadsPage';
 import { LeadDetailPage } from './pages/leads/LeadDetailPage';
 import { NewLeadPage } from './pages/leads/NewLeadPage';
 import { LeadIntelligencePage } from './pages/leads/LeadIntelligencePage';
+import { MarketIntelligencePage } from './pages/leads/MarketIntelligencePage';
+import { BattlecardsPage } from './pages/leads/BattlecardsPage';
+import { IntentDashboardPage } from './pages/leads/IntentDashboardPage';
 import { PipelinePage } from './pages/leads/PipelinePage';
 import { TerritoryMapPage } from './pages/leads/TerritoryMapPage';
 import { AppointmentsPage } from './pages/leads/AppointmentsPage';
@@ -88,6 +91,11 @@ export default function App() {
           <Route path="appointments" element={<AppointmentsPage />} />
           <Route path="playbooks" element={<MarketingPlaybooksPage />} />
           <Route path="automations" element={<AutomationsPage />} />
+
+          {/* Market Intelligence */}
+          <Route path="market-intelligence" element={<MarketIntelligencePage />} />
+          <Route path="battlecards" element={<BattlecardsPage />} />
+          <Route path="intent" element={<IntentDashboardPage />} />
 
           {/* Inspections */}
           <Route path="inspections/:id" element={<InspectionPage />} />

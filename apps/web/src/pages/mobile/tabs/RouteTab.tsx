@@ -228,7 +228,7 @@ function StopCard({ stop, isActive, onSelect, onStatusUpdate }: {
                     onClick={e => e.stopPropagation()}
                     className="flex items-center justify-center gap-2 py-2.5 rounded-xl bg-slate-700/60 text-slate-300 text-sm font-medium active:bg-slate-600 transition-colors"
                   >
-                    <ListBulletIcon className="h-4 w-4" /> Lead File
+                    <ListBulletIcon className="h-4 w-4" /> Open Lead
                   </Link>
                 </div>
 
