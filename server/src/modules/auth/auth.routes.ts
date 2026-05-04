@@ -74,7 +74,8 @@ router.post(
     validateRequest(req);
     const { accessToken } = req.body;
 
-    const JWT_SECRET = process.env.JWT_SECRET || 'CHANGE_THIS_SECRET';
+    const JWT_SECRET = process.env.JWT_SECRET;
+    if (!JWT_SECRET) throw new Error('JWT_SECRET not configured');
     let payload: any;
     try {
       payload = jwt.verify(accessToken, JWT_SECRET);

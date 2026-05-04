@@ -92,6 +92,12 @@ export class QuotesService {
     const { leadId, propertyId, productSeriesId, globalOptions = [], discountPct = 0,
       financingOptionId: _financingOptionId, createdById: _createdById, organizationId: _organizationId, notes: _notes } = params;
 
+    // Verify property belongs to org
+    const property = await prisma.property.findFirst({
+      where: { id: propertyId, leads: { some: { organizationId: _organizationId } } }
+    });
+    if (!property) throw new NotFoundError('Property');
+
     // Load all approved/verified openings for the property
     const openings = await prisma.opening.findMany({
       where: { propertyId },
@@ -182,6 +188,11 @@ export class QuotesService {
     // Verify lead belongs to org
     const lead = await prisma.lead.findFirst({ where: { id: data.leadId, organizationId: data.organizationId } });
     if (!lead) throw new NotFoundError('Lead');
+
+    if (data.propertyId) {
+      const property = await prisma.property.findFirst({ where: { id: data.propertyId, leads: { some: { organizationId: data.organizationId } } } });
+      if (!property) throw new NotFoundError('Property');
+    }
 
     const { lineItems, discountPct = 0 } = data;
     const { totals } = this.calculateTotals(lineItems, discountPct);

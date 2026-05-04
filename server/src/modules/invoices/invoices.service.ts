@@ -41,9 +41,9 @@ export class InvoicesService {
     return { data: enriched, meta: { total, page, limit, totalPages: Math.ceil(total / limit) } };
   }
 
-  async getById(id: string) {
+  async getById(id: string, organizationId: string) {
     const invoice = await prisma.invoice.findUnique({
-      where: { id },
+      where: { id, organizationId } as any,
       include: {
         createdBy: { select: { id: true, firstName: true, lastName: true, phone: true } },
         payments: { orderBy: { paidAt: 'asc' } } as any,
@@ -79,11 +79,12 @@ export class InvoicesService {
     depositAmount?: number;
     installNotes?: string;
     createdById: string;
+    organizationId: string;
   }) {
-    const { proposalId, leadId, depositPct = 0, createdById } = params;
+    const { proposalId, leadId, depositPct = 0, createdById, organizationId } = params;
 
     const proposal = await prisma.proposal.findUnique({
-      where: { id: proposalId },
+      where: { id: proposalId, lead: { organizationId } } as any,
       include: { quote: true },
     });
     if (!proposal) throw new NotFoundError('Proposal');
@@ -103,6 +104,7 @@ export class InvoicesService {
         leadId,
         proposalId,
         invoiceNumber,
+        organizationId,
         grandTotal,
         depositAmount,
         depositPct,
@@ -127,7 +129,7 @@ export class InvoicesService {
     return invoice;
   }
 
-  async recordPayment(invoiceId: string, data: {
+  async recordPayment(invoiceId: string, organizationId: string, data: {
     amount: number;
     method: 'CASH' | 'CHECK' | 'CREDIT_CARD' | 'ACH' | 'FINANCING';
     reference?: string;
@@ -135,7 +137,7 @@ export class InvoicesService {
     paidAt?: string;
     recordedById: string;
   }) {
-    const invoice = await this.getById(invoiceId);
+    const invoice = await this.getById(invoiceId, organizationId);
 
     if (data.amount > (invoice as any).balance) {
       throw new Error(`Payment amount $${data.amount} exceeds outstanding balance $${(invoice as any).balance}`);
@@ -184,8 +186,8 @@ export class InvoicesService {
     return payment;
   }
 
-  async send(id: string, userId: string) {
-    const invoice = await this.getById(id);
+  async send(id: string, organizationId: string, userId: string) {
+    const invoice = await this.getById(id, organizationId);
     const updated = await prisma.invoice.update({
       where: { id },
       data: { status: 'SENT', sentAt: new Date() } as any,

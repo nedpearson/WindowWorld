@@ -68,9 +68,28 @@ export class DocumentsService {
     openingId?: string;
     inspectionId?: string;
     uploadedById: string;
+    organizationId: string;
     triggerAiAnalysis?: boolean;
     notes?: string;
   }) {
+    // Enforce tenant isolation for linked entities
+    if (data.leadId) {
+      const lead = await prisma.lead.findFirst({ where: { id: data.leadId, organizationId: data.organizationId } });
+      if (!lead) throw new NotFoundError('Lead');
+    }
+    if (data.propertyId) {
+      const prop = await prisma.property.findFirst({ where: { id: data.propertyId, leads: { some: { organizationId: data.organizationId } } } });
+      if (!prop) throw new NotFoundError('Property');
+    }
+    if (data.openingId) {
+      const opening = await prisma.opening.findFirst({ where: { id: data.openingId, property: { leads: { some: { organizationId: data.organizationId } } } } });
+      if (!opening) throw new NotFoundError('Opening');
+    }
+    if (data.inspectionId) {
+      const inspection = await prisma.inspection.findFirst({ where: { id: data.inspectionId, property: { leads: { some: { organizationId: data.organizationId } } } } });
+      if (!inspection) throw new NotFoundError('Inspection');
+    }
+
     const doc = await prisma.document.create({
       data: {
         filename: data.filename,

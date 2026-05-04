@@ -137,17 +137,21 @@ Return ONLY valid JSON:
       include: { lead: true, quote: true }
     });
 
-    return proposals.map(p => ({
+    const priorityFollowUps = proposals.map(p => ({
       id: p.leadId,
       type: 'proposal_stalled',
-      leadName: `${p.lead.firstName} ${p.lead.lastName}`,
+      name: `${p.lead.firstName} ${p.lead.lastName}`,
+      status: p.status,
+      daysStale: Math.floor((Date.now() - new Date(p.updatedAt).getTime()) / (1000 * 3600 * 24)),
       value: p.quote?.total || 0,
-      reason: p.status === 'VIEWED' ? 'Opened proposal but no reply' : 'Proposal sent 3+ days ago',
+      siloReason: p.status === 'VIEWED' ? 'Opened proposal but no reply' : 'Proposal sent 3+ days ago',
       recommendedAction: 'text',
       recommendedMessage: `Hi ${p.lead.firstName}, just checking if you had any questions on the window quote?`,
       urgencyAngle: 'End of month promo',
       probabilityOfResponse: 'High'
     }));
+    
+    return { priorityFollowUps };
   }
 
   // Phase 4: Live Sales Assistant

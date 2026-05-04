@@ -209,7 +209,7 @@ export class LeadService {
     // Auto-enroll in status-matched campaigns (e.g. new-lead-welcome)
     try {
       const { campaignsService } = await import('../campaigns/campaigns.service');
-      await campaignsService.triggerForStatus(lead.id, 'NEW', createdById);
+      await campaignsService.triggerForStatus(lead.id, data.organizationId, 'NEW', createdById);
     } catch (err: any) {
       logger.warn(`[leads] Campaign auto-enroll failed for ${lead.id}: ${sanitizeForLog(err.message)}`);
     }
@@ -292,7 +292,7 @@ export class LeadService {
     // Auto-enroll in status-matched campaigns (fire and forget)
     try {
       const { campaignsService } = await import('../campaigns/campaigns.service');
-      await campaignsService.triggerForStatus(id, status, userId);
+      await campaignsService.triggerForStatus(id, organizationId, status, userId);
     } catch (err: any) {
       logger.warn(`[leads] Campaign trigger failed for ${id}/${sanitizeForLog(status)}: ${sanitizeForLog(err.message)}`);
     }
@@ -312,8 +312,10 @@ export class LeadService {
   }
 
   async assign(id: string, organizationId: string, repId: string, managerId: string) {
+    const existing = await this.getById(id, organizationId);
+    
     const lead = await prisma.lead.update({
-      where: { id },
+      where: { id: existing.id },
       data: { assignedRepId: repId },
       include: {
         assignedRep: { select: { id: true, firstName: true, lastName: true } },

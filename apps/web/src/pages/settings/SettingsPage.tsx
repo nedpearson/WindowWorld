@@ -162,10 +162,6 @@ function SecurityTab() {
     } finally { setSaving(false); }
   };
 
-  const sessions = [
-    { device: 'Chrome on Windows', location: 'Baton Rouge, LA', time: 'Active now', icon: ComputerDesktopIcon, current: true },
-    { device: 'Safari on iPhone', location: 'Baton Rouge, LA', time: '2 hours ago', icon: DevicePhoneMobileIcon, current: false },
-  ];
 
   return (
     <div className="space-y-8 max-w-2xl">
@@ -238,32 +234,7 @@ function SecurityTab() {
         </div>
       </div>
 
-      {/* Active Sessions */}
-      <div className="border-t border-slate-800 pt-6 space-y-3">
-        <h3 className="text-sm font-semibold text-white">Active Sessions</h3>
-        <div className="space-y-2">
-          {sessions.map((s, i) => (
-            <div key={i} className="flex items-center gap-3 p-3 bg-slate-800/40 rounded-lg border border-slate-800">
-              <s.icon className="h-5 w-5 text-slate-400 flex-shrink-0" />
-              <div className="flex-1 min-w-0">
-                <div className="text-sm font-medium text-white flex items-center gap-2">
-                  {s.device}
-                  {s.current && <span className="text-[9px] bg-emerald-500/20 text-emerald-400 px-1.5 py-0.5 rounded-full">Current</span>}
-                </div>
-                <div className="text-xs text-slate-500 flex items-center gap-2 mt-0.5">
-                  <GlobeAltIcon className="h-3 w-3" />{s.location}
-                  <ClockIcon className="h-3 w-3 ml-1" />{s.time}
-                </div>
-              </div>
-              {!s.current && (
-                <button className="text-xs text-red-400 hover:text-red-300 flex items-center gap-1 transition-colors">
-                  <ArrowRightOnRectangleIcon className="h-3.5 w-3.5" /> Revoke
-                </button>
-              )}
-            </div>
-          ))}
-        </div>
-      </div>
+      {/* Active Sessions removed in production cleanup pass */}
     </div>
   );
 }

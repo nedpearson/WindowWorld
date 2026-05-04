@@ -69,15 +69,15 @@ export function FollowUpEngine() {
             </div>
 
             <div className="flex items-center gap-2 md:flex-shrink-0">
-              <button className="btn-sm bg-slate-800 text-slate-300 hover:bg-slate-700 flex items-center gap-1.5">
+              <a href={`mailto:`} className="btn-sm bg-slate-800 text-slate-300 hover:bg-slate-700 flex items-center gap-1.5" title="Email Lead">
                 <EnvelopeIcon className="h-3.5 w-3.5" /> Email
-              </button>
-              <button className="btn-sm bg-slate-800 text-slate-300 hover:bg-slate-700 flex items-center gap-1.5">
+              </a>
+              <a href={`sms:`} className="btn-sm bg-slate-800 text-slate-300 hover:bg-slate-700 flex items-center gap-1.5" title="Text Lead">
                 <ChatBubbleLeftIcon className="h-3.5 w-3.5" /> SMS
-              </button>
-              <button className="btn-sm bg-brand-600/20 text-brand-400 border border-brand-500/20 hover:bg-brand-600/30 flex items-center gap-1.5">
+              </a>
+              <a href={`tel:`} className="btn-sm bg-brand-600/20 text-brand-400 border border-brand-500/20 hover:bg-brand-600/30 flex items-center gap-1.5" title="Call Lead">
                 <PhoneIcon className="h-3.5 w-3.5" /> Call
-              </button>
+              </a>
             </div>
           </motion.div>
         ))}

@@ -133,7 +133,6 @@ export function ProductCatalogPage() {
         </div>
         <div className="flex items-center gap-2">
           <Link to="/proposals" className="btn-secondary btn-sm">View Proposals</Link>
-          <button className="btn-primary btn-sm"><BoltIcon className="h-4 w-4 mr-1"/> Start Quote</button>
         </div>
       </div>
 
@@ -263,8 +262,7 @@ export function ProductCatalogPage() {
                       {activeCategory?.slug === 'siding' ? 'per sq ft' : 'base unit'}
                     </div>
 
-                    <button className="btn-primary w-full mb-2">Add to Quote</button>
-                    <button className="btn-secondary w-full text-xs">View Full Specs</button>
+                    {/* Action buttons removed in cleanup pass */}
                   </div>
                 </div>
               ))}

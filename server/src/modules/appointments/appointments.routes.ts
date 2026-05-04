@@ -57,6 +57,7 @@ router.post('/',
       const apt = await appointmentsService.create({
         ...req.body,
         createdById: user.id,
+        organizationId: user.organizationId,
         skipConflictCheck: req.body.skipConflictCheck === true,
       });
       res.status(201).json({ success: true, data: apt });

@@ -18,20 +18,21 @@ router.get('/templates', auth.repOrAbove, async (req: Request, res: Response) =>
 router.post('/enroll', auth.repOrAbove, async (req: Request, res: Response) => {
   const user = (req as AuthenticatedRequest).user;
   const { leadId, campaignTemplateKey } = req.body;
-  const data = await campaignsService.enroll(leadId, campaignTemplateKey, user.id);
+  const data = await campaignsService.enroll(leadId, user.organizationId, campaignTemplateKey, user.id);
   res.json({ success: true, data });
 });
 
 router.post('/trigger-for-status', auth.repOrAbove, async (req: Request, res: Response) => {
   const user = (req as AuthenticatedRequest).user;
   const { leadId, status } = req.body;
-  const data = await campaignsService.triggerForStatus(leadId, status, user.id);
+  const data = await campaignsService.triggerForStatus(leadId, user.organizationId, status, user.id);
   res.json({ success: true, data });
 });
 
 router.post('/:leadId/unenroll', auth.repOrAbove, async (req: Request, res: Response) => {
+  const user = (req as AuthenticatedRequest).user;
   const { reason } = req.body;
-  await campaignsService.unenroll(req.params.leadId as string, reason);
+  await campaignsService.unenroll(req.params.leadId as string, user.organizationId, reason);
   res.json({ success: true, message: 'Lead unenrolled from all active campaigns' });
 });
 

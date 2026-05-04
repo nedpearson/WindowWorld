@@ -205,11 +205,11 @@ export class CampaignsService {
     }));
   }
 
-  async enroll(leadId: string, campaignTemplateKey: string, enrolledById: string) {
+  async enroll(leadId: string, organizationId: string, campaignTemplateKey: string, enrolledById: string) {
     const template = (CAMPAIGN_TEMPLATES as any)[campaignTemplateKey];
     if (!template) throw new Error(`Campaign template not found: ${campaignTemplateKey}`);
 
-    const lead = await prisma.lead.findUnique({ where: { id: leadId }, include: { contacts: { where: { isPrimary: true } } } });
+    const lead = await prisma.lead.findUnique({ where: { id: leadId, organizationId }, include: { contacts: { where: { isPrimary: true } } } });
     if (!lead) throw new Error(`Lead not found: ${leadId}`);
 
     // Check not already enrolled
@@ -219,9 +219,8 @@ export class CampaignsService {
     if (existing) return { enrolled: false, message: 'Lead already enrolled in this campaign' };
 
     // Find or create campaign record
-    const lead_with_org = await prisma.lead.findUnique({ where: { id: leadId }, select: { organizationId: true } });
     let campaign = await prisma.campaign.findFirst({
-      where: { templateKey: campaignTemplateKey, organizationId: lead_with_org!.organizationId } as any,
+      where: { templateKey: campaignTemplateKey, organizationId } as any,
     });
     if (!campaign) {
       campaign = await prisma.campaign.create({
@@ -230,7 +229,7 @@ export class CampaignsService {
           description: template.description,
           templateKey: campaignTemplateKey,
           status: 'ACTIVE',
-          organizationId: lead_with_org!.organizationId,
+          organizationId,
           createdById: enrolledById,
           stepCount: template.steps.length,
         } as any,
@@ -370,21 +369,24 @@ export class CampaignsService {
     });
   }
 
-  async unenroll(leadId: string, reason?: string) {
+  async unenroll(leadId: string, organizationId: string, reason?: string) {
+    const lead = await prisma.lead.findUnique({ where: { id: leadId, organizationId } });
+    if (!lead) throw new Error(`Lead not found: ${leadId}`);
+
     await (prisma as any).campaignEnrollment?.updateMany({
       where: { leadId, status: 'ACTIVE' },
       data: { status: 'UNSUBSCRIBED', unenrolledAt: new Date(), unenrollReason: reason } as any,
     });
   }
 
-  async triggerForStatus(leadId: string, status: string, enrolledById: string) {
+  async triggerForStatus(leadId: string, organizationId: string, status: string, enrolledById: string) {
     const matching = Object.entries(CAMPAIGN_TEMPLATES)
       .filter(([, t]) => t.triggerStatus === status)
       .map(([key]) => key);
 
     for (const key of matching) {
       try {
-        await this.enroll(leadId, key, enrolledById);
+        await this.enroll(leadId, organizationId, key, enrolledById);
       } catch (err: any) {
         logger.warn(`Auto-enroll campaign failed for ${leadId}/${sanitizeForLog(key)}: ${sanitizeForLog(err.message)}`);
       }

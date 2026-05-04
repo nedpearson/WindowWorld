@@ -96,6 +96,11 @@ export class PropertiesService {
 
   async linkToLead(propertyId: string, organizationId: string, leadId: string) {
     const property = await this.getById(propertyId, organizationId);
+    
+    // Verify lead belongs to the org
+    const lead = await prisma.lead.findFirst({ where: { id: leadId, organizationId } });
+    if (!lead) throw new NotFoundError('Lead');
+
     return prisma.property.update({
       where: { id: property.id },
       data: { leads: { connect: { id: leadId } } },

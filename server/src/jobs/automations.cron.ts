@@ -68,7 +68,7 @@ async function processNoShows() {
       });
 
       // Enroll in rebooking sequence
-      await campaignsService.enroll(apt.lead.id, 'no-show-recovery', sysUser);
+      await campaignsService.enroll(apt.lead.id, apt.lead.organizationId, 'no-show-recovery', sysUser);
 
       await prisma.activity.create({
         data: {
@@ -115,7 +115,7 @@ async function processStaleLeads() {
         where: { id: lead.id },
         data: { status: 'NURTURE' }
       });
-      await campaignsService.enroll(lead.id, 'stale-lead-nurture', sysUser);
+      await campaignsService.enroll(lead.id, lead.organizationId, 'stale-lead-nurture', sysUser);
 
       await prisma.activity.create({
         data: {
@@ -172,7 +172,7 @@ async function processPostInstallReviews() {
     if (!sysUser) continue;
 
     try {
-      await campaignsService.enroll(lead.id, 'post-install-review', sysUser);
+      await campaignsService.enroll(lead.id, lead.organizationId, 'post-install-review', sysUser);
       await prisma.activity.create({
         data: {
           leadId: lead.id,
@@ -228,7 +228,7 @@ async function processOverdueInvoices() {
       if (!sysUser) continue;
 
       try {
-        await invoicesService.send(inv.id, sysUser);
+        await invoicesService.send(inv.id, inv.organizationId, sysUser);
         
         await prisma.activity.create({
           data: {

@@ -26,7 +26,7 @@ router.get('/leaderboard', auth.repOrAbove, async (req: Request, res: Response) 
 // ⚠️  /me MUST be before /:id — otherwise Express matches "me" as an ID param
 router.get('/me', auth.repOrAbove, async (req: Request, res: Response) => {
   const user = (req as AuthenticatedRequest).user;
-  const data = await usersService.getById(user.id);
+  const data = await usersService.getById(user.id, user.organizationId);
   res.json({ success: true, data });
 });
 
@@ -42,7 +42,8 @@ router.patch('/me/preferences', auth.repOrAbove, async (req: Request, res: Respo
 });
 
 router.get('/:id', auth.manager, async (req: Request, res: Response) => {
-  const data = await usersService.getById((req.params.id as string));
+  const user = (req as AuthenticatedRequest).user;
+  const data = await usersService.getById(req.params.id as string, user.organizationId);
   res.json({ success: true, data });
 });
 

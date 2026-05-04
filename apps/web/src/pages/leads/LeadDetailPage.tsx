@@ -639,7 +639,6 @@ export function LeadDetailPage({ isNew = false }: { isNew?: boolean }) {
                       <UserIcon className="h-4 w-4 text-slate-500" />
                       <h2 className="text-sm font-semibold text-white">Contacts</h2>
                     </div>
-                    <button className="btn-ghost btn-sm"><PlusIcon className="h-4 w-4" /></button>
                   </div>
                   <div className="space-y-3">
                     {lead.contacts.map((contact) => (

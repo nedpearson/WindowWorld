@@ -282,11 +282,38 @@ function CaptureTab({ enqueue, stops = [], activeStopId }: { enqueue: (type: any
   const leadId = resolvedStop?.lead?.id ?? '';
   const inspectionId = resolvedStop?.inspectionId ?? '';
 
-  const handleCapture = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleCapture = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     haptic.tap();
-    setPendingFile(file);
+
+    const base64 = await new Promise<string>((resolve, reject) => {
+      const img = new Image();
+      const reader = new FileReader();
+      reader.onload = (ev) => { img.src = ev.target?.result as string; };
+      reader.onerror = reject;
+      img.onload = () => {
+        const MAX = 1920;
+        let { width, height } = img;
+        if (width > MAX || height > MAX) {
+          if (width > height) { height = Math.round((height * MAX) / width); width = MAX; }
+          else { width = Math.round((width * MAX) / height); height = MAX; }
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = width; canvas.height = height;
+        const ctx = canvas.getContext('2d')!;
+        ctx.drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL('image/jpeg', 0.85));
+      };
+      img.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+
+    const res = await fetch(base64);
+    const blob = await res.blob();
+    const compressedFile = new File([blob], file.name.replace(/\\.[^/.]+$/, "") + ".jpg", { type: 'image/jpeg' });
+
+    setPendingFile(compressedFile);
     setSelectedLabel('');
     setShowLabelModal(true);
     if (e.target) e.target.value = '';

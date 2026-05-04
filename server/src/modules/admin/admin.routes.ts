@@ -55,8 +55,11 @@ router.post('/users/:id/reactivate', auth.adminOnly, async (req: Request, res: R
 
 /** GET /api/v1/admin/audit-log — paginated audit log */
 router.get('/audit-log', auth.adminOnly, async (req: Request, res: Response) => {
+  const actor = (req as AuthenticatedRequest).user;
   const { entityType, entityId, userId, limit = '50', offset = '0' } = req.query;
-  const where: any = {};
+  const where: any = {
+    user: { organizationId: actor.organizationId }
+  };
   if (entityType) where.entityType = entityType;
   if (entityId) where.entityId = entityId;
   if (userId) where.userId = userId;
@@ -261,6 +264,7 @@ router.post('/seed-owner-leads', auth.superAdmin, async (req: Request, res: Resp
     // Property with openings
     const property = await prisma.property.create({
       data: {
+        organizationId: orgId,
         address: ld.address,
         city: ld.city,
         state: ld.state,

@@ -93,6 +93,7 @@ router.post('/upload', auth.repOrAbove, (req: Request, res: Response, next: Next
     type: type || 'PHOTO_EXTERIOR',
     leadId, propertyId, openingId, inspectionId,
     uploadedById: user.id,
+    organizationId: user.organizationId,
     triggerAiAnalysis: triggerAiAnalysis || ['PHOTO_EXTERIOR', 'PHOTO_INTERIOR'].includes(type),
     notes,
   });
@@ -135,6 +136,7 @@ router.post('/upload-base64', auth.repOrAbove, async (req: Request, res: Respons
     openingId,
     inspectionId,
     uploadedById: user.id,
+    organizationId: user.organizationId,
     triggerAiAnalysis: ['PHOTO_EXTERIOR', 'PHOTO_INTERIOR'].includes(type),
     notes,
   });

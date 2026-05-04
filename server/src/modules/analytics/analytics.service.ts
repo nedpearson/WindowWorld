@@ -96,33 +96,35 @@ export class AnalyticsService {
       where: { organizationId, role: { in: ['SALES_REP', 'SALES_MANAGER', 'SUPER_ADMIN'] as any[] } },
       select: {
         id: true, firstName: true, lastName: true, role: true,
-        _count: { select: { assignedLeads: true } },
       },
     });
 
-    const repStats = await Promise.all(reps.map(async (rep) => {
-      const [assignedLeads, proposals, invoices] = await Promise.all([
-        prisma.lead.count({
-          where: { assignedRepId: rep.id, createdAt: { gte: since } } as any,
-        }),
-        prisma.proposal.count({
-          where: { createdById: rep.id, createdAt: { gte: since } },
-        }),
-        prisma.invoice.findMany({
-          where: { createdById: rep.id, createdAt: { gte: since } },
-          include: { payments: true } as any,
-        }),
-      ]);
+    const repIds = reps.map(r => r.id);
 
-      const closedLeads = await prisma.lead.count({
-        where: {
-          assignedRepId: rep.id,
-          createdAt: { gte: since },
-          status: { in: ['VERBAL_COMMIT', 'SOLD', 'PAID', 'INSTALLED'] as any[] },
-        } as any,
-      });
+    const [leads, proposals, invoices] = await Promise.all([
+      prisma.lead.findMany({
+        where: { assignedRepId: { in: repIds }, createdAt: { gte: since } } as any,
+        select: { id: true, assignedRepId: true, status: true }
+      }),
+      prisma.proposal.findMany({
+        where: { createdById: { in: repIds }, createdAt: { gte: since } },
+        select: { id: true, createdById: true }
+      }),
+      prisma.invoice.findMany({
+        where: { createdById: { in: repIds }, createdAt: { gte: since } },
+        include: { payments: true } as any,
+      })
+    ]);
 
-      const revenue = (invoices as any[]).reduce((s: number, inv: any) =>
+    const repStats = reps.map((rep) => {
+      const repLeads = (leads as any[]).filter((l: any) => l.assignedRepId === rep.id);
+      const repProposals = (proposals as any[]).filter((p: any) => p.createdById === rep.id);
+      const repInvoices = (invoices as any[]).filter((i: any) => i.createdById === rep.id);
+      
+      const assignedLeadsCount = repLeads.length;
+      const closedLeadsCount = repLeads.filter((l: any) => ['VERBAL_COMMIT', 'SOLD', 'PAID', 'INSTALLED'].includes(l.status as string)).length;
+      
+      const revenue = repInvoices.reduce((s: number, inv: any) =>
         s + ((inv.payments || []).reduce((ps: number, p: any) => ps + (p.amount || 0), 0)), 0);
 
       return {
@@ -130,15 +132,15 @@ export class AnalyticsService {
         name: `${rep.firstName} ${rep.lastName}`,
         role: rep.role,
         metrics: {
-          leadsAssigned: assignedLeads,
-          proposalsSent: proposals,
-          dealsClosed: closedLeads,
+          leadsAssigned: assignedLeadsCount,
+          proposalsSent: repProposals.length,
+          dealsClosed: closedLeadsCount,
           revenue: Math.round(revenue * 100) / 100,
-          closeRate: assignedLeads > 0 ? Math.round((closedLeads / assignedLeads) * 10000) / 100 : 0,
-          avgDealSize: closedLeads > 0 ? Math.round((revenue / closedLeads) * 100) / 100 : 0,
+          closeRate: assignedLeadsCount > 0 ? Math.round((closedLeadsCount / assignedLeadsCount) * 10000) / 100 : 0,
+          avgDealSize: closedLeadsCount > 0 ? Math.round((revenue / closedLeadsCount) * 100) / 100 : 0,
         },
       };
-    }));
+    });
 
     return repStats.sort((a, b) => b.metrics.revenue - a.metrics.revenue);
   }

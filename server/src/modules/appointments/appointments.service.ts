@@ -96,6 +96,7 @@ export class AppointmentsService {
 
   async create(data: {
     leadId: string;
+    organizationId: string;
     createdById: string;
     title: string;
     type: string;
@@ -109,6 +110,10 @@ export class AppointmentsService {
     /** If true, skip conflict check (user confirmed they want to book anyway) */
     skipConflictCheck?: boolean;
   }) {
+    // Verify lead belongs to org
+    const leadVerify = await prisma.lead.findFirst({ where: { id: data.leadId, organizationId: data.organizationId } });
+    if (!leadVerify) throw new NotFoundError('Lead');
+
     const startAt = new Date(data.scheduledAt);
     // Default end = start + duration (or 90 min)
     const endAt = data.endAt
@@ -137,7 +142,7 @@ export class AppointmentsService {
       }
     }
 
-    const { skipConflictCheck, ...prismaData } = data;
+    const { skipConflictCheck, organizationId, ...prismaData } = data;
 
     const apt = await prisma.appointment.create({
       data: {

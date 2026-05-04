@@ -35,9 +35,12 @@ export class UsersService {
     });
   }
 
-  async getById(id: string) {
-    const user = await prisma.user.findUnique({
-      where: { id },
+  async getById(id: string, organizationId?: string) {
+    const user = await prisma.user.findFirst({
+      where: { 
+        id,
+        ...(organizationId && { organizationId })
+      },
       select: {
         id: true, email: true, firstName: true, lastName: true,
         role: true, phone: true, avatarUrl: true, isActive: true,

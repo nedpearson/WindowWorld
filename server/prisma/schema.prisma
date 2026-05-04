@@ -530,6 +530,8 @@ model Contact {
   lead     Lead?     @relation(fields: [leadId], references: [id])
   property Property? @relation(fields: [propertyId], references: [id])
 
+  @@index([leadId])
+  @@index([propertyId])
   @@map("contacts")
 }
 
@@ -582,6 +584,7 @@ model Property {
 
   @@index([zip])
   @@index([parish])
+  @@index([organizationId])
   @@map("properties")
 }
 
@@ -664,6 +667,7 @@ model Inspection {
   documents   Document[]
   aiAnalyses  AiAnalysis[]
 
+  @@index([leadId])
   @@map("inspections")
 }
 
@@ -728,6 +732,8 @@ model Opening {
   aiAnalyses     AiAnalysis[]
   quoteLineItems QuoteLineItem[]
 
+  @@index([inspectionId])
+  @@index([propertyId])
   @@map("openings")
 }
 
@@ -791,6 +797,7 @@ model Measurement {
   measuredBy User?                @relation("measuredBy", fields: [measuredById], references: [id])
   history    MeasurementHistory[]
 
+  @@index([status])
   @@map("measurements")
 }
 
@@ -1151,7 +1158,7 @@ model Quote {
   lead      Lead            @relation(fields: [leadId], references: [id])
   lineItems QuoteLineItem[]
   proposals Proposal[]
-
+  @@index([leadId])
   @@map("quotes")
 }
 
@@ -1251,7 +1258,8 @@ model Proposal {
   createdBy User       @relation("createdBy", fields: [createdById], references: [id])
   template  Template?  @relation(fields: [templateId], references: [id])
   documents Document[]
-
+  @@index([leadId])
+  @@index([status])
   @@map("proposals")
 }
 
@@ -1311,7 +1319,9 @@ model Invoice {
   lineItems InvoiceLineItem[]
   payments  Payment[]
   documents Document[]
-
+  @@index([organizationId])
+  @@index([leadId])
+  @@index([status])
   @@map("invoices")
 }
 
@@ -1417,6 +1427,7 @@ model Document {
   @@index([leadId])
   @@index([inspectionId])
   @@index([openingId])
+  @@index([propertyId])
   @@map("documents")
 }
 

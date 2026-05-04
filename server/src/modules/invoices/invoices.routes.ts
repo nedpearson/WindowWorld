@@ -23,25 +23,26 @@ router.get('/aging', auth.manager, async (req: Request, res: Response) => {
 });
 
 router.get('/:id', auth.repOrAbove, async (req: Request, res: Response) => {
-  const data = await invoicesService.getById((req.params.id as string));
+  const user = (req as AuthenticatedRequest).user;
+  const data = await invoicesService.getById((req.params.id as string), user.organizationId);
   res.json({ success: true, data });
 });
 
 router.post('/from-proposal', auth.repOrAbove, async (req: Request, res: Response) => {
   const user = (req as AuthenticatedRequest).user;
-  const data = await invoicesService.createFromProposal({ ...req.body, createdById: user.id });
+  const data = await invoicesService.createFromProposal({ ...req.body, createdById: user.id, organizationId: user.organizationId });
   res.status(201).json({ success: true, data });
 });
 
 router.post('/:id/payments', auth.repOrAbove, async (req: Request, res: Response) => {
   const user = (req as AuthenticatedRequest).user;
-  const data = await invoicesService.recordPayment((req.params.id as string), { ...req.body, recordedById: user.id });
+  const data = await invoicesService.recordPayment((req.params.id as string), user.organizationId, { ...req.body, recordedById: user.id });
   res.status(201).json({ success: true, data });
 });
 
 router.post('/:id/send', auth.repOrAbove, async (req: Request, res: Response) => {
   const user = (req as AuthenticatedRequest).user;
-  const data = await invoicesService.send((req.params.id as string), user.id);
+  const data = await invoicesService.send((req.params.id as string), user.organizationId, user.id);
   res.json({ success: true, data });
 });
 
@@ -50,7 +51,7 @@ router.post('/:id/generate-pdf', auth.repOrAbove, async (req: Request, res: Resp
   const user = (req as AuthenticatedRequest).user;
   const id = req.params.id as string;
 
-  const invoice = await invoicesService.getById(id);
+  const invoice = await invoicesService.getById(id, user.organizationId);
 
   const { pdfQueue } = await import('../../jobs');
   const { prisma: db } = await import('../../shared/services/prisma');
@@ -131,6 +132,11 @@ router.get('/install-schedule', auth.manager, async (req: Request, res: Response
 
 // PATCH /invoices/:id/install — set install date, crew, and status
 router.patch('/:id/install', auth.manager, async (req: Request, res: Response) => {
+  const user = (req as AuthenticatedRequest).user;
+  
+  // Verify invoice belongs to org
+  await invoicesService.getById(req.params.id as string, user.organizationId);
+
   const { prisma } = await import('../../shared/services/prisma');
   const { installDate, crew, installStatus, notes } = req.body;
   const updated = await prisma.invoice.update({

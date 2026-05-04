@@ -34,8 +34,16 @@ export class ContactsService {
     });
   }
 
-  async getById(id: string) {
-    const contact = await prisma.contact.findUnique({ where: { id } });
+  async getById(id: string, organizationId: string) {
+    const contact = await prisma.contact.findFirst({
+      where: { 
+        id,
+        OR: [
+          { lead: { organizationId } },
+          { property: { leads: { some: { organizationId } } } }
+        ]
+      }
+    });
     if (!contact) throw new NotFoundError('Contact');
     return contact;
   }
@@ -43,6 +51,7 @@ export class ContactsService {
   async create(data: {
     leadId?: string;
     propertyId?: string;
+    organizationId: string;
     firstName: string;
     lastName: string;
     email?: string;
@@ -59,21 +68,32 @@ export class ContactsService {
     notes?: string;
     userId: string;
   }) {
-    const { userId, ...contactData } = data;
+    const { userId, organizationId, ...contactData } = data;
+    
+    // Verify lead/property belongs to org
+    if (contactData.leadId) {
+      const lead = await prisma.lead.findFirst({ where: { id: contactData.leadId, organizationId } });
+      if (!lead) throw new NotFoundError('Lead');
+    }
+    if (contactData.propertyId) {
+      const prop = await prisma.property.findFirst({ where: { id: contactData.propertyId, leads: { some: { organizationId } } } });
+      if (!prop) throw new NotFoundError('Property');
+    }
+
     const contact = await prisma.contact.create({ data: contactData as any });
     await auditService.log({ userId, entityType: 'contact', entityId: contact.id, action: 'create', newValues: contact as any });
     return contact;
   }
 
-  async update(id: string, data: any, userId: string) {
-    const existing = await this.getById(id);
+  async update(id: string, organizationId: string, data: any, userId: string) {
+    const existing = await this.getById(id, organizationId);
     const updated = await prisma.contact.update({ where: { id }, data });
     await auditService.log({ userId, entityType: 'contact', entityId: id, action: 'update', oldValues: existing as any, newValues: updated as any });
     return updated;
   }
 
-  async delete(id: string, userId: string) {
-    await this.getById(id);
+  async delete(id: string, organizationId: string, userId: string) {
+    await this.getById(id, organizationId);
     await prisma.contact.delete({ where: { id } });
     await auditService.log({ userId, entityType: 'contact', entityId: id, action: 'delete' });
   }

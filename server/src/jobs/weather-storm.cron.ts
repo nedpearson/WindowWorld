@@ -252,13 +252,13 @@ async function processStormAlerts(alerts: StormEventSummary[]): Promise<void> {
           notIn: ['SOLD', 'LOST', 'INSTALLED', 'PAID', 'ORDERED', 'NURTURE'],
         },
       },
-      select: { id: true },
+      select: { id: true, organizationId: true },
     });
 
     let enrolledCount = 0;
     for (const lead of stormLeads) {
       try {
-        const result = await campaignsService.enroll(lead.id, 'storm-lead-urgency', systemUserId);
+        const result = await campaignsService.enroll(lead.id, lead.organizationId, 'storm-lead-urgency', systemUserId);
         if (result.enrolled) enrolledCount++;
       } catch (err: any) {
         logger.warn(`[storm-cron] Campaign enroll failed for lead ${lead.id}: ${sanitizeForLog(err.message)}`);

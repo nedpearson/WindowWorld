@@ -134,50 +134,7 @@ function DailyTrendSignals({ hasLeads }: { hasLeads: boolean }) {
   );
 }
 
-const FIRST_NAMES = ['Sarah', 'James', 'Robert', 'Michael', 'Emily', 'Jessica', 'David', 'John', 'Jennifer', 'Linda', 'William', 'Richard', 'Thomas', 'Mary', 'Patricia', 'Susan'];
-const LAST_NAMES = ['Mitchell', 'Harrison', 'Chen', 'Smith', 'Johnson', 'Williams', 'Brown', 'Jones', 'Garcia', 'Miller', 'Davis', 'Rodriguez', 'Martinez'];
-const CITIES = ['Baton Rouge', 'Prairieville', 'Denham Springs', 'Gonzales', 'Zachary', 'Central', 'Baker', 'Walker', 'Port Allen'];
-const PARISHES = ['East Baton Rouge', 'Ascension', 'Livingston', 'West Baton Rouge'];
 
-function generateDemoLeads(count: number) {
-  const leads = [];
-  for (let i = 0; i < count; i++) {
-    // Score descending from 95 to 50
-    const score = Math.floor(95 - (i * (45 / count)));
-    const isStorm = Math.random() > 0.7;
-    const isHighValue = Math.random() > 0.6;
-    
-    const pitchAngles = Object.keys(PITCH_ANGLE_LABELS);
-    const pitchAngle = pitchAngles[Math.floor(Math.random() * pitchAngles.length)];
-    
-    const firstContactMsg = isStorm 
-      ? `Hi ${FIRST_NAMES[Math.floor(Math.random() * FIRST_NAMES.length)]}, noticed you are looking into replacement windows after the storm. We have a local crew near you this week offering free damage assessments.`
-      : `Hi ${FIRST_NAMES[Math.floor(Math.random() * FIRST_NAMES.length)]}, I noticed you were looking at our premium window options and wanted to share a custom lookbook.`;
-
-    leads.push({
-      id: `dl-${Date.now()}-${i}`,
-      firstName: FIRST_NAMES[Math.floor(Math.random() * FIRST_NAMES.length)],
-      lastName: LAST_NAMES[Math.floor(Math.random() * LAST_NAMES.length)],
-      city: CITIES[Math.floor(Math.random() * CITIES.length)],
-      parish: PARISHES[Math.floor(Math.random() * PARISHES.length)],
-      aiScore: score,
-      urgencyScore: Math.floor(Math.random() * 60) + 30,
-      closeProbability: Math.floor(Math.random() * 50) + 30,
-      financingLikelihood: Math.floor(Math.random() * 80) + 10,
-      status: 'NEW_LEAD',
-      isStormLead: isStorm,
-      estimatedValue: isHighValue ? Math.floor(Math.random() * 20000) + 10000 : Math.floor(Math.random() * 8000) + 3000,
-      pitchAngle,
-      stuckDays: Math.floor(Math.random() * 10),
-      reasonForFlagging: isStorm ? 'Recent hail damage inquiry detected in local zip code after Monday storm.' : 'Viewed financing page 3 times this week. Stuck in follow-up.',
-      firstContactMsg,
-      bestOffer: Math.random() > 0.5 ? 'Free Upgrade to Impact-Resistant Glass' : '$0 Down, 0% Interest for 18 Months',
-      riskFactors: Math.random() > 0.5 ? ['Price sensitive', 'Comparing multiple local contractors'] : [],
-      competitor: Math.random() > 0.5 ? 'Renewal by Andersen' : 'Local Contractor',
-    });
-  }
-  return leads;
-}
 
 export function LeadIntelligencePage() {
   const [category, setCategory] = useState('all');
@@ -195,18 +152,8 @@ export function LeadIntelligencePage() {
     apiClient.leads.list({ sortBy: 'aiScore', sortDir: 'desc', limit: 50 })
       .then((d: any) => {
         let raw: any[] = d?.data ?? d?.leads ?? [];
-        if (raw.length === 0 || refresh) {
-          raw = generateDemoLeads(30);
-        }
         
         setLeads(raw.map((l: any, i: number) => {
-          // Generate mock properties if they don't exist for the expanded intelligence card
-          const mockReason = l.isStormLead ? "Recent hail damage inquiry detected in local zip code" : "Multiple site visits and pricing page views";
-          const mockFirstMessage = `Hi ${l.firstName}, noticed you're looking into replacement windows in ${l.city}. We have a local crew near you this week offering free assessments.`;
-          const mockOffer = l.financingLikelihood > 50 ? "$0 Down, 0% Interest for 18 Months" : "Free Premium Upgrade on 5+ Windows";
-          const mockRisks = l.aiScore < 70 ? ["Comparing 3+ quotes", "High price sensitivity"] : ["Might delay until next spring"];
-          const mockCompetitor = i % 3 === 0 ? "Renewal by Andersen" : i % 2 === 0 ? "Champion Windows" : "Local Contractor";
-          
           const lat = l.lat ?? l.latitude ?? null;
           const lng = l.lng ?? l.longitude ?? null;
           return {
@@ -224,11 +171,11 @@ export function LeadIntelligencePage() {
             signals: l.aiSignals ?? l.signals ?? [],
             pitchAngle: l.pitchAngle ?? 'CONSULTATIVE',
             stuckDays: l.stuckDays ?? 0,
-            reasonForFlagging: l.reasonForFlagging ?? mockReason,
-            firstContactMsg: l.firstContactMsg ?? mockFirstMessage,
-            bestOffer: l.bestOffer ?? mockOffer,
-            riskFactors: l.riskFactors ?? mockRisks,
-            competitor: l.competitor ?? mockCompetitor,
+            reasonForFlagging: l.reasonForFlagging ?? 'High intent indicators detected.',
+            firstContactMsg: l.firstContactMsg ?? `Hi ${l.firstName}, saw you might be looking into some exterior updates?`,
+            bestOffer: l.bestOffer ?? 'Consultation',
+            riskFactors: l.riskFactors ?? [],
+            competitor: l.competitor ?? 'Unknown',
             lat,
             lng,
             distMiles: distanceMiles(lat, lng),
@@ -236,36 +183,7 @@ export function LeadIntelligencePage() {
         }));
       })
       .catch(() => {
-        // Error fallback
-        const raw = generateDemoLeads(30);
-        setLeads(raw.map((l: any) => {
-          const lat = l.lat ?? l.latitude ?? null;
-          const lng = l.lng ?? l.longitude ?? null;
-          return {
-            id: l.id,
-            name: `${l.firstName} ${l.lastName}`,
-            city: l.city ?? '',
-            parish: l.parish ?? l.county ?? l.city ?? '',
-            score: l.aiScore ?? l.leadScore ?? 50,
-            urgency: l.urgencyScore ?? l.urgency ?? 50,
-            closePct: l.closeProbability ?? l.closePct ?? 50,
-            financingPct: l.financingLikelihood ?? l.financingPct ?? 30,
-            status: l.status,
-            isStorm: l.isStormLead ?? false,
-            est: l.estimatedValue ?? l.estimatedRevenue ?? 0,
-            signals: l.aiSignals ?? l.signals ?? [],
-            pitchAngle: l.pitchAngle ?? 'CONSULTATIVE',
-            stuckDays: l.stuckDays ?? 0,
-            reasonForFlagging: l.reasonForFlagging,
-            firstContactMsg: l.firstContactMsg,
-            bestOffer: l.bestOffer,
-            riskFactors: l.riskFactors,
-            competitor: l.competitor,
-            lat,
-            lng,
-            distMiles: distanceMiles(lat, lng),
-          };
-        }));
+        setLeads([]);
       })
       .finally(() => {
         setLoading(false);
@@ -468,12 +386,7 @@ export function LeadIntelligencePage() {
                   <Link to={`/leads/${lead.id}`} className="btn-primary w-full justify-center">
                     Open Lead
                   </Link>
-                  <button className="btn-secondary w-full justify-center bg-brand-600/10 text-brand-400 border-brand-500/30 hover:bg-brand-600/20">
-                    Send Message
-                  </button>
-                  <button className="btn-secondary w-full justify-center">
-                    Dismiss
-                  </button>
+                  {/* Additional actions removed in cleanup pass */}
                 </div>
 
               </div>

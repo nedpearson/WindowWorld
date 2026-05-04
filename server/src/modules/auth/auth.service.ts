@@ -7,8 +7,6 @@ import { logger } from '../../shared/utils/logger';
 // google-auth-library is retained for potential id_token verification in future;
 // current flow uses fetch to the /oauth2/v3/userinfo endpoint instead.
 
-const JWT_SECRET = process.env.JWT_SECRET || 'CHANGE_THIS_SECRET';
-const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '7d';
 const SALT_ROUNDS = 12;
 
 export interface TokenPayload {
@@ -40,8 +38,11 @@ export interface LoginResult {
 }
 
 function generateTokens(payload: TokenPayload): AuthTokens {
-  const accessToken = jwt.sign(payload, JWT_SECRET, {
-    expiresIn: JWT_EXPIRES_IN,
+  const secret = process.env.JWT_SECRET;
+  if (!secret) throw new Error('JWT_SECRET not configured');
+
+  const accessToken = jwt.sign(payload, secret, {
+    expiresIn: process.env.JWT_EXPIRES_IN || '7d',
   } as jwt.SignOptions);
 
   const refreshToken = crypto.randomUUID();
