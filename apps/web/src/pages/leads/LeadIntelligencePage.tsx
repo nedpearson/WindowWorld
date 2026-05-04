@@ -198,7 +198,7 @@ export function LeadIntelligencePage() {
       await new Promise(resolve => setTimeout(resolve, 1500));
     }
     
-    apiClient.leads.list({ sortBy: 'aiScore', sortDir: 'desc', limit: 50 })
+    apiClient.leads.list({ sortBy: 'leadScore', sortDir: 'desc', limit: 50 })
       .then((d: any) => {
         let raw: any[] = d?.data ?? d?.leads ?? [];
         if (isDemoFallback && (raw.length === 0 || refresh)) {
