@@ -225,10 +225,12 @@ export class AppointmentsService {
   }
 
   async update(id: string, data: any, userId: string) {
+    const { skipConflictCheck, ...prismaData } = data;
+    
     const updated = await prisma.appointment.update({
       where: { id },
       data: {
-        ...data,
+        ...prismaData,
         scheduledAt: data.scheduledAt ? new Date(data.scheduledAt) : undefined,
         endAt: data.endAt ? new Date(data.endAt) : undefined,
       },
