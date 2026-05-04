@@ -222,7 +222,7 @@ export async function scoreKnownLeadIntent(leadId: string): Promise<IntentScore>
   });
 
   if (!lead) return {
-    total: 0, financingScore: 0, urgencyScore: 0,
+    total: 0, financingScore: 0, urgencyScore: 0, urgencyLevel: 'LOW' as const,
     productInterest: [], topSegment: 'UNKNOWN', closeProbability: 0,
   };
 
@@ -278,10 +278,15 @@ export async function scoreKnownLeadIntent(leadId: string): Promise<IntentScore>
   else if (financingScore > 50) topSegment = 'FINANCING_FIRST';
   else if (signals.some(s => s.stormSignal)) topSegment = 'STORM_CLAIMANT';
 
+  // Urgency level bucket
+  const urgencyLevel: 'LOW' | 'MEDIUM' | 'HIGH' =
+    urgencyScore > 60 ? 'HIGH' : urgencyScore > 25 ? 'MEDIUM' : 'LOW';
+
   return {
     total: Math.round(total),
     financingScore: Math.round(financingScore),
     urgencyScore: Math.round(urgencyScore),
+    urgencyLevel,
     productInterest: productInterest.length > 0 ? productInterest : ['windows'],
     topSegment,
     closeProbability: Math.min(1, closeProbability),

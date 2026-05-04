@@ -82,7 +82,7 @@ intelligenceRouter.get('/competitors', async (_req, res) => {
 // ─── Scrape Competitor ────────────────────────────────────────────────────
 intelligenceRouter.post('/competitors/:id/scrape', ...auth.manager, async (req, res) => {
   try {
-    const count = await marketCrawler.scrapeCompetitorPages(req.params.id);
+    const count = await marketCrawler.scrapeCompetitorPages(req.params.id as string);
     res.json({ pagesScraped: count });
   } catch (e: any) {
     res.status(500).json({ error: 'Failed to scrape competitor' });
@@ -117,7 +117,7 @@ intelligenceRouter.get('/battlecards/:competitorSlug', async (req, res) => {
 
 intelligenceRouter.post('/battlecards/:competitorSlug/refresh', ...auth.manager, async (req, res) => {
   try {
-    const competitor = await prisma.competitor.findUnique({ where: { slug: req.params.competitorSlug } });
+    const competitor = await prisma.competitor.findUnique({ where: { slug: req.params.competitorSlug as string } });
     if (!competitor) return res.status(404).json({ error: 'Competitor not found' });
     const ok = await battlecardService.generateBattlecard(competitor.id);
     res.json({ ok, message: ok ? 'Battlecard refreshed' : 'Failed to refresh' });
@@ -167,7 +167,7 @@ intelligenceRouter.get('/opportunities', async (req, res) => {
 intelligenceRouter.patch('/opportunities/:id/act', ...auth.manager, async (req, res) => {
   try {
     await prisma.messagingOpportunity.update({
-      where: { id: req.params.id },
+      where: { id: req.params.id as string },
       data: { isActedOn: true },
     });
     res.json({ ok: true });

@@ -109,6 +109,7 @@ export interface IntentScore {
   total: number;          // 0-100
   financingScore: number; // 0-100
   urgencyScore: number;   // 0-100
+  urgencyLevel: 'LOW' | 'MEDIUM' | 'HIGH';
   productInterest: string[];
   topSegment: string;
   closeProbability: number; // 0.0-1.0
