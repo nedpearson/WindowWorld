@@ -463,7 +463,9 @@ export function AppointmentsPage() {
     );
     const groups: Record<string, Appointment[]> = {};
     filtered.forEach((apt) => {
-      const key = new Date(apt.scheduledAt).toDateString();
+      const d = new Date(apt.scheduledAt);
+      // Use local YYYY-MM-DD as key so it round-trips correctly without timezone shift
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
       if (!groups[key]) groups[key] = [];
       groups[key].push(apt);
     });
@@ -561,13 +563,13 @@ export function AppointmentsPage() {
                   <div key={dateStr}>
                     <div className="flex items-center gap-2 mb-2">
                       <div className={clsx('text-xs font-semibold px-2 py-1 rounded-lg',
-                        isSameDay(new Date(dateStr), today)
+                        isSameDay(new Date(dateStr + 'T00:00:00'), today)
                           ? 'bg-brand-600/20 text-brand-400 border border-brand-500/30'
                           : 'text-slate-500'
                       )}>
-                        {isSameDay(new Date(dateStr), today)
+                        {isSameDay(new Date(dateStr + 'T00:00:00'), today)
                           ? 'Today'
-                          : new Date(dateStr).toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
+                          : new Date(dateStr + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
                       </div>
                       <div className="flex-1 h-px bg-slate-800" />
                       <span className="text-xs text-slate-600">{apts.length} appt{apts.length > 1 ? 's' : ''}</span>
