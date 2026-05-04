@@ -271,9 +271,9 @@ export class AppointmentsService {
     return updated;
   }
 
-  async getTodayRoute(repId: string, organizationId: string) {
+  async getRoute(repId: string, organizationId: string, targetDate?: string) {
     // 1. Calculate a wide window to fetch from DB
-    const now = new Date();
+    const now = targetDate ? new Date(`${targetDate}T12:00:00`) : new Date();
     const gte = new Date(now.getTime() - 48 * 60 * 60 * 1000);
     const lte = new Date(now.getTime() + 48 * 60 * 60 * 1000);
 

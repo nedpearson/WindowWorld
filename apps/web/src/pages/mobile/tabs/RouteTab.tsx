@@ -32,6 +32,8 @@ interface RouteTabProps {
   userName: string;
   stormMode: boolean;
   enqueue: (type: any, payload: any) => void;
+  routeDate?: string;
+  setRouteDate?: (date: string) => void;
 }
 
 // ─── Status Badge ─────────────────────────────────────────────
@@ -269,6 +271,7 @@ export function RouteTab({
   stops, activeStopId, onSelectStop,
   estimatedMiles, isLoading, refetch,
   greeting, userName, stormMode, enqueue,
+  routeDate, setRouteDate,
 }: RouteTabProps) {
   const queryClient = useQueryClient();
 
@@ -276,7 +279,7 @@ export function RouteTab({
     mutationFn: ({ stopId, status }: { stopId: string; status: string }) =>
       apiClient.appointments.updateStatus(stopId, status.toUpperCase()),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['field-today-route'] });
+      queryClient.invalidateQueries({ queryKey: ['field-route', routeDate] });
       toast.success('Status updated');
     },
     onError: () => toast.error('Failed to update — saved offline'),
@@ -304,14 +307,24 @@ export function RouteTab({
             {stormMode && <span className="ml-2 text-purple-400">⚡ Storm Mode</span>}
           </div>
         </div>
-        <button
-          onClick={() => { haptic.tap(); refetch(); }}
-          disabled={isLoading}
-          className="flex items-center gap-1 text-xs text-slate-500 active:text-white transition-colors py-1.5 px-2 rounded-lg hover:bg-slate-800"
-        >
-          <ArrowPathIcon className={clsx('h-3.5 w-3.5', isLoading && 'animate-spin')} />
-          Refresh
-        </button>
+        <div className="flex flex-col items-end gap-2">
+          <button
+            onClick={() => { haptic.tap(); refetch(); }}
+            disabled={isLoading}
+            className="flex items-center gap-1 text-xs text-slate-500 active:text-white transition-colors py-1 px-2 rounded-lg hover:bg-slate-800"
+          >
+            <ArrowPathIcon className={clsx('h-3.5 w-3.5', isLoading && 'animate-spin')} />
+            Refresh
+          </button>
+          {setRouteDate && routeDate && (
+            <input
+              type="date"
+              value={routeDate}
+              onChange={(e) => { haptic.selection(); setRouteDate(e.target.value); }}
+              className="bg-slate-800/80 border border-slate-700 text-slate-300 text-xs px-2 py-1 rounded-lg focus:outline-none focus:border-brand-500"
+            />
+          )}
+        </div>
       </div>
 
       {/* Progress bar */}

@@ -40,8 +40,10 @@ router.post('/portal/:id/accept', async (req: Request, res: Response) => {
       return res.status(410).json({ success: false, error: { message: 'This proposal has expired.' } });
     }
 
+    const orgId = (proposal as any).lead?.organizationId;
+
     // Mark accepted + advance lead to VERBAL_COMMIT
-    await proposalsService.updateStatus(req.params.id as string, 'ACCEPTED', 'portal-signature');
+    await proposalsService.updateStatus(req.params.id as string, orgId, 'ACCEPTED', 'portal-signature');
 
     // Persist signer name + IP for legal audit trail
     await prisma.proposal.update({
@@ -73,7 +75,8 @@ router.get('/', auth.repOrAbove, async (req: Request, res: Response) => {
 });
 
 router.get('/:id', auth.repOrAbove, async (req: Request, res: Response) => {
-  const data = await proposalsService.getById((req.params.id as string));
+  const user = (req as AuthenticatedRequest).user;
+  const data = await proposalsService.getById((req.params.id as string), user.organizationId);
   res.json({ success: true, data });
 });
 
@@ -91,25 +94,26 @@ router.post('/', auth.repOrAbove, async (req: Request, res: Response) => {
 
 router.post('/:id/generate-pdf', auth.repOrAbove, async (req: Request, res: Response) => {
   const user = (req as AuthenticatedRequest).user;
-  const data = await proposalsService.generatePdf((req.params.id as string), user.id);
+  const data = await proposalsService.generatePdf((req.params.id as string), user.organizationId, user.id);
   res.json({ success: true, data });
 });
 
 router.post('/:id/send', auth.repOrAbove, async (req: Request, res: Response) => {
   const user = (req as AuthenticatedRequest).user;
   const { channel = 'email' } = req.body;
-  const data = await proposalsService.send((req.params.id as string), user.id, channel);
+  const data = await proposalsService.send((req.params.id as string), user.organizationId, user.id, channel);
   res.json({ success: true, data });
 });
 
 // POST /api/v1/proposals/:id/sign — internal rep-side signing (e.g. in-person tablet sign)
 router.post('/:id/sign', auth.repOrAbove, async (req: Request, res: Response) => {
+  const user = (req as AuthenticatedRequest).user;
   const { signerName, signerIp } = req.body;
   if (!signerName?.trim()) {
     return res.status(400).json({ success: false, error: { message: 'signerName is required' } });
   }
 
-  const proposal = await proposalsService.getById(req.params.id as string);
+  const proposal = await proposalsService.getById(req.params.id as string, user.organizationId);
 
   // Check expiry
   if ((proposal as any).expiresAt && new Date((proposal as any).expiresAt) < new Date()) {
@@ -118,7 +122,7 @@ router.post('/:id/sign', auth.repOrAbove, async (req: Request, res: Response) =>
 
   // Advance status to ACCEPTED (service handles lead advancement)
   if (!['ACCEPTED', 'CONTRACTED'].includes(proposal.status as string)) {
-    await proposalsService.updateStatus(req.params.id as string, 'ACCEPTED', (req as AuthenticatedRequest).user.id);
+    await proposalsService.updateStatus(req.params.id as string, user.organizationId, 'ACCEPTED', user.id);
   }
 
   // Persist signature metadata
@@ -137,13 +141,13 @@ router.post('/:id/sign', auth.repOrAbove, async (req: Request, res: Response) =>
 
 router.patch('/:id/status', auth.repOrAbove, async (req: Request, res: Response) => {
   const user = (req as AuthenticatedRequest).user;
-  const data = await proposalsService.updateStatus((req.params.id as string), req.body.status, user.id);
+  const data = await proposalsService.updateStatus((req.params.id as string), user.organizationId, req.body.status, user.id);
   res.json({ success: true, data });
 });
 
 router.delete('/:id', auth.manager, async (req: Request, res: Response) => {
   const user = (req as AuthenticatedRequest).user;
-  await proposalsService.delete((req.params.id as string), user.id);
+  await proposalsService.delete((req.params.id as string), user.organizationId, user.id);
   res.json({ success: true, message: 'Proposal deleted' });
 });
 

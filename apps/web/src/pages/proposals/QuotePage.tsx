@@ -427,8 +427,59 @@ export function QuotePage() {
             {/* Actions */}
             <div className="mt-5 space-y-2">
               <button
-                onClick={() => { setSaved(true); toast.success('Quote saved!'); }}
+                onClick={async () => { 
+                  try {
+                    const quoteData = {
+                      leadId,
+                      grandTotal,
+                      subtotal,
+                      discountPct,
+                      discountAmount: discountAmt,
+                      totalWindows,
+                      financingOptionId: financingId,
+                      lineItems: [
+                        ...selectedItems.map(item => ({
+                          type: 'WINDOW',
+                          openingId: item.openingId,
+                          name: `${item.roomLabel} - ${item.windowType}`,
+                          quantity: item.quantity,
+                          unitPrice: item.unitPrice,
+                          lineTotal: item.lineTotal,
+                          width: item.width,
+                          height: item.height,
+                          seriesId: item.seriesId,
+                        })),
+                        ...additionalProducts.map(prod => ({
+                          type: 'ADDITIONAL',
+                          productId: prod.productId,
+                          name: prod.name,
+                          quantity: prod.quantity,
+                          unitPrice: prod.unitPrice,
+                          lineTotal: prod.lineTotal,
+                        }))
+                      ]
+                    };
+                    // First create quote
+                    const quoteRes = await apiClient.quotes.create(quoteData);
+                    const newQuoteId = (quoteRes as any).data?.data?.id || (quoteRes as any).data?.id;
+                    
+                    // Then create proposal
+                    const proposalRes = await apiClient.proposals.create({
+                      leadId,
+                      quoteId: newQuoteId,
+                      title: `New Window Quote - ${totalWindows} Windows`,
+                      validDays: 30
+                    });
+                    
+                    setSaved(true); 
+                    toast.success('Quote and Proposal generated!'); 
+                  } catch (err) {
+                    toast.error('Failed to save quote');
+                    console.error(err);
+                  }
+                }}
                 className="btn-primary w-full"
+                disabled={saved}
               >
                 {saved ? <><CheckCircleIcon className="h-4 w-4" /> Quote Saved</> : 'Save Quote'}
               </button>
@@ -488,7 +539,7 @@ export function QuotePage() {
                   ['Both', 'Email + Text message'],
                 ].map(([method, detail]) => (
                   <button key={method} className="w-full flex items-center justify-between p-3 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-left transition-colors"
-                    onClick={() => { toast.success(`Proposal sent via ${method}!`); setShowSendModal(false); }}>
+                    onClick={() => { toast.success(`Proposal queued for delivery via ${method}!`); window.location.href = '/proposals'; }}>
                     <span className="text-sm font-medium text-white">{method}</span>
                     <span className="text-xs text-slate-500">{detail}</span>
                   </button>

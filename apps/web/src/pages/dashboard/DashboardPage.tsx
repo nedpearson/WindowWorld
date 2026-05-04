@@ -388,7 +388,21 @@ export function DashboardPage() {
                       </div>
                       <div className="flex gap-2 flex-shrink-0">
                         <Link to={`/proposals/${p.id}`} className="btn-sm btn-secondary text-xs">View</Link>
-                        <button onClick={() => toast.success(`Follow-up logged for ${p.lead?.firstName}`)} className="btn-sm btn-primary text-xs flex items-center gap-1">
+                        <button onClick={async () => {
+                            if (!p.lead?.id) return;
+                            try {
+                              await apiClient.post(`/leads/${p.lead.id}/activities`, {
+                                type: 'CALL',
+                                title: 'Follow-up Call',
+                                description: 'Followed up on sent proposal',
+                                outcome: 'left_voicemail',
+                                contactMethod: 'PHONE'
+                              });
+                              toast.success(`Follow-up logged for ${p.lead?.firstName}`);
+                            } catch (e) {
+                              toast.error('Failed to log follow-up');
+                            }
+                          }} className="btn-sm btn-primary text-xs flex items-center gap-1">
                           <PhoneIcon className="h-3 w-3" />Follow Up
                         </button>
                       </div>

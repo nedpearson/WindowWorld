@@ -116,10 +116,11 @@ export function ProposalsPage() {
             {isLoading ? 'Loading...' : `${proposals.length} proposals · ${formatCurrency(totalValue)} pipeline`}
           </p>
         </div>
-        <button onClick={() => toast.info('Select a lead to create a proposal from their Lead Detail page')}
+        <Link to="/leads"
+          onClick={() => toast.info('Select a lead to create a new proposal')}
           className="btn-primary flex items-center gap-2 btn-sm">
           <PlusIcon className="h-4 w-4" /> New Proposal
-        </button>
+        </Link>
       </div>
 
       {/* Stats */}

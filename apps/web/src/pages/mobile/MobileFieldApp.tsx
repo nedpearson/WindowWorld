@@ -266,7 +266,7 @@ const ROOM_LABELS = [
 ];
 
 // ─── Camera Capture ───────────────────────────────────────────
-function CaptureTab({ enqueue }: { enqueue: (type: any, payload: any) => void }) {
+function CaptureTab({ enqueue, stops = [], activeStopId }: { enqueue: (type: any, payload: any) => void, stops?: any[], activeStopId?: string | null }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [captures, setCaptures] = useState<Array<{
     id: string; url: string; label: string;
@@ -277,6 +277,10 @@ function CaptureTab({ enqueue }: { enqueue: (type: any, payload: any) => void })
   const [showLabelModal, setShowLabelModal] = useState(false);
   const [pendingFile, setPendingFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+
+  const resolvedStop = activeStopId ? stops.find(s => s.id === activeStopId) : null;
+  const leadId = resolvedStop?.lead?.id ?? '';
+  const inspectionId = resolvedStop?.inspectionId ?? '';
 
   const handleCapture = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -311,6 +315,8 @@ function CaptureTab({ enqueue }: { enqueue: (type: any, payload: any) => void })
         fd.append('type', 'PHOTO_EXTERIOR');          // required by server
         fd.append('triggerAiAnalysis', 'true');        // auto-queue AI analysis
         fd.append('notes', `Field capture — ${label}`);
+        if (leadId) fd.append('leadId', leadId);
+        if (inspectionId) fd.append('inspectionId', inspectionId);
 
         const uploadRes = await apiClient.documents.upload(fd) as any;
         const docId = uploadRes?.data?.id;
@@ -330,7 +336,7 @@ function CaptureTab({ enqueue }: { enqueue: (type: any, payload: any) => void })
         toast.success(aiSummary ? `Uploaded · AI: ${aiSummary.slice(0, 60)}…` : 'Photo uploaded ✓');
       } else {
         // Offline — queue it
-        await enqueue('PHOTO_UPLOAD', { filename: pendingFile.name, label, size: pendingFile.size, mimeType: pendingFile.type });
+        await enqueue('PHOTO_UPLOAD', { filename: pendingFile.name, label, size: pendingFile.size, mimeType: pendingFile.type, leadId, inspectionId });
         setCaptures(prev => prev.map(c => c.id === id ? { ...c, status: 'done' } : c));
         haptic.success();
         toast.success('Photo saved — uploads when back online');
@@ -339,7 +345,7 @@ function CaptureTab({ enqueue }: { enqueue: (type: any, payload: any) => void })
       console.error('[CaptureTab] upload error:', err);
       setCaptures(prev => prev.map(c => c.id === id ? { ...c, status: 'error' } : c));
       // Fallback: push to offline queue so it retries
-      await enqueue('PHOTO_UPLOAD', { filename: pendingFile?.name ?? 'photo.jpg', label, size: pendingFile?.size ?? 0, mimeType: pendingFile?.type ?? 'image/jpeg' });
+      await enqueue('PHOTO_UPLOAD', { filename: pendingFile?.name ?? 'photo.jpg', label, size: pendingFile?.size ?? 0, mimeType: pendingFile?.type ?? 'image/jpeg', leadId, inspectionId });
       toast.error('Upload failed — saved to retry queue');
     } finally {
       setIsUploading(false);
@@ -1351,9 +1357,14 @@ export function MobileFieldApp() {
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ─── Real today's route from the server ──────────
+  const [routeDate, setRouteDate] = useState(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  });
+
   const { data: routeData, isLoading: routeLoading, refetch: refetchRoute } = useQuery({
-    queryKey: ['field-today-route'],
-    queryFn: () => apiClient.appointments.todayRoute(),
+    queryKey: ['field-route', routeDate],
+    queryFn: () => apiClient.appointments.getRoute({ date: routeDate }),
     staleTime: 5 * 60 * 1000,
     refetchOnWindowFocus: true });
 
@@ -1579,6 +1590,8 @@ export function MobileFieldApp() {
                     userName={`${user?.firstName ?? ''} ${user?.lastName ?? ''}`.trim()}
                     stormMode={stormMode}
                     enqueue={enqueue}
+                    routeDate={routeDate}
+                    setRouteDate={setRouteDate}
                   />
                 </ErrorBoundary>
               )}
@@ -1589,7 +1602,7 @@ export function MobileFieldApp() {
                     <button onClick={() => window.location.reload()} className="btn-secondary text-xs">Reload</button>
                   </div>
                 }>
-                  <CaptureTab enqueue={enqueue} />
+                  <CaptureTab enqueue={enqueue} stops={TODAY_STOPS} activeStopId={activeStop} />
                 </ErrorBoundary>
               )}
               {activeTab === 'receipt' && (

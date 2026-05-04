@@ -57,7 +57,7 @@ export function BookAppointmentDrawer({
     queryFn: () => apiClient.leads.list({ limit: 50, sortDir: 'desc' }),
     enabled: isOpen && !leadId && !isEditing,
   });
-  const leads = leadsRes?.data || [];
+  const leads = (leadsRes as any)?.data || [];
 
   // ─── Form State ───────────────────────────────────────────
   const [form, setForm] = useState({

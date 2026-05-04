@@ -39,9 +39,9 @@ export class ProposalsService {
     return { data, meta: { total, page, limit, totalPages: Math.ceil(total / limit) } };
   }
 
-  async getById(id: string) {
-    const proposal = await prisma.proposal.findUnique({
-      where: { id },
+  async getById(id: string, organizationId?: string) {
+    const proposal = await prisma.proposal.findFirst({
+      where: { id, ...(organizationId && { lead: { organizationId } }) },
       include: {
         lead: {
           include: {
@@ -70,6 +70,10 @@ export class ProposalsService {
   }) {
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + (data.validDays || 30));
+
+    // Verify lead belongs to org
+    const lead = await prisma.lead.findFirst({ where: { id: data.leadId, organizationId: data.organizationId } });
+    if (!lead) throw new NotFoundError('Lead');
 
     const proposal = await prisma.proposal.create({
       data: {
@@ -101,8 +105,8 @@ export class ProposalsService {
     return proposal;
   }
 
-  async generatePdf(id: string, userId: string) {
-    const proposal = await this.getById(id);
+  async generatePdf(id: string, organizationId: string, userId: string) {
+    const proposal = await this.getById(id, organizationId);
 
     // Update status to generating
     await prisma.proposal.update({
@@ -130,7 +134,7 @@ export class ProposalsService {
     }
   }
 
-  async updateStatus(id: string, status: string, userId: string) {
+  async updateStatus(id: string, organizationId: string, status: string, userId: string) {
     const validTransitions: Record<string, string[]> = {
       DRAFT: ['READY', 'ARCHIVED'],
       READY: ['SENT', 'DRAFT', 'ARCHIVED'],
@@ -140,7 +144,7 @@ export class ProposalsService {
       ACCEPTED: ['CONTRACTED'],
     };
 
-    const proposal = await this.getById(id);
+    const proposal = await this.getById(id, organizationId);
     const allowed = validTransitions[proposal.status as string] || [];
     if (!allowed.includes(status)) {
       throw new Error(`Cannot transition proposal from ${proposal.status} to ${status}`);
@@ -175,9 +179,9 @@ export class ProposalsService {
     return updated;
   }
 
-  async send(id: string, userId: string, channel: 'email' | 'sms' | 'both') {
-    const proposal = await this.getById(id);
-    await this.updateStatus(id, 'SENT', userId);
+  async send(id: string, organizationId: string, userId: string, channel: 'email' | 'sms' | 'both') {
+    const proposal = await this.getById(id, organizationId);
+    await this.updateStatus(id, organizationId, 'SENT', userId);
 
     const lead = (proposal as any).lead;
     const rep = (proposal as any).createdBy;
@@ -240,8 +244,8 @@ export class ProposalsService {
     await prisma.proposal.update({ where: { id }, data: updates });
   }
 
-  async delete(id: string, userId: string) {
-    const proposal = await this.getById(id);
+  async delete(id: string, organizationId: string, userId: string) {
+    const proposal = await this.getById(id, organizationId);
     if (!['DRAFT', 'ARCHIVED'].includes(proposal.status as string)) {
       throw new Error('Only draft or archived proposals can be deleted');
     }

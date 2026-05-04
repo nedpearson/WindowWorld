@@ -284,6 +284,31 @@ export function LeadDetailPage({ isNew = false }: { isNew?: boolean }) {
     },
     onError: () => toast.error('Failed to log call') });
 
+  const { mutate: addNote, isPending: addingNote } = useMutation({
+    mutationFn: (text: string) => api.leads.logActivity(id!, {
+      type: 'NOTE',
+      title: 'Note added',
+      description: text,
+    }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['lead-activities', id] });
+      toast.success('Note saved!');
+      setNewNote('');
+      setShowNoteBox(false);
+    },
+    onError: () => toast.error('Failed to save note')
+  });
+
+  const { mutate: updateStatus, isPending: updatingStatus } = useMutation({
+    mutationFn: (status: string) => api.leads.update(id!, { status }),
+    onSuccess: (_, newStatus) => {
+      queryClient.invalidateQueries({ queryKey: ['lead', id] });
+      queryClient.invalidateQueries({ queryKey: ['lead-activities', id] });
+      toast.success('Status updated');
+    },
+    onError: () => toast.error('Failed to update status')
+  });
+
   // Normalize API shape to what the component expects
   const rawLead = (leadResp as any)?.data || leadResp;
   const property = rawLead?.properties?.[0] ? { ...rawLead.properties[0], openings: rawLead.properties[0].openings || [] } : { openings: [] };
@@ -445,8 +470,9 @@ export function LeadDetailPage({ isNew = false }: { isNew?: boolean }) {
                   {STATUS_FLOW.map((status) => (
                     <button key={status.value} onClick={() => {
                       setShowStatusMenu(false);
-                      toast.success(`Status updated to ${status.label}`);
+                      if (lead.status !== status.value) updateStatus(status.value);
                     }}
+                      disabled={updatingStatus}
                       className={clsx('w-full text-left px-4 py-2 text-xs transition-colors hover:bg-slate-800',
                         lead.status === status.value ? 'text-brand-400 bg-brand-500/10 font-semibold' : 'text-slate-400')}>
                       {lead.status === status.value && '▸ '}{status.label}
@@ -508,8 +534,12 @@ export function LeadDetailPage({ isNew = false }: { isNew?: boolean }) {
                 </button>
               </div>
               <div className="flex gap-2 mt-2">
-                <button onClick={() => { toast.success('Note saved'); setNewNote(''); setShowNoteBox(false); }} className="btn-primary btn-sm">
-                  Save Note
+                <button 
+                  onClick={() => { if(newNote.trim()) addNote(newNote); }} 
+                  disabled={addingNote || !newNote.trim()}
+                  className="btn-primary btn-sm"
+                >
+                  {addingNote ? 'Saving...' : 'Save Note'}
                 </button>
                 <button onClick={() => setShowNoteBox(false)} className="btn-ghost btn-sm">Cancel</button>
               </div>
@@ -731,7 +761,6 @@ export function LeadDetailPage({ isNew = false }: { isNew?: boolean }) {
                     {verifiedCount} verified · {aiEstCount > 0 ? <span className="text-amber-400">{aiEstCount} AI-estimated (require verification)</span> : null} · {unmeasuredCount} unmeasured
                   </p>
                 </div>
-                <button className="btn-primary btn-sm"><PlusIcon className="h-4 w-4" /> Add Opening</button>
               </div>
 
               <div className="table-container">
@@ -745,11 +774,10 @@ export function LeadDetailPage({ isNew = false }: { isNew?: boolean }) {
                       <th>Width</th>
                       <th>Height</th>
                       <th>Measurement</th>
-                      <th></th>
                     </tr>
                   </thead>
                   <tbody>
-                    {property.openings.map((opening, i) => {
+                    {property.openings.map((opening: any, i: number) => {
                       const measStatus = opening.measurement?.status;
                       const measLabel = measStatus ? MEAS_STATUS_LABELS[measStatus] : null;
                       return (
@@ -773,9 +801,6 @@ export function LeadDetailPage({ isNew = false }: { isNew?: boolean }) {
                               ? <span className={measLabel.class}>{measLabel.label}</span>
                               : <span className="text-xs text-slate-600">No measurement</span>
                             }
-                          </td>
-                          <td>
-                            <button className="btn-ghost btn-sm text-xs">Measure</button>
                           </td>
                         </tr>
                       );

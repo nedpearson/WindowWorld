@@ -438,140 +438,11 @@ function OrganizationTab() {
         </div>
       </div>
 
-      {/* Danger Zone */}
-      <div className="border-t border-slate-800 pt-6 space-y-3">
-        <h3 className="text-sm font-semibold text-red-400">Danger Zone</h3>
-        <div className="p-4 border border-red-500/20 bg-red-500/5 rounded-xl space-y-3">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <div className="text-sm font-medium text-white">Export All Data</div>
-              <div className="text-xs text-slate-500">Download a full CSV export of all leads, proposals, and invoices</div>
-            </div>
-            <button className="btn-secondary btn-sm whitespace-nowrap" onClick={() => toast.info('Export queued — you will receive an email with the download link')}>
-              Export CSV
-            </button>
-          </div>
-          <div className="h-px bg-red-500/10" />
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <div className="text-sm font-medium text-red-300">Delete Organization</div>
-              <div className="text-xs text-slate-500">Permanently delete all data. This cannot be undone.</div>
-            </div>
-            <button className="btn-sm px-3 py-1.5 bg-red-500/10 text-red-400 border border-red-500/20 rounded-lg hover:bg-red-500/20 transition-colors whitespace-nowrap text-xs font-medium"
-              onClick={() => toast.error('Contact support to delete your organization')}>
-              Delete Org
-            </button>
-          </div>
-        </div>
-      </div>
+
 
       <button onClick={handleSave} disabled={!dirty || isSaving} className="btn-primary btn-sm">
         {isSaving ? 'Saving…' : 'Save Organization Settings'}
       </button>
-    </div>
-  );
-}
-
-// ─── Billing Tab ──────────────────────────────────────────────
-function BillingTab() {
-  const user = useAuthStore((s) => s.user);
-  const isAdmin = user?.role === 'SUPER_ADMIN';
-  const { data: stats } = useOrgStats({ enabled: isAdmin });
-
-  if (!isAdmin) {
-    return (
-      <div className="flex flex-col items-center justify-center py-16 text-center">
-        <CreditCardIcon className="h-12 w-12 text-slate-700 mb-4" />
-        <div className="text-slate-400 text-sm font-medium">Admin Access Required</div>
-        <div className="text-slate-600 text-xs mt-1">Only Admins can view billing information</div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-6 max-w-2xl">
-      <div>
-        <h3 className="text-sm font-semibold text-white">Billing & Subscription</h3>
-        <p className="text-xs text-slate-500 mt-0.5">Manage your plan, payment methods, and invoices</p>
-      </div>
-
-      {/* Current Plan */}
-      <div className="p-5 bg-gradient-to-r from-brand-500/10 to-purple-500/10 border border-brand-500/20 rounded-xl">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <div className="text-xs font-semibold text-brand-400 uppercase tracking-wide mb-1">Current Plan</div>
-            <div className="text-lg font-bold text-white">Professional</div>
-            <div className="text-sm text-slate-400 mt-0.5">$299 / month · Up to 10 users · All features</div>
-          </div>
-          <span className="text-[10px] bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 px-2 py-1 rounded-full font-medium">Active</span>
-        </div>
-        <div className="mt-4 pt-4 border-t border-brand-500/10 flex items-center justify-between text-xs text-slate-500">
-          <span>Next billing: May 20, 2026</span>
-          <button className="text-brand-400 hover:text-brand-300 transition-colors" onClick={() => toast.info('Redirecting to Stripe Portal…')}>
-            Manage in Stripe →
-          </button>
-        </div>
-      </div>
-
-      {/* Usage */}
-      <div className="card p-5 space-y-4">
-        <div className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Plan Usage</div>
-        {[
-          { label: 'Team Members',    used: stats?.activeUsers || 0, max: 10,    unit: 'users' },
-          { label: 'Active Leads',    used: stats?.totalLeads || 0, max: 500,  unit: 'leads' },
-          { label: 'AI Analyses',     used: Math.min((stats?.totalLeads || 0) * 2, 200), max: 200,  unit: 'this month' },
-          { label: 'Storage',         used: 1.2, max: 10,  unit: 'GB' },
-        ].map((item) => (
-          <div key={item.label}>
-            <div className="flex justify-between text-xs mb-1.5">
-              <span className="text-slate-400">{item.label}</span>
-              <span className="text-slate-300">{item.used} / {item.max} {item.unit}</span>
-            </div>
-            <div className="h-1.5 bg-slate-700 rounded-full overflow-hidden">
-              <div
-                className={clsx('h-full rounded-full transition-all', (item.used / item.max) > 0.8 ? 'bg-red-400' : (item.used / item.max) > 0.6 ? 'bg-amber-400' : 'bg-brand-500')}
-                style={{ width: `${Math.min((item.used / item.max) * 100, 100)}%` }}
-              />
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* Payment Method */}
-      <div className="card p-5 space-y-3">
-        <div className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Payment Method</div>
-        <div className="flex items-center gap-3 p-3 bg-slate-800/50 rounded-lg">
-          <div className="w-8 h-6 bg-slate-600 rounded flex items-center justify-center">
-            <span className="text-[9px] font-bold text-slate-300">VISA</span>
-          </div>
-          <div className="flex-1">
-            <div className="text-sm text-white">•••• •••• •••• 4242</div>
-            <div className="text-xs text-slate-500">Expires 12/27</div>
-          </div>
-          <button className="btn-ghost btn-sm text-xs text-slate-400" onClick={() => toast.info('Redirecting to Stripe to update your card…')}>Update</button>
-        </div>
-      </div>
-
-      {/* Invoice History */}
-      <div className="card overflow-hidden">
-        <div className="px-5 py-3 border-b border-slate-800">
-          <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Recent Invoices</span>
-        </div>
-        <div className="divide-y divide-slate-800/50">
-          {[
-            { date: 'Apr 20, 2026', amount: '$299.00', status: 'Paid' },
-            { date: 'Mar 20, 2026', amount: '$299.00', status: 'Paid' },
-            { date: 'Feb 20, 2026', amount: '$299.00', status: 'Paid' },
-          ].map((inv, i) => (
-            <div key={i} className="flex items-center justify-between px-5 py-3">
-              <span className="text-sm text-slate-400">{inv.date}</span>
-              <span className="text-sm text-white font-medium">{inv.amount}</span>
-              <span className="text-[10px] bg-emerald-500/15 text-emerald-400 px-2 py-0.5 rounded-full">{inv.status}</span>
-              <button className="text-xs text-slate-500 hover:text-brand-400 transition-colors">Download</button>
-            </div>
-          ))}
-        </div>
-      </div>
     </div>
   );
 }
@@ -777,7 +648,6 @@ const TABS = [
   { id: 'security', label: 'Security',           icon: ShieldCheckIcon },
   { id: 'notifications', label: 'Notifications', icon: BellIcon },
   { id: 'organization', label: 'Organization',   icon: BuildingOfficeIcon },
-  { id: 'billing',  label: 'Billing',            icon: CreditCardIcon },
 ] as const;
 
 type TabId = typeof TABS[number]['id'];
@@ -829,7 +699,6 @@ export function SettingsPage() {
             {activeTab === 'security'      && <SecurityTab />}
             {activeTab === 'notifications' && <NotificationsTab />}
             {activeTab === 'organization'  && <OrganizationTab />}
-            {activeTab === 'billing'       && <BillingTab />}
           </motion.div>
         </div>
       </div>

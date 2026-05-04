@@ -59,9 +59,9 @@ export class QuotesService {
     return { data, meta: { total, page: options.page, limit: options.limit, totalPages: Math.ceil(total / options.limit) } };
   }
 
-  async getById(id: string) {
-    const quote = await prisma.quote.findUnique({
-      where: { id },
+  async getById(id: string, organizationId: string) {
+    const quote = await prisma.quote.findFirst({
+      where: { id, lead: { organizationId } },
       include: {
         lead: { select: { id: true, firstName: true, lastName: true, address: true, city: true, zip: true } },
       } as any,
@@ -70,9 +70,9 @@ export class QuotesService {
     return quote;
   }
 
-  async listForLead(leadId: string) {
+  async listForLead(leadId: string, organizationId: string) {
     return prisma.quote.findMany({
-      where: { leadId },
+      where: { leadId, lead: { organizationId } },
       orderBy: { createdAt: 'desc' },
       include: {} as any,
     });
@@ -177,7 +177,12 @@ export class QuotesService {
     financingOptionId?: string;
     notes?: string;
     createdById: string;
+    organizationId: string;
   }) {
+    // Verify lead belongs to org
+    const lead = await prisma.lead.findFirst({ where: { id: data.leadId, organizationId: data.organizationId } });
+    if (!lead) throw new NotFoundError('Lead');
+
     const { lineItems, discountPct = 0 } = data;
     const { totals } = this.calculateTotals(lineItems, discountPct);
 
@@ -211,14 +216,14 @@ export class QuotesService {
     return quote;
   }
 
-  async update(id: string, data: Partial<{
+  async update(id: string, organizationId: string, data: Partial<{
     lineItems: QuoteLineItem[];
     discountPct: number;
     financingOptionId: string;
     notes: string;
     status: string;
   }>, userId: string) {
-    const existing = await this.getById(id);
+    const existing = await this.getById(id, organizationId);
     const lineItems = data.lineItems || (existing as any).lineItems as QuoteLineItem[];
     const discountPct = data.discountPct ?? (existing as any).discountPct ?? 0;
     const { totals } = this.calculateTotals(lineItems, discountPct);
@@ -240,8 +245,8 @@ export class QuotesService {
     });
   }
 
-  async delete(id: string, userId: string) {
-    await this.getById(id);
+  async delete(id: string, organizationId: string, userId: string) {
+    await this.getById(id, organizationId);
     await prisma.quote.delete({ where: { id } });
   }
 }

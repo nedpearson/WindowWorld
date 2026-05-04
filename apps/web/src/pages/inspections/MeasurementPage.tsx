@@ -207,10 +207,10 @@ export function MeasurementPage() {
       {/* ── Quick Methods toggle ── */}
       <div className="flex gap-2">
         {([
-          { id: 'tape' as const, label: 'Tape Measure', icon: <span className="text-sm">📏</span>, check: true },
-          { id: 'ref'  as const, label: 'Reference Object', icon: <DevicePhoneMobileIcon className="h-4 w-4" /> },
-          { id: 'ai'   as const, label: 'AI Photo', icon: <SparklesIcon className="h-4 w-4" /> },
-        ] as const).map(({ id, label, icon, check }) => (
+          { id: 'tape', label: 'Tape Measure', icon: <span className="text-sm">📏</span>, check: true },
+          { id: 'ref',  label: 'Reference Object', icon: <DevicePhoneMobileIcon className="h-4 w-4" />, check: false },
+          { id: 'ai',   label: 'AI Photo', icon: <SparklesIcon className="h-4 w-4" />, check: false },
+        ] as Array<{ id: 'tape' | 'ref' | 'ai'; label: string; icon: React.ReactNode; check?: boolean }>).map(({ id, label, icon, check }) => (
           <button
             key={id}
             onClick={() => setActiveMethod(id)}

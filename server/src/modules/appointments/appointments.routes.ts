@@ -18,11 +18,12 @@ router.get('/', auth.repOrAbove, async (req: Request, res: Response) => {
   res.json({ success: true, ...result });
 });
 
-// GET /api/v1/appointments/route â€” today's optimized route
+// GET /api/v1/appointments/route — today's (or requested date's) optimized route
 router.get('/route', auth.repOrAbove, async (req: Request, res: Response) => {
   const user = (req as AuthenticatedRequest).user;
   const repId = req.query.repId as string || user.id;
-  const route = await appointmentsService.getTodayRoute(repId, user.organizationId);
+  const date = req.query.date as string;
+  const route = await appointmentsService.getRoute(repId, user.organizationId, date);
   res.json({ success: true, data: route });
 });
 

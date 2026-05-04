@@ -86,7 +86,7 @@ export function InspectionPage() {
     queryFn: async () => {
       try {
         const res = await api.inspections.list({ leadId: id });
-        const list = res.data || res.inspections || [];
+        const list = (res as any).data || (res as any).inspections || [];
         if (list.length > 0) {
           return await api.inspections.getById(list[0].id);
         }
@@ -96,7 +96,7 @@ export function InspectionPage() {
         let leadOverrides = {};
         try {
           const leadRes = await api.leads.getById(id!);
-          const leadData = leadRes.data || leadRes;
+          const leadData = (leadRes as any).data || leadRes;
           if (leadData) {
             leadOverrides = {
               firstName: leadData.firstName,
