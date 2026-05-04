@@ -19,15 +19,42 @@ interface PWAState {
   forceUpdate: () => void;
 }
 
+// How long (ms) to suppress the update banner after the user taps "Update Now".
+// Prevents the banner from immediately reappearing while the new SW is settling.
+const UPDATE_COOLDOWN_MS = 45_000; // 45 seconds
+const COOLDOWN_KEY = 'pwa-update-applied-at';
+
+function isInUpdateCooldown(): boolean {
+  const ts = sessionStorage.getItem(COOLDOWN_KEY);
+  if (!ts) return false;
+  return Date.now() - parseInt(ts, 10) < UPDATE_COOLDOWN_MS;
+}
+
+// iOS-compatible hard reload. window.location.reload() in standalone PWA mode
+// can silently reload from the SW cache instead of the network.
+// Appending a cache-bust query param forces the SW to re-fetch the shell.
+function hardReload() {
+  const url = new URL(window.location.href);
+  url.searchParams.set('_sw', Date.now().toString());
+  window.location.replace(url.toString());
+}
+
 // ─── Hook ─────────────────────────────────────────────────────
 export function usePWA(): PWAState {
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [isInstallable, setIsInstallable]   = useState(false);
   const [isOnline, setIsOnline]             = useState(navigator.onLine);
+
+  // Suppress banner if we just applied an update
   const [isUpdateAvailable, setIsUpdateAvailable] = useState(false);
+  const cooldownActive = useRef(isInUpdateCooldown());
+
+  const markUpdateAvailable = useCallback(() => {
+    if (cooldownActive.current) return; // don't show banner during cooldown
+    setIsUpdateAvailable(true);
+  }, []);
 
   // Reactive dismissed state — sessionStorage alone doesn't re-render on iOS
-  // (isInstallable is always false on iOS so setIsInstallable(false) is a no-op)
   const [dismissed, setDismissed] = useState(
     () => !!sessionStorage.getItem('pwa-install-dismissed')
   );
@@ -44,6 +71,7 @@ export function usePWA(): PWAState {
 
   // Keep a ref to the registration so forceUpdate can access it
   const swRegRef = useRef<ServiceWorkerRegistration | null>(null);
+  const reloadScheduled = useRef(false);
 
   // ── SW version poller: checks /version.json every 60s ────────────────────
   const currentVersion = useRef<string | null>(
@@ -51,6 +79,7 @@ export function usePWA(): PWAState {
   );
 
   const checkForNewVersion = useCallback(async () => {
+    if (cooldownActive.current) return; // skip polling during cooldown
     try {
       const res = await fetch('/version.json?t=' + Date.now(), { cache: 'no-store' });
       if (!res.ok) return;
@@ -72,7 +101,7 @@ export function usePWA(): PWAState {
     };
     const handleOnline  = () => setIsOnline(true);
     const handleOffline = () => setIsOnline(false);
-    const handleSWUpdate = () => setIsUpdateAvailable(true);
+    const handleSWUpdate = () => markUpdateAvailable();
 
     // Check for updates when the tab regains focus
     const handleVisibility = () => {
@@ -95,14 +124,18 @@ export function usePWA(): PWAState {
         if (!reg) return;
         swRegRef.current = reg;
 
-        // If a new SW is already waiting, mark update available immediately
-        if (reg.waiting) setIsUpdateAvailable(true);
+        // Only show the banner for a waiting SW if we're NOT in the post-update
+        // cooldown period. Without this guard the banner re-appears immediately
+        // after every reload because the just-activated SW is briefly "waiting".
+        if (reg.waiting && !cooldownActive.current) {
+          setIsUpdateAvailable(true);
+        }
 
         reg.addEventListener('updatefound', () => {
           const newWorker = reg.installing;
           newWorker?.addEventListener('statechange', () => {
             if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-              setIsUpdateAvailable(true);
+              markUpdateAvailable();
             }
           });
         });
@@ -111,15 +144,44 @@ export function usePWA(): PWAState {
         reg.update().catch(() => {});
       });
 
-      // When the active SW changes (skipWaiting completed), reload the page
+      // When the active SW changes (skipWaiting completed), reload the page.
+      // Debounced with a flag so rapid activations don't fire multiple reloads.
       navigator.serviceWorker.addEventListener('controllerchange', () => {
-        window.location.reload();
+        if (reloadScheduled.current) return;
+        reloadScheduled.current = true;
+        // Small delay lets the new SW claim all clients before we reload
+        setTimeout(() => hardReload(), 300);
       });
     }
 
     // ── Version poller every 60 seconds ────────────────────────
     checkForNewVersion();
     const pollInterval = setInterval(checkForNewVersion, 60_000);
+
+    // ── Expire the cooldown flag after UPDATE_COOLDOWN_MS ──────
+    const cooldownTs = sessionStorage.getItem(COOLDOWN_KEY);
+    if (cooldownTs) {
+      const remaining = UPDATE_COOLDOWN_MS - (Date.now() - parseInt(cooldownTs, 10));
+      if (remaining > 0) {
+        const cooldownTimer = setTimeout(() => {
+          cooldownActive.current = false;
+          sessionStorage.removeItem(COOLDOWN_KEY);
+        }, remaining);
+        return () => {
+          clearTimeout(cooldownTimer);
+          window.removeEventListener('beforeinstallprompt', handleInstallPrompt);
+          window.removeEventListener('online',  handleOnline);
+          window.removeEventListener('offline', handleOffline);
+          document.removeEventListener('swUpdateAvailable', handleSWUpdate);
+          document.removeEventListener('visibilitychange', handleVisibility);
+          clearInterval(pollInterval);
+        };
+      } else {
+        // Cooldown already expired — clear it and proceed normally
+        cooldownActive.current = false;
+        sessionStorage.removeItem(COOLDOWN_KEY);
+      }
+    }
 
     return () => {
       window.removeEventListener('beforeinstallprompt', handleInstallPrompt);
@@ -129,7 +191,7 @@ export function usePWA(): PWAState {
       document.removeEventListener('visibilitychange', handleVisibility);
       clearInterval(pollInterval);
     };
-  }, [checkForNewVersion]);
+  }, [checkForNewVersion, markUpdateAvailable]);
 
   // ── Install (Android native prompt) ────────────────────────────────────────
   const install = useCallback(async (): Promise<boolean> => {
@@ -141,7 +203,7 @@ export function usePWA(): PWAState {
     return outcome === 'accepted';
   }, [deferredPrompt]);
 
-  // ── Dismiss install banner (reactive — fixes iOS X doing nothing) ──────────
+  // ── Dismiss install banner ──────────────────────────────────────────────────
   const dismissInstall = useCallback(() => {
     setIsInstallable(false);
     setDeferredPrompt(null);
@@ -149,24 +211,25 @@ export function usePWA(): PWAState {
     sessionStorage.setItem('pwa-install-dismissed', '1');
   }, []);
 
-  // ── Force update: tell waiting SW to skip waiting, then reload ─────────────
-  // This works even if the `controllerchange` event already fired:
-  // posting SKIP_WAITING to the waiting SW activates it, which triggers
-  // `controllerchange`, which triggers window.location.reload() above.
+  // ── Force update: tell waiting SW to skip waiting ──────────────────────────
   const forceUpdate = useCallback(() => {
+    // Record the timestamp BEFORE the reload so the new page load sees it
+    sessionStorage.setItem(COOLDOWN_KEY, Date.now().toString());
+    cooldownActive.current = true;
+    setIsUpdateAvailable(false);
+
     const reg = swRegRef.current;
     if (reg?.waiting) {
+      // Posting SKIP_WAITING activates the waiting SW → triggers controllerchange
+      // → our listener calls hardReload() after 300ms
       reg.waiting.postMessage({ type: 'SKIP_WAITING' });
     } else {
       // No waiting SW — just hard reload bypassing cache
-      window.location.reload();
+      hardReload();
     }
   }, []);
 
   return {
-    // Show install banner ONLY when the browser fired beforeinstallprompt (Android).
-    // iOS never fires this event — banner was informational-only and caused friction
-    // (couldn't dismiss reliably). iOS users can still use Safari Share → Add to Home Screen.
     isInstallable: isInstallable && !isStandalone && !dismissed,
     isInstalled,
     isOnline,
