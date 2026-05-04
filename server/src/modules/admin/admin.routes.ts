@@ -33,21 +33,21 @@ router.post('/users', auth.adminOnly, async (req: Request, res: Response) => {
 /** PATCH /api/v1/admin/users/:id — update user details / role */
 router.patch('/users/:id', auth.adminOnly, async (req: Request, res: Response) => {
   const actor = (req as AuthenticatedRequest).user;
-  const data = await usersService.update(req.params.id as string, req.body, actor.id);
+  const data = await usersService.update(req.params.id as string, actor.organizationId, req.body, actor.id);
   res.json({ success: true, data });
 });
 
 /** POST /api/v1/admin/users/:id/deactivate */
 router.post('/users/:id/deactivate', auth.adminOnly, async (req: Request, res: Response) => {
   const actor = (req as AuthenticatedRequest).user;
-  await usersService.deactivate(req.params.id as string, actor.id);
+  await usersService.deactivate(req.params.id as string, actor.organizationId, actor.id);
   res.json({ success: true, message: 'User deactivated' });
 });
 
 /** POST /api/v1/admin/users/:id/reactivate */
 router.post('/users/:id/reactivate', auth.adminOnly, async (req: Request, res: Response) => {
   const actor = (req as AuthenticatedRequest).user;
-  const data = await usersService.update(req.params.id as string, { isActive: true }, actor.id);
+  const data = await usersService.update(req.params.id as string, actor.organizationId, { isActive: true }, actor.id);
   res.json({ success: true, data });
 });
 

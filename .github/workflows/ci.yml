@@ -53,9 +53,16 @@ jobs:
       working-directory: ./server
       run: npm run seed
 
+    - name: Run Monorepo Linter
+      run: npm run lint
+
+    - name: Typecheck Frontend
+      working-directory: ./apps/web
+      run: npm run typecheck
+
     - name: Typecheck Backend
       working-directory: ./server
-      run: npx tsc --noEmit
+      run: npm run typecheck
 
     - name: Run Server Unit Tests
       working-directory: ./server
@@ -64,6 +71,10 @@ jobs:
         DATABASE_URL: "postgresql://postgres:postgres@localhost:5432/windowworld_test?schema=public"
         JWT_SECRET: "ci-test-jwt-secret-minimum-32-chars-ok"
         NODE_ENV: "test"
+
+    - name: Build Backend
+      working-directory: ./server
+      run: npm run build
 
     - name: Build Frontend
       working-directory: ./apps/web

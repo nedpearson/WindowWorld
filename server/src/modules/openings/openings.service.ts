@@ -18,9 +18,15 @@ export class OpeningService {
     });
   }
 
-  async getById(id: string) {
-    const opening = await prisma.opening.findUnique({
-      where: { id },
+  async getById(id: string, organizationId: string) {
+    const opening = await prisma.opening.findFirst({
+      where: { 
+        id,
+        OR: [
+          { property: { organizationId } },
+          { inspection: { lead: { organizationId } } }
+        ]
+      },
       include: {
         measurement: true,
         documents: { orderBy: { createdAt: 'desc' }, take: 10 },
@@ -67,7 +73,7 @@ export class OpeningService {
     });
   }
 
-  async update(id: string, data: Partial<{
+  async update(id: string, organizationId: string, data: Partial<{
     roomLabel: string;
     windowType: string;
     condition: string;
@@ -76,21 +82,19 @@ export class OpeningService {
     notes: string;
     sortOrder: number;
   }>) {
-    const existing = await prisma.opening.findUnique({ where: { id } });
-    if (!existing) throw new NotFoundError('Opening');
+    const existing = await this.getById(id, organizationId);
     return prisma.opening.update({
-      where: { id },
+      where: { id: existing.id },
       data: data as any,
       include: { measurement: true },
     });
   }
 
-  async delete(id: string) {
-    const existing = await prisma.opening.findUnique({ where: { id } });
-    if (!existing) throw new NotFoundError('Opening');
+  async delete(id: string, organizationId: string) {
+    const existing = await this.getById(id, organizationId);
     // Cascade: delete measurement too
     await prisma.measurement.deleteMany({ where: { openingId: id } });
-    return prisma.opening.delete({ where: { id } });
+    return prisma.opening.delete({ where: { id: existing.id } });
   }
 
   async reorder(inspectionId: string, orderedIds: string[]) {

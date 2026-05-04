@@ -16,6 +16,7 @@ export class PropertiesService {
     const { organizationId, leadId, parish, zip, search, page, limit } = options;
 
     const where: Prisma.PropertyWhereInput = {
+      ...(organizationId && { organizationId }),
       ...(parish && { parish: { contains: parish, mode: 'insensitive' } }),
       ...(zip && { zip }),
       ...(leadId && { leads: { some: { id: leadId } } }),
@@ -45,9 +46,12 @@ export class PropertiesService {
     return { data, meta: { total, page, limit, totalPages: Math.ceil(total / limit) } };
   }
 
-  async getById(id: string) {
-    const property = await prisma.property.findUnique({
-      where: { id },
+  async getById(id: string, organizationId?: string) {
+    const property = await prisma.property.findFirst({
+      where: { 
+        id,
+        ...(organizationId && { organizationId })
+      },
       include: {
         contacts: { orderBy: { isPrimary: 'desc' } },
         openings: {
@@ -83,22 +87,23 @@ export class PropertiesService {
     return property;
   }
 
-  async update(id: string, data: any, userId: string) {
-    const existing = await this.getById(id);
-    const updated = await prisma.property.update({ where: { id }, data });
+  async update(id: string, organizationId: string, data: any, userId: string) {
+    const existing = await this.getById(id, organizationId);
+    const updated = await prisma.property.update({ where: { id: existing.id }, data });
     await auditService.log({ userId, entityType: 'property', entityId: id, action: 'update', oldValues: existing as any, newValues: updated as any });
     return updated;
   }
 
-  async linkToLead(propertyId: string, leadId: string) {
+  async linkToLead(propertyId: string, organizationId: string, leadId: string) {
+    const property = await this.getById(propertyId, organizationId);
     return prisma.property.update({
-      where: { id: propertyId },
+      where: { id: property.id },
       data: { leads: { connect: { id: leadId } } },
     });
   }
 
-  async getOrderReadiness(id: string) {
-    const property = await this.getById(id);
+  async getOrderReadiness(id: string, organizationId: string) {
+    const property = await this.getById(id, organizationId);
     const openings = property.openings as any[];
     
     const total = openings.length;
@@ -119,7 +124,7 @@ export class PropertiesService {
       isOrderReady: approvedForOrder === total && total > 0,
       readinessPct: total > 0 ? Math.round((approvedForOrder / total) * 100) : 0,
       blockers: aiEstimatedOnly > 0
-        ? [`${aiEstimatedOnly} opening(s) have AI-estimated measurements only â€” must be verified onsite before ordering`]
+        ? [`${aiEstimatedOnly} opening(s) have AI-estimated measurements only — must be verified onsite before ordering`]
         : unverified > 0
         ? [`${unverified} opening(s) have no verified measurements`]
         : [],

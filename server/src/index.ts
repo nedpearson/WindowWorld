@@ -53,20 +53,40 @@ import { initializeJobQueues } from './jobs';
 dotenv.config();
 
 // ─── Startup Validation (fail fast, fail loud) ─────────────────────────────
-// DATABASE_URL — exit(1) in all envs if missing
+const isProd = process.env.NODE_ENV === 'production';
+
+// 1. Database
 if (!process.env.DATABASE_URL) {
   console.error('FATAL: DATABASE_URL is not set. Refusing to start.');
   process.exit(1);
 }
-// JWT_SECRET — exit(1) in production if missing or too short
+
+// 2. Auth / JWT
 if (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 32) {
-  if (process.env.NODE_ENV === 'production') {
+  if (isProd) {
     console.error('FATAL: JWT_SECRET missing or too short (<32 chars). Refusing to start.');
     console.error('Generate one with: node -e "console.log(require(\'crypto\').randomBytes(48).toString(\'hex\'))"');
     process.exit(1);
   } else {
     console.warn('WARNING: JWT_SECRET missing or weak. Set it before deploying to production.');
   }
+}
+
+// 3. CORS / Origin
+if (isProd && !process.env.CORS_ORIGIN && !process.env.RAILWAY_PUBLIC_DOMAIN) {
+  console.warn('WARNING: CORS_ORIGIN is not set in production. Webhooks and API access might be restricted.');
+}
+
+// 4. Integrations
+if (isProd) {
+  if (!process.env.OPENAI_API_KEY) console.warn('WARNING: OPENAI_API_KEY is missing. AI features will fail.');
+  if (!process.env.RESEND_API_KEY) console.warn('WARNING: RESEND_API_KEY is missing. Email features will fail.');
+  if (!process.env.GOOGLE_CLIENT_ID) console.warn('WARNING: GOOGLE_CLIENT_ID is missing. Google Auth/Calendar will fail.');
+}
+
+// 5. Redis / BullMQ
+if (!process.env.REDIS_URL) {
+  console.warn('WARNING: REDIS_URL is not set. Background jobs will be disabled. The app will run gracefully without it.');
 }
 
 const app = express();
@@ -79,7 +99,6 @@ if (process.env.SENTRY_DSN) {
     environment: process.env.NODE_ENV || 'development',
     tracesSampleRate: process.env.NODE_ENV === 'production' ? 0.1 : 0,
   });
-  app.use(Sentry.expressErrorHandler() as any);
   logger.info('Sentry error tracking enabled');
 }
 
@@ -330,6 +349,9 @@ app.get('*', noCache, (_req, res) => {
   }
 });
 
+if (process.env.SENTRY_DSN) {
+  Sentry.setupExpressErrorHandler(app);
+}
 app.use(errorHandler);
 
 
@@ -377,38 +399,14 @@ async function start() {
       logger.info(`API: http://localhost:${PORT}/api/v1`);
       logger.info(`Health: http://localhost:${PORT}/health`);
 
-      // If no pre-built frontend was found at startup, build it now in the background.
-      // The server is already listening so health checks pass while the build runs.
-      // The mutable `finalWebDistPath` is set once done, and the SPA catch-all starts
-      // serving index.html automatically (no restart needed).
+      // In production, the frontend artifacts must be pre-built.
+      // If finalWebDistPath is empty, the fallback UI (WARMUP_HTML) will be served.
       if (!finalWebDistPath) {
-        const webSrcCandidates = [
-          '/app/apps/web',
-          path.join(process.cwd(), 'apps', 'web'),
-          path.join(process.cwd(), '..', 'apps', 'web'),
-          path.join(__dirname, '..', 'apps', 'web'),
-          path.join(__dirname, '..', '..', 'apps', 'web'),
-        ];
-        const webSrcPath = webSrcCandidates.find(p => fs.existsSync(path.join(p, 'package.json')));
-        if (webSrcPath) {
-          logger.info(`[SPA] Building frontend from ${webSrcPath} in background…`);
-          const { exec } = require('child_process');
-          exec('npm run build', { cwd: webSrcPath }, (err: any) => {
-            if (err) {
-              logger.error('[SPA] Background Vite build failed:', err.message);
-              return;
-            }
-            const built = webDistCandidates.find(p => fs.existsSync(path.join(p, 'index.html')));
-            if (built) {
-              finalWebDistPath = built;
-              mountSpaStatic(built);
-              logger.info(`[SPA] Background build complete — serving from ${built}`);
-            } else {
-              logger.error('[SPA] Build finished but index.html not found in any candidate');
-            }
-          });
+        if (process.env.NODE_ENV === 'production') {
+          logger.error('[SPA] CRITICAL: No pre-built frontend artifacts found in production!');
+          logger.error('[SPA] Ensure the frontend is built before starting the server.');
         } else {
-          logger.warn('[SPA] Frontend source directory not found — SPA will remain unavailable');
+          logger.warn('[SPA] No pre-built frontend found. If you are developing the frontend, run the Vite dev server.');
         }
       }
     });

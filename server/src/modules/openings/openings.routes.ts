@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import { auth } from '../../shared/middleware/auth';
+import { auth, AuthenticatedRequest } from '../../shared/middleware/auth';
 import { openingService } from './openings.service';
 
 const router = Router();
@@ -20,7 +20,8 @@ router.get('/', auth.repOrAbove, async (req: Request, res: Response) => {
 
 // GET /openings/:id
 router.get('/:id', auth.repOrAbove, async (req: Request, res: Response) => {
-  const data = await openingService.getById(String(req.params.id));
+  const user = (req as AuthenticatedRequest).user;
+  const data = await openingService.getById(String(req.params.id), user.organizationId);
   res.json({ success: true, data });
 });
 
@@ -32,13 +33,15 @@ router.post('/', auth.repOrAbove, async (req: Request, res: Response) => {
 
 // PATCH /openings/:id
 router.patch('/:id', auth.repOrAbove, async (req: Request, res: Response) => {
-  const data = await openingService.update(String(req.params.id), req.body);
+  const user = (req as AuthenticatedRequest).user;
+  const data = await openingService.update(String(req.params.id), user.organizationId, req.body);
   res.json({ success: true, data });
 });
 
 // DELETE /openings/:id
 router.delete('/:id', auth.manager, async (req: Request, res: Response) => {
-  await openingService.delete(String(req.params.id));
+  const user = (req as AuthenticatedRequest).user;
+  await openingService.delete(String(req.params.id), user.organizationId);
   res.json({ success: true });
 });
 

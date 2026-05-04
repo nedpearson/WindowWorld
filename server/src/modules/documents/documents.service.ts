@@ -8,6 +8,7 @@ import { storageService } from '../../shared/services/storage.service';
 
 export class DocumentsService {
   async list(options: {
+    organizationId: string;
     leadId?: string;
     propertyId?: string;
     openingId?: string;
@@ -20,23 +21,33 @@ export class DocumentsService {
       ...(options.openingId && { openingId: options.openingId }),
       ...(options.inspectionId && { inspectionId: options.inspectionId }),
       ...(options.type && { type: options.type }),
+      OR: [
+        { lead: { organizationId: options.organizationId } },
+        { uploadedBy: { organizationId: options.organizationId } }
+      ]
     };
 
     return prisma.document.findMany({
       where,
       orderBy: { createdAt: 'desc' },
       include: {
-        createdBy: { select: { id: true, firstName: true, lastName: true } },
+        uploadedBy: { select: { id: true, firstName: true, lastName: true } },
         aiAnalyses: { orderBy: { createdAt: 'desc' }, take: 1 },
       } as any,
     });
   }
 
-  async getById(id: string) {
-    const doc = await prisma.document.findUnique({
-      where: { id },
+  async getById(id: string, organizationId: string) {
+    const doc = await prisma.document.findFirst({
+      where: { 
+        id,
+        OR: [
+          { lead: { organizationId } },
+          { uploadedBy: { organizationId } }
+        ]
+      },
       include: {
-        createdBy: { select: { id: true, firstName: true, lastName: true } },
+        uploadedBy: { select: { id: true, firstName: true, lastName: true } },
         aiAnalyses: { orderBy: { createdAt: 'desc' } },
       } as any,
     });
@@ -99,14 +110,14 @@ export class DocumentsService {
     return doc;
   }
 
-  async delete(id: string, userId: string) {
-    const doc = await this.getById(id);
+  async delete(id: string, organizationId: string) {
+    const doc = await this.getById(id, organizationId);
     await storageService.delete(doc.url ?? '', (doc as any).localPath);
     await prisma.document.delete({ where: { id } });
   }
 
-  async retriggerAiAnalysis(id: string) {
-    const doc = await this.getById(id);
+  async retriggerAiAnalysis(id: string, organizationId: string) {
+    const doc = await this.getById(id, organizationId);
     await prisma.document.update({
       where: { id },
       data: { aiAnalysisStatus: 'PENDING' } as any,

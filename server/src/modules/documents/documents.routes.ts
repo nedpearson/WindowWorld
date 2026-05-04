@@ -26,19 +26,22 @@ const router = Router();
 
 // GET /api/v1/documents – query by leadId/propertyId/openingId/inspectionId/type
 router.get('/', auth.repOrAbove, async (req: Request, res: Response) => {
-  const data = await documentsService.list(req.query as any);
+  const user = (req as AuthenticatedRequest).user;
+  const data = await documentsService.list({ ...req.query, organizationId: user.organizationId } as any);
   res.json({ success: true, data });
 });
 
 // GET /api/v1/documents/:id
 router.get('/:id', auth.repOrAbove, async (req: Request, res: Response) => {
-  const data = await documentsService.getById((req.params.id as string));
+  const user = (req as AuthenticatedRequest).user;
+  const data = await documentsService.getById((req.params.id as string), user.organizationId);
   res.json({ success: true, data });
 });
 
 // GET /api/v1/documents/:id/url — returns the document's view URL (pre-signed if S3, direct if local)
 router.get('/:id/url', auth.repOrAbove, async (req: Request, res: Response) => {
-  const doc = await documentsService.getById(req.params.id as string);
+  const user = (req as AuthenticatedRequest).user;
+  const doc = await documentsService.getById(req.params.id as string, user.organizationId);
   // For local files, return the static path; for S3 the URL is already stored
   const url = doc.url;
   res.json({ success: true, data: { url, documentId: doc.id, filename: doc.originalName } });
@@ -46,7 +49,8 @@ router.get('/:id/url', auth.repOrAbove, async (req: Request, res: Response) => {
 
 // POST /api/v1/documents/:id/analyze-window — manually trigger AI window analysis on an existing document
 router.post('/:id/analyze-window', auth.repOrAbove, async (req: Request, res: Response) => {
-  const result = await documentsService.retriggerAiAnalysis(req.params.id as string);
+  const user = (req as AuthenticatedRequest).user;
+  const result = await documentsService.retriggerAiAnalysis(req.params.id as string, user.organizationId);
   res.json({ success: true, data: result });
 });
 
@@ -98,7 +102,8 @@ router.post('/upload', auth.repOrAbove, (req: Request, res: Response, next: Next
 
 // POST /api/v1/documents/:id/retrigger-ai — alias kept for backwards compatibility
 router.post('/:id/retrigger-ai', auth.repOrAbove, async (req: Request, res: Response) => {
-  const result = await documentsService.retriggerAiAnalysis((req.params.id as string));
+  const user = (req as AuthenticatedRequest).user;
+  const result = await documentsService.retriggerAiAnalysis((req.params.id as string), user.organizationId);
   res.json({ success: true, data: result });
 });
 
@@ -140,7 +145,7 @@ router.post('/upload-base64', auth.repOrAbove, async (req: Request, res: Respons
 // DELETE /api/v1/documents/:id
 router.delete('/:id', auth.repOrAbove, async (req: Request, res: Response) => {
   const user = (req as AuthenticatedRequest).user;
-  await documentsService.delete((req.params.id as string), user.id);
+  await documentsService.delete((req.params.id as string), user.organizationId);
   res.json({ success: true, message: 'Document deleted' });
 });
 

@@ -72,9 +72,9 @@ export class AppointmentsService {
     return { data, meta: { total, page, limit, totalPages: Math.ceil(total / limit) } };
   }
 
-  async getById(id: string) {
-    const apt = await prisma.appointment.findUnique({
-      where: { id },
+  async getById(id: string, organizationId: string) {
+    const apt = await prisma.appointment.findFirst({
+      where: { id, lead: { organizationId } },
       include: {
         lead: {
           include: {
@@ -224,11 +224,14 @@ export class AppointmentsService {
     return apt;
   }
 
-  async update(id: string, data: any, userId: string) {
+  async update(id: string, organizationId: string, data: any, userId: string) {
     const { skipConflictCheck, ...prismaData } = data;
     
+    // Ensure appointment belongs to the tenant
+    const existing = await this.getById(id, organizationId);
+    
     const updated = await prisma.appointment.update({
-      where: { id },
+      where: { id: existing.id },
       data: {
         ...prismaData,
         scheduledAt: data.scheduledAt ? new Date(data.scheduledAt) : undefined,
@@ -238,11 +241,11 @@ export class AppointmentsService {
     return updated;
   }
 
-  async updateStatus(id: string, status: AppointmentStatus, outcome: string | undefined, userId: string) {
-    const apt = await this.getById(id);
+  async updateStatus(id: string, organizationId: string, status: AppointmentStatus, outcome: string | undefined, userId: string) {
+    const apt = await this.getById(id, organizationId);
 
     const updated = await prisma.appointment.update({
-      where: { id },
+      where: { id: apt.id },
       data: { status, outcome },
     });
 

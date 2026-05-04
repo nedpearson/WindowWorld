@@ -38,9 +38,12 @@ export class InspectionsService {
     return { data, meta: { total, page, limit, totalPages: Math.ceil(total / limit) } };
   }
 
-  async getById(id: string) {
-    const inspection = await prisma.inspection.findUnique({
-      where: { id },
+  async getById(id: string, organizationId: string) {
+    const inspection = await prisma.inspection.findFirst({
+      where: { 
+        id,
+        lead: { organizationId }
+      },
       include: {
         createdBy: { select: { id: true, firstName: true, lastName: true, phone: true } },
         lead: {
@@ -97,14 +100,15 @@ export class InspectionsService {
     return inspection;
   }
 
-  async startInspection(id: string, userId: string) {
+  async startInspection(id: string, organizationId: string, userId: string) {
+    const inspection = await this.getById(id, organizationId);
+    
     const updated = await prisma.inspection.update({
-      where: { id },
+      where: { id: inspection.id },
       data: { status: 'IN_PROGRESS', startedAt: new Date() } as any,
     });
 
     // Advance lead status
-    const inspection = await this.getById(id);
     await prisma.lead.update({
       where: { id: inspection.leadId },
       data: { status: 'INSPECTION_COMPLETE' },
@@ -123,14 +127,16 @@ export class InspectionsService {
     return updated;
   }
 
-  async completeInspection(id: string, userId: string, data: {
+  async completeInspection(id: string, organizationId: string, userId: string, data: {
     notes?: string;
     overallCondition?: string;
     totalOpenings?: number;
     repNotes?: string;
   }) {
+    const inspection = await this.getById(id, organizationId);
+    
     const updated = await prisma.inspection.update({
-      where: { id },
+      where: { id: inspection.id },
       data: {
         status: 'COMPLETE',
         completedAt: new Date(),
@@ -139,7 +145,6 @@ export class InspectionsService {
       } as any,
     });
 
-    const inspection = await this.getById(id);
     await prisma.activity.create({
       data: {
         leadId: inspection.leadId,
@@ -154,7 +159,7 @@ export class InspectionsService {
     return updated;
   }
 
-  async addOpening(inspectionId: string, data: {
+  async addOpening(inspectionId: string, organizationId: string, data: {
     roomLabel: string;
     windowType?: string;
     condition?: string;
@@ -166,11 +171,7 @@ export class InspectionsService {
     isEgress?: boolean;
     obstructions?: string;
   }) {
-    const inspection = await prisma.inspection.findUnique({
-      where: { id: inspectionId },
-      select: { propertyId: true },
-    });
-    if (!inspection) throw new NotFoundError('Inspection');
+    const inspection = await this.getById(inspectionId, organizationId);
 
     return prisma.opening.create({
       data: {

@@ -267,15 +267,15 @@ model User {
   notifPreferences Json?     @default("{}")
 
   // Google Calendar OAuth
-  gcalAccessToken   String?   // Encrypted; expires quickly
-  gcalRefreshToken  String?   // Encrypted; long-lived, used to auto-refresh
-  gcalTokenExpiry   DateTime? // When the access token expires
-  gcalCalendarId    String?   // Calendar ID to check (defaults to 'primary')
-  gcalSyncEnabled   Boolean   @default(false) // User has opted in
-  gcalConnectedAt   DateTime? // When they last connected
+  gcalAccessToken  String? // Encrypted; expires quickly
+  gcalRefreshToken String? // Encrypted; long-lived, used to auto-refresh
+  gcalTokenExpiry  DateTime? // When the access token expires
+  gcalCalendarId   String? // Calendar ID to check (defaults to 'primary')
+  gcalSyncEnabled  Boolean   @default(false) // User has opted in
+  gcalConnectedAt  DateTime? // When they last connected
 
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   organization      Organization       @relation(fields: [organizationId], references: [id])
   territories       TerritoryUser[]
@@ -292,7 +292,9 @@ model User {
   expensesCreated   JobExpense[]       @relation("ExpensesCreated")
   expensesVerified  JobExpense[]       @relation("ExpensesVerified")
   communicationLogs CommunicationLog[]
+  documentsUploaded Document[]         @relation("uploadedBy")
 
+  @@index([organizationId])
   @@map("users")
 }
 
@@ -431,19 +433,19 @@ model Lead {
   assignedRep  User?        @relation("assignedRep", fields: [assignedRepId], references: [id])
   campaign     Campaign?    @relation(fields: [campaignId], references: [id])
 
-  leadScores   LeadScore[]
-  contacts     Contact[]
-  properties   Property[]    @relation("leadProperties")
-  appointments Appointment[]
-  activities   Activity[]
-  notes_rel    Note[]
-  tasks        Task[]
-  proposals    Proposal[]
-  quotes       Quote[]
-  documents    Document[]
-  aiAnalyses   AiAnalysis[]
-  Inspection   Inspection[]
-  expenses     JobExpense[]
+  leadScores        LeadScore[]
+  contacts          Contact[]
+  properties        Property[]         @relation("leadProperties")
+  appointments      Appointment[]
+  activities        Activity[]
+  notes_rel         Note[]
+  tasks             Task[]
+  proposals         Proposal[]
+  quotes            Quote[]
+  documents         Document[]
+  aiAnalyses        AiAnalysis[]
+  Inspection        Inspection[]
+  expenses          JobExpense[]
   communicationLogs CommunicationLog[]
 
   @@index([organizationId, status])
@@ -621,6 +623,7 @@ model Appointment {
 
   @@index([scheduledAt])
   @@index([leadId])
+  @@index([createdById])
   @@map("appointments")
 }
 
@@ -1405,6 +1408,7 @@ model Document {
   property   Property?   @relation(fields: [propertyId], references: [id])
   inspection Inspection? @relation(fields: [inspectionId], references: [id])
   opening    Opening?    @relation(fields: [openingId], references: [id])
+  uploadedBy User?       @relation("uploadedBy", fields: [uploadedById], references: [id])
   proposal   Proposal?   @relation(fields: [proposalId], references: [id])
   invoice    Invoice?    @relation(fields: [invoiceId], references: [id])
   aiAnalysis AiAnalysis? @relation(fields: [aiAnalysisId], references: [id])
@@ -1427,7 +1431,7 @@ model JobExpense {
   createdById    String
   verifiedById   String?
   documentId     String?         @unique
-  amount         Decimal         @db.Decimal(10,2)
+  amount         Decimal         @db.Decimal(10, 2)
   category       ExpenseCategory @default(OTHER)
   vendor         String?         @db.VarChar(255)
   description    String?         @db.VarChar(1000)
@@ -1544,8 +1548,8 @@ model Activity {
   occurredAt DateTime @default(now())
   createdAt  DateTime @default(now())
 
-  lead Lead  @relation(fields: [leadId], references: [id])
-  user User? @relation(fields: [userId], references: [id])
+  lead             Lead              @relation(fields: [leadId], references: [id])
+  user             User?             @relation(fields: [userId], references: [id])
   communicationLog CommunicationLog?
 
   @@index([leadId, occurredAt])
@@ -1557,36 +1561,36 @@ model Activity {
 // ============================================================
 
 model CommunicationLog {
-  id             String   @id @default(uuid())
+  id             String  @id @default(uuid())
   leadId         String
   organizationId String
-  userId         String?  // Rep who initiated (null for inbound)
+  userId         String? // Rep who initiated (null for inbound)
 
-  direction   String   // OUTBOUND | INBOUND
-  type        String   // CALL | SMS
+  direction String // OUTBOUND | INBOUND
+  type      String // CALL | SMS
 
   // Twilio metadata
-  twilioSid   String?  @unique   // CallSid or MessageSid
-  to          String
-  from        String
-  body        String?  @db.Text  // SMS message body
-  status      String   // initiated | ringing | in-progress | completed | busy | no-answer | failed | sent | delivered
-  duration    Int?                // seconds (calls) or null
-  recordingUrl String?            // MP3 URL after call completes
-  errorCode   String?            // Twilio error code on failure
+  twilioSid    String? @unique // CallSid or MessageSid
+  to           String
+  from         String
+  body         String? @db.Text // SMS message body
+  status       String // initiated | ringing | in-progress | completed | busy | no-answer | failed | sent | delivered
+  duration     Int? // seconds (calls) or null
+  recordingUrl String? // MP3 URL after call completes
+  errorCode    String? // Twilio error code on failure
 
   // Link back to the Activity log entry
-  activityId  String?  @unique
+  activityId String? @unique
 
-  simulated   Boolean  @default(false) // true in dev without Twilio creds
+  simulated Boolean @default(false) // true in dev without Twilio creds
 
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  lead         Lead          @relation(fields: [leadId], references: [id])
-  organization Organization  @relation(fields: [organizationId], references: [id])
-  user         User?         @relation(fields: [userId], references: [id])
-  activity     Activity?     @relation(fields: [activityId], references: [id])
+  lead         Lead         @relation(fields: [leadId], references: [id])
+  organization Organization @relation(fields: [organizationId], references: [id])
+  user         User?        @relation(fields: [userId], references: [id])
+  activity     Activity?    @relation(fields: [activityId], references: [id])
 
   @@index([leadId, createdAt])
   @@index([organizationId, createdAt])

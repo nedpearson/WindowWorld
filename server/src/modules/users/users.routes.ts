@@ -63,13 +63,13 @@ router.post('/', auth.manager, [
 
 router.patch('/:id', auth.manager, async (req: Request, res: Response) => {
   const user = (req as AuthenticatedRequest).user;
-  const data = await usersService.update((req.params.id as string), req.body, user.id);
+  const data = await usersService.update((req.params.id as string), user.organizationId, req.body, user.id);
   res.json({ success: true, data });
 });
 
 router.patch('/:id/deactivate', auth.superAdmin, async (req: Request, res: Response) => {
   const user = (req as AuthenticatedRequest).user;
-  await usersService.deactivate((req.params.id as string), user.id);
+  await usersService.deactivate((req.params.id as string), user.organizationId, user.id);
   res.json({ success: true, message: 'User deactivated' });
 });
 

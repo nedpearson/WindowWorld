@@ -75,8 +75,12 @@ export class UsersService {
     return user;
   }
 
-  async update(id: string, data: any, updatedById: string) {
+  async update(id: string, organizationId: string, data: any, updatedById: string) {
     const { password, ...updateData } = data;
+    
+    const existing = await prisma.user.findFirst({ where: { id, organizationId } });
+    if (!existing) throw new Error('User not found');
+
     if (password) {
       updateData.passwordHash = await bcrypt.hash(password, 12);
     }
@@ -89,7 +93,10 @@ export class UsersService {
     return updated;
   }
 
-  async deactivate(id: string, adminId: string) {
+  async deactivate(id: string, organizationId: string, adminId: string) {
+    const existing = await prisma.user.findFirst({ where: { id, organizationId } });
+    if (!existing) throw new Error('User not found');
+
     const updated = await prisma.user.update({ where: { id }, data: { isActive: false } });
     await auditService.log({ userId: adminId, entityType: 'user', entityId: id, action: 'deactivate' });
     return updated;
