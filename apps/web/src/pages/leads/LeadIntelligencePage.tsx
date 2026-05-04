@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { BoltIcon as BoltOutline, CloudIcon, FireIcon, ClockIcon, CurrencyDollarIcon, ChevronRightIcon,
   ChartBarIcon, ExclamationTriangleIcon, ChatBubbleLeftIcon, ShieldExclamationIcon, BuildingOfficeIcon, SparklesIcon,
-  ChevronDownIcon, ArrowPathIcon, MapPinIcon
+  ChevronDownIcon, ArrowPathIcon, MapPinIcon, HomeIcon
 } from '@heroicons/react/24/outline';
 import { BoltIcon as BoltSolid } from '@heroicons/react/24/solid';
 import clsx from 'clsx';
@@ -51,6 +51,7 @@ function generateDemoLeads(count: number) {
       bestOffer: Math.random() > 0.5 ? 'Free Upgrade to Impact-Resistant Glass' : '$0 Down, 0% Interest for 18 Months',
       riskFactors: Math.random() > 0.5 ? ['Price sensitive', 'Comparing multiple local contractors'] : [],
       competitor: Math.random() > 0.5 ? 'Renewal by Andersen' : 'Local Contractor',
+      notes: Math.random() > 0.5 ? 'Search Term: Property Management and HOAs' : 'Search Term: Individual Residential Homeowners',
     });
   }
   return leads;
@@ -87,6 +88,8 @@ const PITCH_ANGLE_LABELS: Record<string, { label: string; color: string }> = {
 
 const CATEGORIES = [
   { key: 'all', label: 'All Leads', icon: BoltSolid },
+  { key: 'b2b', label: 'B2B (HOAs/Property Mgrs)', icon: BuildingOfficeIcon },
+  { key: 'homeowners', label: 'Individual Homeowners', icon: HomeIcon },
   { key: 'storm', label: 'Storm Leads', icon: CloudIcon },
   { key: 'hot', label: 'Hot (Score 80+)', icon: FireIcon },
   { key: 'stuck', label: 'Stuck (5+ days)', icon: ClockIcon },
@@ -197,7 +200,10 @@ export function LeadIntelligencePage() {
       if (!isDemoFallback) {
         // Actually pull real data from the internet via AI
         try {
-          await apiClient.leads.prospect({ location: 'Baton Rouge, Louisiana', target: 'Property Management and HOAs' });
+          const targetStr = category === 'b2b' ? 'Property Management and HOAs' : 
+                            category === 'homeowners' ? 'Individual Residential Homeowners needing window replacement' : 
+                            'Property Management and HOAs';
+          await apiClient.leads.prospect({ location: 'Baton Rouge, Louisiana', target: targetStr });
         } catch (e) {
           console.error("AI Internet Prospecting Failed:", e);
         }
@@ -236,6 +242,7 @@ export function LeadIntelligencePage() {
             bestOffer: l.bestOffer ?? 'Consultation',
             riskFactors: l.riskFactors ?? [],
             competitor: l.competitor ?? 'Unknown',
+            notes: l.notes ?? '',
             lat,
             lng,
             distMiles: distanceMiles(lat, lng),
@@ -265,6 +272,7 @@ export function LeadIntelligencePage() {
             bestOffer: l.bestOffer ?? 'Consultation',
             riskFactors: l.riskFactors ?? [],
             competitor: l.competitor ?? 'Unknown',
+            notes: l.notes ?? '',
             lat: null, lng: null, distMiles: 9999
           })));
         } else {
@@ -284,6 +292,8 @@ export function LeadIntelligencePage() {
   // Filter (score >= 50 enforced), then sort: score DESC, then distMiles ASC
   const filtered = leads
     .filter((lead) => {
+      if (category === 'b2b') return lead.notes?.includes('Property Management') || lead.notes?.includes('B2B');
+      if (category === 'homeowners') return lead.notes?.includes('Homeowners') || (!lead.notes?.includes('Property Management') && !lead.notes?.includes('B2B'));
       if (category === 'storm') return lead.isStorm;
       if (category === 'hot') return lead.score >= 80;
       if (category === 'stuck') return lead.stuckDays >= 5;
@@ -309,7 +319,7 @@ export function LeadIntelligencePage() {
             <h1 className="text-2xl font-bold text-white">Lead Intelligence Engine</h1>
           </div>
           <p className="text-slate-400 text-sm">
-            AI-identified, high-intent homeowners matching 5-star customer profiles.
+            AI-identified, high-intent prospects matching 5-star customer profiles.
           </p>
         </div>
         <div className="flex items-center gap-4">
@@ -349,6 +359,8 @@ export function LeadIntelligencePage() {
             {label}
             <span className="text-[10px] text-slate-600 bg-slate-800 px-1.5 rounded-full">
               {key === 'all' ? leads.length :
+               key === 'b2b' ? leads.filter(l => l.notes?.includes('Property Management') || l.notes?.includes('B2B')).length :
+               key === 'homeowners' ? leads.filter(l => l.notes?.includes('Homeowners') || (!l.notes?.includes('Property Management') && !l.notes?.includes('B2B'))).length :
                key === 'storm' ? leads.filter(l => l.isStorm).length :
                key === 'hot' ? leads.filter(l => l.score >= 80).length :
                key === 'stuck' ? leads.filter(l => l.stuckDays >= 5).length :
