@@ -117,6 +117,7 @@ app.get('/health', async (_req, res) => {
     status,
     timestamp: new Date().toISOString(),
     version: process.env.npm_package_version || '1.0.0',
+    deployCheck: 'deploy_check_1',
     env: process.env.NODE_ENV,
     db: { status: dbStatus, latencyMs: dbLatencyMs },
   });
