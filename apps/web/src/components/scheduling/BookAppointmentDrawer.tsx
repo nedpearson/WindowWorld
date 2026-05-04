@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import apiClient from '../../api/client';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -31,7 +31,7 @@ const APPOINTMENT_TYPES = [
   { value: 'installation', label: 'Installation Check', duration: 120, color: 'text-orange-400', bg: 'bg-orange-500/10 border-orange-500/20' },
 ];
 
-const TIME_SLOTS = Array.from({ length: 22 }, (_, i) => {
+const TIME_SLOTS = Array.from({ length: 29 }, (_, i) => {
   const hour = Math.floor(i / 2) + 8; // 8 AM start
   const min = i % 2 === 0 ? '00' : '30';
   const h12 = hour > 12 ? hour - 12 : hour;
@@ -40,7 +40,8 @@ const TIME_SLOTS = Array.from({ length: 22 }, (_, i) => {
 });
 
 function formatISODate(date: Date): string {
-  return date.toISOString().split('T')[0];
+  // Use local time instead of UTC to avoid shifting to tomorrow during evening hours
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 }
 
 // ─── Component ────────────────────────────────────────────────
@@ -74,6 +75,30 @@ export function BookAppointmentDrawer({
     notes: editAppointment?.notes || '' });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  // Filter out past times if scheduling for today
+  const availableTimeSlots = useMemo(() => {
+    const isToday = form.date === formatISODate(new Date());
+    if (!isToday || isEditing) return TIME_SLOTS;
+
+    const now = new Date();
+    const currentMinutes = now.getHours() * 60 + now.getMinutes();
+
+    const futureSlots = TIME_SLOTS.filter((slot) => {
+      const [h, m] = slot.value.split(':').map(Number);
+      return (h * 60 + m) > currentMinutes;
+    });
+
+    // If all slots are past (e.g. 11 PM), just return the last slot so the dropdown isn't empty
+    return futureSlots.length > 0 ? futureSlots : [TIME_SLOTS[TIME_SLOTS.length - 1]];
+  }, [form.date, isEditing]);
+
+  // Auto-select first available time if the current selection is invalid
+  useEffect(() => {
+    if (availableTimeSlots.length > 0 && !availableTimeSlots.find((s) => s.value === form.time)) {
+      setForm((f) => ({ ...f, time: availableTimeSlots[0].value }));
+    }
+  }, [availableTimeSlots]);
 
   // Auto-fill title when type changes
   useEffect(() => {
@@ -279,7 +304,7 @@ export function BookAppointmentDrawer({
                     onChange={(e) => setForm((f) => ({ ...f, time: e.target.value }))}
                     className="input appearance-none"
                   >
-                    {TIME_SLOTS.map((s) => (
+                    {availableTimeSlots.map((s) => (
                       <option key={s.value} value={s.value}>{s.label}</option>
                     ))}
                   </select>
