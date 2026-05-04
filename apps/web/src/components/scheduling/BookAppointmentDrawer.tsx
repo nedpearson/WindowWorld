@@ -1,4 +1,6 @@
 import { useState, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import apiClient from '../../api/client';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import {
@@ -47,6 +49,14 @@ export function BookAppointmentDrawer({
   const isEditing = !!editAppointment;
   const createMutation = useCreateAppointment();
   const updateMutation = useUpdateAppointment();
+
+  // Fetch leads for the dropdown if we don't have a leadId yet
+  const { data: leadsRes } = useQuery({
+    queryKey: ['recent-leads-for-appointment'],
+    queryFn: () => apiClient.leads.list({ limit: 50, sortDir: 'desc' }),
+    enabled: isOpen && !leadId && !isEditing,
+  });
+  const leads = leadsRes?.data || [];
 
   // ─── Form State ───────────────────────────────────────────
   const [form, setForm] = useState({
@@ -174,6 +184,39 @@ export function BookAppointmentDrawer({
 
             {/* Body */}
             <div className="flex-1 overflow-y-auto p-5 space-y-5">
+
+              {/* Lead Selector (if not provided) */}
+              {!leadId && !isEditing && (
+                <div>
+                  <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">
+                    Lead
+                  </label>
+                  <select
+                    value={form.leadId}
+                    onChange={(e) => {
+                      const id = e.target.value;
+                      const selectedLead = leads.find((l: any) => l.id === id);
+                      setForm((f) => ({ 
+                        ...f, 
+                        leadId: id,
+                        address: selectedLead?.address || f.address,
+                        title: f.title && f.title.includes('—') && selectedLead 
+                          ? `${f.title.split('—')[0].trim()} — ${selectedLead.firstName} ${selectedLead.lastName}` 
+                          : f.title
+                      }));
+                    }}
+                    className={clsx('input appearance-none', errors.leadId && 'border-red-500')}
+                  >
+                    <option value="">Select a Lead...</option>
+                    {leads.map((l: any) => (
+                      <option key={l.id} value={l.id}>
+                        {l.firstName} {l.lastName} {l.address ? `— ${l.address}` : ''}
+                      </option>
+                    ))}
+                  </select>
+                  {errors.leadId && <p className="text-xs text-red-400 mt-1">{errors.leadId}</p>}
+                </div>
+              )}
 
               {/* Appointment Type */}
               <div>
@@ -321,7 +364,7 @@ export function BookAppointmentDrawer({
             </div>
 
             {/* Footer */}
-            <div className="flex gap-3 p-5 border-t border-slate-800 flex-shrink-0">
+            <div className="flex gap-3 p-5 pb-8 border-t border-slate-800 flex-shrink-0">
               <button onClick={onClose} className="btn-secondary flex-1" disabled={isLoading}>Cancel</button>
               <button
                 onClick={handleSubmit}
