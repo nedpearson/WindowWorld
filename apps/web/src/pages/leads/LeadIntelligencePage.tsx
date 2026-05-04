@@ -194,8 +194,16 @@ export function LeadIntelligencePage() {
   const loadData = async (refresh = false) => {
     if (refresh) {
       setIsRefreshing(true);
-      // simulate artificial delay for AI search
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      if (!isDemoFallback) {
+        // Actually pull real data from the internet via AI
+        try {
+          await apiClient.leads.prospect({ location: 'Baton Rouge, Louisiana', target: 'Property Management and HOAs' });
+        } catch (e) {
+          console.error("AI Internet Prospecting Failed:", e);
+        }
+      } else {
+        await new Promise(resolve => setTimeout(resolve, 1500));
+      }
     }
     
     apiClient.leads.list({ sortBy: 'leadScore', sortDir: 'desc', limit: 50 })

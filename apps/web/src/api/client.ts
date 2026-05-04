@@ -115,6 +115,7 @@ export const api = {
     getAiSummary: (id: string) => get(`/leads/${id}/ai-summary`),
     checkDuplicates: (id: string) => post(`/leads/${id}/duplicate-check`),
     delete: (id: string) => del(`/leads/${id}`),
+    prospect: (data: { location?: string; target?: string }) => post('/leads/prospect', data),
     bulkImport: (payload: { leads: any[]; [key: string]: any }) => post('/leads/bulk-import', payload),
   },
 

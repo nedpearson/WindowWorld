@@ -282,6 +282,10 @@ export class AiService {
     this.provider = getProvider();
   }
 
+  async generateText(prompt: string, systemPrompt?: string): Promise<string> {
+    return this.provider.generateText(prompt, systemPrompt);
+  }
+
   // Window photo analysis
   async analyzeWindowPhoto(params: {
     imageBase64: string;

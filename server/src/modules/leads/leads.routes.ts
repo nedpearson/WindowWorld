@@ -248,6 +248,19 @@ router.delete('/:id', auth.manager, async (req: Request, res: Response) => {
   res.json({ success: true, message: 'Lead deleted' });
 });
 
+// POST /api/v1/leads/prospect — AI Internet Prospecting
+router.post('/prospect', auth.manager, async (req: Request, res: Response) => {
+  const user = (req as AuthenticatedRequest).user;
+  const { location = 'Baton Rouge, Louisiana', target = 'Property Management Companies' } = req.body;
+  
+  // Use a dynamic import or directly import the new service
+  const { leadProspectingService } = await import('./prospecting.service');
+  
+  const leads = await leadProspectingService.prospect(user.organizationId, user.id, location, target);
+  
+  res.status(200).json({ success: true, count: leads.length, data: leads });
+});
+
 // POST /api/v1/leads/bulk-import — CSV/JSON bulk lead import (manager only)
 router.post('/bulk-import', auth.manager, async (req: Request, res: Response) => {
   const user = (req as AuthenticatedRequest).user;
