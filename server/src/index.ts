@@ -405,6 +405,7 @@ async function start() {
         if (process.env.NODE_ENV === 'production') {
           logger.error('[SPA] CRITICAL: No pre-built frontend artifacts found in production!');
           logger.error('[SPA] Ensure the frontend is built before starting the server.');
+          process.exit(1);
         } else {
           logger.warn('[SPA] No pre-built frontend found. If you are developing the frontend, run the Vite dev server.');
         }

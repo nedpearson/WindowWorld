@@ -12,15 +12,16 @@ cmds = [
 
 [phases.build]
 cmds = [
-  # Build TypeScript server (prisma generate && tsc) — uses local binary
+  # Build frontend SPA
+  "cd apps/web && npm run build",
+  # Build TypeScript server (prisma generate && tsc)
   "cd server && npm run build",
-  # The pre-built Vite frontend is committed at apps/web/dist/.
-  # Copy it into server/spa_build/ so Express can find it regardless of cwd.
+  # Copy built SPA to server for unified serving
   "mkdir -p server/spa_build && cp -r apps/web/dist/. server/spa_build/",
   # Verification — fail the build if the SPA index is missing
   "test -f server/spa_build/index.html && echo '[BUILD] SPA verified at server/spa_build/index.html' || (echo '[BUILD] FATAL: SPA index.html missing!' && exit 1)"
 ]
 
 [start]
-# Apply schema, run idempotent seed, start server
-cmd = "cd server && npx prisma db push --accept-data-loss && npx tsx prisma/purge-org-real.ts && npx prisma db seed && npx tsx prisma/seed-advanced-catalog.ts && node dist/index.js"
+# Apply safe migrations and start server (no destructive db push or seed allowed on production runtime)
+cmd = "cd server && npx prisma migrate deploy && node dist/index.js"

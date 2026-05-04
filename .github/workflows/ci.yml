@@ -41,9 +41,11 @@ jobs:
     - name: Install Monorepo Dependencies
       run: npm install --legacy-peer-deps
 
-    - name: Generate Prisma Client
+    - name: Validate & Generate Prisma Client
       working-directory: ./server
-      run: npx prisma generate
+      run: |
+        npx prisma validate
+        npx prisma generate
 
     - name: Push Database Schema
       working-directory: ./server
