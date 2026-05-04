@@ -280,7 +280,7 @@ export class AppointmentsService {
     const allAppointments = await prisma.appointment.findMany({
       where: {
         scheduledAt: { gte, lte },
-        status: { in: ['SCHEDULED', 'CONFIRMED'] },
+        status: { not: 'CANCELLED' },
         lead: { organizationId },
         OR: [
           { createdById: repId },
