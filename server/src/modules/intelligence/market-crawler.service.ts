@@ -18,6 +18,42 @@ import { prisma } from '../../shared/services/prisma';
 import { logger } from '../../shared/utils/logger';
 import type { ContentTagResult, ProductScope } from './intelligence.types';
 
+// ─── Helper: Safe HTML Stripper ───────────────────────────────────────────
+function stripHtmlSafely(html: string): string {
+  let text = '';
+  let insideTag = false;
+  let insideScript = false;
+  let insideStyle = false;
+  
+  for (let i = 0; i < html.length; i++) {
+    const char = html[i];
+    const nextText = html.substring(i, i + 9).toLowerCase();
+    
+    if (nextText.startsWith('<script')) {
+      insideScript = true;
+    } else if (nextText.startsWith('</script>')) {
+      insideScript = false;
+      i += 8;
+      continue;
+    } else if (nextText.startsWith('<style')) {
+      insideStyle = true;
+    } else if (nextText.startsWith('</style>')) {
+      insideStyle = false;
+      i += 7;
+      continue;
+    }
+    
+    if (char === '<') {
+      insideTag = true;
+    } else if (char === '>') {
+      insideTag = false;
+    } else if (!insideTag && !insideScript && !insideStyle) {
+      text += char;
+    }
+  }
+  return text.replace(/\s+/g, ' ').trim();
+}
+
 // ─── Helper: Fetch Public URL ─────────────────────────────────────────────
 async function fetchPublicPage(url: string, timeoutMs = 12000): Promise<string> {
   try {
@@ -34,14 +70,7 @@ async function fetchPublicPage(url: string, timeoutMs = 12000): Promise<string> 
     clearTimeout(timer);
     if (!response.ok) return '';
     const text = await response.text();
-    // Strip HTML tags, collapse whitespace, limit length
-    return text
-      .replace(/<script[\s\S]*?<\/script>/gi, '')
-      .replace(/<style[\s\S]*?<\/style>/gi, '')
-      .replace(/<[^>]+>/g, ' ')
-      .replace(/\s+/g, ' ')
-      .trim()
-      .substring(0, 10000);
+    return stripHtmlSafely(text).substring(0, 10000);
   } catch {
     return '';
   }
@@ -57,11 +86,11 @@ async function searchPublicWeb(query: string): Promise<string[]> {
     const titleRegex = /class="result__a[^"]*"[^>]*>([\s\S]*?)<\/a>/gi;
     let m: RegExpExecArray | null;
     while ((m = snippetRegex.exec(html)) !== null) {
-      const clean = m[1].replace(/<[^>]+>/g, '').trim();
+      const clean = stripHtmlSafely(m[1]);
       if (clean.length > 20) snippets.push(clean);
     }
     while ((m = titleRegex.exec(html)) !== null) {
-      const clean = m[1].replace(/<[^>]+>/g, '').trim();
+      const clean = stripHtmlSafely(m[1]);
       if (clean.length > 10) snippets.push(`[TITLE] ${clean}`);
     }
     return snippets.slice(0, 30);

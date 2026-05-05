@@ -101,10 +101,21 @@ export class LeadProspectingService {
         });
         if (!response.ok) { logger.warn(`[Google] Query returned ${response.status}`); continue; }
         const html = await response.text();
+function stripHtmlSafely(html: string): string {
+  let text = '';
+  let insideTag = false;
+  for (let i = 0; i < html.length; i++) {
+    if (html[i] === '<') insideTag = true;
+    else if (html[i] === '>') insideTag = false;
+    else if (!insideTag) text += html[i];
+  }
+  return text.replace(/\s+/g, ' ').trim();
+}
+
         // Extract text content from Google results
         const textBlocks = html.match(/<span[^>]*>(.*?)<\/span>/gs) || [];
         for (const block of textBlocks) {
-          const clean = block.replace(/<[^>]+>/g, '').trim();
+          const clean = stripHtmlSafely(block);
           if (clean.length > 40 && clean.length < 500) allSnippets.push(clean);
         }
         logger.info(`[Google] Query "${query.substring(0, 50)}..." extracted ${textBlocks.length} blocks`);

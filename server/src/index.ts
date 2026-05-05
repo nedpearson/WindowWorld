@@ -201,8 +201,15 @@ app.use(cors({
     if (!origin) return callback(null, true);
     if (CORS_ORIGINS.includes(origin)) return callback(null, true);
     // In development allow all localhost origins
-    if (process.env.NODE_ENV !== 'production' && origin.startsWith('http://localhost')) {
-      return callback(null, true);
+    if (process.env.NODE_ENV !== 'production') {
+      try {
+        const parsed = new URL(origin);
+        if (parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1') {
+          return callback(null, true);
+        }
+      } catch {
+        // Ignore invalid origins
+      }
     }
     callback(new Error(`CORS blocked: ${origin}`));
   },
