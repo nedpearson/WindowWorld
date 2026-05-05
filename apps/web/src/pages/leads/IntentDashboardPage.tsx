@@ -6,6 +6,9 @@ import {
 } from '@heroicons/react/24/outline';
 import apiClient from '../../api/client';
 
+import { useAuthStore } from '../../store/auth.store';
+import { isDemoMode } from '../../utils/isDemoMode';
+
 const SEGMENT_META: Record<string, { label: string; color: string; angle: string }> = {
   FINANCING_FIRST:    { label: 'Financing-First',    color: 'bg-blue-500/20 text-blue-300 border-blue-500/30',    angle: 'Lead with monthly payment framing' },
   STORM_CLAIMANT:     { label: 'Storm/Insurance',     color: 'bg-purple-500/20 text-purple-300 border-purple-500/30', angle: 'Insurance claim support + free inspection' },
@@ -22,7 +25,30 @@ const URGENCY_COLOR: Record<string, string> = {
   HIGH: 'text-red-400', MEDIUM: 'text-amber-400', LOW: 'text-slate-500',
 };
 
+// Demo Seed Data
+const DEMO_SEGMENTS = [
+  { behaviorSegment: 'FINANCING_FIRST', urgencyLevel: 'HIGH', _count: 42 },
+  { behaviorSegment: 'FINANCING_FIRST', urgencyLevel: 'MEDIUM', _count: 115 },
+  { behaviorSegment: 'STORM_CLAIMANT', urgencyLevel: 'HIGH', _count: 18 },
+  { behaviorSegment: 'COMPARISON_SHOPPER', urgencyLevel: 'MEDIUM', _count: 89 },
+  { behaviorSegment: 'AESTHETIC_DRIVEN', urgencyLevel: 'LOW', _count: 54 },
+  { behaviorSegment: 'URGENT_REPLACER', urgencyLevel: 'HIGH', _count: 22 },
+];
+
+const DEMO_RECENT = [
+  { id: '1', behaviorSegment: 'FINANCING_FIRST', productSignals: ['Windows', 'Doors'], urgencyLevel: 'HIGH', financingPageVisit: true, quotePageVisit: true, pageViewCount: 8, lastSeen: new Date().toISOString(), sourceChannel: 'facebook', retargetingAngles: { facebook: 'Don\'t let budget stop you from upgrading your windows. See our $0 down financing options today.', email: 'Complete your quote request to lock in our current financing rates.' } },
+  { id: '2', behaviorSegment: 'STORM_CLAIMANT', productSignals: ['Siding', 'Windows'], urgencyLevel: 'HIGH', financingPageVisit: false, quotePageVisit: true, pageViewCount: 4, lastSeen: new Date(Date.now() - 3600000).toISOString(), sourceChannel: 'organic', retargetingAngles: { facebook: 'Worried about storm damage? Claim your free inspection before the next weather event.', email: 'Our insurance claims team is ready to help you navigate your siding replacement.' } },
+  { id: '3', behaviorSegment: 'COMPARISON_SHOPPER', productSignals: ['Windows'], urgencyLevel: 'MEDIUM', financingPageVisit: true, quotePageVisit: false, pageViewCount: 12, lastSeen: new Date(Date.now() - 7200000).toISOString(), sourceChannel: 'google', retargetingAngles: { google: 'Looking for the best window value? We beat any written quote.' } },
+  { id: '4', behaviorSegment: 'URGENT_REPLACER', productSignals: ['Doors'], urgencyLevel: 'HIGH', financingPageVisit: false, quotePageVisit: true, pageViewCount: 3, lastSeen: new Date(Date.now() - 86400000).toISOString(), sourceChannel: 'direct' },
+];
+
+const DEMO_CAMPAIGNS = [
+  { id: 'c1', headline: 'Beat Any Written Quote Guarantee', priority: 'high', channel: 'facebook', bodyText: 'Stop shopping around. Bring us your best quote and we will beat it, guaranteed. Plus, get 0% financing for 12 months.', ctaText: 'Get Guaranteed Price', landingPagePath: '/guarantee', visualConcept: 'Side-by-side price comparison showing WindowWorld saving $2k+' },
+  { id: 'c2', headline: '0% Down, 0% Interest for 18 Months', priority: 'critical', channel: 'google', bodyText: 'Upgrade your home\'s efficiency without breaking the bank. Zero payments until next year.', ctaText: 'See Financing Options', landingPagePath: '/financing', visualConcept: 'Happy family in well-lit room with "0% Down" overlay' },
+];
+
 export function IntentDashboardPage() {
+  const user = useAuthStore((s) => s.user);
   const [activeSegment, setActiveSegment] = useState<string | null>(null);
 
   const { data: segmentData, isLoading } = useQuery({
@@ -32,15 +58,17 @@ export function IntentDashboardPage() {
     refetchInterval: 5 * 60_000,
   });
 
-  const { data: campaigns = [] } = useQuery({
+  const { data: apiCampaigns = [] } = useQuery({
     queryKey: ['campaigns', activeSegment],
     queryFn: () => (apiClient as any).intelligence.getCampaigns(activeSegment || undefined),
     staleTime: 10 * 60_000,
     enabled: !!activeSegment,
   });
 
-  const segments: any[] = segmentData?.segments || [];
-  const recent: any[] = segmentData?.recent || [];
+  const isDemoFallback = isDemoMode(user) && (!segmentData || segmentData.segments?.length === 0);
+  const segments: any[] = isDemoFallback ? DEMO_SEGMENTS : (segmentData?.segments || []);
+  const recent: any[] = isDemoFallback ? DEMO_RECENT : (segmentData?.recent || []);
+  const campaigns: any[] = isDemoFallback && activeSegment ? DEMO_CAMPAIGNS : apiCampaigns;
 
   const totalVisitors = segments.reduce((acc: number, s: any) => acc + s._count, 0);
   const highUrgency = segments.filter((s: any) => s.urgencyLevel === 'HIGH').reduce((a: number, s: any) => a + s._count, 0);
