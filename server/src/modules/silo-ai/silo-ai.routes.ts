@@ -22,9 +22,9 @@ router.get('/morning-brief/:repId', auth.repOrAbove, async (req: Request, res: R
 });
 
 // Phase 3: Appointment Prep
-router.get('/appointment-prep/:appointmentId', auth.repOrAbove, async (req: Request, res: Response) => {
+router.get('/appointment-prep/:id', auth.repOrAbove, async (req: Request, res: Response) => {
   try {
-    const data = await siloAiService.generateAppointmentPrep(req.params.appointmentId as string);
+    const data = await siloAiService.generateAppointmentPrep(req.params.id as string);
     res.json({ success: true, data });
   } catch (error: any) {
     logger.error(`Silo AI appointment-prep error: ${sanitizeForLog(error.message)}`);
@@ -55,9 +55,9 @@ router.post('/live-assist', auth.repOrAbove, async (req: Request, res: Response)
 });
 
 // Phase 6: Proposal Analysis
-router.get('/proposal-analysis/:proposalId', auth.repOrAbove, async (req: Request, res: Response) => {
+router.get('/proposal-analysis/:id', auth.repOrAbove, async (req: Request, res: Response) => {
   try {
-    const data = await siloAiService.analyzeProposal(req.params.proposalId as string);
+    const data = await siloAiService.analyzeProposal(req.params.id as string);
     res.json({ success: true, data });
   } catch (error: any) {
     logger.error(`Silo AI proposal-analysis error: ${sanitizeForLog(error.message)}`);

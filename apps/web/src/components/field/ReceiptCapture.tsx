@@ -222,7 +222,7 @@ export function ReceiptCapture({ leadId, onExpenseSaved }: ReceiptCaptureProps) 
           {/* Preview thumbnail */}
           {preview && (
             <div className="rounded-xl overflow-hidden border border-slate-700/50 aspect-video bg-slate-800 relative">
-              <img src={preview} alt="Receipt preview" className="w-full h-full object-contain" />
+              <img src={preview?.match(/^(blob|data):/i) ? preview : ''} alt="Receipt preview" className="w-full h-full object-contain" />
               {isLoading && (
                 <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/60 gap-2">
                   <SparklesIcon className="h-6 w-6 text-emerald-400 animate-pulse" />
@@ -260,7 +260,7 @@ export function ReceiptCapture({ leadId, onExpenseSaved }: ReceiptCaptureProps) 
           {/* Preview thumbnail (compact) */}
           {preview && (
             <div className="rounded-xl overflow-hidden border border-slate-700/30 h-24 bg-slate-800">
-              <img src={preview} alt="Receipt" className="w-full h-full object-contain" />
+              <img src={preview?.match(/^(blob|data):/i) ? preview : ''} alt="Receipt" className="w-full h-full object-contain" />
             </div>
           )}
 

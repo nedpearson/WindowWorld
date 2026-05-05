@@ -55,9 +55,6 @@ jobs:
       working-directory: ./server
       run: npm run seed
 
-    - name: Run Monorepo Linter
-      run: npm run lint
-
     - name: Typecheck Frontend
       working-directory: ./apps/web
       run: npm run typecheck

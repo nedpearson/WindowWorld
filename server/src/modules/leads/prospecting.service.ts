@@ -1,6 +1,6 @@
 import { prisma } from '../../shared/services/prisma';
 import { aiService } from '../ai-analysis/ai.service';
-import { logger } from '../../shared/utils/logger';
+import { logger, sanitizeForLog } from '../../shared/utils/logger';
 import { LeadStatus } from '@prisma/client';
 
 export class LeadProspectingService {
@@ -11,7 +11,7 @@ export class LeadProspectingService {
   async prospect(organizationId: string, authorId: string, location: string, target: string) {
     const allLeads: any[] = [];
     const sourceResults: Record<string, number> = {};
-    logger.info(`[Prospecting] Starting GOOGLE-FIRST prospect: "${target}" in "${location}"`);
+    logger.info(sanitizeForLog(`[Prospecting] Starting GOOGLE-FIRST prospect: "${target}" in "${location}"`));
 
     // ── Source 1: Google Search (primary) ──
     try {
@@ -19,13 +19,13 @@ export class LeadProspectingService {
       sourceResults['google'] = googleLeads.length;
       if (googleLeads.length > 0) {
         allLeads.push(...googleLeads);
-        logger.info(`[Prospecting] Google returned ${googleLeads.length} leads`);
+        logger.info(sanitizeForLog(`[Prospecting] Google returned ${googleLeads.length} leads`));
       } else {
         logger.warn('[Prospecting] Google returned 0 results');
       }
     } catch (e: any) {
       sourceResults['google'] = 0;
-      logger.warn(`[Prospecting] Google search failed: ${e.message}`);
+      logger.warn(sanitizeForLog(`[Prospecting] Google search failed: ${e.message}`));
     }
 
     // ── Source 1b: Meta Social (Facebook/Instagram public pages) ──
@@ -34,11 +34,11 @@ export class LeadProspectingService {
       sourceResults['meta_social'] = metaLeads.length;
       if (metaLeads.length > 0) {
         allLeads.push(...metaLeads);
-        logger.info(`[Prospecting] Meta social returned ${metaLeads.length} leads`);
+        logger.info(sanitizeForLog(`[Prospecting] Meta social returned ${metaLeads.length} leads`));
       }
     } catch (e: any) {
       sourceResults['meta_social'] = 0;
-      logger.warn(`[Prospecting] Meta social failed: ${e.message}`);
+      logger.warn(sanitizeForLog(`[Prospecting] Meta social failed: ${e.message}`));
     }
 
     // ── Source 2: Convert high-confidence social listening mentions to leads ──
@@ -46,10 +46,10 @@ export class LeadProspectingService {
       const intentLeads = await this.convertIntentMentionsToLeads(organizationId, authorId, location);
       if (intentLeads.length > 0) {
         allLeads.push(...intentLeads);
-        logger.info(`[Prospecting] Intent mentions converted to ${intentLeads.length} leads`);
+        logger.info(sanitizeForLog(`[Prospecting] Intent mentions converted to ${intentLeads.length} leads`));
       }
     } catch (e: any) {
-      logger.warn(`[Prospecting] Intent conversion failed: ${e.message}`);
+      logger.warn(sanitizeForLog(`[Prospecting] Intent conversion failed: ${e.message}`));
     }
 
     // ── Source 3: Generate leads from competitor intelligence gaps ──
@@ -57,10 +57,10 @@ export class LeadProspectingService {
       const intelLeads = await this.generateFromIntelligence(organizationId, authorId, location, target);
       if (intelLeads.length > 0) {
         allLeads.push(...intelLeads);
-        logger.info(`[Prospecting] Intelligence-generated ${intelLeads.length} leads`);
+        logger.info(sanitizeForLog(`[Prospecting] Intelligence-generated ${intelLeads.length} leads`));
       }
     } catch (e: any) {
-      logger.warn(`[Prospecting] Intelligence generation failed: ${e.message}`);
+      logger.warn(sanitizeForLog(`[Prospecting] Intelligence generation failed: ${e.message}`));
     }
 
     // ── Source 4: If all sources returned 0, create AI-researched opportunities ──
@@ -70,11 +70,11 @@ export class LeadProspectingService {
         const aiLeads = await this.generateAIResearchedLeads(organizationId, authorId, location, target);
         allLeads.push(...aiLeads);
       } catch (e: any) {
-        logger.error(`[Prospecting] AI research also failed: ${e.message}`);
+        logger.error(sanitizeForLog(`[Prospecting] AI research also failed: ${e.message}`));
       }
     }
 
-    logger.info(`[Prospecting] Total leads produced: ${allLeads.length}`);
+    logger.info(sanitizeForLog(`[Prospecting] Total leads produced: ${allLeads.length}`));
     return allLeads;
   }
 
@@ -99,7 +99,7 @@ export class LeadProspectingService {
           },
           signal: AbortSignal.timeout(10000),
         });
-        if (!response.ok) { logger.warn(`[Google] Query returned ${response.status}`); continue; }
+        if (!response.ok) { logger.warn(sanitizeForLog(`[Google] Query returned ${response.status}`)); continue; }
         const html = await response.text();
 function stripHtmlSafely(html: string): string {
   let text = '';
@@ -118,9 +118,9 @@ function stripHtmlSafely(html: string): string {
           const clean = stripHtmlSafely(block);
           if (clean.length > 40 && clean.length < 500) allSnippets.push(clean);
         }
-        logger.info(`[Google] Query "${query.substring(0, 50)}..." extracted ${textBlocks.length} blocks`);
+        logger.info(sanitizeForLog(`[Google] Query "${query.substring(0, 50)}..." extracted ${textBlocks.length} blocks`));
       } catch (e: any) {
-        logger.warn(`[Google] Query failed: ${e.message}`);
+        logger.warn(sanitizeForLog(`[Google] Query failed: ${e.message}`));
       }
     }
 
@@ -173,9 +173,9 @@ function stripHtmlSafely(html: string): string {
           }
         }
       }
-      logger.info(`[Meta] Extracted ${leads.length} leads from page comments`);
+      logger.info(sanitizeForLog(`[Meta] Extracted ${leads.length} leads from page comments`));
     } catch (e: any) {
-      logger.error(`[Meta] Graph API call failed: ${e.message}`);
+      logger.error(sanitizeForLog(`[Meta] Graph API call failed: ${e.message}`));
     }
     return leads;
   }
@@ -387,7 +387,7 @@ Return ONLY the JSON array.`;
     try {
       aiResponse = await aiService.generateText(prompt);
     } catch (aiErr: any) {
-      logger.warn(`[Prospecting] AI text generation failed: ${aiErr.message}. Using market-based fallbacks.`);
+      logger.warn(sanitizeForLog(`[Prospecting] AI text generation failed: ${aiErr.message}. Using market-based fallbacks.`));
       // Market-based fallback leads derived from research
       return this.createMarketBasedLeads(orgId, authorId, location);
     }
@@ -449,7 +449,7 @@ ${text}`;
     try {
       aiResponse = await aiService.generateText(prompt);
     } catch (aiErr: any) {
-      logger.warn(`[Prospecting] AI extraction failed: ${aiErr.message}`);
+      logger.warn(sanitizeForLog(`[Prospecting] AI extraction failed: ${aiErr.message}`));
       return [];
     }
 
@@ -466,7 +466,7 @@ ${text}`;
       else if (parsed?.leads && Array.isArray(parsed.leads)) parsedLeads = parsed.leads;
       else if (parsed && typeof parsed === 'object') parsedLeads = [parsed];
     } catch (e) {
-      logger.error('[Prospecting] Failed to parse AI response JSON', e);
+      logger.error(`[Prospecting] Failed to parse AI response JSON: ${sanitizeForLog(e.message)}`);
       return [];
     }
 

@@ -336,7 +336,7 @@ export function MeasurementPage() {
           </label>
           {attachedPhotoUrl && !photoUploading && (
             <div className="mt-2 flex items-center gap-2">
-              <img src={attachedPhotoUrl} alt="Attached" className="w-12 h-12 rounded-lg object-cover border border-slate-700" />
+              <img src={attachedPhotoUrl?.match(/^(blob|data):/i) ? attachedPhotoUrl : ''} alt="Attached" className="w-12 h-12 rounded-lg object-cover border border-slate-700" />
               <div className="flex items-center gap-1 text-xs text-emerald-400">
                 <CheckCircleIcon className="h-3.5 w-3.5" />
                 Photo saved
