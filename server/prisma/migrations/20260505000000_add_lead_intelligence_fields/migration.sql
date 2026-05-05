@@ -1,4 +1,4 @@
-﻿-- AlterTable
+-- AlterTable
 ALTER TABLE "lead_scores" ADD COLUMN     "assignedPersona" TEXT,
 ADD COLUMN     "budgetSensitivityScore" DOUBLE PRECISION DEFAULT 0,
 ADD COLUMN     "competitorContext" TEXT,
