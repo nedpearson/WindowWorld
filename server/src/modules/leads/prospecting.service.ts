@@ -371,9 +371,12 @@ function stripHtmlSafely(html: string): string {
 
   // ── AI-Researched Local Opportunities (Last Resort) ────────────────
   private async generateAIResearchedLeads(orgId: string, authorId: string, location: string, target: string) {
+    const isRealtor = target.toLowerCase().includes('realtor') || target.toLowerCase().includes('brokerage');
+    const isDeveloper = target.toLowerCase().includes('developer') || target.toLowerCase().includes('builder');
+
     // Try AI generation first
     let aiResponse = '';
-    const prompt = `You are a lead generation AI for a Window, Door, and Siding replacement company in ${location}.
+    let prompt = `You are a lead generation AI for a Window, Door, and Siding replacement company in ${location}.
 Generate exactly 5 realistic B2B and B2C lead opportunities based on common patterns in the ${location} market.
 Each lead should represent a real type of opportunity (property manager, HOA, homeowner post-storm, aging home, etc.).
 Use realistic names, titles, and reasons. Do NOT use real phone numbers — use (225) 555-XXXX format.
@@ -383,6 +386,20 @@ category: windows|doors|siding|multi
 urgency: researching|quote_seeking|urgent_damage|financing_focused
 
 Return ONLY the JSON array.`;
+
+    if (isRealtor) {
+      prompt = `You are a lead generation AI.
+Generate exactly 3 realistic Real Estate Brokerages or Realtors in ${location}.
+Use realistic names and brokerages. Do NOT use real phone numbers — use (225) 555-XXXX format.
+Format as JSON array: [{"name","brokerage","role","phone","email","address","website","notes"}]
+Return ONLY the JSON array.`;
+    } else if (isDeveloper) {
+      prompt = `You are a lead generation AI.
+Generate exactly 3 realistic Residential Home Builders or Developers in ${location}.
+Use realistic company names. Do NOT use real phone numbers — use (225) 555-XXXX format.
+Format as JSON array: [{"companyName","contactName","role","phone","email","address","website","notes"}]
+Return ONLY the JSON array.`;
+    }
 
     try {
       aiResponse = await aiService.generateText(prompt);
@@ -435,15 +452,31 @@ Return ONLY the JSON array.`;
 
   // ── AI Extraction Helper ───────────────────────────────────────────
   private async extractLeadsWithAI(orgId: string, authorId: string, location: string, target: string, text: string, source: string) {
-    const prompt = `You are an AI prospecting agent for a Window Replacement company.
+    const isRealtor = target.toLowerCase().includes('realtor') || target.toLowerCase().includes('brokerage');
+    const isDeveloper = target.toLowerCase().includes('developer') || target.toLowerCase().includes('builder');
+
+    let prompt = `You are an AI prospecting agent for a Window Replacement company.
 Analyze the following search engine snippets and extract B2B or B2C contact leads.
 Prioritize Property Managers, HOAs, Real Estate Agents, or Homeowners.
 Extract people or businesses with real names, phone numbers, and emails.
-Format as JSON array: [{"firstName","lastName","phone","email","address","company","reason"}]
-If a field is missing, use empty string. Only return JSON array. Do not invent details.
+Format as JSON array: [{"firstName","lastName","phone","email","address","company","reason","role","website"}]
+If a field is missing, use empty string. Only return JSON array. Do not invent details.`;
 
-Snippets:
-${text}`;
+    if (isRealtor) {
+      prompt = `You are an AI prospecting agent.
+Analyze the following search engine snippets and extract Real Estate Brokerages and Realtors in ${location}.
+Extract real names, roles, phone numbers, emails, and websites. Do NOT hallucinate phone numbers or emails. If missing, leave empty or use "Not Available".
+Format as JSON array: [{"name","brokerage","role","phone","email","address","website","notes"}]
+Only return JSON array.`;
+    } else if (isDeveloper) {
+      prompt = `You are an AI prospecting agent.
+Analyze the following search engine snippets and extract Residential Home Builders and Developers in ${location}.
+Extract real names, roles, phone numbers, emails, and websites. Do NOT hallucinate phone numbers or emails. If missing, leave empty or use "Not Available".
+Format as JSON array: [{"companyName","contactName","role","phone","email","address","website","notes"}]
+Only return JSON array.`;
+    }
+
+    prompt += `\n\nSnippets:\n${text}`;
 
     let aiResponse = '';
     try {
@@ -470,38 +503,91 @@ ${text}`;
       return [];
     }
 
+    const isRealtor = target.toLowerCase().includes('realtor') || target.toLowerCase().includes('brokerage');
+    const isDeveloper = target.toLowerCase().includes('developer') || target.toLowerCase().includes('builder');
+
     const createdLeads = [];
     for (const p of parsedLeads) {
-      if (!p.firstName && !p.lastName && !p.company) continue;
+      if (isRealtor) {
+        if (!p.brokerage && !p.name) continue;
+        const realtor = await prisma.realtor.create({
+          data: {
+            organizationId: orgId,
+            name: p.name || 'Office Contact',
+            brokerage: p.brokerage || 'Real Estate Office',
+            role: p.role || 'Broker/Agent',
+            phone: p.phone || null,
+            email: p.email || null,
+            address: p.address || null,
+            city: location.split(',')[0].trim(),
+            website: p.website || null,
+            batonRougePriority: location.toLowerCase().includes('baton rouge'),
+            partnershipScore: Math.floor(Math.random() * 20) + 70,
+            confidence: 0.8,
+            source: 'AI Internet Prospecting',
+            notes: p.notes || 'Found via search extraction.',
+          }
+        });
+        createdLeads.push(realtor);
+      } else if (isDeveloper) {
+        if (!p.companyName) continue;
+        const developer = await prisma.developer.create({
+          data: {
+            organizationId: orgId,
+            companyName: p.companyName,
+            contactName: p.contactName || 'Main Office',
+            role: p.role || 'General Inquiries',
+            phone: p.phone || null,
+            email: p.email || null,
+            address: p.address || null,
+            city: location.split(',')[0].trim(),
+            website: p.website || null,
+            batonRougePriority: location.toLowerCase().includes('baton rouge'),
+            partnershipScore: Math.floor(Math.random() * 20) + 70,
+            confidence: 0.8,
+            source: 'AI Internet Prospecting',
+            notes: p.notes || 'Found via search extraction.',
+          }
+        });
+        createdLeads.push(developer);
+      } else {
+        if (!p.firstName && !p.lastName && !p.company) continue;
 
-      let firstName = p.firstName || '';
-      let lastName = p.lastName || '';
-      if (!firstName && !lastName && p.company) {
-        const parts = p.company.split(' ');
-        firstName = parts[0];
-        lastName = parts.slice(1).join(' ') || 'LLC';
+        let firstName = p.firstName || '';
+        let lastName = p.lastName || '';
+        if (!firstName && !lastName && p.company) {
+          const parts = p.company.split(' ');
+          firstName = parts[0];
+          lastName = parts.slice(1).join(' ') || 'LLC';
+        }
+
+        const lead = await prisma.lead.create({
+          data: {
+            organizationId: orgId,
+            assignedRepId: authorId,
+            firstName: firstName || 'Internet',
+            lastName: lastName || 'Lead',
+            phone: p.phone || null,
+            email: p.email || null,
+            address: p.address || null,
+            city: location.split(',')[0].trim(),
+            companyName: p.company || null,
+            website: p.website || null,
+            contactRole: p.role || null,
+            contactConfidence: 0.75,
+            intelligenceSource: source,
+            intelligenceNotes: p.reason || 'Found via search',
+            source,
+            status: LeadStatus.NEW_LEAD,
+            notes: `[AI Prospecting - ${source}]\nReason: ${p.reason || 'Found via search'}\nCompany: ${p.company || 'N/A'}\nSearch: ${target}\nCategory: ${p.category || 'general'}\nUrgency: ${p.urgency || 'researching'}`,
+            leadScore: Math.floor(Math.random() * 20) + 75,
+            urgencyScore: p.urgency === 'urgent_damage' ? 95 : p.urgency === 'quote_seeking' ? 80 : 60,
+            isStormLead: target.toLowerCase().includes('storm') || p.urgency === 'urgent_damage',
+            estimatedRevenue: Math.floor(Math.random() * 20000) + 5000,
+          },
+        });
+        createdLeads.push(lead);
       }
-
-      const lead = await prisma.lead.create({
-        data: {
-          organizationId: orgId,
-          assignedRepId: authorId,
-          firstName: firstName || 'Internet',
-          lastName: lastName || 'Lead',
-          phone: p.phone || null,
-          email: p.email || null,
-          address: p.address || null,
-          city: location.split(',')[0].trim(),
-          source,
-          status: LeadStatus.NEW_LEAD,
-          notes: `[AI Prospecting - ${source}]\nReason: ${p.reason || 'Found via search'}\nCompany: ${p.company || 'N/A'}\nSearch: ${target}\nCategory: ${p.category || 'general'}\nUrgency: ${p.urgency || 'researching'}`,
-          leadScore: Math.floor(Math.random() * 20) + 75,
-          urgencyScore: p.urgency === 'urgent_damage' ? 95 : p.urgency === 'quote_seeking' ? 80 : 60,
-          isStormLead: target.toLowerCase().includes('storm') || p.urgency === 'urgent_damage',
-          estimatedRevenue: Math.floor(Math.random() * 20000) + 5000,
-        },
-      });
-      createdLeads.push(lead);
     }
 
     return createdLeads;

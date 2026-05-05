@@ -8,7 +8,7 @@ async function test() {
   if (!user) throw new Error('User not found');
   console.log('Testing prospecting for org:', user.organizationId);
   
-  const leads = await leadProspectingService.prospect(user.organizationId, user.id, 'Baton Rouge, Louisiana', 'Property Management and HOAs');
+  const leads = await leadProspectingService.prospect(user.organizationId, user.id, 'Baton Rouge, Louisiana', 'Residential Home Builders and Developers');
   console.log('Leads found:', leads);
 }
 

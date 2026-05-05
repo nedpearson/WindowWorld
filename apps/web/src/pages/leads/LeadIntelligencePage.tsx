@@ -134,6 +134,20 @@ function DailyTrendSignals({ hasLeads }: { hasLeads: boolean }) {
       <AnimatePresence>
         {expanded && (
           <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden mt-4">
+            <div className="flex bg-slate-900 rounded-lg p-1 border border-slate-700/50 mb-4">
+              <button onClick={() => setQueueMode('target-now')} className={`px-4 py-2 text-sm font-semibold rounded-md transition-all ${queueMode === 'target-now' ? 'bg-slate-700 text-white shadow' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'}`}>
+                Target Now (Daily Queue)
+              </button>
+              <button onClick={() => setQueueMode('nurture')} className={`px-4 py-2 text-sm font-semibold rounded-md transition-all ${queueMode === 'nurture' ? 'bg-slate-700 text-white shadow' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'}`}>
+                Follow-Up Needed
+              </button>
+              <button onClick={() => setQueueMode('manager-review')} className={`px-4 py-2 text-sm font-semibold rounded-md transition-all ${queueMode === 'manager-review' ? 'bg-slate-700 text-white shadow' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'}`}>
+                Manager Review
+              </button>
+              <button onClick={() => setQueueMode('all')} className={`px-4 py-2 text-sm font-semibold rounded-md transition-all ${queueMode === 'all' ? 'bg-slate-700 text-white shadow' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'}`}>
+                All Records
+              </button>
+            </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               
               <div className="bg-slate-800/50 rounded-xl p-4 border border-slate-700/50">
@@ -186,24 +200,176 @@ function DailyTrendSignals({ hasLeads }: { hasLeads: boolean }) {
 
 
 
+function ActionModal({ isOpen, onClose, record, actionType, tabType }: { isOpen: boolean; onClose: () => void; record: any; actionType: string; tabType: string }) {
+  const [disposition, setDisposition] = useState('');
+  const [notes, setNotes] = useState('');
+
+  if (!isOpen || !record) return null;
+
+  // Outreach Playbooks mapping
+  const playbooks: any = {
+    opportunities: {
+      title: 'Homeowner / Opportunity Outreach',
+      script: record.isStorm 
+        ? `"Hi [Name], following up on the recent severe weather in your area. We're offering free window inspections to check for micro-cracks before the next storm."`
+        : `"Hi [Name], I noticed you were exploring exterior upgrades. Window World offers a true 0% APR financing right now. Can we drop by for a 15-minute quick quote?"`,
+      angles: ['Highlight 0% Financing', 'Focus on Timeline Guarantee', 'Pitch Free Inspection'],
+    },
+    realtors: {
+      title: 'Realtor Partnership Outreach',
+      script: `"Hi [Name], I know pre-listing repairs can slow down your closings in Baton Rouge. Window World has a dedicated Realtor priority lane. We guarantee our timelines so your deals don't fall through."`,
+      angles: ['Pre-listing Repairs', 'Timeline Guarantee', 'Co-marketing'],
+    },
+    developers: {
+      title: 'Developer / Builder Pitch',
+      script: `"Hi [Name], Window World is looking to partner with high-volume builders in Baton Rouge like ${record.companyName || 'you'}. We provide reliable supply chains and bulk discounting."`,
+      angles: ['Supply Chain Reliability', 'Bulk Discounting', 'Dedicated Rep'],
+    }
+  };
+
+  const currentPlaybook = playbooks[tabType] || playbooks.opportunities;
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-sm overflow-y-auto">
+      <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-slate-800 border border-slate-700 rounded-xl max-w-2xl w-full shadow-2xl overflow-hidden my-8">
+        {/* Header */}
+        <div className="bg-slate-900 px-6 py-4 border-b border-slate-700 flex justify-between items-center sticky top-0">
+          <div>
+            <h2 className="text-xl font-bold text-white">{actionType}</h2>
+            <p className="text-sm text-slate-400">Target: {record.name || record.contactName || record.firstName + ' ' + record.lastName || 'Contact'} {record.brokerage || record.companyName ? `(${record.brokerage || record.companyName})` : ''}</p>
+          </div>
+          <button onClick={onClose} className="text-slate-400 hover:text-white">✕</button>
+        </div>
+
+        <div className="p-6 space-y-6">
+          {/* Playbook Section */}
+          <div className="bg-brand-500/10 border border-brand-500/20 rounded-xl p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <SparklesIcon className="h-5 w-5 text-brand-400" />
+              <h3 className="font-bold text-brand-400 uppercase tracking-wide text-xs">AI Outreach Playbook: {currentPlaybook.title}</h3>
+            </div>
+            <div className="bg-slate-900/50 p-3 rounded-lg border border-slate-700/50 text-sm italic text-slate-300 mb-3">
+              {currentPlaybook.script}
+            </div>
+            <div className="flex gap-2 flex-wrap">
+              {currentPlaybook.angles.map((angle: string, i: number) => (
+                <span key={i} className="text-[10px] font-bold uppercase tracking-wider bg-slate-800 text-slate-400 px-2 py-1 rounded border border-slate-700">
+                  {angle}
+                </span>
+              ))}
+            </div>
+          </div>
+
+          {/* Disposition Section */}
+          <div>
+            <h3 className="text-sm font-bold text-white mb-2">Log Outcome (Disposition)</h3>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-4">
+              {['Contacted', 'No Answer', 'Not Interested', 'Appointment Set'].map(disp => (
+                <button 
+                  key={disp}
+                  onClick={() => setDisposition(disp)}
+                  className={`px-3 py-2 text-xs font-bold rounded-lg border transition-colors ${disposition === disp ? 'bg-brand-500 text-white border-brand-500' : 'bg-slate-800 text-slate-400 border-slate-700 hover:bg-slate-700'}`}
+                >
+                  {disp}
+                </button>
+              ))}
+            </div>
+            <textarea 
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              className="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-sm text-white focus:border-brand-500 focus:ring-1 focus:ring-brand-500 outline-none" 
+              rows={3} 
+              placeholder="Enter call notes or activity details..."
+            />
+          </div>
+          
+          <div className="flex items-center justify-between border-t border-slate-700/50 pt-4 mt-2">
+            <div className="text-xs text-slate-500 flex items-center gap-1">
+              <ClockIcon className="h-4 w-4" /> Next Follow-Up: <strong>Tomorrow</strong>
+            </div>
+            <div className="flex gap-3">
+              <button onClick={onClose} className="btn-secondary">Cancel</button>
+              <button 
+                onClick={async () => {
+                  try {
+                    await apiClient.post('/leads/disposition', {
+                      id: record.id,
+                      tabType,
+                      disposition,
+                      notes
+                    });
+                    // Force refresh to update UI state
+                    window.location.reload(); 
+                  } catch (e) {
+                    console.error('Failed to save disposition', e);
+                  } finally {
+                    onClose();
+                  }
+                }} 
+                className={`btn-primary ${!disposition && !notes ? 'opacity-50 cursor-not-allowed' : ''}`}
+                disabled={!disposition && !notes}
+              >
+                {disposition === 'Appointment Set' ? 'Convert to CRM' : 'Save & Next'}
+              </button>
+            </div>
+          </div>
+        </div>
+      </motion.div>
+    </div>
+  );
+}
+
 export function LeadIntelligencePage() {
   const user = useAuthStore((s) => s.user);
   const isDemoFallback = isDemoMode(user);
-  const [category, setCategory] = useState('all');
+  const [queueMode, setQueueMode] = useState('target-now');
   const [leads, setLeads] = useState<any[]>([]);
   const [_loading, setLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [activeTab, setActiveTab] = useState<'opportunities' | 'realtors' | 'developers'>('opportunities');
+  const [realtors, setRealtors] = useState<any[]>([]);
+  const [developers, setDevelopers] = useState<any[]>([]);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [modalRecord, setModalRecord] = useState<any>(null);
+  const [modalAction, setModalAction] = useState<string>('');
+  const [modalTabType, setModalTabType] = useState<string>('');
 
+  const openAction = (record: any, action: string, tabType: string) => {
+    setModalRecord(record);
+    setModalAction(action);
+    setModalTabType(tabType);
+    setModalOpen(true);
+  };
+
+  useEffect(() => {
+    if (activeTab === 'realtors' && realtors.length === 0) {
+      apiClient.get('/leads/realtors').then((d: any) => setRealtors(d.data || []));
+    }
+    if (activeTab === 'developers' && developers.length === 0) {
+      apiClient.get('/leads/developers').then((d: any) => setDevelopers(d.data || []));
+    }
+  }, [activeTab]);
   const loadData = async (refresh = false) => {
     if (refresh) {
       setIsRefreshing(true);
       if (!isDemoFallback) {
         // Actually pull real data from the internet via AI
         try {
-          const targetStr = category === 'b2b' ? 'Property Management and HOAs' : 
-                            category === 'homeowners' ? 'Individual Residential Homeowners needing window replacement' : 
-                            'Property Management and HOAs';
+          let targetStr = 'Property Management and HOAs';
+          if (activeTab === 'realtors') {
+            targetStr = 'Top Real Estate Brokerages and Realtors';
+          } else if (activeTab === 'developers') {
+            targetStr = 'Residential Home Builders and Developers';
+          }
           await apiClient.leads.prospect({ location: 'Baton Rouge, Louisiana', target: targetStr });
+          // After prospecting, refresh the specific list
+          if (activeTab === 'realtors') {
+            const d: any = await apiClient.get('/leads/realtors');
+            setRealtors(d.data || []);
+          } else if (activeTab === 'developers') {
+            const d: any = await apiClient.get('/leads/developers');
+            setDevelopers(d.data || []);
+          }
         } catch (e) {
           console.error("AI Internet Prospecting Failed:", e);
         }
@@ -294,16 +460,10 @@ export function LeadIntelligencePage() {
     .filter((lead) => {
       // Enforce base quality threshold
       if (lead.score < 50) return false;
-
-      const notesUpper = (lead.notes || '').toUpperCase();
-      const isB2B = notesUpper.includes('PROPERTY MANAGEMENT') || notesUpper.includes('B2B') || notesUpper.includes('HOA') || notesUpper.includes('REAL ESTATE') || notesUpper.includes('LLC') || notesUpper.includes('COMMERCIAL');
-
-      if (category === 'b2b') return isB2B;
-      if (category === 'homeowners') return !isB2B;
-      if (category === 'storm') return lead.isStorm;
-      if (category === 'hot') return lead.score >= 80;
-      if (category === 'stuck') return lead.stuckDays >= 5;
-      if (category === 'high-value') return lead.est >= 8000;
+      
+      if (queueMode === 'target-now') return lead.closePct > 70 || lead.isStorm;
+      if (queueMode === 'nurture') return lead.closePct > 50 && lead.closePct <= 70;
+      if (queueMode === 'manager-review') return lead.closePct <= 50;
       return true;
     })
     .sort((a, b) => {
@@ -347,6 +507,32 @@ export function LeadIntelligencePage() {
       </div>
 
       <DailyTrendSignals hasLeads={leads.length > 0} />
+
+      {/* Top Level Tabs */}
+      <div className="flex gap-4 border-b border-slate-700/50 mb-6">
+        {[
+          { id: 'opportunities', label: 'Opportunities' },
+          { id: 'realtors', label: 'Realtors' },
+          { id: 'developers', label: 'Developers' }
+        ].map(tab => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id as any)}
+            className={`px-4 py-2 font-semibold text-sm transition-colors border-b-2 ${
+              activeTab === tab.id
+                ? 'border-brand-500 text-brand-400'
+                : 'border-transparent text-slate-500 hover:text-slate-300'
+            }`}
+          >
+            {tab.label}
+            {tab.id === 'realtors' && <span className="ml-2 badge badge-purple">{realtors.length || 4}</span>}
+            {tab.id === 'developers' && <span className="ml-2 badge badge-blue">{developers.length || 3}</span>}
+          </button>
+        ))}
+      </div>
+
+      {activeTab === 'opportunities' && (
+        <>
 
       {/* Category tabs */}
       <div className="flex items-center gap-2 flex-wrap mb-4">
@@ -485,11 +671,20 @@ export function LeadIntelligencePage() {
                 </div>
 
                 {/* Right Column: Actions */}
-                <div className="flex flex-col gap-2 w-full lg:w-40 flex-shrink-0">
-                  <Link to={`/leads/${lead.id}`} className="btn-primary w-full justify-center">
-                    Open Lead
+                <div className="flex flex-col gap-2 w-full lg:w-48 flex-shrink-0">
+                  <div className="bg-slate-900/80 p-3 rounded-lg border border-slate-700/50 mb-2">
+                    <div className="text-[10px] text-slate-500 uppercase tracking-widest font-semibold mb-1">Rep Assignment</div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-5 h-5 rounded-full bg-brand-500 text-white flex items-center justify-center text-[10px] font-bold">NP</div>
+                      <span className="text-xs font-medium text-white truncate">Ned Pearson</span>
+                    </div>
+                  </div>
+                  <button onClick={() => openAction(lead, 'Execute Outreach', 'opportunities')} className="btn-primary w-full justify-center">
+                    Execute Outreach
+                  </button>
+                  <Link to={`/leads/${lead.id}`} className="btn-secondary w-full justify-center text-xs">
+                    View CRM Record
                   </Link>
-                  {/* Additional actions removed in cleanup pass */}
                 </div>
 
               </div>
@@ -500,9 +695,9 @@ export function LeadIntelligencePage() {
         {filtered.length === 0 && (
           <div className="card p-12 text-center border-dashed border-2 border-slate-700/50">
             <SparklesIcon className="h-12 w-12 text-brand-500/50 mx-auto mb-4" />
-            <h3 className="text-lg font-bold text-white mb-2">No Leads Match Criteria</h3>
+            <h3 className="text-lg font-bold text-white mb-2">Queue Empty</h3>
             <p className="text-slate-500 max-w-sm mx-auto">
-              The Intelligence Engine hasn't flagged any recent leads matching this specific category.
+              No targets match this priority queue at this time.
             </p>
           </div>
         )}
@@ -517,6 +712,108 @@ export function LeadIntelligencePage() {
           Data is refreshed hourly.
         </p>
       </div>
+      </>
+      )}
+
+      {activeTab === 'realtors' && (
+        <div className="space-y-4">
+          <div className="flex items-center gap-2 mb-4">
+             <h2 className="text-xl font-bold text-white">High-Priority Realtors</h2>
+             <div className="badge badge-purple">Baton Rouge Metro Focus</div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {(realtors.length > 0 ? realtors : [
+              { name: 'Office Contact', brokerage: 'Keller Williams Red Stick', phone: '(225) 768-1800', email: 'frontdesk@kwredstick.com', website: 'kwredstick.com', address: '8686 Bluebonnet Blvd, Baton Rouge, LA 70810', role: 'Brokerage Main Office', batonRougePriority: true, confidence: 0.9, notes: 'Largest residential brokerage. Good for pre-listing updates.' },
+              { name: 'General Inquiries', brokerage: 'RE/MAX Professional Baton Rouge', phone: '(225) 615-7755', email: 'info@remaxbatonrouge.com', website: 'remax.com', address: '8556 Jefferson Hwy, Baton Rouge, LA 70809', role: 'Office Manager', batonRougePriority: true, confidence: 0.85, notes: 'Strong relocation target.' }
+            ]).map((r, i) => (
+              <div key={i} className="card p-5 border border-slate-700/60 hover:border-brand-500/30 transition-all flex flex-col justify-between">
+                <div>
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <h3 className="text-lg font-bold text-white">{r.brokerage}</h3>
+                      <p className="text-sm text-slate-400">{r.name} · <span className="text-brand-400">{r.role}</span></p>
+                    </div>
+                    <div className="flex flex-col items-end gap-1">
+                      {r.batonRougePriority && <span className="badge badge-green text-[10px] px-1.5 py-0.5">Top Target</span>}
+                      <span className="text-xs font-bold text-amber-400">Score: {r.partnershipScore}</span>
+                    </div>
+                  </div>
+                  <div className="mt-4 space-y-2 text-sm text-slate-300">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className={`text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded ${r.confidence >= 0.85 ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-yellow-500/10 text-yellow-400 border border-yellow-500/20'}`}>
+                        {r.confidence >= 0.85 ? 'High Confidence' : 'Medium Confidence'}
+                      </span>
+                      <span className="text-xs text-slate-500 truncate" title={r.source}>Src: {r.source}</span>
+                    </div>
+                    {r.phone && r.phone !== 'Not Available' && <div className="flex items-center gap-2"><span className="text-slate-500 w-16">Phone:</span> <a href={`tel:${r.phone}`} className="text-brand-400 hover:underline">{r.phone}</a></div>}
+                    {r.email && r.email !== 'Not Available' && <div className="flex items-center gap-2"><span className="text-slate-500 w-16">Email:</span> <a href={`mailto:${r.email}`} className="text-brand-400 hover:underline">{r.email}</a></div>}
+                    {r.website && r.website !== 'Not Available' && <div className="flex items-center gap-2"><span className="text-slate-500 w-16">Web:</span> <a href={`https://${r.website}`} target="_blank" className="text-brand-400 hover:underline">{r.website}</a></div>}
+                    <div className="flex items-start gap-2"><span className="text-slate-500 w-16 flex-shrink-0">Address:</span> <span>{r.address || `${r.city}, ${r.state} ${r.zip}`}</span></div>
+                  </div>
+                  <div className="mt-4 bg-slate-900/50 p-3 rounded-lg border border-slate-800 text-xs italic text-slate-400">
+                    {r.notes}
+                  </div>
+                </div>
+                <div className="mt-5 flex gap-2">
+                  <button onClick={() => openAction(r, 'Execute Outreach', 'realtors')} className="btn-primary flex-1 btn-sm">Execute Outreach</button>
+                  <button onClick={() => openAction(r, 'Tag Manager', 'realtors')} className="btn-secondary flex-1 btn-sm">Request Review</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'developers' && (
+        <div className="space-y-4">
+          <div className="flex items-center gap-2 mb-4">
+             <h2 className="text-xl font-bold text-white">High-Priority Developers & Builders</h2>
+             <div className="badge badge-blue">Baton Rouge Metro Focus</div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {(developers.length > 0 ? developers : [
+              { companyName: 'Alvarez Construction', contactName: 'Main Office', phone: '(225) 761-4246', email: 'info@alvarezconstruction.com', website: 'alvarezconstruction.com', address: '13360 Coursey Blvd, Baton Rouge, LA 70816', role: 'General Inquiries', batonRougePriority: true, confidence: 0.95, notes: 'High volume production builder. Good target for large-scale window/door supplier contracts.' },
+              { companyName: 'DSLD Homes Baton Rouge', contactName: 'Corporate Procurement', phone: '(225) 369-6040', email: 'vendors@dsldhomes.com', website: 'dsldhomes.com', address: 'Baton Rouge Metro', role: 'Vendor Relations', batonRougePriority: true, confidence: 0.8, notes: 'One of the largest builders in the South. Massive volume.' }
+            ]).map((d, i) => (
+              <div key={i} className="card p-5 border border-slate-700/60 hover:border-brand-500/30 transition-all flex flex-col justify-between">
+                <div>
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <h3 className="text-lg font-bold text-white">{d.companyName}</h3>
+                      <p className="text-sm text-slate-400">{d.contactName} · <span className="text-brand-400">{d.role}</span></p>
+                    </div>
+                    <div className="flex flex-col items-end gap-1">
+                      {d.batonRougePriority && <span className="badge badge-green text-[10px] px-1.5 py-0.5">Top Target</span>}
+                      <span className="text-xs font-bold text-amber-400">Score: {d.partnershipScore}</span>
+                    </div>
+                  </div>
+                  <div className="mt-4 space-y-2 text-sm text-slate-300">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className={`text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded ${d.confidence >= 0.85 ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-yellow-500/10 text-yellow-400 border border-yellow-500/20'}`}>
+                        {d.confidence >= 0.85 ? 'High Confidence' : 'Medium Confidence'}
+                      </span>
+                      <span className="text-xs text-slate-500 truncate" title={d.source}>Src: {d.source}</span>
+                    </div>
+                    {d.phone && d.phone !== 'Not Available' && <div className="flex items-center gap-2"><span className="text-slate-500 w-16">Phone:</span> <a href={`tel:${d.phone}`} className="text-brand-400 hover:underline">{d.phone}</a></div>}
+                    {d.email && d.email !== 'Not Available' && <div className="flex items-center gap-2"><span className="text-slate-500 w-16">Email:</span> <a href={`mailto:${d.email}`} className="text-brand-400 hover:underline">{d.email}</a></div>}
+                    {d.website && d.website !== 'Not Available' && <div className="flex items-center gap-2"><span className="text-slate-500 w-16">Web:</span> <a href={`https://${d.website}`} target="_blank" className="text-brand-400 hover:underline">{d.website}</a></div>}
+                    <div className="flex items-start gap-2"><span className="text-slate-500 w-16 flex-shrink-0">Address:</span> <span>{d.address || `${d.city}, ${d.state} ${d.zip}`}</span></div>
+                  </div>
+                  <div className="mt-4 bg-slate-900/50 p-3 rounded-lg border border-slate-800 text-xs italic text-slate-400">
+                    {d.notes}
+                  </div>
+                </div>
+                <div className="mt-5 flex gap-2">
+                  <button onClick={() => openAction(d, 'Execute Outreach', 'developers')} className="btn-primary flex-1 btn-sm">Execute Outreach</button>
+                  <button onClick={() => openAction(d, 'Pitch Supplier', 'developers')} className="btn-secondary flex-1 btn-sm">Automated Pitch</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <ActionModal isOpen={modalOpen} onClose={() => setModalOpen(false)} record={modalRecord} actionType={modalAction} tabType={modalTabType} />
     </div>
   );
 }

@@ -411,14 +411,22 @@ model Lead {
   trustConcernLevel      Float? @default(0)
 
   // Persona assignment
-  assignedPersona        String? // FINANCING_FIRST, STORM_URGENT, etc.
-  personaConfidence      Float?  @default(0)
-  recommendedPitchAngle  String?
-  recommendedNextAction  String?
+  assignedPersona         String? // FINANCING_FIRST, STORM_URGENT, etc.
+  personaConfidence       Float?    @default(0)
+  recommendedPitchAngle   String?
+  recommendedNextAction   String?
   recommendedFollowUpDays Int?
-  competitorMentioned    String?
-  lastIntentSignal       String?
-  intentLastUpdated      DateTime?
+  competitorMentioned     String?
+  lastIntentSignal        String?
+  intentLastUpdated       DateTime?
+
+  // Intelligence / Enrichment Data
+  companyName        String?
+  website            String?
+  contactRole        String?
+  contactConfidence  Float?  @default(0)
+  intelligenceSource String?
+  intelligenceNotes  String? @db.Text
 
   // Context flags
   isStormLead   Boolean @default(false)
@@ -515,7 +523,7 @@ model LeadScore {
   likelyObjections         String[]
   suggestedContactSequence Json?
   assignedPersona          String?
-  personaConfidence        Float?  @default(0)
+  personaConfidence        Float?     @default(0)
   recommendedTalkTrack     String?
   recommendedOffer         String?
   competitorContext        String?
@@ -539,9 +547,9 @@ model LeadScore {
 model LeadIntentEvent {
   id        String   @id @default(uuid())
   leadId    String
-  eventType String   // page_view, form_start, form_submit, call_click, chat_start, quote_request
-  eventData Json?    // { page: "/financing", duration: 45, referrer: "facebook" }
-  channel   String?  // web, phone, chat, email, social
+  eventType String // page_view, form_start, form_submit, call_click, chat_start, quote_request
+  eventData Json? // { page: "/financing", duration: 45, referrer: "facebook" }
+  channel   String? // web, phone, chat, email, social
   score     Int      @default(0) // points this event contributes
   createdAt DateTime @default(now())
 
@@ -557,29 +565,29 @@ model LeadIntentEvent {
 // ============================================================
 
 model PersonaDefinition {
-  id          String  @id @default(uuid())
-  slug        String  @unique // FINANCING_FIRST, STORM_URGENT, etc.
+  id          String @id @default(uuid())
+  slug        String @unique // FINANCING_FIRST, STORM_URGENT, etc.
   name        String
-  description String  @db.Text
+  description String @db.Text
 
   // Matching criteria
   matchRules Json // { financingPropensity: { min: 0.7 }, etc. }
 
   // Recommended actions
-  talkTrack          String?  @db.Text
-  openingScript      String?  @db.Text
-  discoveryQuestions String[]
-  financingLanguage  String?  @db.Text
-  objectionHandling  String?  @db.Text
-  closeLanguage      String?  @db.Text
-  recommendedOffer   String?
-  recommendedLanding String?
-  recommendedAdAngle String?
-  followUpCadenceDays Int[]   // [0, 2, 5, 10, 14, 21, 30]
+  talkTrack           String?  @db.Text
+  openingScript       String?  @db.Text
+  discoveryQuestions  String[]
+  financingLanguage   String?  @db.Text
+  objectionHandling   String?  @db.Text
+  closeLanguage       String?  @db.Text
+  recommendedOffer    String?
+  recommendedLanding  String?
+  recommendedAdAngle  String?
+  followUpCadenceDays Int[] // [0, 2, 5, 10, 14, 21, 30]
   followUpChannels    String[] // ["call", "text", "email"]
 
-  priority  Int     @default(0) // higher = match first
-  isActive  Boolean @default(true)
+  priority  Int      @default(0) // higher = match first
+  isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -1247,6 +1255,7 @@ model Quote {
   lead      Lead            @relation(fields: [leadId], references: [id])
   lineItems QuoteLineItem[]
   proposals Proposal[]
+
   @@index([leadId])
   @@map("quotes")
 }
@@ -1347,6 +1356,7 @@ model Proposal {
   createdBy User       @relation("createdBy", fields: [createdById], references: [id])
   template  Template?  @relation(fields: [templateId], references: [id])
   documents Document[]
+
   @@index([leadId])
   @@index([status])
   @@map("proposals")
@@ -1408,6 +1418,7 @@ model Invoice {
   lineItems InvoiceLineItem[]
   payments  Payment[]
   documents Document[]
+
   @@index([organizationId])
   @@index([leadId])
   @@index([status])
@@ -2021,24 +2032,24 @@ model Tag {
 // ============================================================
 
 model Competitor {
-  id               String    @id @default(uuid())
-  name             String
-  slug             String    @unique
-  website          String?
-  facebookUrl      String?
-  instagramUrl     String?
-  googleMapsUrl    String?
-  territory        String?   // local | regional | national
-  isActive         Boolean   @default(true)
-  lastScrapedAt    DateTime?
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
+  id            String    @id @default(uuid())
+  name          String
+  slug          String    @unique
+  website       String?
+  facebookUrl   String?
+  instagramUrl  String?
+  googleMapsUrl String?
+  territory     String? // local | regional | national
+  isActive      Boolean   @default(true)
+  lastScrapedAt DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 
-  pages            CompetitorPage[]
-  socialProfiles   CompetitorSocialProfile[]
-  socialPosts      CompetitorSocialPost[]
-  reviewInsights   ReviewInsight[]
-  battlecard       Battlecard?
+  pages          CompetitorPage[]
+  socialProfiles CompetitorSocialProfile[]
+  socialPosts    CompetitorSocialPost[]
+  reviewInsights ReviewInsight[]
+  battlecard     Battlecard?
 
   @@map("competitors")
 }
@@ -2047,37 +2058,37 @@ model CompetitorPage {
   id                String    @id @default(uuid())
   competitorId      String
   url               String
-  pageType          String    // product | financing | faq | quote | about | home | reviews
+  pageType          String // product | financing | faq | quote | about | home | reviews
   title             String?
   contentText       String?   @db.Text
-  keyMessages       Json?     // String[] of extracted key claims
+  keyMessages       Json? // String[] of extracted key claims
   ctaText           String?
   financingOffer    String?
   warrantyClaimText String?
   lastFetched       DateTime?
   createdAt         DateTime  @default(now())
 
-  competitor        Competitor @relation(fields: [competitorId], references: [id], onDelete: Cascade)
+  competitor Competitor @relation(fields: [competitorId], references: [id], onDelete: Cascade)
 
   @@index([competitorId])
   @@map("competitor_pages")
 }
 
 model CompetitorSocialProfile {
-  id              String    @id @default(uuid())
-  competitorId    String
-  platform        String    // facebook | instagram | youtube
-  profileUrl      String
-  handle          String?
-  followerCount   Int?
-  postFrequency   String?   // daily | weekly | monthly | sporadic
-  primaryThemes   Json?     // String[] of content themes
-  toneNotes       String?
-  lastAnalyzed    DateTime?
-  createdAt       DateTime  @default(now())
+  id            String    @id @default(uuid())
+  competitorId  String
+  platform      String // facebook | instagram | youtube
+  profileUrl    String
+  handle        String?
+  followerCount Int?
+  postFrequency String? // daily | weekly | monthly | sporadic
+  primaryThemes Json? // String[] of content themes
+  toneNotes     String?
+  lastAnalyzed  DateTime?
+  createdAt     DateTime  @default(now())
 
-  competitor      Competitor @relation(fields: [competitorId], references: [id], onDelete: Cascade)
-  posts           CompetitorSocialPost[]
+  competitor Competitor             @relation(fields: [competitorId], references: [id], onDelete: Cascade)
+  posts      CompetitorSocialPost[]
 
   @@index([competitorId, platform])
   @@map("competitor_social_profiles")
@@ -2087,22 +2098,22 @@ model CompetitorSocialPost {
   id                    String    @id @default(uuid())
   competitorId          String
   profileId             String?
-  platform              String    // facebook | instagram
-  postType              String    // photo | video | reel | carousel | story | text
+  platform              String // facebook | instagram
+  postType              String // photo | video | reel | carousel | story | text
   caption               String?   @db.Text
   hashtags              String[]
-  engagementNotes       String?   // qualitative notes on visible engagement
-  creativeTheme         String?   // before_after | testimonial | offer | seasonal | product | story | urgency
-  productFocus          String?   // windows | doors | siding | general
+  engagementNotes       String? // qualitative notes on visible engagement
+  creativeTheme         String? // before_after | testimonial | offer | seasonal | product | story | urgency
+  productFocus          String? // windows | doors | siding | general
   financingMention      Boolean   @default(false)
   stormMention          Boolean   @default(false)
   urgencyHook           Boolean   @default(false)
-  publicCommentInsights Json?     // String[] of notable public comment themes
+  publicCommentInsights Json? // String[] of notable public comment themes
   postedAt              DateTime?
   createdAt             DateTime  @default(now())
 
-  competitor    Competitor              @relation(fields: [competitorId], references: [id], onDelete: Cascade)
-  profile       CompetitorSocialProfile? @relation(fields: [profileId], references: [id])
+  competitor Competitor               @relation(fields: [competitorId], references: [id], onDelete: Cascade)
+  profile    CompetitorSocialProfile? @relation(fields: [profileId], references: [id])
 
   @@index([competitorId, platform])
   @@map("competitor_social_posts")
@@ -2111,18 +2122,18 @@ model CompetitorSocialPost {
 model ReviewInsight {
   id               String    @id @default(uuid())
   competitorId     String?
-  source           String    // google | bbb | houzz | angi | homeadvisor | yelp | facebook
+  source           String // google | bbb | houzz | angi | homeadvisor | yelp | facebook
   rating           Float?
   reviewText       String?   @db.Text
-  sentiment        String    // positive | negative | neutral | mixed
-  topicTags        String[]  // quality | installation | price | warranty | communication | scheduling | trust
-  productMentioned String?   // windows | doors | siding
-  reviewerType     String?   // homeowner | property_manager | b2b
+  sentiment        String // positive | negative | neutral | mixed
+  topicTags        String[] // quality | installation | price | warranty | communication | scheduling | trust
+  productMentioned String? // windows | doors | siding
+  reviewerType     String? // homeowner | property_manager | b2b
   publicUrl        String?
   reviewDate       DateTime?
   createdAt        DateTime  @default(now())
 
-  competitor       Competitor? @relation(fields: [competitorId], references: [id])
+  competitor Competitor? @relation(fields: [competitorId], references: [id])
 
   @@index([competitorId, sentiment])
   @@index([source])
@@ -2130,58 +2141,58 @@ model ReviewInsight {
 }
 
 model ForumThreadInsight {
-  id             String    @id @default(uuid())
-  source         String    // reddit | houzz_community | city_data | angies_list | general_forum
-  subreddit      String?
-  threadTitle    String?
-  threadContent  String?   @db.Text
-  sentiment      String    // positive | negative | neutral | mixed
-  topicTags      String[]
-  productFocus   String?   // windows | doors | siding | general
-  intentSignals  String[]  // financing | urgency | comparison | trust | storm | insurance
-  keyQuestions   Json?     // String[] of questions found in thread
+  id                 String   @id @default(uuid())
+  source             String // reddit | houzz_community | city_data | angies_list | general_forum
+  subreddit          String?
+  threadTitle        String?
+  threadContent      String?  @db.Text
+  sentiment          String // positive | negative | neutral | mixed
+  topicTags          String[]
+  productFocus       String? // windows | doors | siding | general
+  intentSignals      String[] // financing | urgency | comparison | trust | storm | insurance
+  keyQuestions       Json? // String[] of questions found in thread
   competitorMentions String[]
-  threadUrl      String?
-  createdAt      DateTime  @default(now())
+  threadUrl          String?
+  createdAt          DateTime @default(now())
 
   @@index([source, productFocus])
   @@map("forum_thread_insights")
 }
 
 model TopicCluster {
-  id             String    @id @default(uuid())
+  id             String   @id @default(uuid())
   clusterName    String
-  productScope   String    // windows | doors | siding | financing | storm | social | all
-  themeType      String    // buyer_concern | objection | product_interest | competitor_gap | creative_pattern | social_engagement
-  frequency      Int       @default(1)
-  sentimentScore Float     @default(0) // -1.0 to 1.0
+  productScope   String // windows | doors | siding | financing | storm | social | all
+  themeType      String // buyer_concern | objection | product_interest | competitor_gap | creative_pattern | social_engagement
+  frequency      Int      @default(1)
+  sentimentScore Float    @default(0) // -1.0 to 1.0
   keyPhrases     String[]
-  sourceSummary  Json?     // where this cluster came from
-  actionableNote String?   @db.Text
-  lastUpdated    DateTime  @default(now())
-  createdAt      DateTime  @default(now())
+  sourceSummary  Json? // where this cluster came from
+  actionableNote String?  @db.Text
+  lastUpdated    DateTime @default(now())
+  createdAt      DateTime @default(now())
 
   @@index([productScope, themeType])
   @@map("topic_clusters")
 }
 
 model BuyerIntentSignal {
-  id               String    @id @default(uuid())
+  id              String   @id @default(uuid())
   // FIRST-PARTY ONLY — no third-party private data
-  signalType       String    // page_view | form_start | form_abandon | chat_start | call_click | quote_start | financing_page | product_page | photo_upload
-  sessionId        String?   // anonymous session identifier
-  leadId           String?   // linked if visitor is known through lawful means
-  pageUrl          String?
-  productSignal    String?   // windows | doors | siding
-  financingSignal  Boolean   @default(false)
-  stormSignal      Boolean   @default(false)
-  urgencySignal    Boolean   @default(false)
-  sourceChannel    String?   // facebook | instagram | google | organic | direct | email | sms
-  utmSource        String?
-  utmMedium        String?
-  utmCampaign      String?
-  metadata         Json?
-  createdAt        DateTime  @default(now())
+  signalType      String // page_view | form_start | form_abandon | chat_start | call_click | quote_start | financing_page | product_page | photo_upload
+  sessionId       String? // anonymous session identifier
+  leadId          String? // linked if visitor is known through lawful means
+  pageUrl         String?
+  productSignal   String? // windows | doors | siding
+  financingSignal Boolean  @default(false)
+  stormSignal     Boolean  @default(false)
+  urgencySignal   Boolean  @default(false)
+  sourceChannel   String? // facebook | instagram | google | organic | direct | email | sms
+  utmSource       String?
+  utmMedium       String?
+  utmCampaign     String?
+  metadata        Json?
+  createdAt       DateTime @default(now())
 
   @@index([leadId])
   @@index([sessionId])
@@ -2190,110 +2201,110 @@ model BuyerIntentSignal {
 }
 
 model AnonymousIntentProfile {
-  id                  String    @id @default(uuid())
-  sessionId           String    @unique
-  behaviorSegment     String?   // FINANCING_FIRST | COMPARISON_SHOPPER | STORM_CLAIMANT | ENERGY_SEEKER | URGENT_REPLACER | AESTHETIC_DRIVEN | TRUST_ANXIOUS | PREMIUM_BUYER | BUDGET_CONSCIOUS
-  productSignals      String[]  // windows | doors | siding
-  urgencyLevel        String    @default("LOW") // LOW | MEDIUM | HIGH
-  pageViewCount       Int       @default(1)
-  financingPageVisit  Boolean   @default(false)
-  quotePageVisit      Boolean   @default(false)
-  sourceChannel       String?
-  retargetingAngles   Json?     // recommended ad copy/offer angles
-  lastSeen            DateTime  @default(now())
-  createdAt           DateTime  @default(now())
-  updatedAt           DateTime  @updatedAt
+  id                 String   @id @default(uuid())
+  sessionId          String   @unique
+  behaviorSegment    String? // FINANCING_FIRST | COMPARISON_SHOPPER | STORM_CLAIMANT | ENERGY_SEEKER | URGENT_REPLACER | AESTHETIC_DRIVEN | TRUST_ANXIOUS | PREMIUM_BUYER | BUDGET_CONSCIOUS
+  productSignals     String[] // windows | doors | siding
+  urgencyLevel       String   @default("LOW") // LOW | MEDIUM | HIGH
+  pageViewCount      Int      @default(1)
+  financingPageVisit Boolean  @default(false)
+  quotePageVisit     Boolean  @default(false)
+  sourceChannel      String?
+  retargetingAngles  Json? // recommended ad copy/offer angles
+  lastSeen           DateTime @default(now())
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
 
   @@index([behaviorSegment])
   @@map("anonymous_intent_profiles")
 }
 
 model Battlecard {
-  id               String    @id @default(uuid())
-  competitorId     String    @unique
-  positioning      String?   @db.Text
-  keyClaims        Json?     // String[]
-  pricingLanguage  String?   @db.Text
-  financingOffers  String?   @db.Text
-  warrantyNotes    String?   @db.Text
-  ctaStrategy      String?   @db.Text
-  reviewStrengths  Json?     // String[] of top praise themes
-  reviewWeaknesses Json?     // String[] of top complaint themes
-  messagingGaps    Json?     // String[] of where they fail buyers
-  facebookNotes    String?   @db.Text
-  instagramNotes   String?   @db.Text
-  ourCounterPitch  String?   @db.Text
-  talkTrack        String?   @db.Text
-  objectionResponses Json?   // {objection: string, response: string, close: string}[]
-  lastUpdated      DateTime  @default(now())
-  createdAt        DateTime  @default(now())
+  id                 String   @id @default(uuid())
+  competitorId       String   @unique
+  positioning        String?  @db.Text
+  keyClaims          Json? // String[]
+  pricingLanguage    String?  @db.Text
+  financingOffers    String?  @db.Text
+  warrantyNotes      String?  @db.Text
+  ctaStrategy        String?  @db.Text
+  reviewStrengths    Json? // String[] of top praise themes
+  reviewWeaknesses   Json? // String[] of top complaint themes
+  messagingGaps      Json? // String[] of where they fail buyers
+  facebookNotes      String?  @db.Text
+  instagramNotes     String?  @db.Text
+  ourCounterPitch    String?  @db.Text
+  talkTrack          String?  @db.Text
+  objectionResponses Json? // {objection: string, response: string, close: string}[]
+  lastUpdated        DateTime @default(now())
+  createdAt          DateTime @default(now())
 
-  competitor       Competitor @relation(fields: [competitorId], references: [id], onDelete: Cascade)
+  competitor Competitor @relation(fields: [competitorId], references: [id], onDelete: Cascade)
 
   @@map("battlecards")
 }
 
 model CampaignAngle {
-  id              String    @id @default(uuid())
-  segmentTarget   String    // FINANCING_FIRST | STORM_CLAIMANT | COMPARISON_SHOPPER | etc.
-  productFocus    String    // windows | doors | siding | all
-  channel         String    // facebook | instagram | google | email | sms | website
+  id              String   @id @default(uuid())
+  segmentTarget   String // FINANCING_FIRST | STORM_CLAIMANT | COMPARISON_SHOPPER | etc.
+  productFocus    String // windows | doors | siding | all
+  channel         String // facebook | instagram | google | email | sms | website
   headline        String?
-  bodyText        String?   @db.Text
+  bodyText        String?  @db.Text
   ctaText         String?
-  visualConcept   String?   @db.Text
+  visualConcept   String?  @db.Text
   landingPagePath String?
-  priority        String    @default("medium")
-  createdAt       DateTime  @default(now())
+  priority        String   @default("medium")
+  createdAt       DateTime @default(now())
 
   @@index([segmentTarget, channel])
   @@map("campaign_angles")
 }
 
 model SocialCreativePattern {
-  id                   String    @id @default(uuid())
-  platform             String    // facebook | instagram
-  creativeTheme        String    // before_after | testimonial | seasonal | financing | storm | product_demo | community | urgency
-  productFocus         String    // windows | doors | siding | general
-  captionStyle         String?   // emotional | informational | urgency | social_proof | question | story
-  visualDescription    String?   @db.Text
-  performanceNotes     String?   @db.Text
+  id                   String   @id @default(uuid())
+  platform             String // facebook | instagram
+  creativeTheme        String // before_after | testimonial | seasonal | financing | storm | product_demo | community | urgency
+  productFocus         String // windows | doors | siding | general
+  captionStyle         String? // emotional | informational | urgency | social_proof | question | story
+  visualDescription    String?  @db.Text
+  performanceNotes     String?  @db.Text
   hookExample          String?
-  competitorUsageCount Int       @default(0)
-  recommendationLevel  String    @default("medium") // low | medium | high
-  createdAt            DateTime  @default(now())
+  competitorUsageCount Int      @default(0)
+  recommendationLevel  String   @default("medium") // low | medium | high
+  createdAt            DateTime @default(now())
 
   @@index([platform, recommendationLevel])
   @@map("social_creative_patterns")
 }
 
 model ObjectionPattern {
-  id                 String    @id @default(uuid())
-  objectionText      String
-  objectionCategory  String    // price | trust | scheduling | product_quality | financing | warranty | competition | disruption | timing
-  productFocus       String?   // windows | doors | siding | general
-  frequency          Int       @default(1)
-  sourceTypes        String[]  // review | forum | social_comment | crm_note | chat
-  responseScript     String?   @db.Text
-  closeScript        String?   @db.Text
-  createdAt          DateTime  @default(now())
+  id                String   @id @default(uuid())
+  objectionText     String
+  objectionCategory String // price | trust | scheduling | product_quality | financing | warranty | competition | disruption | timing
+  productFocus      String? // windows | doors | siding | general
+  frequency         Int      @default(1)
+  sourceTypes       String[] // review | forum | social_comment | crm_note | chat
+  responseScript    String?  @db.Text
+  closeScript       String?  @db.Text
+  createdAt         DateTime @default(now())
 
   @@index([objectionCategory])
   @@map("objection_patterns")
 }
 
 model MessagingOpportunity {
-  id                  String    @id @default(uuid())
-  opportunityType     String    // unmet_concern | competitor_gap | underserved_segment | creative_gap | review_gap
-  description         String    @db.Text
-  productScope        String    // windows | doors | siding | financing | all
-  targetSegment       String?
-  recommendedMessage  String?   @db.Text
-  channel             String?   // facebook | instagram | google | website | email | sms
-  priority            String    @default("medium") // low | medium | high | critical
-  evidenceSources     Json?
-  isActedOn           Boolean   @default(false)
-  createdAt           DateTime  @default(now())
+  id                 String   @id @default(uuid())
+  opportunityType    String // unmet_concern | competitor_gap | underserved_segment | creative_gap | review_gap
+  description        String   @db.Text
+  productScope       String // windows | doors | siding | financing | all
+  targetSegment      String?
+  recommendedMessage String?  @db.Text
+  channel            String? // facebook | instagram | google | website | email | sms
+  priority           String   @default("medium") // low | medium | high | critical
+  evidenceSources    Json?
+  isActedOn          Boolean  @default(false)
+  createdAt          DateTime @default(now())
 
   @@index([priority, isActedOn])
   @@map("messaging_opportunities")
@@ -2302,29 +2313,29 @@ model MessagingOpportunity {
 // ─── Social Listening & Public Intent Detection ──────────────────────────
 
 model PublicIntentMention {
-  id                 String    @id @default(uuid())
-  sourcePlatform     String    // facebook | instagram | reddit | nextdoor | forum | google | review_site
-  sourceType         String    // public_post | public_comment | public_thread | public_review | public_question
-  sourceUrl          String?
-  authorHandle       String?   // Public handle only — no PII unless first-party
-  contentText        String    @db.Text
-  category           String    // windows | doors | siding | multi_category | general
-  urgency            String    // researching | quote_seeking | urgent_damage | financing_focused | insurance_focused | comparison_shopping
-  intentType         String    // recommendation_request | complaint_opportunity | quote_request | storm_damage | financing_inquiry | product_question | competitor_mention
-  confidence         Float     @default(0.5) // 0.0 to 1.0
-  localRelevance     Float     @default(0.5) // 0.0 to 1.0 (Baton Rouge area)
-  matchedKeywords    String[]
-  matchedPatterns    String[]  // semantic patterns matched
+  id                   String   @id @default(uuid())
+  sourcePlatform       String // facebook | instagram | reddit | nextdoor | forum | google | review_site
+  sourceType           String // public_post | public_comment | public_thread | public_review | public_question
+  sourceUrl            String?
+  authorHandle         String? // Public handle only — no PII unless first-party
+  contentText          String   @db.Text
+  category             String // windows | doors | siding | multi_category | general
+  urgency              String // researching | quote_seeking | urgent_damage | financing_focused | insurance_focused | comparison_shopping
+  intentType           String // recommendation_request | complaint_opportunity | quote_request | storm_damage | financing_inquiry | product_question | competitor_mention
+  confidence           Float    @default(0.5) // 0.0 to 1.0
+  localRelevance       Float    @default(0.5) // 0.0 to 1.0 (Baton Rouge area)
+  matchedKeywords      String[]
+  matchedPatterns      String[] // semantic patterns matched
   competitorsMentioned String[]
-  geography          String?   // neighborhood, city, parish
-  detectedAt         DateTime  @default(now())
-  status             String    @default("new") // new | reviewed | actioned | dismissed
-  assignedToId       String?
-  recommendedAction  String?   @db.Text
-  recommendedLanding String?
-  recommendedTalkTrack String? @db.Text
-  notes              String?   @db.Text
-  createdAt          DateTime  @default(now())
+  geography            String? // neighborhood, city, parish
+  detectedAt           DateTime @default(now())
+  status               String   @default("new") // new | reviewed | actioned | dismissed
+  assignedToId         String?
+  recommendedAction    String?  @db.Text
+  recommendedLanding   String?
+  recommendedTalkTrack String?  @db.Text
+  notes                String?  @db.Text
+  createdAt            DateTime @default(now())
 
   @@index([category, urgency])
   @@index([status, confidence])
@@ -2333,23 +2344,89 @@ model PublicIntentMention {
 }
 
 model LocalOpportunitySignal {
-  id                 String    @id @default(uuid())
-  sourcePlatform     String
-  signalType         String    // storm_spike | neighborhood_cluster | financing_demand | competitor_complaint | recommendation_wave
-  category           String    // windows | doors | siding | multi_category
-  geography          String?
-  signalStrength     Float     @default(0.5) // 0.0 to 1.0
-  mentionCount       Int       @default(1)
-  timeWindow         String?   // e.g. "last_7_days" | "last_30_days"
-  summary            String    @db.Text
+  id                  String   @id @default(uuid())
+  sourcePlatform      String
+  signalType          String // storm_spike | neighborhood_cluster | financing_demand | competitor_complaint | recommendation_wave
+  category            String // windows | doors | siding | multi_category
+  geography           String?
+  signalStrength      Float    @default(0.5) // 0.0 to 1.0
+  mentionCount        Int      @default(1)
+  timeWindow          String? // e.g. "last_7_days" | "last_30_days"
+  summary             String   @db.Text
   recommendedCampaign String?  @db.Text
   recommendedSegment  String?
-  isActive           Boolean   @default(true)
-  detectedAt         DateTime  @default(now())
-  createdAt          DateTime  @default(now())
+  isActive            Boolean  @default(true)
+  detectedAt          DateTime @default(now())
+  createdAt           DateTime @default(now())
 
   @@index([signalType, isActive])
   @@index([category])
   @@map("local_opportunity_signals")
 }
 
+model Realtor {
+  id                 String   @id @default(uuid())
+  organizationId     String
+  name               String
+  brokerage          String?
+  role               String?
+  phone              String?
+  email              String?
+  address            String?
+  city               String?
+  state              String?
+  zip                String?
+  website            String?
+  serviceArea        String?
+  specialty          String?
+  batonRougePriority Boolean  @default(false)
+  partnershipScore   Int      @default(0)
+  confidence         Float    @default(0.5)
+  source             String?
+  notes              String?  @db.Text
+  
+  // Execution Engine Tracking
+  assignedRepId      String?
+  outreachStatus     String   @default("new") // new, contacted, no_answer, meeting_set, not_interested
+  nextFollowUpDate   DateTime?
+  dispositionNotes   String?  @db.Text
+  
+  createdAt          DateTime @default(now())
+
+  @@index([batonRougePriority, partnershipScore])
+  @@index([assignedRepId, outreachStatus])
+}
+
+model Developer {
+  id                 String   @id @default(uuid())
+  organizationId     String
+  companyName        String
+  contactName        String?
+  role               String?
+  phone              String?
+  email              String?
+  address            String?
+  city               String?
+  state              String?
+  zip                String?
+  website            String?
+  developmentFocus   String?
+  projectTypes       String?
+  marketArea         String?
+  batonRougePriority Boolean  @default(false)
+  partnershipScore   Int      @default(0)
+  confidence         Float    @default(0.5)
+  source             String?
+  notes              String?  @db.Text
+
+  // Execution Engine Tracking
+  assignedRepId      String?
+  outreachStatus     String   @default("new") // new, contacted, no_answer, meeting_set, not_interested
+  nextFollowUpDate   DateTime?
+  dispositionNotes   String?  @db.Text
+
+  createdAt          DateTime @default(now())
+
+  @@index([batonRougePriority, partnershipScore])
+  @@index([assignedRepId, outreachStatus])
+}

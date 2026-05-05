@@ -341,4 +341,94 @@ router.post('/bulk-import', auth.manager, async (req: Request, res: Response) =>
   });
 });
 
+// GET /api/v1/leads/realtors
+router.get('/realtors', auth.repOrAbove, async (req: Request, res: Response) => {
+  const user = (req as AuthenticatedRequest).user;
+  const { prisma: db } = await import('../../shared/services/prisma');
+  const realtors = await db.realtor.findMany({
+    where: { organizationId: user.organizationId },
+    orderBy: [
+      { batonRougePriority: 'desc' },
+      { partnershipScore: 'desc' }
+    ]
+  });
+  res.json({ success: true, data: realtors });
+});
+
+// GET /api/v1/leads/developers
+router.get('/developers', auth.repOrAbove, async (req: Request, res: Response) => {
+  const user = (req as AuthenticatedRequest).user;
+  const { prisma: db } = await import('../../shared/services/prisma');
+  const developers = await db.developer.findMany({
+    where: { organizationId: user.organizationId },
+    orderBy: [
+      { batonRougePriority: 'desc' },
+      { partnershipScore: 'desc' }
+    ]
+  });
+  res.json({ success: true, data: developers });
+});
+
+// POST /api/v1/leads/disposition
+router.post('/disposition', auth.repOrAbove, async (req: Request, res: Response) => {
+  const user = (req as AuthenticatedRequest).user;
+  const { id, tabType, disposition, notes } = req.body;
+  const { prisma: db } = await import('../../shared/services/prisma');
+
+  let nextFollowUp = new Date();
+  nextFollowUp.setDate(nextFollowUp.getDate() + 1); // Default to tomorrow
+
+  if (disposition === 'Contacted' || disposition === 'Appointment Set' || disposition === 'Not Interested') {
+    nextFollowUp.setDate(nextFollowUp.getDate() + 7); // Push back if handled
+  }
+
+  try {
+    if (tabType === 'opportunities') {
+      await db.lead.update({
+        where: { id, organizationId: user.organizationId },
+        data: { 
+          status: disposition === 'Appointment Set' ? 'MEETING_SET' : 'CONTACTED',
+          notes: notes ? `[Disposition: ${disposition}]\n${notes}` : undefined
+        }
+      });
+    } else if (tabType === 'realtors') {
+      await db.realtor.update({
+        where: { id, organizationId: user.organizationId },
+        data: { 
+          outreachStatus: disposition,
+          dispositionNotes: notes,
+          nextFollowUpDate: nextFollowUp,
+          assignedRepId: user.id
+        }
+      });
+    } else if (tabType === 'developers') {
+      await db.developer.update({
+        where: { id, organizationId: user.organizationId },
+        data: { 
+          outreachStatus: disposition,
+          dispositionNotes: notes,
+          nextFollowUpDate: nextFollowUp,
+          assignedRepId: user.id
+        }
+      });
+    }
+    
+    // Log activity
+    await db.activity.create({
+      data: {
+        organizationId: user.organizationId,
+        createdById: user.id,
+        leadId: tabType === 'opportunities' ? id : null,
+        type: 'CALL',
+        status: 'COMPLETED',
+        notes: `[Outbound Engine: ${disposition}]\n${notes || ''}`,
+      }
+    });
+
+    res.json({ success: true });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 export { router as leadsRouter };
