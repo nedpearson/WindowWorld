@@ -466,7 +466,7 @@ ${text}`;
       else if (parsed?.leads && Array.isArray(parsed.leads)) parsedLeads = parsed.leads;
       else if (parsed && typeof parsed === 'object') parsedLeads = [parsed];
     } catch (e) {
-      logger.error(`[Prospecting] Failed to parse AI response JSON: ${sanitizeForLog(e.message)}`);
+      logger.error(`[Prospecting] Failed to parse AI response JSON: ${sanitizeForLog((e as any).message)}`);
       return [];
     }
 

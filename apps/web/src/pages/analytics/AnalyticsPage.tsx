@@ -7,8 +7,13 @@ import {
   CheckCircleIcon, BuildingStorefrontIcon,
   DocumentTextIcon, BanknotesIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
 import clsx from 'clsx';
-import { AreaChart, Area, BarChart, Bar,
-  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
+import { AreaChart, Area, BarChart, Bar as _Bar,
+  XAxis as _XAxis, YAxis as _YAxis, CartesianGrid, Tooltip as _Tooltip, ResponsiveContainer, Cell } from 'recharts';
+
+const Bar = _Bar as any;
+const XAxis = _XAxis as any;
+const YAxis = _YAxis as any;
+const Tooltip = _Tooltip as any;
 import apiClient from '../../api/client';
 import { useAuthStore } from '../../store/auth.store';
 import { isDemoMode } from '../../utils/isDemoMode';
