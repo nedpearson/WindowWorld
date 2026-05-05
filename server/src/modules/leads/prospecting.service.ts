@@ -6,23 +6,39 @@ import { LeadStatus } from '@prisma/client';
 export class LeadProspectingService {
   /**
    * Prospects the internet for leads using multiple sources with fallbacks.
-   * Sources tried in order: DuckDuckGo HTML → Google Custom Search → Static Intelligence
+   * Sources (Google-first): Google Search → Meta Social → Intent Mentions → Intelligence → AI Research
    */
   async prospect(organizationId: string, authorId: string, location: string, target: string) {
     const allLeads: any[] = [];
-    logger.info(`[Prospecting] Starting internet prospect: "${target}" in "${location}"`);
+    const sourceResults: Record<string, number> = {};
+    logger.info(`[Prospecting] Starting GOOGLE-FIRST prospect: "${target}" in "${location}"`);
 
-    // ── Source 1: Try DuckDuckGo HTML ──
+    // ── Source 1: Google Search (primary) ──
     try {
-      const ddgLeads = await this.fetchFromDuckDuckGo(organizationId, authorId, location, target);
-      if (ddgLeads.length > 0) {
-        allLeads.push(...ddgLeads);
-        logger.info(`[Prospecting] DuckDuckGo returned ${ddgLeads.length} leads`);
+      const googleLeads = await this.fetchFromGoogle(organizationId, authorId, location, target);
+      sourceResults['google'] = googleLeads.length;
+      if (googleLeads.length > 0) {
+        allLeads.push(...googleLeads);
+        logger.info(`[Prospecting] Google returned ${googleLeads.length} leads`);
       } else {
-        logger.warn('[Prospecting] DuckDuckGo returned 0 snippets — source likely blocked');
+        logger.warn('[Prospecting] Google returned 0 results');
       }
     } catch (e: any) {
-      logger.warn(`[Prospecting] DuckDuckGo failed: ${e.message}`);
+      sourceResults['google'] = 0;
+      logger.warn(`[Prospecting] Google search failed: ${e.message}`);
+    }
+
+    // ── Source 1b: Meta Social (Facebook/Instagram public pages) ──
+    try {
+      const metaLeads = await this.fetchFromMetaSocial(organizationId, authorId, location);
+      sourceResults['meta_social'] = metaLeads.length;
+      if (metaLeads.length > 0) {
+        allLeads.push(...metaLeads);
+        logger.info(`[Prospecting] Meta social returned ${metaLeads.length} leads`);
+      }
+    } catch (e: any) {
+      sourceResults['meta_social'] = 0;
+      logger.warn(`[Prospecting] Meta social failed: ${e.message}`);
     }
 
     // ── Source 2: Convert high-confidence social listening mentions to leads ──
@@ -62,33 +78,129 @@ export class LeadProspectingService {
     return allLeads;
   }
 
-  // ── DuckDuckGo HTML Source ──────────────────────────────────────────
-  private async fetchFromDuckDuckGo(orgId: string, authorId: string, location: string, target: string) {
-    const query = `${target} ${location} contact info phone email`;
-    const url = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`;
-    
-    const response = await fetch(url, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-        'Accept-Language': 'en-US,en;q=0.5',
-      },
-      signal: AbortSignal.timeout(10000),
-    });
+  // ── Google Search Source (PRIMARY) ──────────────────────────────────
+  private async fetchFromGoogle(orgId: string, authorId: string, location: string, target: string) {
+    // Build multiple Google query variations for depth
+    const queries = [
+      `${target} ${location} contact phone email`,
+      `replacement windows doors siding ${location} contractors`,
+      `"window replacement" OR "door replacement" OR "siding" ${location} company`,
+    ];
 
-    if (!response.ok) throw new Error(`DDG returned ${response.status}`);
-    const html = await response.text();
-
-    const snippets: string[] = [];
-    const snippetRegex = /<a class="result__snippet[^>]*>(.*?)<\/a>/gs;
-    let match;
-    while ((match = snippetRegex.exec(html)) !== null) {
-      snippets.push(match[1].replace(/<\/?[^>]+(>|$)/g, ''));
+    const allSnippets: string[] = [];
+    for (const query of queries) {
+      try {
+        const url = `https://www.google.com/search?q=${encodeURIComponent(query)}&num=10&hl=en`;
+        const response = await fetch(url, {
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+            'Accept-Language': 'en-US,en;q=0.5',
+          },
+          signal: AbortSignal.timeout(10000),
+        });
+        if (!response.ok) { logger.warn(`[Google] Query returned ${response.status}`); continue; }
+        const html = await response.text();
+        // Extract text content from Google results
+        const textBlocks = html.match(/<span[^>]*>(.*?)<\/span>/gs) || [];
+        for (const block of textBlocks) {
+          const clean = block.replace(/<[^>]+>/g, '').trim();
+          if (clean.length > 40 && clean.length < 500) allSnippets.push(clean);
+        }
+        logger.info(`[Google] Query "${query.substring(0, 50)}..." extracted ${textBlocks.length} blocks`);
+      } catch (e: any) {
+        logger.warn(`[Google] Query failed: ${e.message}`);
+      }
     }
 
-    if (snippets.length === 0) return [];
+    if (allSnippets.length === 0) {
+      logger.warn('[Google] All queries returned 0 usable snippets — falling through to AI-direct');
+      // Fallback: use OpenAI with web-search knowledge to generate leads directly
+      return this.generateAIResearchedLeads(orgId, authorId, location, target);
+    }
 
-    return this.extractLeadsWithAI(orgId, authorId, location, target, snippets.join('\n\n').substring(0, 12000), 'web_ddg');
+    return this.extractLeadsWithAI(orgId, authorId, location, target, allSnippets.join('\n\n').substring(0, 12000), 'google');
+  }
+
+  // ── Meta Social Source (Facebook/Instagram lawful public data) ──────
+  private async fetchFromMetaSocial(orgId: string, authorId: string, location: string) {
+    // Check for Meta Graph API token
+    const metaToken = process.env.META_PAGE_ACCESS_TOKEN || process.env.FB_PAGE_ACCESS_TOKEN;
+    const pageId = process.env.META_PAGE_ID || process.env.FB_PAGE_ID;
+
+    if (!metaToken || !pageId) {
+      logger.warn('[Meta] META_PAGE_ACCESS_TOKEN / META_PAGE_ID not configured — using competitor social profile data instead');
+      // Fallback: convert existing competitor social intelligence into opportunity leads
+      return this.convertCompetitorSocialToLeads(orgId, authorId, location);
+    }
+
+    // Live Meta Graph API: fetch our own page's recent lead-gen comments/messages
+    const leads: any[] = [];
+    try {
+      // Fetch recent posts + comments mentioning windows/doors/siding
+      const postsUrl = `https://graph.facebook.com/v19.0/${pageId}/feed?fields=id,message,comments{message,from}&limit=25&access_token=${metaToken}`;
+      const resp = await fetch(postsUrl, { signal: AbortSignal.timeout(10000) });
+      if (!resp.ok) throw new Error(`Meta API ${resp.status}: ${await resp.text()}`);
+      const data: any = await resp.json();
+
+      for (const post of (data.data || [])) {
+        for (const comment of (post.comments?.data || [])) {
+          const msg = (comment.message || '').toLowerCase();
+          if (msg.includes('window') || msg.includes('door') || msg.includes('siding') || msg.includes('quote') || msg.includes('estimate')) {
+            const lead = await prisma.lead.create({
+              data: {
+                organizationId: orgId, assignedRepId: authorId,
+                firstName: comment.from?.name?.split(' ')[0] || 'Facebook',
+                lastName: comment.from?.name?.split(' ').slice(1).join(' ') || 'Commenter',
+                source: 'facebook', status: LeadStatus.NEW_LEAD,
+                city: location.split(',')[0].trim(),
+                notes: `[Facebook Comment Lead]\nComment: "${comment.message}"\nPost ID: ${post.id}`,
+                leadScore: 75, urgencyScore: 65, estimatedRevenue: 8000,
+              },
+            });
+            leads.push(lead);
+          }
+        }
+      }
+      logger.info(`[Meta] Extracted ${leads.length} leads from page comments`);
+    } catch (e: any) {
+      logger.error(`[Meta] Graph API call failed: ${e.message}`);
+    }
+    return leads;
+  }
+
+  // ── Convert competitor social profiles into opportunity leads ───────
+  private async convertCompetitorSocialToLeads(orgId: string, authorId: string, location: string) {
+    const profiles = await prisma.competitorSocialProfile.findMany({
+      include: { competitor: true },
+      take: 10,
+    });
+    if (profiles.length === 0) return [];
+
+    const leads: any[] = [];
+    // Group by competitor, create one opportunity per weak competitor
+    const seen = new Set<string>();
+    for (const p of profiles) {
+      if (seen.has(p.competitorId)) continue;
+      seen.add(p.competitorId);
+      if (p.postFrequency === 'sporadic' || p.postFrequency === 'monthly') {
+        const existing = await prisma.lead.findFirst({ where: { organizationId: orgId, notes: { contains: `social-gap-${p.competitorId}` } } });
+        if (existing) continue;
+        const lead = await prisma.lead.create({
+          data: {
+            organizationId: orgId, assignedRepId: authorId,
+            firstName: 'Social Gap', lastName: `vs ${p.competitor.name}`,
+            source: 'social_listening', status: LeadStatus.NEW_LEAD,
+            city: location.split(',')[0].trim(),
+            competitorMentioned: p.competitor.name,
+            notes: `[Competitor Social Gap Opportunity]\n${p.competitor.name} posts ${p.postFrequency} on ${p.platform}. Their audience is underserved.\nProfile: ${p.profileUrl}\nAction: Target their followers with Window World ads. Outpost them 3:1.\nsocial-gap-${p.competitorId}`,
+            leadScore: 68, urgencyScore: 45, estimatedRevenue: 10000,
+          },
+        });
+        leads.push(lead);
+      }
+    }
+    return leads;
   }
 
   // ── Convert Intent Mentions to Leads ───────────────────────────────
