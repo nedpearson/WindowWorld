@@ -37,6 +37,17 @@ intelligenceRouter.get('/dashboard/market-summary', async (_req, res) => {
   }
 });
 
+// ─── Seed Static Pre-Built Content (instant, no crawl needed) ───────────
+intelligenceRouter.post('/research/seed-static', ...auth.manager, async (_req, res) => {
+  try {
+    // Seeds social patterns + campaign angles immediately — no crawl required
+    await intelligenceOrchestrator.runFullIntelligenceResearch({ location: 'Baton Rouge, Louisiana', skipSocial: true, staticOnly: true });
+    res.json({ ok: true, message: 'Static content seeded' });
+  } catch (e: any) {
+    res.status(500).json({ error: 'Seed failed' });
+  }
+});
+
 // ─── Run Full Research ────────────────────────────────────────────────────
 intelligenceRouter.post('/research/run', ...auth.manager, async (req, res) => {
   try {

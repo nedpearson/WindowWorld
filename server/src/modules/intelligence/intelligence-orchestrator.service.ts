@@ -37,6 +37,7 @@ export async function seedCompetitors(): Promise<number> {
 export async function runFullIntelligenceResearch(options: {
   location?: string;
   skipSocial?: boolean;
+  staticOnly?: boolean;
 }): Promise<{
   competitorsScraped: number;
   reviewsCollected: number;
@@ -47,10 +48,21 @@ export async function runFullIntelligenceResearch(options: {
   opportunitiesFound: number;
 }> {
   const location = options.location || 'Baton Rouge, Louisiana';
-  logger.info(`[Intelligence] Starting full research run for: ${location}`);
+  logger.info(`[Intelligence] Starting${options.staticOnly ? ' static seed' : ' full research'} run for: ${location}`);
 
-  // 1. Ensure competitors are seeded
+  // Always seed competitors (fast, upsert-safe)
   await seedCompetitors();
+
+  // In static-only mode, skip crawling and just seed pre-built content
+  if (options.staticOnly) {
+    await seedSocialCreativePatterns();
+    await seedCampaignAngles();
+    return {
+      competitorsScraped: 0, reviewsCollected: 0, forumsAnalyzed: 0,
+      socialInsights: 0, battlecardsGenerated: 0, clustersBuilt: 0, opportunitiesFound: 0,
+    };
+  }
+
   const competitors = await prisma.competitor.findMany({ where: { isActive: true } });
 
   // 2. Scrape competitor pages

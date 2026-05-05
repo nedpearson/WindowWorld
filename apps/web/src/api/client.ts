@@ -422,6 +422,8 @@ export const api = {
   intelligence: {
     /** Get the market summary dashboard */
     getDashboard: () => get<any>('/intelligence/dashboard/market-summary'),
+    /** Seed static pre-built content instantly (social patterns, campaign angles) */
+    seedStatic: () => post<any>('/intelligence/research/seed-static', {}),
     /** Trigger a full research run (manager+) */
     runResearch: (location?: string, skipSocial?: boolean) =>
       post<any>('/intelligence/research/run', { location, skipSocial }),
