@@ -315,6 +315,182 @@ async function seedCampaignAngles(): Promise<void> {
   }
 }
 
+// ─── Seed Deep-Research Findings ──────────────────────────────────────────
+// Populated from cross-validated market intelligence research (May 2026)
+async function seedResearchFindings(): Promise<void> {
+  // ── Objection Patterns (from Reddit, BBB, ConsumerAffairs, forums) ──
+  const objections = [
+    {
+      objectionText: 'That price is too high / too expensive',
+      objectionCategory: 'price', productFocus: 'general', frequency: 95,
+      responseScript: 'I understand — it\'s a significant investment. Let me ask: is it the total cost, or the monthly commitment? Because at $89/month with 0% interest, most homeowners tell me it costs less than their phone bill.',
+      closeScript: 'What if I could show you how this pays for itself in energy savings and home value? Let me run the numbers for your specific home.',
+    },
+    {
+      objectionText: 'I need to get other quotes first',
+      objectionCategory: 'comparison', productFocus: 'general', frequency: 88,
+      responseScript: 'Absolutely — I\'d do the same. Here\'s a comparison checklist: check warranty terms, whether they use their own crews or subs, and whether the quote is itemized. When you have your quotes, call me and I\'ll walk through them with you.',
+      closeScript: 'If our quality and warranty provide the best value, is there anything else holding you back?',
+    },
+    {
+      objectionText: 'I need to think about it / talk to my spouse',
+      objectionCategory: 'delay', productFocus: 'general', frequency: 82,
+      responseScript: 'Take all the time you need. Just so I can help: is there a specific part you\'re uncertain about — the product, the price, or the company? I want to make sure you have everything you need.',
+      closeScript: 'Would it help if I put together a summary you can review with your spouse tonight? I\'ll include the financing options and warranty details.',
+    },
+    {
+      objectionText: 'Another company quoted me less',
+      objectionCategory: 'price', productFocus: 'windows', frequency: 70,
+      responseScript: 'That\'s worth looking into. Can I ask — does their quote include the same warranty? Are they using their own crew? Is it itemized so you can see what you\'re paying for? Those three things are where cheaper quotes usually cut corners.',
+      closeScript: 'If I can show you spec-for-spec why our value is actually better, would you be comfortable moving forward?',
+    },
+    {
+      objectionText: 'How do I know the energy savings claims are real?',
+      objectionCategory: 'trust', productFocus: 'windows', frequency: 55,
+      responseScript: 'Honest answer: DOE data shows 10-15% reduction in heating/cooling costs — not the 30% some competitors claim. But the comfort difference is immediate and dramatic. Plus the federal tax credit puts up to $600/year back in your pocket.',
+      closeScript: 'I\'d rather be honest with you and earn your trust than overpromise. That\'s how we\'ve earned 500+ five-star reviews.',
+    },
+    {
+      objectionText: 'I\'m worried you\'ll disappear after the install',
+      objectionCategory: 'trust', productFocus: 'general', frequency: 65,
+      responseScript: 'That\'s the #1 complaint about our industry and I don\'t blame you. Here\'s what makes us different: my personal cell number, the names of three homeowners in your zip code you can call, and our lifetime warranty document. We don\'t disappear.',
+      closeScript: 'Would talking to a recent customer in your area help put your mind at ease?',
+    },
+    {
+      objectionText: 'I can\'t afford the monthly payment',
+      objectionCategory: 'financing', productFocus: 'general', frequency: 60,
+      responseScript: 'I hear you. We have multiple financing options. If we stretch the term to 84 months, we can get the payment down significantly. There\'s no prepayment penalty, so if your situation changes, you can pay it off early anytime.',
+      closeScript: 'What monthly amount would make this work for your budget? Let me see what I can structure.',
+    },
+    {
+      objectionText: 'Will my insurance cover storm damage replacement?',
+      objectionCategory: 'insurance', productFocus: 'windows', frequency: 50,
+      responseScript: 'In most cases, yes. We handle the entire insurance process — the inspection, documentation, adjuster coordination, and paperwork. If your damage is covered, there\'s typically no out-of-pocket cost to you.',
+      closeScript: 'Let me do a free storm inspection this week. If there\'s coverage, we handle everything. If not, you\'ve lost nothing.',
+    },
+    {
+      objectionText: 'I heard Renewal by Andersen is better quality',
+      objectionCategory: 'competitor', productFocus: 'windows', frequency: 45,
+      responseScript: 'Renewal makes a good product — but their warranty is only 20 years, ours is lifetime. And their pricing is typically 40-60% higher for equivalent specs. Ask them to itemize their quote and compare spec-for-spec with ours.',
+      closeScript: 'Would you like me to do a side-by-side comparison of our specs and warranty against their quote?',
+    },
+    {
+      objectionText: 'I\'m concerned about using subcontractors',
+      objectionCategory: 'trust', productFocus: 'general', frequency: 58,
+      responseScript: 'You should be — subcontractors are the #1 source of installation problems in our industry. We use our own trained, local installation crews. Same team every time. They\'re not contractors — they\'re our employees.',
+      closeScript: 'When you compare quotes, ask every company: do you use subs or your own crew? That one question will tell you a lot.',
+    },
+    {
+      objectionText: 'Siding looks wavy/buckled after installation',
+      objectionCategory: 'quality', productFocus: 'siding', frequency: 40,
+      responseScript: 'That happens when installers nail too tight and don\'t account for expansion/contraction. Our crews are trained to leave proper gaps and center nails in slots. It\'s basic technique, but you\'d be surprised how many companies skip it.',
+      closeScript: 'I\'ll show you exactly how we handle expansion joints during installation. It\'s one of the reasons our siding installs look perfect years later.',
+    },
+    {
+      objectionText: 'The entry door project costs more than I expected',
+      objectionCategory: 'price', productFocus: 'doors', frequency: 42,
+      responseScript: 'A door isn\'t just the slab — it\'s the frame, weatherstripping, hardware, trim, and threshold. It\'s a complete entry system. The good news: entry doors have the highest ROI of any exterior project. You\'ll recoup 60-80% at resale and feel the difference every day.',
+      closeScript: 'Let me show you the financing breakdown. Most homeowners are surprised how affordable the monthly payment is for a project that transforms the entire look of their home.',
+    },
+  ];
+
+  for (const obj of objections) {
+    const exists = await prisma.objectionPattern.findFirst({
+      where: { objectionText: obj.objectionText },
+    });
+    if (!exists) await prisma.objectionPattern.create({ data: obj });
+  }
+
+  // ── Topic Clusters (from buyer behavior research) ──
+  const clusters = [
+    { clusterName: 'Price / Affordability Concerns', themeType: 'objection', productScope: 'general', frequency: 95, sentimentScore: -0.6, actionableNote: 'Lead with financing, never total price first' },
+    { clusterName: 'Installation Quality vs Brand', themeType: 'buyer_priority', productScope: 'windows', frequency: 88, sentimentScore: 0.3, actionableNote: 'Emphasize own crews, not subcontractors' },
+    { clusterName: 'High-Pressure Sales Backlash', themeType: 'competitor_weakness', productScope: 'general', frequency: 85, sentimentScore: -0.8, actionableNote: 'Position as no-pressure, take-your-time approach' },
+    { clusterName: 'Post-Sale Service Failures', themeType: 'competitor_weakness', productScope: 'general', frequency: 80, sentimentScore: -0.9, actionableNote: 'Guarantee response times, give personal cell' },
+    { clusterName: 'Energy Savings ROI Questions', themeType: 'buyer_concern', productScope: 'windows', frequency: 70, sentimentScore: -0.2, actionableNote: 'Be honest: 10-15%, not 30%. Supplement with comfort benefits' },
+    { clusterName: 'Storm Damage Urgency', themeType: 'intent_signal', productScope: 'windows', frequency: 65, sentimentScore: -0.5, actionableNote: 'Deploy pre-built storm content immediately post-event' },
+    { clusterName: 'Financing Monthly Payment Preference', themeType: 'buyer_behavior', productScope: 'general', frequency: 75, sentimentScore: 0.5, actionableNote: 'Always frame as monthly payment, never lump sum' },
+    { clusterName: 'Before/After Visual Proof Demand', themeType: 'content_strategy', productScope: 'general', frequency: 90, sentimentScore: 0.8, actionableNote: 'Photograph every completed job for content library' },
+    { clusterName: 'Warranty Coverage Comparison', themeType: 'buyer_priority', productScope: 'windows', frequency: 60, sentimentScore: 0.1, actionableNote: 'Lifetime warranty is a killer differentiator vs Andersen (20yr)' },
+    { clusterName: 'Curb Appeal / Home Value', themeType: 'buyer_motivation', productScope: 'doors', frequency: 55, sentimentScore: 0.7, actionableNote: 'Entry doors have highest ROI — use this data in presentations' },
+    { clusterName: 'Local Company Preference', themeType: 'buyer_behavior', productScope: 'general', frequency: 72, sentimentScore: 0.6, actionableNote: 'Emphasize local ownership, local crews, local references' },
+    { clusterName: 'Siding Moisture / Mold Fear', themeType: 'buyer_concern', productScope: 'siding', frequency: 45, sentimentScore: -0.7, actionableNote: 'Show housewrap/flashing process, explain moisture management' },
+    { clusterName: 'Speed of Installation', themeType: 'buyer_priority', productScope: 'general', frequency: 50, sentimentScore: 0.2, actionableNote: 'Highlight scheduling availability, fast turnaround' },
+    { clusterName: 'Renewal by Andersen Overpricing', themeType: 'competitor_weakness', productScope: 'windows', frequency: 68, sentimentScore: -0.7, actionableNote: 'Reddit consensus: 40-60% overpriced. Use in battlecard.' },
+    { clusterName: 'Federal Tax Credit Awareness', themeType: 'buyer_interest', productScope: 'windows', frequency: 40, sentimentScore: 0.4, actionableNote: 'Mention IRA tax credit (up to $600/yr) in every presentation' },
+  ];
+
+  for (const cl of clusters) {
+    const exists = await prisma.topicCluster.findFirst({
+      where: { clusterName: cl.clusterName },
+    });
+    if (!exists) await prisma.topicCluster.create({ data: cl });
+  }
+
+  // ── Messaging Opportunities (from competitive gaps and buyer research) ──
+  const opportunities = [
+    {
+      opportunityType: 'competitive_gap', description: 'Competitors never publish pricing — be the transparent option with online quote estimator',
+      productScope: 'general', channel: 'website', priority: 'high',
+      recommendedMessage: 'See your estimated price in 60 seconds — no pressure, no obligation.',
+    },
+    {
+      opportunityType: 'content_gap', description: 'Competitors rarely post real customer stories with financing details on social media',
+      productScope: 'windows', channel: 'facebook', priority: 'high',
+      recommendedMessage: 'The Johnsons replaced all 12 windows for $89/month. Here\'s their before & after.',
+    },
+    {
+      opportunityType: 'service_gap', description: 'Post-sale service is the #1 complaint industry-wide — guarantee 24-hour response time',
+      productScope: 'general', channel: 'sales', priority: 'critical',
+      recommendedMessage: 'We guarantee a response within 24 hours — or your next service visit is free.',
+    },
+    {
+      opportunityType: 'trust_gap', description: 'No competitor offers customers direct access to installer references by zip code',
+      productScope: 'general', channel: 'sales', priority: 'high',
+      recommendedMessage: 'Want to talk to a neighbor who chose us? Here are 3 homeowners in your zip code.',
+    },
+    {
+      opportunityType: 'storm_opportunity', description: 'Pre-build storm-response ad templates to deploy within 24 hours of any weather event',
+      productScope: 'windows', channel: 'facebook', priority: 'critical',
+      recommendedMessage: 'Storm damage? Free inspection. We handle your insurance claim. Call now.',
+    },
+    {
+      opportunityType: 'education_gap', description: 'No competitor honestly addresses energy savings vs DOE data — be the honest voice',
+      productScope: 'windows', channel: 'website', priority: 'medium',
+      recommendedMessage: 'The truth about energy savings: 10-15% on heating/cooling. Here\'s what else you gain.',
+    },
+    {
+      opportunityType: 'content_gap', description: 'Competitors don\'t use Instagram Reels for before/after — highest-reach format is untapped',
+      productScope: 'general', channel: 'instagram', priority: 'high',
+      recommendedMessage: 'Watch this home transform in 60 seconds 🏠✨',
+    },
+    {
+      opportunityType: 'competitive_gap', description: 'Entry door ROI data (60-80% recoup) is rarely used in sales presentations',
+      productScope: 'doors', channel: 'sales', priority: 'medium',
+      recommendedMessage: 'Your entry door has the highest ROI of any exterior project. Here\'s the data.',
+    },
+    {
+      opportunityType: 'financing_gap', description: 'Distinguish "true 0% APR" from competitor "deferred interest" to build trust with savvy buyers',
+      productScope: 'general', channel: 'website', priority: 'high',
+      recommendedMessage: 'True 0% APR — not deferred interest. No surprises. No fine print tricks.',
+    },
+    {
+      opportunityType: 'speed_gap', description: 'Speed-to-lead under 60 seconds = 391% more conversions — implement auto-response system',
+      productScope: 'general', channel: 'sales', priority: 'critical',
+      recommendedMessage: 'We respond in under 60 seconds. Your home improvement project starts NOW.',
+    },
+  ];
+
+  for (const opp of opportunities) {
+    const exists = await prisma.messagingOpportunity.findFirst({
+      where: { description: opp.description },
+    });
+    if (!exists) await prisma.messagingOpportunity.create({ data: opp });
+  }
+
+  logger.info('[Intelligence] Seeded research findings: objections, clusters, opportunities');
+}
+
 // ─── Market Summary Report ────────────────────────────────────────────────
 export async function getMarketSummary() {
   const [
@@ -367,4 +543,5 @@ export const intelligenceOrchestrator = {
   seedCompetitors,
   runFullIntelligenceResearch,
   getMarketSummary,
+  seedResearchFindings,
 };

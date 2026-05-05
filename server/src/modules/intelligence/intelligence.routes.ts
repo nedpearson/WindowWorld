@@ -40,10 +40,13 @@ intelligenceRouter.get('/dashboard/market-summary', async (_req, res) => {
 // ─── Seed Static Pre-Built Content (instant, no crawl needed) ───────────
 intelligenceRouter.post('/research/seed-static', ...auth.manager, async (_req, res) => {
   try {
-    // Seeds social patterns + campaign angles immediately — no crawl required
+    // Seeds competitors, social patterns, campaign angles, AND deep research findings
+    await intelligenceOrchestrator.seedCompetitors();
     await intelligenceOrchestrator.runFullIntelligenceResearch({ location: 'Baton Rouge, Louisiana', skipSocial: true, staticOnly: true });
-    res.json({ ok: true, message: 'Static content seeded' });
+    await intelligenceOrchestrator.seedResearchFindings();
+    res.json({ ok: true, message: 'Static content + research findings seeded' });
   } catch (e: any) {
+    logger.warn('[Intelligence] Seed failed:', e);
     res.status(500).json({ error: 'Seed failed' });
   }
 });
