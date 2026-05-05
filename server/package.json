@@ -5,7 +5,7 @@
     "scripts": {
         "dev": "tsx watch src/index.ts",
         "build": "prisma generate && tsc",
-        "start": "prisma migrate deploy && node dist/index.js",
+        "start": "npx prisma migrate resolve --rolled-back 20260505000000_add_lead_intelligence_fields || true && prisma migrate deploy && node dist/index.js",
         "migrate": "prisma migrate dev",
         "migrate:deploy": "prisma migrate deploy",
         "generate": "prisma generate",
@@ -76,3 +76,4 @@
         "uuid": "^14.0.0"
     }
 }
+

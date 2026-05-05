@@ -23,7 +23,7 @@ preDeployCommand = "cd server && npx prisma migrate resolve --applied 2026042819
 # ── startCommand: deploy any NEW migrations then boot the server ─────────────
 # After baseline above, migrate deploy will find 0 pending migrations and exit 0.
 # Any future migrations committed to prisma/migrations/ will be applied here.
-startCommand = "cd server && npx prisma migrate deploy && node dist/index.js"
+startCommand = "cd server && (npx prisma migrate resolve --rolled-back 20260505000000_add_lead_intelligence_fields || true) && npx prisma migrate deploy && node dist/index.js"
 
 healthcheckPath = "/health"
 healthcheckTimeout = 300
