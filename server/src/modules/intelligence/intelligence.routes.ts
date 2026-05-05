@@ -45,8 +45,10 @@ intelligenceRouter.post('/research/seed-static', ...auth.manager, async (_req, r
     await intelligenceOrchestrator.runFullIntelligenceResearch({ location: 'Baton Rouge, Louisiana', skipSocial: true, staticOnly: true });
     await intelligenceOrchestrator.seedResearchFindings();
     await intelligenceOrchestrator.seedStaticBattlecards();
+    await intelligenceOrchestrator.seedStaticReviews();
+    await intelligenceOrchestrator.seedStaticForumThreads();
     await intelligenceScoringService.seedPersonaDefinitions();
-    res.json({ ok: true, message: 'All static content seeded (competitors, battlecards, research, personas)' });
+    res.json({ ok: true, message: 'All static content seeded (competitors, battlecards, reviews, forums, research, personas)' });
   } catch (e: any) {
     logger.warn('[Intelligence] Seed failed:', e);
     res.status(500).json({ error: 'Seed failed' });

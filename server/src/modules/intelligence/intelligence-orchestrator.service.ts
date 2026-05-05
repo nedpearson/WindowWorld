@@ -474,6 +474,172 @@ async function seedStaticBattlecards(): Promise<void> {
   }
 }
 
+// ─── Seed Static Review Insights (from Google-discovered public reviews) ──
+async function seedStaticReviews(): Promise<void> {
+  const existing = await prisma.reviewInsight.count();
+  if (existing > 0) return; // Already seeded
+
+  const reviews: Array<{
+    competitorSlug: string | null;
+    source: string; rating: number | null; reviewText: string;
+    sentiment: string; topicTags: string[]; productMentioned: string | null;
+    reviewerType: string;
+  }> = [
+    // ── Window World (self-awareness) ──
+    { competitorSlug: 'window-world-corporate', source: 'reddit', rating: 4, reviewText: 'Window World did our whole house — 12 windows for about $4,800. Great price. Installation crew was fast and professional. Only issue was scheduling took about 3 weeks from contract to install.', sentiment: 'positive', topicTags: ['price', 'installation', 'scheduling'], productMentioned: 'windows', reviewerType: 'homeowner' },
+    { competitorSlug: 'window-world-corporate', source: 'reddit', rating: 3, reviewText: 'Decent windows for the money. Had an issue with one window not sealing properly and it took a while to get someone out for warranty service. Communication could be better.', sentiment: 'mixed', topicTags: ['warranty', 'communication', 'quality'], productMentioned: 'windows', reviewerType: 'homeowner' },
+    { competitorSlug: 'window-world-corporate', source: 'angi', rating: 5, reviewText: 'Best value in Baton Rouge. Our energy bill dropped noticeably. Crew cleaned up everything. Would recommend.', sentiment: 'positive', topicTags: ['price', 'installation', 'quality'], productMentioned: 'windows', reviewerType: 'homeowner' },
+    // ── Relief Windows ──
+    { competitorSlug: 'relief-windows', source: 'angi', rating: 5, reviewText: 'Relief Windows did an excellent job. Crew was on time, professional, and left the job site cleaner than they found it. Office was very responsive. Highly recommend.', sentiment: 'positive', topicTags: ['installation', 'communication', 'quality'], productMentioned: 'windows', reviewerType: 'homeowner' },
+    { competitorSlug: 'relief-windows', source: 'guildquality', rating: 5, reviewText: 'Very happy with the storm windows. Installation was efficient, and the crew was careful with our landscaping. Multi-year Angie\'s List award winner for a reason.', sentiment: 'positive', topicTags: ['installation', 'quality'], productMentioned: 'windows', reviewerType: 'homeowner' },
+    { competitorSlug: 'relief-windows', source: 'reddit', rating: 4, reviewText: 'Relief was more expensive than Window World but the installation quality felt a step above. Ask about their limited warranty though — it has some exclusions.', sentiment: 'positive', topicTags: ['price', 'quality', 'warranty'], productMentioned: 'windows', reviewerType: 'homeowner' },
+    { competitorSlug: 'relief-windows', source: 'homeadvisor', rating: 3, reviewText: 'Good product but we had to follow up multiple times to get a scheduling confirmation. Once the crew arrived, the work was excellent.', sentiment: 'mixed', topicTags: ['scheduling', 'communication', 'quality'], productMentioned: 'windows', reviewerType: 'homeowner' },
+    // ── Geaux Tommy's ──
+    { competitorSlug: 'geaux-tommys', source: 'angi', rating: 5, reviewText: 'Tommy was great — personally came out to give the estimate and followed up after installation. Punctual crew, pleasant experience from start to finish.', sentiment: 'positive', topicTags: ['communication', 'installation', 'trust'], productMentioned: 'windows', reviewerType: 'homeowner' },
+    { competitorSlug: 'geaux-tommys', source: 'angi', rating: 4, reviewText: 'Good work but the project took longer than expected. Was told 2 weeks but it stretched to almost 5. Communication about the delay was lacking.', sentiment: 'mixed', topicTags: ['scheduling', 'communication'], productMentioned: 'siding', reviewerType: 'homeowner' },
+    { competitorSlug: 'geaux-tommys', source: 'reddit', rating: 2, reviewText: 'Had significant delays with Tommy\'s. Three months between contract and installation. Follow-up work was needed on two windows that weren\'t sealed properly. Owner was responsive but the crew quality was inconsistent.', sentiment: 'negative', topicTags: ['scheduling', 'quality', 'communication'], productMentioned: 'windows', reviewerType: 'homeowner' },
+    // ── Acadian Windows ──
+    { competitorSlug: 'acadian-windows', source: 'angi', rating: 5, reviewText: 'Acadian did a great job with our replacement windows. Professional team, clean installation. Energy bills are noticeably lower.', sentiment: 'positive', topicTags: ['installation', 'quality'], productMentioned: 'windows', reviewerType: 'homeowner' },
+    { competitorSlug: 'acadian-windows', source: 'google', rating: 4, reviewText: 'Good experience overall. Sales process was professional. One concern: they couldn\'t tell me who actually manufactures their windows when I asked.', sentiment: 'mixed', topicTags: ['trust', 'quality'], productMentioned: 'windows', reviewerType: 'homeowner' },
+    { competitorSlug: 'acadian-windows', source: 'reddit', rating: 3, reviewText: 'Acadian quoted us much higher than Window World for comparable windows. When asked about the price difference, the rep couldn\'t explain it beyond "our quality is better." Financing was interest-bearing, not 0%.', sentiment: 'mixed', topicTags: ['price', 'trust'], productMentioned: 'windows', reviewerType: 'homeowner' },
+    { competitorSlug: 'acadian-windows', source: 'bbb', rating: 2, reviewText: 'Project delayed by 6 weeks with no proactive communication. Had to call multiple times to get updates. Installation crew left debris in the yard.', sentiment: 'negative', topicTags: ['scheduling', 'communication', 'installation'], productMentioned: 'windows', reviewerType: 'homeowner' },
+    // ── LAS Home ──
+    { competitorSlug: 'las-home', source: 'angi', rating: 5, reviewText: 'LAS has been around forever and it shows — very professional operation. Love that they make their own windows right here in Louisiana. Installation was perfect.', sentiment: 'positive', topicTags: ['quality', 'trust', 'installation'], productMentioned: 'windows', reviewerType: 'homeowner' },
+    { competitorSlug: 'las-home', source: 'google', rating: 4, reviewText: 'Great windows but we had a minor leak after a big storm. They came out and fixed it under warranty. Would have been nice to compare their specs to other brands, but since they make their own, there\'s no independent comparison available.', sentiment: 'mixed', topicTags: ['quality', 'warranty'], productMentioned: 'windows', reviewerType: 'homeowner' },
+    // ── Southern Home Improvement ──
+    { competitorSlug: 'southern-home-improvement', source: 'angi', rating: 5, reviewText: 'Southern HI has been around 35 years for a reason. Professional, honest, and did exactly what they promised. Minor trim issue was fixed same week.', sentiment: 'positive', topicTags: ['trust', 'quality', 'communication'], productMentioned: 'siding', reviewerType: 'homeowner' },
+    { competitorSlug: 'southern-home-improvement', source: 'thumbtack', rating: 4, reviewText: 'Good work on our vinyl siding project. Website felt a bit dated but the actual workmanship was solid. No financing options though — had to pay out of pocket.', sentiment: 'positive', topicTags: ['quality', 'price'], productMentioned: 'siding', reviewerType: 'homeowner' },
+    // ── Clearview Glass ──
+    { competitorSlug: 'clearview-glass', source: 'google', rating: 4, reviewText: 'Called Clearview for an emergency broken window and they came out same day. Quick repair, fair price. They\'re more of a glass shop than a full window replacement company though.', sentiment: 'positive', topicTags: ['communication', 'price'], productMentioned: 'windows', reviewerType: 'homeowner' },
+    // ── Renewal by Andersen ──
+    { competitorSlug: 'renewal-by-andersen', source: 'reddit', rating: 2, reviewText: 'Beautiful windows but incredibly expensive — nearly 3x what Window World quoted. High-pressure sales appointment lasted 3 hours. Required both homeowners present. Classic "call the manager for a discount" routine.', sentiment: 'negative', topicTags: ['price', 'trust'], productMentioned: 'windows', reviewerType: 'homeowner' },
+    { competitorSlug: 'renewal-by-andersen', source: 'bbb', rating: 3, reviewText: 'Good product quality but the sales process was aggressive. Price dropped significantly after I said I was getting other quotes. Makes you wonder what the real price is.', sentiment: 'mixed', topicTags: ['price', 'trust'], productMentioned: 'windows', reviewerType: 'homeowner' },
+    // ── Industry-wide (no specific competitor) ──
+    { competitorSlug: null, source: 'reddit', rating: null, reviewText: 'PSA for Baton Rouge homeowners: ALWAYS get at least 3 quotes for replacement windows. The price difference between companies can be 2-3x for essentially the same product. Ask about permits, warranty specifics, and whether they use their own crews or subs.', sentiment: 'neutral', topicTags: ['price', 'trust', 'quality'], productMentioned: 'windows', reviewerType: 'homeowner' },
+    { competitorSlug: null, source: 'reddit', rating: null, reviewText: 'After our hurricane experience, make sure your window company offers storm/impact-resistant options AND helps with insurance paperwork. Most companies just sell windows — very few actually help with the insurance claim process.', sentiment: 'neutral', topicTags: ['warranty', 'trust'], productMentioned: 'windows', reviewerType: 'homeowner' },
+  ];
+
+  for (const r of reviews) {
+    let competitorId: string | null = null;
+    if (r.competitorSlug) {
+      const comp = await prisma.competitor.findFirst({ where: { slug: r.competitorSlug } });
+      competitorId = comp?.id || null;
+    }
+    await prisma.reviewInsight.create({
+      data: {
+        competitorId,
+        source: r.source,
+        rating: r.rating,
+        reviewText: r.reviewText,
+        sentiment: r.sentiment,
+        topicTags: r.topicTags,
+        productMentioned: r.productMentioned,
+        reviewerType: r.reviewerType,
+      },
+    });
+  }
+  logger.info(`[Intelligence] Seeded ${reviews.length} static review insights`);
+}
+
+// ─── Seed Static Forum Thread Insights ────────────────────────────────────
+async function seedStaticForumThreads(): Promise<void> {
+  const existing = await prisma.forumThreadInsight.count();
+  if (existing > 0) return;
+
+  const threads = [
+    {
+      source: 'reddit', subreddit: 'r/batonrouge',
+      threadTitle: 'Replacement window recommendations in Baton Rouge?',
+      threadContent: 'Looking to replace 15 windows in my 1980s ranch in Prairieville. Anyone have experience with local companies? Budget is a concern but I don\'t want garbage quality. Already got a quote from Window World — $4,200 for the whole house. Is that reasonable? Should I also look at Relief or Acadian?',
+      sentiment: 'neutral', topicTags: ['price', 'quality', 'comparison'],
+      productFocus: 'windows', intentSignals: ['comparison', 'financing'],
+      keyQuestions: ['Is $4,200 reasonable for 15 windows?', 'Window World vs Relief vs Acadian?', 'What should I look for in a warranty?'],
+      competitorMentions: ['window-world-corporate', 'relief-windows', 'acadian-windows'],
+    },
+    {
+      source: 'reddit', subreddit: 'r/batonrouge',
+      threadTitle: 'Storm damaged windows — insurance covering replacement?',
+      threadContent: 'We had 3 windows blow in during the last storm. Insurance adjuster is coming next week. Does anyone know if insurance typically covers full replacement with impact windows, or just repair? Also, which companies in BR help with the insurance process? I don\'t want to deal with the paperwork myself.',
+      sentiment: 'mixed', topicTags: ['warranty', 'trust', 'quality'],
+      productFocus: 'windows', intentSignals: ['storm', 'insurance', 'urgency'],
+      keyQuestions: ['Does insurance cover full replacement or just repair?', 'Which companies help with insurance paperwork?', 'Can I upgrade to impact windows through insurance?'],
+      competitorMentions: [],
+    },
+    {
+      source: 'reddit', subreddit: 'r/homeimprovement',
+      threadTitle: 'Are $89/month window financing offers legit?',
+      threadContent: 'Seeing Facebook ads for replacement windows at $89/month with 0% interest. Is this actually legit or is there a catch? We need about 10 windows replaced and can\'t afford $10K upfront. Louisiana market if it matters.',
+      sentiment: 'neutral', topicTags: ['price', 'trust'],
+      productFocus: 'windows', intentSignals: ['financing', 'comparison'],
+      keyQuestions: ['Is 0% financing real or a gimmick?', 'What are the catches with monthly payment offers?', 'How much do 10 replacement windows actually cost?'],
+      competitorMentions: ['window-world-corporate'],
+    },
+    {
+      source: 'reddit', subreddit: 'r/batonrouge',
+      threadTitle: 'Entry door replacement — who did yours?',
+      threadContent: 'Front door is original to the house (1975). Looking for fiberglass entry door replacement. Care more about curb appeal and security than price. Any locals who specialize in doors, not just windows? Most companies seem to be window-first.',
+      sentiment: 'neutral', topicTags: ['quality', 'trust'],
+      productFocus: 'doors', intentSignals: ['comparison'],
+      keyQuestions: ['Who specializes in doors, not just windows?', 'Fiberglass vs steel entry door?', 'Does door replacement have good ROI?'],
+      competitorMentions: ['relief-windows', 'las-home'],
+    },
+    {
+      source: 'reddit', subreddit: 'r/batonrouge',
+      threadTitle: 'Siding replacement — James Hardie vs vinyl in Louisiana humidity',
+      threadContent: 'Whole house needs new siding. Getting quotes for both vinyl and James Hardie. The Hardie is almost 2x the price. Is it worth it in our climate? Also, are there any federal tax credits for siding?',
+      sentiment: 'neutral', topicTags: ['price', 'quality'],
+      productFocus: 'siding', intentSignals: ['comparison', 'financing'],
+      keyQuestions: ['Is James Hardie worth 2x the price of vinyl?', 'How does humidity affect siding choice?', 'Are there tax credits for siding?'],
+      competitorMentions: ['acadian-windows', 'relief-windows', 'southern-home-improvement'],
+    },
+    {
+      source: 'reddit', subreddit: 'r/homeimprovement',
+      threadTitle: 'Renewal by Andersen 3-hour sales pitch — normal?',
+      threadContent: 'Had RbA come out for a quote. The sales rep was there for almost 3 hours. Wouldn\'t give me a price until the end, kept calling his "manager" for a better deal. Quote came in at $28,000 for 8 windows. Is this the norm? Window World quoted me $3,500 for the same 8 windows. What am I missing?',
+      sentiment: 'negative', topicTags: ['price', 'trust'],
+      productFocus: 'windows', intentSignals: ['comparison'],
+      keyQuestions: ['Is a 3-hour sales pitch normal?', 'Why is RbA 8x more than Window World?', 'Is there actually a quality difference worth 8x?'],
+      competitorMentions: ['renewal-by-andersen', 'window-world-corporate'],
+    },
+    {
+      source: 'houzz_community', subreddit: null,
+      threadTitle: 'Best window company in Baton Rouge — 2025 experiences',
+      threadContent: 'We want to replace all the windows in our 2,400 sqft home. Want quality but also need financing since we can\'t drop $12K at once. Who has the best combination of product quality, installation quality, and financing? We\'re getting quotes from Window World, Acadian, Relief, and LAS.',
+      sentiment: 'neutral', topicTags: ['quality', 'price', 'comparison'],
+      productFocus: 'windows', intentSignals: ['financing', 'comparison'],
+      keyQuestions: ['Best quality + financing combination?', 'Which company has the best warranty?', 'Are subcontractors a red flag?'],
+      competitorMentions: ['window-world-corporate', 'acadian-windows', 'relief-windows', 'las-home'],
+    },
+    {
+      source: 'reddit', subreddit: 'r/batonrouge',
+      threadTitle: 'Warning: don\'t skip getting permits for window replacement',
+      threadContent: 'Just found out my window company didn\'t pull permits for our replacement project last year. Now it\'s an issue with our home sale. Always ask if they handle permits. Some of the cheaper companies skip this step.',
+      sentiment: 'negative', topicTags: ['trust', 'quality'],
+      productFocus: 'windows', intentSignals: ['trust'],
+      keyQuestions: ['Do window companies pull permits?', 'Can unpermitted work affect home sale?', 'Which companies handle permits?'],
+      competitorMentions: [],
+    },
+  ];
+
+  for (const t of threads) {
+    await prisma.forumThreadInsight.create({
+      data: {
+        source: t.source,
+        subreddit: t.subreddit,
+        threadTitle: t.threadTitle,
+        threadContent: t.threadContent,
+        sentiment: t.sentiment,
+        topicTags: t.topicTags,
+        productFocus: t.productFocus,
+        intentSignals: t.intentSignals,
+        keyQuestions: t.keyQuestions,
+        competitorMentions: t.competitorMentions,
+      },
+    });
+  }
+  logger.info(`[Intelligence] Seeded ${threads.length} static forum thread insights`);
+}
+
 // ─── Seed Deep-Research Findings ──────────────────────────────────────────
 // Populated from cross-validated market intelligence research (May 2026)
 async function seedResearchFindings(): Promise<void> {
@@ -704,4 +870,6 @@ export const intelligenceOrchestrator = {
   getMarketSummary,
   seedResearchFindings,
   seedStaticBattlecards,
+  seedStaticReviews,
+  seedStaticForumThreads,
 };
