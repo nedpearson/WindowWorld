@@ -133,6 +133,7 @@ export interface RecommendationOutput {
 
 // Known competitors to track (pre-seeded)
 export const KNOWN_COMPETITORS = [
+  // ── National Competitors ──
   {
     name: 'Window World (Corporate)',
     slug: 'window-world-corporate',
@@ -169,10 +170,41 @@ export const KNOWN_COMPETITORS = [
     website: 'https://www.powerhrg.com',
     territory: 'regional',
   },
+  // ── Local / Regional Competitors (Mandatory) ──
   {
-    name: 'Republic Window & Door',
-    slug: 'republic-window-door',
-    website: 'https://www.republicwindowanddoor.com',
+    name: 'Relief Windows',
+    slug: 'relief-windows',
+    website: 'https://reliefwindows.com',
+    territory: 'local',
+  },
+  {
+    name: "Geaux Tommy's Windows, Doors & Siding",
+    slug: 'geaux-tommys',
+    website: 'https://geauxtommys.com',
+    territory: 'local',
+  },
+  {
+    name: 'Clearview Glass',
+    slug: 'clearview-glass',
+    website: 'https://clearviewglassla.com',
+    territory: 'local',
+  },
+  {
+    name: 'Southern Home Improvement Center',
+    slug: 'southern-home-improvement',
+    website: 'https://www.southernhomeimprovement.com',
+    territory: 'local',
+  },
+  {
+    name: 'Acadian Windows & Siding',
+    slug: 'acadian-windows',
+    website: 'https://acadianwindows.com',
+    territory: 'local',
+  },
+  {
+    name: 'LAS Shutters + Windows',
+    slug: 'las-home',
+    website: 'https://lashome.com',
     territory: 'local',
   },
 ];

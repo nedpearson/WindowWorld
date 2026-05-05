@@ -79,7 +79,7 @@ export async function runFullIntelligenceResearch(options: {
 
   // 3. Collect public reviews
   let reviewsCollected = 0;
-  for (const comp of competitors.slice(0, 5)) { // Top 5 competitors
+  for (const comp of competitors) { // All competitors — no cap
     try {
       const count = await marketCrawler.collectPublicReviews(comp.id, comp.name);
       reviewsCollected += count;
