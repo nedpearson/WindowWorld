@@ -292,8 +292,14 @@ export function LeadIntelligencePage() {
   // Filter (score >= 50 enforced), then sort: score DESC, then distMiles ASC
   const filtered = leads
     .filter((lead) => {
-      if (category === 'b2b') return lead.notes?.includes('Property Management') || lead.notes?.includes('B2B');
-      if (category === 'homeowners') return lead.notes?.includes('Homeowners') || (!lead.notes?.includes('Property Management') && !lead.notes?.includes('B2B'));
+      // Enforce base quality threshold
+      if (lead.score < 50) return false;
+
+      const notesUpper = (lead.notes || '').toUpperCase();
+      const isB2B = notesUpper.includes('PROPERTY MANAGEMENT') || notesUpper.includes('B2B') || notesUpper.includes('HOA') || notesUpper.includes('REAL ESTATE') || notesUpper.includes('LLC') || notesUpper.includes('COMMERCIAL');
+
+      if (category === 'b2b') return isB2B;
+      if (category === 'homeowners') return !isB2B;
       if (category === 'storm') return lead.isStorm;
       if (category === 'hot') return lead.score >= 80;
       if (category === 'stuck') return lead.stuckDays >= 5;
