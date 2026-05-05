@@ -7,9 +7,10 @@ import {
   CheckCircleIcon, BuildingStorefrontIcon,
   DocumentTextIcon, BanknotesIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
 import clsx from 'clsx';
-import { AreaChart, Area, BarChart, Bar as _Bar,
+import { AreaChart, Area as _Area, BarChart, Bar as _Bar,
   XAxis as _XAxis, YAxis as _YAxis, CartesianGrid, Tooltip as _Tooltip, ResponsiveContainer, Cell } from 'recharts';
 
+const Area = _Area as any;
 const Bar = _Bar as any;
 const XAxis = _XAxis as any;
 const YAxis = _YAxis as any;

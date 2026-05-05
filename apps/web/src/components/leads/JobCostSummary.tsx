@@ -8,7 +8,12 @@ import {
   ExclamationCircleIcon,
   XMarkIcon,
 } from '@heroicons/react/24/outline';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
+import { BarChart, Bar as _Bar, XAxis as _XAxis, YAxis as _YAxis, Tooltip as _Tooltip, ResponsiveContainer, Cell } from 'recharts';
+
+const Bar = _Bar as any;
+const XAxis = _XAxis as any;
+const YAxis = _YAxis as any;
+const Tooltip = _Tooltip as any;
 import clsx from 'clsx';
 import { ReceiptCapture } from '../field/ReceiptCapture';
 import { get } from '../../api/client';
