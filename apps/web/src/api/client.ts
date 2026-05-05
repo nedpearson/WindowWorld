@@ -472,6 +472,21 @@ export const api = {
     /** Get forum insights */
     getForums: (params?: { product?: string; intent?: string }) =>
       get<any>('/intelligence/forums', { params }),
+
+    // ── Intelligence Scoring System ──
+    /** Get lead intelligence panel data (persona, scores, objections, battlecard) */
+    getLeadIntelligence: (leadId: string) => get<any>(`/intelligence/lead/${leadId}/intelligence`),
+    /** Score/rescore a lead with intelligence engine */
+    scoreLead: (leadId: string) => post<any>(`/intelligence/lead/${leadId}/score`, {}),
+    /** Record an intent event for a lead */
+    recordIntentEvent: (leadId: string, data: { eventType: string; eventData?: any; channel?: string }) =>
+      post<any>(`/intelligence/lead/${leadId}/intent-event`, data),
+    /** Seed persona definitions */
+    seedPersonas: () => post<any>('/intelligence/personas/seed', {}),
+    /** Get all persona definitions */
+    getPersonas: () => get<any>('/intelligence/personas'),
+    /** Get manager intent dashboard overview */
+    getIntentOverview: () => get<any>('/intelligence/dashboard/intent-overview'),
   },
 };
 

@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { auth } from '../../shared/middleware/auth';
 import { prisma } from '../../shared/services/prisma';
 import { intelligenceOrchestrator } from './intelligence-orchestrator.service';
+import { intelligenceScoringService } from './intelligence-scoring.service';
 import { battlecardService } from './battlecard.service';
 import { marketCrawler } from './market-crawler.service';
 import { intentTracker } from './intent-tracker.service';
@@ -40,11 +41,11 @@ intelligenceRouter.get('/dashboard/market-summary', async (_req, res) => {
 // ─── Seed Static Pre-Built Content (instant, no crawl needed) ───────────
 intelligenceRouter.post('/research/seed-static', ...auth.manager, async (_req, res) => {
   try {
-    // Seeds competitors, social patterns, campaign angles, AND deep research findings
     await intelligenceOrchestrator.seedCompetitors();
     await intelligenceOrchestrator.runFullIntelligenceResearch({ location: 'Baton Rouge, Louisiana', skipSocial: true, staticOnly: true });
     await intelligenceOrchestrator.seedResearchFindings();
-    res.json({ ok: true, message: 'Static content + research findings seeded' });
+    await intelligenceScoringService.seedPersonaDefinitions();
+    res.json({ ok: true, message: 'Static content + research findings + personas seeded' });
   } catch (e: any) {
     logger.warn('[Intelligence] Seed failed:', e);
     res.status(500).json({ error: 'Seed failed' });
@@ -307,5 +308,142 @@ intelligenceRouter.get('/forums', async (req, res) => {
     res.json(forums);
   } catch (e: any) {
     res.status(500).json({ error: 'Failed to load forum insights' });
+  }
+});
+
+// ============================================================
+// INTELLIGENCE SCORING ENDPOINTS
+// ============================================================
+
+// ─── Get Lead Intelligence Panel (rep-facing) ─────────────────────────────
+intelligenceRouter.get('/lead/:leadId/intelligence', async (req, res) => {
+  try {
+    const data = await intelligenceScoringService.getLeadIntelligence(req.params.leadId);
+    if (!data) return res.status(404).json({ error: 'Lead not found' });
+    res.json(data);
+  } catch (e: any) {
+    logger.error('[Intelligence] Lead intelligence fetch failed:', e);
+    res.status(500).json({ error: 'Failed to load lead intelligence' });
+  }
+});
+
+// ─── Score/Rescore a Lead ─────────────────────────────────────────────────
+intelligenceRouter.post('/lead/:leadId/score', async (req, res) => {
+  try {
+    const score = await intelligenceScoringService.scoreLeadWithIntelligence(req.params.leadId);
+    res.json({ ok: true, score });
+  } catch (e: any) {
+    logger.error('[Intelligence] Lead scoring failed:', e);
+    res.status(500).json({ error: 'Scoring failed' });
+  }
+});
+
+// ─── Record Intent Event for a Lead ───────────────────────────────────────
+intelligenceRouter.post('/lead/:leadId/intent-event', async (req, res) => {
+  try {
+    const { eventType, eventData, channel } = req.body;
+    if (!eventType) return res.status(400).json({ error: 'eventType required' });
+    await intelligenceScoringService.recordIntentEvent({
+      leadId: req.params.leadId,
+      eventType, eventData, channel,
+    });
+    res.json({ ok: true });
+  } catch (e: any) {
+    res.status(500).json({ error: 'Failed to record intent event' });
+  }
+});
+
+// ─── Seed Persona Definitions ─────────────────────────────────────────────
+intelligenceRouter.post('/personas/seed', ...auth.manager, async (_req, res) => {
+  try {
+    await intelligenceScoringService.seedPersonaDefinitions();
+    res.json({ ok: true, message: 'Persona definitions seeded' });
+  } catch (e: any) {
+    res.status(500).json({ error: 'Persona seeding failed' });
+  }
+});
+
+// ─── Get All Persona Definitions ──────────────────────────────────────────
+intelligenceRouter.get('/personas', async (_req, res) => {
+  try {
+    const personas = await prisma.personaDefinition.findMany({
+      where: { isActive: true },
+      orderBy: { priority: 'desc' },
+    });
+    res.json(personas);
+  } catch (e: any) {
+    res.status(500).json({ error: 'Failed to load personas' });
+  }
+});
+
+// ─── Manager Intent Dashboard ─────────────────────────────────────────────
+intelligenceRouter.get('/dashboard/intent-overview', ...auth.manager, async (req, res) => {
+  try {
+    const orgId = (req as any).user?.organizationId;
+    if (!orgId) return res.status(400).json({ error: 'No organization' });
+
+    const [
+      highIntent, financingHeavy, stormLeads, atRisk,
+      personaBreakdown, objectionFrequency, competitorMentions,
+    ] = await Promise.all([
+      // High-intent leads (score > 60)
+      prisma.lead.findMany({
+        where: { organizationId: orgId, deletedAt: null, leadScore: { gte: 60 }, status: { notIn: ['SOLD', 'LOST', 'INSTALLED', 'PAID'] } },
+        orderBy: { leadScore: 'desc' }, take: 20,
+        select: { id: true, firstName: true, lastName: true, leadScore: true, urgencyScore: true, assignedPersona: true, closeProbability: true, assignedRepId: true, status: true, financingPropensity: true, competitorMentioned: true, recommendedNextAction: true },
+      }),
+      // Financing-heavy leads
+      prisma.lead.findMany({
+        where: { organizationId: orgId, deletedAt: null, financingPropensity: { gte: 0.5 }, status: { notIn: ['SOLD', 'LOST', 'INSTALLED', 'PAID'] } },
+        orderBy: { financingPropensity: 'desc' }, take: 15,
+        select: { id: true, firstName: true, lastName: true, leadScore: true, financingPropensity: true, assignedPersona: true, status: true, assignedRepId: true },
+      }),
+      // Storm leads
+      prisma.lead.findMany({
+        where: { organizationId: orgId, deletedAt: null, isStormLead: true, status: { notIn: ['SOLD', 'LOST', 'INSTALLED', 'PAID'] } },
+        orderBy: { urgencyScore: 'desc' }, take: 15,
+        select: { id: true, firstName: true, lastName: true, leadScore: true, urgencyScore: true, status: true, assignedRepId: true },
+      }),
+      // At-risk (no contact 7+ days, score > 30)
+      prisma.lead.findMany({
+        where: {
+          organizationId: orgId, deletedAt: null, leadScore: { gte: 30 },
+          status: { notIn: ['SOLD', 'LOST', 'INSTALLED', 'PAID'] },
+          OR: [
+            { lastContactedAt: { lt: new Date(Date.now() - 7 * 86400000) } },
+            { lastContactedAt: null, createdAt: { lt: new Date(Date.now() - 3 * 86400000) } },
+          ],
+        },
+        orderBy: { leadScore: 'desc' }, take: 15,
+        select: { id: true, firstName: true, lastName: true, leadScore: true, lastContactedAt: true, status: true, assignedRepId: true, assignedPersona: true },
+      }),
+      // Persona breakdown
+      prisma.lead.groupBy({
+        by: ['assignedPersona'],
+        where: { organizationId: orgId, deletedAt: null, assignedPersona: { not: null }, status: { notIn: ['SOLD', 'LOST', 'INSTALLED', 'PAID'] } },
+        _count: true,
+      }),
+      // Top objection patterns
+      prisma.objectionPattern.findMany({ orderBy: { frequency: 'desc' }, take: 8 }),
+      // Competitor mentions
+      prisma.lead.groupBy({
+        by: ['competitorMentioned'],
+        where: { organizationId: orgId, deletedAt: null, competitorMentioned: { not: null } },
+        _count: true,
+      }),
+    ]);
+
+    res.json({
+      highIntent,
+      financingHeavy,
+      stormLeads,
+      atRisk,
+      personaBreakdown: personaBreakdown.map((p) => ({ persona: p.assignedPersona, count: p._count })),
+      objectionFrequency,
+      competitorMentions: competitorMentions.map((c) => ({ competitor: c.competitorMentioned, count: c._count })),
+    });
+  } catch (e: any) {
+    logger.error('[Intelligence] Intent overview failed:', e);
+    res.status(500).json({ error: 'Failed to load intent overview' });
   }
 });

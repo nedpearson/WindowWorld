@@ -402,6 +402,24 @@ model Lead {
   financingPropensity Float?
   estimatedRevenue    Float?
 
+  // Intelligence-driven product interest (0.0-1.0)
+  productInterestWindows Float? @default(0)
+  productInterestDoors   Float? @default(0)
+  productInterestSiding  Float? @default(0)
+  premiumIntent          Float? @default(0)
+  budgetSensitivity      Float? @default(0)
+  trustConcernLevel      Float? @default(0)
+
+  // Persona assignment
+  assignedPersona        String? // FINANCING_FIRST, STORM_URGENT, etc.
+  personaConfidence      Float?  @default(0)
+  recommendedPitchAngle  String?
+  recommendedNextAction  String?
+  recommendedFollowUpDays Int?
+  competitorMentioned    String?
+  lastIntentSignal       String?
+  intentLastUpdated      DateTime?
+
   // Context flags
   isStormLead   Boolean @default(false)
   stormEventId  String?
@@ -434,6 +452,7 @@ model Lead {
   campaign     Campaign?    @relation(fields: [campaignId], references: [id])
 
   leadScores        LeadScore[]
+  intentEvents      LeadIntentEvent[]
   contacts          Contact[]
   properties        Property[]         @relation("leadProperties")
   appointments      Appointment[]
@@ -473,18 +492,33 @@ model LeadScore {
   referralScore        Float?
   campaignScore        Float?
 
+  // Intelligence-driven signal scores
+  financingPropensityScore Float? @default(0)
+  productWindowsScore      Float? @default(0)
+  productDoorsScore        Float? @default(0)
+  productSidingScore       Float? @default(0)
+  stormUrgencyScore        Float? @default(0)
+  premiumIntentScore       Float? @default(0)
+  budgetSensitivityScore   Float? @default(0)
+  trustConcernScore        Float? @default(0)
+
   // Composite scores
   totalScore       Float @default(0)
   urgencyScore     Float @default(0)
   closeProbability Float @default(0)
 
-  // AI outputs
+  // AI / Intelligence outputs
   recommendedPitchAngle    PitchMode?
   recommendedProduct       String?
   estimatedProjectSize     String?
   estimatedRevenueBand     String?
   likelyObjections         String[]
   suggestedContactSequence Json?
+  assignedPersona          String?
+  personaConfidence        Float?  @default(0)
+  recommendedTalkTrack     String?
+  recommendedOffer         String?
+  competitorContext        String?
 
   // Meta
   scoredAt        DateTime @default(now())
@@ -494,7 +528,62 @@ model LeadScore {
 
   lead Lead @relation(fields: [leadId], references: [id])
 
+  @@index([leadId, scoredAt])
   @@map("lead_scores")
+}
+
+// ============================================================
+// LEAD INTENT EVENTS (behavioral signal tracking)
+// ============================================================
+
+model LeadIntentEvent {
+  id        String   @id @default(uuid())
+  leadId    String
+  eventType String   // page_view, form_start, form_submit, call_click, chat_start, quote_request
+  eventData Json?    // { page: "/financing", duration: 45, referrer: "facebook" }
+  channel   String?  // web, phone, chat, email, social
+  score     Int      @default(0) // points this event contributes
+  createdAt DateTime @default(now())
+
+  lead Lead @relation(fields: [leadId], references: [id])
+
+  @@index([leadId, createdAt])
+  @@index([leadId, eventType])
+  @@map("lead_intent_events")
+}
+
+// ============================================================
+// PERSONA DEFINITIONS (research-backed buyer personas)
+// ============================================================
+
+model PersonaDefinition {
+  id          String  @id @default(uuid())
+  slug        String  @unique // FINANCING_FIRST, STORM_URGENT, etc.
+  name        String
+  description String  @db.Text
+
+  // Matching criteria
+  matchRules Json // { financingPropensity: { min: 0.7 }, etc. }
+
+  // Recommended actions
+  talkTrack          String?  @db.Text
+  openingScript      String?  @db.Text
+  discoveryQuestions String[]
+  financingLanguage  String?  @db.Text
+  objectionHandling  String?  @db.Text
+  closeLanguage      String?  @db.Text
+  recommendedOffer   String?
+  recommendedLanding String?
+  recommendedAdAngle String?
+  followUpCadenceDays Int[]   // [0, 2, 5, 10, 14, 21, 30]
+  followUpChannels    String[] // ["call", "text", "email"]
+
+  priority  Int     @default(0) // higher = match first
+  isActive  Boolean @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("persona_definitions")
 }
 
 // ============================================================
