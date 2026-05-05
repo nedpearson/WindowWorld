@@ -315,6 +315,165 @@ async function seedCampaignAngles(): Promise<void> {
   }
 }
 
+// ─── Seed Static Battlecards (pre-built from research) ────────────────────
+async function seedStaticBattlecards(): Promise<void> {
+  const cards: Array<{ slug: string; data: any }> = [
+    {
+      slug: 'relief-windows',
+      data: {
+        positioning: 'Established local contractor (since 2005) specializing in windows, doors, siding, and shutters for the Gulf South. Emphasis on storm/impact products.',
+        keyClaims: ['A+ BBB rated', 'Angie\'s List multi-year award winner', 'Storm/impact resistant windows', 'James Hardie siding installer', 'Licensed and insured (LA #555132)'],
+        pricingLanguage: 'Free estimates, no published pricing. Financing options mentioned but not detailed.',
+        financingOffers: 'Financing available — no specific terms published. NOT confirmed 0% APR.',
+        warrantyNotes: 'LIMITED lifetime warranty — not true lifetime. Transferable but one-time transfer only with restrictions.',
+        ctaStrategy: 'Free estimate request via phone and website form.',
+        reviewStrengths: ['Professional, efficient installation crews', 'Good clean-up after projects', 'Responsive office staff', 'Storm window specialization'],
+        reviewWeaknesses: ['Employee reviews cite high-pressure deadlines and turnover risk', 'Warranty has exclusions and limitations not prominently disclosed', 'One-time transfer limitation on warranty', 'No pricing transparency'],
+        messagingGaps: ['No public pricing or cost estimator', 'Warranty limitations not prominently disclosed', 'No published financing terms or APR details', 'Limited social media content strategy'],
+        facebookNotes: 'Moderate presence with project photos. No consistent content calendar or engagement strategy.',
+        instagramNotes: 'Minimal Instagram presence. No Reels or Stories strategy observed.',
+        ourCounterPitch: 'Relief has a limited lifetime warranty with exclusions and one-time transfer restrictions. We offer a true lifetime warranty that fully transfers. Ask them to show you the exclusions in writing and compare to ours.',
+        talkTrack: 'Relief Windows is a decent local company. Here\'s what I\'d check: ask for the warranty document and read the exclusions — their "limited lifetime" has restrictions ours doesn\'t. Also ask whether they use their own crews or subcontractors, and compare the glass and frame specs side-by-side with ours. Most homeowners who compare are surprised at the differences.',
+        objectionResponses: [
+          { objection: 'Relief quoted me less', response: 'That\'s worth looking into. Ask them for the warranty in writing — their "limited lifetime" has exclusions that ours doesn\'t. Also check if they use their own crews or subs. Those two things often explain the price difference.', close: 'Would you like me to do a spec-for-spec comparison so you can see exactly what you\'re getting?' },
+          { objection: 'Relief specializes in storm windows', response: 'They do offer impact-resistant options, and so do we. The difference is our storm windows come with a true lifetime warranty and 0% financing. Ask Relief what their financing APR is — they don\'t publish it.', close: 'If I can match or beat their storm specs with better warranty and financing, would that help?' },
+          { objection: 'I already got a quote from Relief', response: 'Perfect — that gives us a baseline to compare. Let me show you our specs and warranty side-by-side. Most homeowners find our value is actually better when you factor in the lifetime warranty and true 0% APR.', close: 'Can I see their quote so we can compare apples to apples?' },
+        ],
+      },
+    },
+    {
+      slug: 'geaux-tommys',
+      data: {
+        positioning: 'Owner-operated local company in Baton Rouge focusing on vinyl windows, doors, siding, and gutters. Positions on personal service and competitive pricing.',
+        keyClaims: ['BBB A+ accredited', 'Transferable lifetime warranty (labor + materials + glass)', 'Owner personally involved in every project', 'Competitive pricing — will match estimates'],
+        pricingLanguage: 'Free estimates. Described as "competitive" and "reasonable." Will match lower competitor estimates.',
+        financingOffers: 'No published financing options. Price-matching strategy instead.',
+        warrantyNotes: 'Claims transferable lifetime warranty covering labor, materials, and glass breakage. Strong claim but verify contract specifics.',
+        ctaStrategy: 'Phone call and website contact form. Owner-direct communication.',
+        reviewStrengths: ['Owner is personally responsive', 'Punctual installation crews', 'Pleasant customer experience', 'Competitive pricing', 'Will match competitor estimates'],
+        reviewWeaknesses: ['Recent 2026 complaints about significant project delays', 'Communication gaps regarding timelines', 'Quality issues requiring follow-up rework', 'Small operation with capacity constraints', 'Limited digital/social presence'],
+        messagingGaps: ['No financing options published', 'No before/after project gallery', 'No energy savings or ROI content', 'No storm/insurance content', 'No manufacturer spec transparency'],
+        facebookNotes: 'Low-frequency posting. No consistent content strategy. Primarily word-of-mouth driven.',
+        instagramNotes: 'Minimal to no Instagram presence. No visual content strategy.',
+        ourCounterPitch: 'Tommy\'s is a one-man show — great when it works, but recent reviews show delays and rework. We have dedicated project managers, guaranteed timelines, and the infrastructure to back up our warranty at scale.',
+        talkTrack: 'Tommy\'s is a local guy who does good work when things go right. But check the recent reviews — there are reports of delays and communication gaps in 2026. The question is: when you have a problem 5 years from now, do you want to call one person, or a company with a dedicated service department? Also, we offer 0% financing — Tommy\'s doesn\'t offer any financing.',
+        objectionResponses: [
+          { objection: 'Tommy\'s will match your price', response: 'Price-matching means they\'re competing on price, not value. Ask yourself: why do they need to match? Usually it\'s because they can\'t differentiate on product or service. We don\'t need to match — we differentiate on warranty, financing, and our own crews.', close: 'If our value is genuinely better spec-for-spec, does the price match still matter?' },
+          { objection: 'Tommy\'s has a lifetime warranty too', response: 'On paper, maybe. But a warranty is only as good as the company behind it. Tommy\'s is a small operation. If he retires or closes, your warranty goes with him. Our warranty is backed by a national network that will exist long after any individual owner.', close: 'Would you like to see our warranty document side-by-side?' },
+          { objection: 'I like that Tommy is personally involved', response: 'That\'s understandable. But personal involvement from one person also means he\'s the bottleneck. Recent reviews mention delays because of that. We assign a dedicated project manager to YOUR project — same personal attention, but with a full team behind them.', close: 'Would it help to meet your project manager before you decide?' },
+        ],
+      },
+    },
+    {
+      slug: 'clearview-glass',
+      data: {
+        positioning: 'Glass repair and installation shop in Denham Springs serving residential and commercial customers. Primarily a glass/repair business, not a replacement window specialist.',
+        keyClaims: ['A+ BBB rating (not accredited)', 'Emergency window repair', 'Works with steel, aluminum, wood, and vinyl', 'Glass design services'],
+        pricingLanguage: 'No published pricing. Contact for estimates.',
+        financingOffers: 'No financing options published.',
+        warrantyNotes: 'No warranty terms publicly available.',
+        ctaStrategy: 'Phone call primary. Basic website contact.',
+        reviewStrengths: ['Broad material expertise', 'Emergency repair capability', 'Commercial and residential service', 'Local Denham Springs presence'],
+        reviewWeaknesses: ['Not a full-service replacement window company', 'No siding services', 'No storm window specialization', 'No financing programs', 'Limited online review footprint', 'BBB not accredited', 'No warranty documentation public'],
+        messagingGaps: ['No replacement window specialization messaging', 'No energy efficiency content', 'No financing content', 'No warranty transparency', 'No social media presence', 'No before/after content'],
+        facebookNotes: 'No meaningful Facebook presence observed.',
+        instagramNotes: 'No Instagram presence.',
+        ourCounterPitch: 'Clearview is a glass shop that does window repair — they\'re not a replacement window specialist. For a full-home window replacement, you need a company with energy-efficient products, certified installers, lifetime warranty, and financing options. That\'s us.',
+        talkTrack: 'Clearview is great for emergency glass repair or a broken pane. But if you\'re replacing windows across your whole home, you need a specialist — not a glass shop. We specialize in energy-efficient replacement windows with certified installation crews, a lifetime warranty, and 0% financing. Clearview doesn\'t offer any of that.',
+        objectionResponses: [
+          { objection: 'Clearview can do my windows cheaper', response: 'They may be able to install glass, but replacement windows are a complete system — frame, glass, seals, hardware, installation technique. A glass shop installs glass. We install complete window systems with energy ratings, proper flashing, and a lifetime warranty.', close: 'Would you like to see the difference between a glass install and a full window system replacement?' },
+          { objection: 'Clearview is local', response: 'So are we! And we specialize in exactly what you need — replacement windows and doors with financing, warranty, and our own installation crews.', close: 'Can I show you what a full replacement looks like compared to a glass swap?' },
+        ],
+      },
+    },
+    {
+      slug: 'southern-home-improvement',
+      data: {
+        positioning: 'Long-standing local contractor (since 1991) covering multiple home exterior categories including roofing, gutters, patio covers, windows, and siding. Generalist, not specialist.',
+        keyClaims: ['35+ years in business', 'BBB A+ accredited since 2004', 'Impact-resistant windows', 'Serves SE Louisiana and MS Gulf Coast'],
+        pricingLanguage: 'No published pricing. Free estimates.',
+        financingOffers: 'No published financing options.',
+        warrantyNotes: 'No specific warranty terms published online.',
+        ctaStrategy: 'Phone and website contact. Traditional lead capture.',
+        reviewStrengths: ['Extreme longevity (35+ years)', 'Reliable and professional', 'Responsive to corrections', 'Strong local reputation'],
+        reviewWeaknesses: ['Website and digital presence feel dated', 'Minor quality issues (trim, caulking)', 'No published financing', 'No specific warranty terms online', 'No entry door specialization', 'Diversified across roofing/gutters/patio — not focused'],
+        messagingGaps: ['No financing messaging', 'No energy savings content', 'No storm/insurance content', 'Dated website design', 'No social media strategy', 'No manufacturer transparency'],
+        facebookNotes: 'Low social media presence. No consistent posting strategy.',
+        instagramNotes: 'Minimal to no Instagram presence.',
+        ourCounterPitch: 'Southern HI has been around a long time, and that\'s respectable. But they do roofing, gutters, patio covers AND windows — they\'re spread thin. We\'re 100% focused on replacement windows, doors, and siding. That specialization means better product knowledge, better-trained crews, and better results.',
+        talkTrack: 'Southern Home Improvement has great longevity — 35 years is impressive. Here\'s the question: they also do roofing, gutters, and patio covers. How much of their business is actually windows? We do windows, doors, and siding — that\'s ALL we do. Our crews are trained specifically for window and door installation, not splitting time with roofing jobs. Plus we offer 0% financing — they don\'t.',
+        objectionResponses: [
+          { objection: 'Southern HI has been around longer', response: 'Longevity is great — it means they\'re reliable. But longevity doesn\'t mean specialization. They spread across roofing, gutters, and patio covers. We focus 100% on windows, doors, and siding. That focus means better products, better crews, and a true lifetime warranty.', close: 'Would you rather have a generalist or a specialist working on your windows?' },
+          { objection: 'I trust Southern because they\'re established', response: 'Trust matters — and we respect their track record. But ask them: do they offer 0% financing? What are the specific warranty terms? Who manufactures their windows? We\'re transparent on all three.', close: 'Can I show you our warranty and financing terms side-by-side?' },
+        ],
+      },
+    },
+    {
+      slug: 'acadian-windows',
+      data: {
+        positioning: 'Gulf Coast regional window and siding company emphasizing energy efficiency and climate-appropriate products. Aggressive marketing with broad online review presence.',
+        keyClaims: ['BBB A+ accredited', 'Lifetime transferable warranty', 'Energy-efficient products for Gulf South climate', 'James Hardie siding installer', 'Hurricane shutters and porch screens'],
+        pricingLanguage: 'Free in-home estimates. No published pricing. Mixed feedback — some say "fair," others say not cheapest.',
+        financingOffers: '"Reduced interest loans" — NOT true 0% APR. Interest-bearing financing that costs the customer more over time.',
+        warrantyNotes: 'Lifetime transferable warranty covering manufacturing defects and labor for original buyer. Strong claim.',
+        ctaStrategy: 'In-home estimate request. Website forms and phone. Aggressive digital marketing.',
+        reviewStrengths: ['Strong online review presence (Google, Angi)', 'Professional installation teams', 'Energy efficiency focus', 'Lifetime transferable warranty', 'Gulf Coast climate positioning'],
+        reviewWeaknesses: ['FTC warning letter (2012) for unsubstantiated energy savings claims', 'Does NOT disclose window manufacturers', 'Financing is "reduced interest" NOT 0% APR', 'Project delays and communication gaps', 'Installation crew conduct issues reported'],
+        messagingGaps: ['No manufacturer transparency — "who makes your windows?"', 'FTC history not addressed', 'Financing terms not clearly published', 'No comparison tools for buyers', 'No storm/insurance claim assistance content'],
+        facebookNotes: 'Active Facebook presence with project photos and promotions. Engagement-focused but claims may overstate savings.',
+        instagramNotes: 'Moderate Instagram presence with project showcases. No Reels strategy.',
+        ourCounterPitch: 'Acadian has good reviews but two critical issues: (1) they don\'t disclose who makes their windows — you can\'t verify specs, and (2) their financing is "reduced interest," not 0% like ours. On a $15K project, that interest adds up. Also, the FTC sent them a warning letter about unsubstantiated energy claims.',
+        talkTrack: 'If a homeowner mentions Acadian, say: "Great company with good reviews. Here are two important questions to ask them: First, who manufactures the windows? They don\'t publish it. Second, what\'s the actual APR on their financing? They say \'reduced interest\' — that\'s not 0%. On a $15,000 project, that difference could cost you hundreds or thousands. We use named manufacturers with published specs, and we offer true 0% APR."',
+        objectionResponses: [
+          { objection: 'Acadian has great reviews', response: 'They do have strong reviews, and we respect that. But reviews don\'t tell you who makes the windows or what the financing APR is. Ask them both questions — we\'re transparent on both.', close: 'Would you like to see our manufacturer specs and 0% financing terms side-by-side with their offer?' },
+          { objection: 'Acadian says they\'ll save me 30% on energy', response: 'Be careful with that claim. The FTC actually sent Acadian a warning letter in 2012 about unsubstantiated energy savings claims. The honest number from DOE data is 10-15%. We\'d rather be honest and earn your trust.', close: 'I\'d rather under-promise and over-deliver. Can I show you the real DOE data?' },
+          { objection: 'Acadian has financing too', response: 'They offer "reduced interest" — which means you\'re still paying interest. We offer true 0% APR. On a $15,000 project over 5 years, that difference could be $2,000-$4,000 out of your pocket.', close: 'Would you like me to run the numbers so you can see the actual cost difference?' },
+        ],
+      },
+    },
+    {
+      slug: 'las-home',
+      data: {
+        positioning: 'Louisiana-based manufacturer (since 1950s) that builds and installs their own windows, doors, shutters, and siding. Strong "made in Louisiana" narrative.',
+        keyClaims: ['70+ years in business', 'Manufactures own products in Louisiana', 'Products engineered for Gulf South climate', 'BBB A+ accredited', 'Windows, doors, shutters, siding, privacy walls'],
+        pricingLanguage: 'No published pricing. In-home estimates.',
+        financingOffers: 'No published financing options.',
+        warrantyNotes: 'No specific warranty terms published online. Being a manufacturer, warranty is only as good as the company\'s solvency.',
+        ctaStrategy: 'Website contact form and phone. Traditional approach.',
+        reviewStrengths: ['70+ years of operation — extreme longevity', 'Manufactures own products locally', 'Gulf South climate engineering', 'Professional, punctual crews', 'Responsive communication', 'BBB A+ with Angi reviews'],
+        reviewWeaknesses: ['Occasional product leak reports', 'Scheduling concerns in some reviews', 'Proprietary products prevent brand comparison', 'No published pricing or financing', 'Single-manufacturer = limited product range', 'If LAS closes, warranty is worthless'],
+        messagingGaps: ['No third-party spec verification possible', 'No financing options published', 'No energy savings calculator or data', 'No comparison tools', 'No storm/insurance claim assistance', 'Limited social media strategy'],
+        facebookNotes: 'Low-frequency Facebook posting. Mostly company updates and occasional project photos.',
+        instagramNotes: 'Minimal Instagram presence. No visual content strategy.',
+        ourCounterPitch: 'LAS has impressive longevity and they manufacture their own products — that\'s unique. But here\'s the risk: since they\'re the manufacturer, you can\'t independently verify their specs against Pella, Andersen, or any other brand. And if LAS ever closes, your warranty dies with them. Our warranty is backed by a national network.',
+        talkTrack: 'LAS Home has been around since the 1950s and they make their own windows — that\'s genuinely impressive. But ask yourself: since they\'re the manufacturer AND the installer, how do you verify their specs? You can\'t compare them to Pella or Andersen because they\'re a proprietary product. And here\'s the bigger question: if LAS ever closes, who honors your warranty? With us, our warranty is backed by a national network that will be here regardless.',
+        objectionResponses: [
+          { objection: 'LAS makes their own windows in Louisiana', response: 'That is unique, and there\'s something to be said for local manufacturing. But it also means you can\'t independently verify their specs against any nationally-rated product. Ask them to show you third-party NFRC testing data. We use nationally-certified products with published, verifiable specifications.', close: 'Would you like to see our NFRC-rated specs so you can compare?' },
+          { objection: 'LAS has been in business 70 years', response: 'That\'s impressive longevity. But 70 years doesn\'t guarantee the next 30. Since they\'re both manufacturer and installer, your warranty lives and dies with one company. Our warranty is backed by a national network — it survives regardless of any single location.', close: 'Would that national warranty backing give you more peace of mind?' },
+          { objection: 'LAS products are built for Louisiana weather', response: 'All quality windows should be built for your climate. The question is: can you verify those claims independently? We use nationally-tested, NFRC-rated products. Ask LAS for their third-party test results.', close: 'Can I show you our test certifications?' },
+        ],
+      },
+    },
+  ];
+
+  for (const { slug, data } of cards) {
+    const competitor = await prisma.competitor.findFirst({ where: { slug } });
+    if (!competitor) continue;
+
+    const existing = await prisma.battlecard.findFirst({ where: { competitorId: competitor.id } });
+    if (existing) continue; // Don't overwrite existing battlecards
+
+    await prisma.battlecard.create({
+      data: {
+        competitorId: competitor.id,
+        ...data,
+        lastUpdated: new Date(),
+      },
+    });
+    logger.info(`[Intelligence] Seeded static battlecard for: ${competitor.name}`);
+  }
+}
+
 // ─── Seed Deep-Research Findings ──────────────────────────────────────────
 // Populated from cross-validated market intelligence research (May 2026)
 async function seedResearchFindings(): Promise<void> {
@@ -544,4 +703,5 @@ export const intelligenceOrchestrator = {
   runFullIntelligenceResearch,
   getMarketSummary,
   seedResearchFindings,
+  seedStaticBattlecards,
 };
