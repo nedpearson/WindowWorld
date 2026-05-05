@@ -487,6 +487,21 @@ export const api = {
     getPersonas: () => get<any>('/intelligence/personas'),
     /** Get manager intent dashboard overview */
     getIntentOverview: () => get<any>('/intelligence/dashboard/intent-overview'),
+
+    // ── Social Listening & Public Intent ──
+    /** Get social listening dashboard */
+    getSocialListeningDashboard: (params?: { category?: string; urgency?: string; status?: string }) =>
+      get<any>('/intelligence/social-listening/dashboard', { params }),
+    /** Process a new public intent mention */
+    processIntentMention: (data: { sourcePlatform: string; sourceType?: string; sourceUrl?: string; authorHandle?: string; contentText: string }) =>
+      post<any>('/intelligence/social-listening/process', data),
+    /** Update mention status */
+    updateMentionStatus: (id: string, data: { status?: string; notes?: string; assignedToId?: string }) =>
+      patch<any>(`/intelligence/social-listening/mention/${id}`, data),
+    /** Get competitor social profiles */
+    getCompetitorSocials: () => get<any>('/intelligence/social-listening/competitor-socials'),
+    /** Get local opportunity signals */
+    getOpportunitySignals: () => get<any>('/intelligence/social-listening/signals'),
   },
 };
 

@@ -6,6 +6,7 @@ import { intelligenceScoringService } from './intelligence-scoring.service';
 import { battlecardService } from './battlecard.service';
 import { marketCrawler } from './market-crawler.service';
 import { intentTracker } from './intent-tracker.service';
+import { socialListeningService } from './social-listening.service';
 import { logger } from '../../shared/utils/logger';
 
 export const intelligenceRouter = Router();
@@ -47,8 +48,11 @@ intelligenceRouter.post('/research/seed-static', ...auth.manager, async (_req, r
     await intelligenceOrchestrator.seedStaticBattlecards();
     await intelligenceOrchestrator.seedStaticReviews();
     await intelligenceOrchestrator.seedStaticForumThreads();
+    await socialListeningService.seedCompetitorSocialProfiles();
+    await socialListeningService.seedExampleIntentMentions();
+    await socialListeningService.seedLocalOpportunitySignals();
     await intelligenceScoringService.seedPersonaDefinitions();
-    res.json({ ok: true, message: 'All static content seeded (competitors, battlecards, reviews, forums, research, personas)' });
+    res.json({ ok: true, message: 'All static content seeded (competitors, battlecards, reviews, forums, social profiles, intent mentions, personas)' });
   } catch (e: any) {
     logger.warn('[Intelligence] Seed failed:', e);
     res.status(500).json({ error: 'Seed failed' });
@@ -448,5 +452,78 @@ intelligenceRouter.get('/dashboard/intent-overview', ...auth.manager, async (req
   } catch (e: any) {
     logger.error('[Intelligence] Intent overview failed:', e);
     res.status(500).json({ error: 'Failed to load intent overview' });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// SOCIAL LISTENING & PUBLIC INTENT DETECTION
+// ═══════════════════════════════════════════════════════════════════════════
+
+// Process a public intent mention (manual entry or webhook)
+intelligenceRouter.post('/social-listening/process', ...auth.manager, async (req, res) => {
+  try {
+    const { sourcePlatform, sourceType, sourceUrl, authorHandle, contentText } = req.body;
+    if (!contentText || !sourcePlatform) {
+      return res.status(400).json({ error: 'contentText and sourcePlatform required' });
+    }
+    const result = await socialListeningService.processIntentMention({
+      sourcePlatform, sourceType: sourceType || 'public_post', sourceUrl, authorHandle, contentText,
+    });
+    res.json({ ok: true, ...result });
+  } catch (e: any) {
+    logger.error('[SocialListening] Process failed:', e);
+    res.status(500).json({ error: 'Processing failed' });
+  }
+});
+
+// Get social listening / intent dashboard
+intelligenceRouter.get('/social-listening/dashboard', ...auth.manager, async (req, res) => {
+  try {
+    const { category, urgency, status } = req.query as any;
+    const data = await socialListeningService.getIntentDashboard({ category, urgency, status });
+    res.json(data);
+  } catch (e: any) {
+    logger.error('[SocialListening] Dashboard failed:', e);
+    res.status(500).json({ error: 'Dashboard query failed' });
+  }
+});
+
+// Update mention status (reviewed, actioned, dismissed)
+intelligenceRouter.patch('/social-listening/mention/:id', ...auth.manager, async (req, res) => {
+  try {
+    const { status, notes, assignedToId } = req.body;
+    const mention = await prisma.publicIntentMention.update({
+      where: { id: req.params.id as string },
+      data: { ...(status && { status }), ...(notes && { notes }), ...(assignedToId && { assignedToId }) },
+    });
+    res.json(mention);
+  } catch (e: any) {
+    res.status(500).json({ error: 'Update failed' });
+  }
+});
+
+// Get competitor social profiles directory
+intelligenceRouter.get('/social-listening/competitor-socials', ...auth.manager, async (_req, res) => {
+  try {
+    const profiles = await prisma.competitorSocialProfile.findMany({
+      include: { competitor: { select: { name: true, slug: true, territory: true } } },
+      orderBy: { competitor: { name: 'asc' } },
+    });
+    res.json(profiles);
+  } catch (e: any) {
+    res.status(500).json({ error: 'Failed to load profiles' });
+  }
+});
+
+// Get local opportunity signals
+intelligenceRouter.get('/social-listening/signals', ...auth.manager, async (_req, res) => {
+  try {
+    const signals = await prisma.localOpportunitySignal.findMany({
+      where: { isActive: true },
+      orderBy: { signalStrength: 'desc' },
+    });
+    res.json(signals);
+  } catch (e: any) {
+    res.status(500).json({ error: 'Failed to load signals' });
   }
 });

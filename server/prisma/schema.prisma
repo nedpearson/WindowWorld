@@ -2299,3 +2299,57 @@ model MessagingOpportunity {
   @@map("messaging_opportunities")
 }
 
+// ─── Social Listening & Public Intent Detection ──────────────────────────
+
+model PublicIntentMention {
+  id                 String    @id @default(uuid())
+  sourcePlatform     String    // facebook | instagram | reddit | nextdoor | forum | google | review_site
+  sourceType         String    // public_post | public_comment | public_thread | public_review | public_question
+  sourceUrl          String?
+  authorHandle       String?   // Public handle only — no PII unless first-party
+  contentText        String    @db.Text
+  category           String    // windows | doors | siding | multi_category | general
+  urgency            String    // researching | quote_seeking | urgent_damage | financing_focused | insurance_focused | comparison_shopping
+  intentType         String    // recommendation_request | complaint_opportunity | quote_request | storm_damage | financing_inquiry | product_question | competitor_mention
+  confidence         Float     @default(0.5) // 0.0 to 1.0
+  localRelevance     Float     @default(0.5) // 0.0 to 1.0 (Baton Rouge area)
+  matchedKeywords    String[]
+  matchedPatterns    String[]  // semantic patterns matched
+  competitorsMentioned String[]
+  geography          String?   // neighborhood, city, parish
+  detectedAt         DateTime  @default(now())
+  status             String    @default("new") // new | reviewed | actioned | dismissed
+  assignedToId       String?
+  recommendedAction  String?   @db.Text
+  recommendedLanding String?
+  recommendedTalkTrack String? @db.Text
+  notes              String?   @db.Text
+  createdAt          DateTime  @default(now())
+
+  @@index([category, urgency])
+  @@index([status, confidence])
+  @@index([sourcePlatform])
+  @@map("public_intent_mentions")
+}
+
+model LocalOpportunitySignal {
+  id                 String    @id @default(uuid())
+  sourcePlatform     String
+  signalType         String    // storm_spike | neighborhood_cluster | financing_demand | competitor_complaint | recommendation_wave
+  category           String    // windows | doors | siding | multi_category
+  geography          String?
+  signalStrength     Float     @default(0.5) // 0.0 to 1.0
+  mentionCount       Int       @default(1)
+  timeWindow         String?   // e.g. "last_7_days" | "last_30_days"
+  summary            String    @db.Text
+  recommendedCampaign String?  @db.Text
+  recommendedSegment  String?
+  isActive           Boolean   @default(true)
+  detectedAt         DateTime  @default(now())
+  createdAt          DateTime  @default(now())
+
+  @@index([signalType, isActive])
+  @@index([category])
+  @@map("local_opportunity_signals")
+}
+
