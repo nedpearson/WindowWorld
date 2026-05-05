@@ -387,7 +387,7 @@ router.post('/disposition', auth.repOrAbove, async (req: Request, res: Response)
       await db.lead.update({
         where: { id, organizationId: user.organizationId },
         data: { 
-          status: disposition === 'Appointment Set' ? 'MEETING_SET' : 'CONTACTED',
+          status: disposition === 'Appointment Set' ? 'APPOINTMENT_SET' : 'CONTACTED',
           notes: notes ? `[Disposition: ${disposition}]\n${notes}` : undefined
         }
       });
@@ -412,18 +412,6 @@ router.post('/disposition', auth.repOrAbove, async (req: Request, res: Response)
         }
       });
     }
-    
-    // Log activity
-    await db.activity.create({
-      data: {
-        organizationId: user.organizationId,
-        createdById: user.id,
-        leadId: tabType === 'opportunities' ? id : null,
-        type: 'CALL',
-        status: 'COMPLETED',
-        notes: `[Outbound Engine: ${disposition}]\n${notes || ''}`,
-      }
-    });
 
     res.json({ success: true });
   } catch (err: any) {
