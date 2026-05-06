@@ -80,7 +80,8 @@ if (isProd && !process.env.CORS_ORIGIN && !process.env.RAILWAY_PUBLIC_DOMAIN) {
 
 // 4. Integrations
 if (isProd) {
-  if (!process.env.OPENAI_API_KEY) console.warn('WARNING: OPENAI_API_KEY is missing. AI features will fail.');
+  if (!process.env.ANTHROPIC_API_KEY) console.warn('WARNING: ANTHROPIC_API_KEY is missing. AI features (Claude) will fail. Set it in Railway environment variables.');
+  if (!process.env.OPENAI_API_KEY) console.warn('INFO: OPENAI_API_KEY is missing. OpenAI fallback disabled (Claude is primary).');
   if (!process.env.RESEND_API_KEY) console.warn('WARNING: RESEND_API_KEY is missing. Email features will fail.');
   if (!process.env.GOOGLE_CLIENT_ID) console.warn('WARNING: GOOGLE_CLIENT_ID is missing. Google Auth/Calendar will fail.');
 }

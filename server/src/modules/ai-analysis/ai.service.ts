@@ -1,4 +1,5 @@
 import OpenAI from 'openai';
+import Anthropic from '@anthropic-ai/sdk';
 import { logger, sanitizeForLog } from '../../shared/utils/logger';
 import { prisma } from '../../shared/services/prisma';
 
@@ -37,6 +38,7 @@ export interface ReferenceObjectAnalysis {
 interface AiProvider {
   generateText(prompt: string, systemPrompt?: string): Promise<string>;
   analyzeImage(imageBase64: string, prompt: string, systemPrompt?: string): Promise<string>;
+  analyzeImageUrl(imageUrl: string, prompt: string, systemPrompt?: string): Promise<string>;
   analyzeImages(images: Array<{ base64: string; elevation: string }>, prompt: string, systemPrompt?: string): Promise<string>;
 }
 
@@ -84,6 +86,24 @@ class OpenAIProvider implements AiProvider {
     return response.choices[0]?.message?.content || '';
   }
 
+  async analyzeImageUrl(imageUrl: string, prompt: string, systemPrompt?: string): Promise<string> {
+    const response = await this.client.chat.completions.create({
+      model: process.env.AI_VISION_MODEL || 'gpt-4o',
+      messages: [
+        ...(systemPrompt ? [{ role: 'system' as const, content: systemPrompt }] : []),
+        {
+          role: 'user',
+          content: [
+            { type: 'image_url', image_url: { url: imageUrl, detail: 'high' } } as const,
+            { type: 'text', text: prompt } as const,
+          ],
+        },
+      ],
+      max_tokens: 4096,
+    });
+    return response.choices[0]?.message?.content || '';
+  }
+
   async analyzeImages(
     images: Array<{ base64: string; elevation: string }>,
     prompt: string,
@@ -117,7 +137,7 @@ class OpenAIProvider implements AiProvider {
 class NullProvider implements AiProvider {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   async analyzeImages(_images: Array<{ base64: string; elevation: string }>, _prompt: string): Promise<string> {
-    logger.info('Using Mock AI Provider for multi-image (OPENAI_API_KEY not set)');
+    logger.info('Using Mock AI Provider for multi-image (no API key set)');
     return JSON.stringify({
       totalWindowsDetected: 8,
       windows: [
@@ -127,9 +147,13 @@ class NullProvider implements AiProvider {
         { locationLabel: 'Left Side Upper', elevation: 'left', estimatedWidth: 28, estimatedHeight: 40, windowType: 'SINGLE_HUNG', condition: 'POOR', confidence: 0.65, issues: ['condensation'], notes: '' },
         { locationLabel: 'Rear Bedroom', elevation: 'rear', estimatedWidth: 36, estimatedHeight: 60, windowType: 'DOUBLE_HUNG', condition: 'FAIR', confidence: 0.68, issues: [], notes: '' },
       ],
-      propertyNotes: 'Mock AI scan — demo mode. Connect OPENAI_API_KEY for real results.',
+      propertyNotes: 'Mock AI scan — demo mode. Connect ANTHROPIC_API_KEY for real results.',
       imagQualityWarnings: ['Demo mode — no real image analysis performed'],
     });
+  }
+  async analyzeImageUrl(_imageUrl: string): Promise<string> {
+    logger.info('Using Mock AI Provider for URL image (no API key set)');
+    return JSON.stringify({ vendor: null, totalAmount: null, receiptDate: null, lineItems: [], taxAmount: null, category: 'OTHER', confidence: 0 });
   }
   async generateText(prompt: string): Promise<string> {
     logger.info('Using Mock AI Provider (OPENAI_API_KEY not set)');
@@ -239,19 +263,112 @@ class NullProvider implements AiProvider {
   }
 }
 
+class AnthropicProvider implements AiProvider {
+  private _client: Anthropic | null = null;
+
+  private get client(): Anthropic {
+    if (!this._client) {
+      if (!process.env.ANTHROPIC_API_KEY) {
+        throw new Error('ANTHROPIC_API_KEY is not configured.');
+      }
+      this._client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+    }
+    return this._client;
+  }
+
+  async generateText(prompt: string, systemPrompt?: string): Promise<string> {
+    const response = await this.client.messages.create({
+      model: process.env.AI_TEXT_MODEL || 'claude-3-7-sonnet-latest',
+      max_tokens: 4096,
+      system: systemPrompt,
+      messages: [{ role: 'user', content: prompt }],
+    });
+    return response.content[0].type === 'text' ? response.content[0].text : '';
+  }
+
+  async analyzeImage(imageBase64: string, prompt: string, systemPrompt?: string): Promise<string> {
+    const response = await this.client.messages.create({
+      model: process.env.AI_VISION_MODEL || 'claude-3-7-sonnet-latest',
+      max_tokens: 4096,
+      system: systemPrompt,
+      messages: [
+        {
+          role: 'user',
+          content: [
+            { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: imageBase64 } },
+            { type: 'text', text: prompt },
+          ],
+        },
+      ],
+    });
+    return response.content[0].type === 'text' ? response.content[0].text : '';
+  }
+
+  async analyzeImageUrl(imageUrl: string, prompt: string, systemPrompt?: string): Promise<string> {
+    // Claude supports URL-based images natively
+    const response = await this.client.messages.create({
+      model: process.env.AI_VISION_MODEL || 'claude-3-7-sonnet-latest',
+      max_tokens: 4096,
+      system: systemPrompt,
+      messages: [
+        {
+          role: 'user',
+          content: [
+            { type: 'image', source: { type: 'url', url: imageUrl } as any },
+            { type: 'text', text: prompt },
+          ],
+        },
+      ],
+    });
+    return response.content[0].type === 'text' ? response.content[0].text : '';
+  }
+
+  async analyzeImages(
+    images: Array<{ base64: string; elevation: string }>,
+    prompt: string,
+    systemPrompt?: string,
+  ): Promise<string> {
+    const imageContent: any[] = images.map((img) => ({
+      type: 'image',
+      source: { type: 'base64', media_type: 'image/jpeg', data: img.base64 },
+    }));
+
+    const response = await this.client.messages.create({
+      model: process.env.AI_VISION_MODEL || 'claude-3-7-sonnet-latest',
+      max_tokens: 8192,
+      system: systemPrompt,
+      messages: [
+        {
+          role: 'user',
+          content: [...imageContent, { type: 'text', text: prompt }],
+        },
+      ],
+    });
+    return response.content[0].type === 'text' ? response.content[0].text : '';
+  }
+}
+
 function getProvider(): AiProvider {
-  if (!process.env.OPENAI_API_KEY) {
-    logger.warn('OPENAI_API_KEY not set - AI features disabled. Add it in Railway environment variables.');
+  // Claude is the global default AI provider for all WindowWorld features.
+  // OpenAI is kept as a fallback only if ANTHROPIC_API_KEY is missing.
+  if (!process.env.ANTHROPIC_API_KEY && !process.env.OPENAI_API_KEY) {
+    logger.warn('No AI API KEY set — AI features disabled. Add ANTHROPIC_API_KEY in Railway environment variables.');
     return new NullProvider();
   }
-  const provider = process.env.AI_PROVIDER || 'openai';
+
+  // Explicit override via AI_PROVIDER env var; otherwise always prefer Claude
+  const provider = process.env.AI_PROVIDER || (process.env.ANTHROPIC_API_KEY ? 'anthropic' : 'openai');
 
   switch (provider) {
+    case 'anthropic':
+      logger.info('[AI] Using Anthropic Claude as global AI provider');
+      return new AnthropicProvider();
     case 'openai':
+      logger.info('[AI] Using OpenAI as AI provider (fallback)');
       return new OpenAIProvider();
     default:
-      logger.warn(`Unknown AI provider "${provider}" â€” falling back to OpenAI`);
-      return new OpenAIProvider();
+      logger.warn(`Unknown AI provider "${provider}" — defaulting to Claude`);
+      return process.env.ANTHROPIC_API_KEY ? new AnthropicProvider() : new OpenAIProvider();
   }
 }
 
@@ -307,6 +424,10 @@ export class AiService {
 
   async generateText(prompt: string, systemPrompt?: string): Promise<string> {
     return this.provider.generateText(prompt, systemPrompt);
+  }
+
+  async analyzeImageUrl(imageUrl: string, prompt: string, systemPrompt?: string): Promise<string> {
+    return this.provider.analyzeImageUrl(imageUrl, prompt, systemPrompt);
   }
 
   // Window photo analysis

@@ -116,7 +116,7 @@ function ScoreRing({ score, size = 48 }: { score: number; size?: number }) {
 }
 
 // ── Daily Trend Signals ───────────────────────────────────────
-function DailyTrendSignals({ hasLeads }: { hasLeads: boolean }) {
+function DailyTrendSignals({ hasLeads, queueMode, setQueueMode }: { hasLeads: boolean, queueMode: string, setQueueMode: (mode: string) => void }) {
   const [expanded, setExpanded] = useState(true);
 
   if (!hasLeads) return null; // Hide signals if there is no data to analyze
@@ -323,6 +323,7 @@ export function LeadIntelligencePage() {
   const user = useAuthStore((s) => s.user);
   const isDemoFallback = isDemoMode(user);
   const [queueMode, setQueueMode] = useState('target-now');
+  const [category, setCategory] = useState('all');
   const [leads, setLeads] = useState<any[]>([]);
   const [_loading, setLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -460,6 +461,16 @@ export function LeadIntelligencePage() {
     .filter((lead) => {
       // Enforce base quality threshold
       if (lead.score < 50) return false;
+
+      let passCategory = true;
+      if (category === 'b2b') passCategory = lead.notes?.includes('Property Management') || lead.notes?.includes('B2B');
+      else if (category === 'homeowners') passCategory = lead.notes?.includes('Homeowners') || (!lead.notes?.includes('Property Management') && !lead.notes?.includes('B2B'));
+      else if (category === 'storm') passCategory = lead.isStorm;
+      else if (category === 'hot') passCategory = lead.score >= 80;
+      else if (category === 'stuck') passCategory = lead.stuckDays >= 5;
+      else if (category === 'high-value') passCategory = lead.est >= 8000;
+
+      if (!passCategory) return false;
       
       if (queueMode === 'target-now') return lead.closePct > 70 || lead.isStorm;
       if (queueMode === 'nurture') return lead.closePct > 50 && lead.closePct <= 70;
@@ -506,7 +517,7 @@ export function LeadIntelligencePage() {
         </div>
       </div>
 
-      <DailyTrendSignals hasLeads={leads.length > 0} />
+      <DailyTrendSignals hasLeads={leads.length > 0} queueMode={queueMode} setQueueMode={setQueueMode} />
 
       {/* Top Level Tabs */}
       <div className="flex gap-4 border-b border-slate-700/50 mb-6">

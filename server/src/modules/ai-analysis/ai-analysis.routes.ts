@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { auth, AuthenticatedRequest } from '../../shared/middleware/auth';
 import { aiService } from './ai.service';
+import { voiceCommandService } from './voice-command.service';
 import { leadScoringQueue, aiQueue } from '../../jobs';
 import { prisma } from '../../shared/services/prisma';
 import { logger, sanitizeForLog } from '../../shared/utils/logger';
@@ -347,4 +348,63 @@ router.post('/reference-object', auth.repOrAbove, async (req: Request, res: Resp
   }
 });
 
+/**
+ * POST /api/v1/ai/copilot
+ * Global AI Assistant for answering user queries and analyzing data
+ */
+router.post('/copilot', auth.repOrAbove, async (req: Request, res: Response) => {
+  const { message, context } = req.body;
+  if (!message) return res.status(400).json({ success: false, message: 'Message is required' });
+
+  try {
+    const systemPrompt = `You are an expert AI Copilot for WindowWorld, a premium window replacement CRM. 
+You are embedded globally across the entire app to help sales reps, managers, and admins with whatever they need.
+Be concise, highly professional, and directly answer the user's questions or write content for them.
+Context provided by the app: ${JSON.stringify(context || {})}`;
+
+    const responseText = await aiService.generateText(message, systemPrompt);
+    return res.json({ success: true, data: { text: responseText } });
+  } catch (err: any) {
+    logger.error(`[ai/copilot] Error: ${sanitizeForLog(err.message)}`);
+    return res.status(500).json({ success: false, message: err.message || 'AI Copilot failed to respond' });
+  }
+});
+
+/**
+ * POST /api/v1/ai/voice-command
+ * Siri-style voice command processing — accepts raw speech transcript,
+ * parses intent with Claude AI, and executes CRM actions.
+ */
+router.post('/voice-command', auth.repOrAbove, async (req: Request, res: Response) => {
+  const { transcript } = req.body;
+  const user = (req as any).user;
+
+  if (!transcript || typeof transcript !== 'string' || transcript.trim().length < 2) {
+    return res.status(400).json({ success: false, message: 'Voice transcript is required (minimum 2 characters)' });
+  }
+
+  try {
+    const result = await voiceCommandService.processCommand(
+      transcript.trim(),
+      user.id,
+      user.organizationId,
+    );
+
+    return res.json({ success: true, data: result });
+  } catch (err: any) {
+    logger.error(`[ai/voice-command] Error: ${sanitizeForLog(err.message)}`);
+    return res.status(500).json({
+      success: false,
+      message: err.message || 'Voice command processing failed',
+      data: {
+        success: false,
+        intent: 'unknown',
+        spokenResponse: "Sorry, something went wrong processing your command. Please try again.",
+        parsedData: {},
+      },
+    });
+  }
+});
+
 export { router as aiAnalysisRouter };
+

@@ -17,6 +17,7 @@ import { TerritoryMapPage } from './pages/leads/TerritoryMapPage';
 import { AppointmentsPage } from './pages/leads/AppointmentsPage';
 import { AutomationsPage } from './pages/leads/AutomationsPage';
 import { MarketingPlaybooksPage } from './pages/marketing/MarketingPlaybooksPage';
+import { IntelligenceHubLayout } from './pages/intelligence/IntelligenceHubLayout';
 import { InspectionPage } from './pages/inspections/InspectionPage';
 import { MeasurementPage } from './pages/inspections/MeasurementPage';
 import { ProposalsPage } from './pages/proposals/ProposalsPage';
@@ -85,17 +86,20 @@ export default function App() {
           <Route path="leads" element={<LeadsPage />} />
           <Route path="leads/new" element={<NewLeadPage />} />
           <Route path="leads/:id" element={<LeadDetailPage />} />
-          <Route path="lead-intelligence" element={<LeadIntelligencePage />} />
           <Route path="pipeline" element={<PipelinePage />} />
           <Route path="map" element={<TerritoryMapPage />} />
           <Route path="appointments" element={<AppointmentsPage />} />
-          <Route path="playbooks" element={<MarketingPlaybooksPage />} />
           <Route path="automations" element={<AutomationsPage />} />
 
-          {/* Market Intelligence */}
-          <Route path="market-intelligence" element={<MarketIntelligencePage />} />
-          <Route path="battlecards" element={<BattlecardsPage />} />
-          <Route path="intent" element={<IntentDashboardPage />} />
+          {/* Intelligence Hub */}
+          <Route path="intelligence-hub" element={<IntelligenceHubLayout />}>
+            <Route index element={<Navigate to="leads" replace />} />
+            <Route path="leads" element={<LeadIntelligencePage />} />
+            <Route path="market" element={<MarketIntelligencePage />} />
+            <Route path="battlecards" element={<BattlecardsPage />} />
+            <Route path="intent" element={<IntentDashboardPage />} />
+            <Route path="playbooks" element={<MarketingPlaybooksPage />} />
+          </Route>
 
           {/* Inspections */}
           <Route path="inspections/:id" element={<InspectionPage />} />

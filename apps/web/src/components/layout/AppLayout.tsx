@@ -19,6 +19,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import apiClient from '../../api/client';
 import { FieldModeQRModal } from '../FieldModeQRModal';
 import { SiloCommandBar } from '../ai/SiloCommandBar';
+import { CopilotWidget } from '../ui/CopilotWidget';
+import { VoiceCommandWidget } from '../ui/VoiceCommandWidget';
 
 function NotificationsDropdown({
   isOpen, onClose, notifications, unreadCount, onMarkAllRead
@@ -79,12 +81,8 @@ const navSections = [
   {
     label: 'Leads & Sales',
     items: [
-      { label: 'Lead Intelligence', path: '/lead-intelligence', icon: BeakerIcon },
-      { label: 'Market Intelligence', path: '/market-intelligence', icon: MagnifyingGlassIcon },
-      { label: 'Battlecards',        path: '/battlecards',         icon: ShieldCheckIcon },
-      { label: 'Intent Dashboard',  path: '/intent',             icon: BoltIcon },
+      { label: 'Intelligence Hub',  path: '/intelligence-hub',  icon: BeakerIcon },
       { label: 'All Leads',         path: '/leads',             icon: UsersIcon },
-      { label: 'Marketing Playbooks',path: '/playbooks',        icon: MegaphoneIcon },
       { label: 'Contacts',          path: '/contacts',          icon: UserGroupIcon },
       { label: 'CSV Import',        path: '/leads/import',      icon: ArrowUpTrayIcon },
       { label: 'Pipeline',          path: '/pipeline',          icon: BuildingStorefrontIcon },
@@ -534,6 +532,8 @@ export function AppLayout() {
       <GlobalSearch isOpen={searchOpen} onClose={() => setSearchOpen(false)} />
       <SiloCommandBar />
       {showFieldModal && <FieldModeQRModal onClose={() => setShowFieldModal(false)} />}
+      <CopilotWidget />
+      <VoiceCommandWidget />
 
       {/* ── NWS Auto-Storm Alert Toast ─────────────────────────────────── */}
       <AnimatePresence>

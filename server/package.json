@@ -18,6 +18,7 @@
         "lint": "eslint src --ext .ts"
     },
     "dependencies": {
+        "@anthropic-ai/sdk": "^0.95.0",
         "@aws-sdk/client-s3": "^3.1035.0",
         "@aws-sdk/s3-request-presigner": "^3.1035.0",
         "@prisma/client": "^5.22.0",
@@ -76,4 +77,3 @@
         "uuid": "^14.0.0"
     }
 }
-

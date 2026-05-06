@@ -126,7 +126,7 @@ function stripHtmlSafely(html: string): string {
 
     if (allSnippets.length === 0) {
       logger.warn('[Google] All queries returned 0 usable snippets — falling through to AI-direct');
-      // Fallback: use OpenAI with web-search knowledge to generate leads directly
+      // Fallback: use Claude AI with knowledge to generate leads directly
       return this.generateAIResearchedLeads(orgId, authorId, location, target);
     }
 

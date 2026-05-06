@@ -1,0 +1,66 @@
+I want to import, upgrade, and completely overhaul my production business platform from GitHub. However, I DO NOT want to modify the original repository. We are using the original repository solely as a starting template to build a brand new, detached system.
+
+This is an NPM Monorepo using Node.js, Express, React (Vite), and PostgreSQL (Prisma). My goal is to transform this into a flawless, world-class enterprise CRM with a dedicated mobile app, voice integration, and advanced live AI sales assistants.
+
+Please follow these exact phases. Do not move to the next phase until the current one is working flawlessly.
+
+### PHASE 1: CLONE, DETACH & STABILIZE
+1. Clone the template repository: `https://github.com/nedpearson/WindowWorld.git`
+2. IMMEDIATELY detach it from the original GitHub by deleting the `.git` folder (`rm -rf .git`).
+3. Initialize a fresh Git repository (`git init`) so we can safely commit our new upgrades without touching the original codebase.
+4. Provision a native Replit PostgreSQL database. Set the `DATABASE_URL` in `server/.env`.
+5. Add placeholders for my API keys: `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`.
+6. Run `npm install` at the root.
+7. Run `npm run db:generate`, `npm run db:migrate`, and `npm run db:seed` in the server workspace.
+8. Run `npm run dev` to start the web and server instances and ensure the baseline system boots flawlessly.
+
+### PHASE 2: DESKTOP & MOBILE WEB UX OVERHAUL
+1. Completely redesign the frontend UX to be premium, highly intuitive, and hyper-responsive. 
+2. Combine redundant tabs to reduce clutter. The dashboard should be a unified command center.
+3. Ensure all workflows require minimal clicks. 
+4. The web version must look and act like a world-class SaaS product on desktop, and act like a flawless PWA on mobile browsers.
+
+### PHASE 3: TRUE MOBILE APP (REACT NATIVE / EXPO)
+1. Initialize a new Expo (React Native) application inside an `apps/mobile` directory.
+2. Connect it to the existing Express backend API.
+3. Implement real-time "constant sync" using WebSockets or polling so the mobile app always reflects the desktop state instantly.
+4. The mobile app must not be a web-wrapper; it must use native components and feel incredibly fast and fluid.
+
+### PHASE 4: "SILO RECORD" LIVE AI SALES ASSISTANT
+1. Build a "Silo Record" feature in the mobile app intended for in-home appointments.
+2. It must have a one-click start button that records ambient audio of the entire sales appointment.
+3. Use a real-time transcription API (like Whisper) to stream the conversation to the AI.
+4. REAL-TIME HUD: While recording, the app screen must display a clean, live feed of AI suggestions including:
+   - How to pitch/sell this specific customer based on what they are currently saying.
+   - A live comparison of "What the customer WANTS" vs "What the customer actually NEEDS".
+   - Live financing strategy recommendations tailored exactly to their budget objections and true needs.
+5. POST-APPOINTMENT: When I click "Leave/Stop", immediately generate a comprehensive debrief. It should summarize the appointment, log all objections, propose the exact follow-up sequence, and automatically write the follow-up email.
+
+### PHASE 5: SIRI VOICE COMMAND INTEGRATION
+1. Create a dedicated backend webhook route: `/api/v1/voice/siri`.
+2. This route must take natural language text inputs from iOS Shortcuts (e.g., "Hey Siri, tell WindowWorld to log a meeting with John").
+3. Use AI to parse the Siri text transcript, identify the intent (Create Lead, Log Activity), and autonomously execute the database action.
+4. Return a clean, spoken-text response back to the Siri Shortcut.
+
+### PHASE 6: GOOGLE CALENDAR & GMAIL INTEGRATION
+1. Implement Google OAuth 2.0. 
+2. Connect my specific email: `nedpearson@gmail.com`.
+3. Build a two-way sync for Google Calendar so appointments set in the app instantly appear on my phone, and vice-versa.
+4. Integrate Gmail so I can read, draft, and send emails directly from the lead's profile card inside the app without leaving the platform.
+
+### PHASE 7: PDF / CSV CATALOG IMPORT ENGINE
+1. Build a drag-and-drop "Catalog Importer" UI.
+2. If a user uploads a CSV, parse the rows into the `Product` database seamlessly.
+3. If a user uploads a Vendor PDF, use an AI Vision model (like GPT-4o) to extract the product names, specs, dimensions, and pricing, and automatically format them into database entries.
+
+### PHASE 8: ADVANCED AI VISUAL MEASUREMENT
+1. Completely upgrade the measurement tool in the mobile app. 
+2. Make the UI incredibly simple ("Take Photo" or "Input Hand Measurements").
+3. Send the photo to the best available AI Vision model to auto-detect window/door bounds, estimate sizing, detect materials, and identify potential installation hazards (rot, brick wrap).
+4. Output massive, highly detailed technical information to the backend while keeping the user-facing screen minimal.
+
+### PHASE 9: REAL-LIFE LEAD ENGINE
+1. Ensure the Lead Intelligence system only ever scrapes or utilizes real-world data (no placeholders, no fake companies). 
+2. Hardcode the geographical focus to Baton Rouge and surrounding Louisiana areas.
+
+Please begin with Phase 1. Let me know when the environment is stable, and then automatically proceed to Phase 2. Ensure every single workflow is perfect and tested before advancing.

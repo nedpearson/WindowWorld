@@ -2,7 +2,7 @@ import { Prisma, ExpenseCategory, JobExpense } from '@prisma/client';
 import { prisma } from '../../shared/services/prisma';
 import { logger, sanitizeForLog } from '../../shared/utils/logger';
 import { NotFoundError, ForbiddenError } from '../../shared/middleware/errorHandler';
-import OpenAI from 'openai';
+import { aiService } from '../ai-analysis/ai.service';
 
 // ─── Input Types ──────────────────────────────────────────────
 
@@ -81,22 +81,9 @@ function serializeExpense(e: JobExpense & {
   };
 }
 
-// ─── OpenAI client: uses same lazy-init pattern as AiService ──
-// NOTE: We call OpenAI's image_url feature directly because AiService.analyzeImage
-// only accepts base64 strings. The URL variant requires the native OpenAI SDK call.
-// Provider config (OPENAI_API_KEY, AI_VISION_MODEL) stays consistent with the rest of the app.
-
-let _openAIClient: OpenAI | null = null;
-
-function getOpenAIClient(): OpenAI {
-  if (!_openAIClient) {
-    if (!process.env.OPENAI_API_KEY) {
-      throw new Error('OPENAI_API_KEY is not configured. Set it in Railway environment variables.');
-    }
-    _openAIClient = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-  }
-  return _openAIClient;
-}
+// ─── Receipt parsing uses the global AI provider (Claude) ─────
+// Previously used direct OpenAI SDK; now uses the unified aiService.analyzeImageUrl()
+// which routes through the global Claude provider.
 
 const RECEIPT_PROMPT = `You are a receipt parser. Extract from this receipt image:
 vendor (string), totalAmount (number, USD), receiptDate (ISO string or null),
@@ -155,7 +142,7 @@ export class JobExpensesService {
     return serializeExpense(expense);
   }
 
-  // 2. Parse receipt image with GPT-4o vision
+  // 2. Parse receipt image using the global AI provider (Claude)
   async parseReceiptWithAI(
     imageUrl: string,
     leadId: string,
@@ -165,25 +152,7 @@ export class JobExpensesService {
     let rawOutput = '';
 
     try {
-      const client = getOpenAIClient();
-      const response = await client.chat.completions.create({
-        model: process.env.AI_VISION_MODEL || 'gpt-4o',
-        messages: [
-          {
-            role: 'user',
-            content: [
-              {
-                type: 'image_url',
-                image_url: { url: imageUrl, detail: 'high' },
-              },
-              { type: 'text', text: RECEIPT_PROMPT },
-            ],
-          },
-        ],
-        max_tokens: 1024,
-      });
-
-      rawOutput = response.choices[0]?.message?.content || '{}';
+      rawOutput = await aiService.analyzeImageUrl(imageUrl, RECEIPT_PROMPT);
       const parsed = JSON.parse(rawOutput.replace(/```json\n?|\n?```/g, '').trim()) as {
         vendor: string | null;
         totalAmount: number | null;
@@ -222,8 +191,8 @@ export class JobExpensesService {
         data: {
           leadId,
           analysisType: 'receipt-parse',
-          provider: 'openai',
-          model: process.env.AI_VISION_MODEL || 'gpt-4o',
+          provider: 'anthropic',
+          model: process.env.AI_VISION_MODEL || 'claude-3-7-sonnet-latest',
           rawResponse: parsed as Prisma.InputJsonValue,
           confidenceScore: confidence,
           status: 'COMPLETED',
@@ -242,8 +211,8 @@ export class JobExpensesService {
           data: {
             leadId,
             analysisType: 'receipt-parse',
-            provider: 'openai',
-            model: process.env.AI_VISION_MODEL || 'gpt-4o',
+            provider: 'anthropic',
+            model: process.env.AI_VISION_MODEL || 'claude-3-7-sonnet-latest',
             rawResponse: rawOutput ? ({ raw: rawOutput } as Prisma.InputJsonValue) : Prisma.JsonNull,
             status: 'FAILED',
             errorMessage: message,
