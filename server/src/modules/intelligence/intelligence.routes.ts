@@ -154,7 +154,7 @@ intelligenceRouter.get('/clusters', async (req, res) => {
     const { product, themeType } = req.query as any;
     const clusters = await prisma.topicCluster.findMany({
       where: {
-        ...(product ? { productScope: product } : {}),
+        ...(product ? { productScope: { in: [product, 'general', 'all'] } } : {}),
         ...(themeType ? { themeType } : {}),
       },
       orderBy: { frequency: 'desc' },
@@ -174,7 +174,7 @@ intelligenceRouter.get('/opportunities', async (req, res) => {
       where: {
         isActedOn: false,
         ...(channel ? { channel } : {}),
-        ...(product ? { productScope: product } : {}),
+        ...(product ? { productScope: { in: [product, 'general', 'all'] } } : {}),
         ...(priority ? { priority } : {}),
       },
       orderBy: [{ priority: 'desc' }, { createdAt: 'desc' }],
@@ -205,7 +205,7 @@ intelligenceRouter.get('/social/patterns', async (req, res) => {
     const patterns = await prisma.socialCreativePattern.findMany({
       where: {
         ...(platform ? { platform } : {}),
-        ...(product ? { productFocus: product } : {}),
+        ...(product ? { productFocus: { in: [product, 'general', 'all'] } } : {}),
         ...(level ? { recommendationLevel: level } : {}),
       },
       orderBy: { recommendationLevel: 'desc' },
@@ -223,7 +223,7 @@ intelligenceRouter.get('/objections', async (req, res) => {
     const objections = await prisma.objectionPattern.findMany({
       where: {
         ...(category ? { objectionCategory: category } : {}),
-        ...(product ? { productFocus: { in: [product, 'general'] } } : {}),
+        ...(product ? { productFocus: { in: [product, 'general', 'all'] } } : {}),
       },
       orderBy: { frequency: 'desc' },
     });
@@ -240,7 +240,7 @@ intelligenceRouter.get('/campaigns', async (req, res) => {
     const campaigns = await prisma.campaignAngle.findMany({
       where: {
         ...(segment ? { segmentTarget: segment } : {}),
-        ...(product ? { productFocus: { in: [product, 'all'] } } : {}),
+        ...(product ? { productFocus: { in: [product, 'general', 'all'] } } : {}),
         ...(channel ? { channel } : {}),
       },
       orderBy: [{ priority: 'desc' }, { createdAt: 'desc' }],
