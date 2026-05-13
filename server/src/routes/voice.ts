@@ -27,6 +27,20 @@ voiceRoutes.get('/sessions/:id', async (req, res) => {
   }
 });
 
+// Get all sessions for an appointment (for source tracking)
+voiceRoutes.get('/sessions/appointment/:appointmentId', async (req, res) => {
+  try {
+    const sessions = await prisma.voiceSession.findMany({
+      where: { appointmentId: req.params.appointmentId },
+      include: { transcripts: true, entities: { orderBy: { openingNumber: 'asc' } } },
+      orderBy: { createdAt: 'desc' }
+    });
+    res.json(sessions);
+  } catch (err) {
+    res.json([]);
+  }
+});
+
 // Save transcript
 voiceRoutes.post('/transcripts', async (req, res) => {
   try {
@@ -146,7 +160,7 @@ voiceRoutes.post('/sessions/:id/accept-all', async (req, res) => {
   }
 });
 
-// ── Voice text parser ────────────────────────────────────
+// ── Voice text parser (enhanced for natural speech) ──────
 function parseVoiceText(text: string) {
   const entities: any[] = [];
   const lower = text.toLowerCase();
@@ -164,99 +178,129 @@ function parseVoiceText(text: string) {
     entities.push({ entityType: 'customer', fieldName: 'address', fieldValue: cap(addrMatch[1]), confidence: 0.8, status: 'pending' });
   }
 
-  // Parse openings: "window one..." or "opening one..." or "front window one..."
+  // Pre-scan for "W by H" or "W x H" dimension pairs anywhere
+  const dimFrac = /(\d+(?:\s+\d+\/\d+)?)\s*(?:by|x|×|,)\s*(\d+(?:\s+\d+\/\d+)?)/gi;
+  const dimMatches: { width: number; height: number; index: number }[] = [];
+  let dm;
+  while ((dm = dimFrac.exec(lower)) !== null) {
+    dimMatches.push({ width: evalFrac(dm[1]), height: evalFrac(dm[2]), index: dm.index });
+  }
+
+  // Parse "window N" or "opening N" blocks
   const openingPattern = /(?:(?:front|rear|back|left|right|garage)\s+)?(?:window|opening|door)\s+(?:number\s+)?(\w+)\s+(?:is\s+)?(?:a\s+)?([\s\S]*?)(?=(?:(?:front|rear|back|left|right|garage)\s+)?(?:window|opening|door)\s+(?:number\s+)?\w+|$)/gi;
   let match;
+  const parsedOpenings = new Set<number>();
   while ((match = openingPattern.exec(lower)) !== null) {
-    const numWord = match[1];
+    const num = wordToNum(match[1]);
     const details = match[2];
-    const num = wordToNum(numWord);
     if (!num || num > 50) continue;
+    parsedOpenings.add(num);
 
-    // Elevation from prefix
     const elevMatch = match[0].match(/^(front|rear|back|left|right|garage)/);
     if (elevMatch) {
-      const elev = elevMatch[1] === 'back' ? 'rear' : elevMatch[1];
-      entities.push({ entityType: 'opening', fieldName: 'elevation', fieldValue: elev, openingNumber: num, confidence: 0.85, status: 'pending' });
+      entities.push({ entityType: 'opening', fieldName: 'elevation', fieldValue: elevMatch[1] === 'back' ? 'rear' : elevMatch[1], openingNumber: num, confidence: 0.85, status: 'pending' });
     }
 
-    // Product type
-    const products: Record<string, string> = {
-      'double hung': 'double_hung', 'picture': 'picture', 'slider': 'slider',
-      'casement': 'casement', 'awning': 'awning', 'patio door': 'patio_door',
-      'circle top': 'circle_top', 'eyebrow': 'eyebrow', 'quarter arch': 'quarter_arch'
-    };
-    for (const [keyword, value] of Object.entries(products)) {
+    for (const [keyword, value] of Object.entries(PRODUCTS)) {
       if (details.includes(keyword)) {
         entities.push({ entityType: 'opening', fieldName: 'productCategory', fieldValue: value, openingNumber: num, confidence: 0.9, status: 'pending' });
         break;
       }
     }
 
-    // Width × Height
-    const dimMatch = details.match(/([\d]+(?:\s+and\s+[\w\s]+)?(?:\s*(?:and\s+)?(?:a\s+)?(?:half|quarter|eighth|three[- ]?eighth|one[- ]?eighth|five[- ]?eighth|seven[- ]?eighth|sixteenth|three[- ]?quarter)s?)?)\s*(?:wide|width)/);
-    if (dimMatch) {
-      entities.push({ entityType: 'measurement', fieldName: 'width', fieldValue: String(parseFraction(dimMatch[1])), openingNumber: num, confidence: 0.85, status: 'pending' });
-    }
-    const hMatch = details.match(/([\d]+(?:\s+and\s+[\w\s]+)?(?:\s*(?:and\s+)?(?:a\s+)?(?:half|quarter|eighth|three[- ]?eighth|one[- ]?eighth|five[- ]?eighth|seven[- ]?eighth|sixteenth|three[- ]?quarter)s?)?)\s*(?:tall|height|high)/);
-    if (hMatch) {
-      entities.push({ entityType: 'measurement', fieldName: 'height', fieldValue: String(parseFraction(hMatch[1])), openingNumber: num, confidence: 0.85, status: 'pending' });
+    // Dimensions: "35 3/8 by 59 7/8" or "35 x 60"
+    const detailDim = details.match(/(\d+(?:\s+\d+\/\d+)?)\s*(?:by|x|×|,)\s*(\d+(?:\s+\d+\/\d+)?)/);
+    if (detailDim) {
+      entities.push({ entityType: 'measurement', fieldName: 'width', fieldValue: String(evalFrac(detailDim[1])), openingNumber: num, confidence: 0.9, status: 'pending' });
+      entities.push({ entityType: 'measurement', fieldName: 'height', fieldValue: String(evalFrac(detailDim[2])), openingNumber: num, confidence: 0.9, status: 'pending' });
     }
 
-    // Colors
-    const colors = ['white', 'almond', 'clay', 'bronze', 'black', 'dark chocolate', 'forest green', 'beige', 'tan'];
+    for (const [keyword, value] of Object.entries(ROOMS)) {
+      if (details.includes(keyword)) {
+        entities.push({ entityType: 'opening', fieldName: 'roomLocation', fieldValue: value, openingNumber: num, confidence: 0.85, status: 'pending' });
+        break;
+      }
+    }
+
+    if (details.match(/(?:second|2nd)\s*floor|upstairs/)) {
+      entities.push({ entityType: 'opening', fieldName: 'floorNumber', fieldValue: '2', openingNumber: num, confidence: 0.9, status: 'pending' });
+    }
+
+    const colors = ['white', 'almond', 'clay', 'bronze', 'black', 'beige', 'tan'];
     for (const c of colors) {
-      if (details.includes(`${c} interior`)) entities.push({ entityType: 'option', fieldName: 'interiorColor', fieldValue: cap(c), openingNumber: num, confidence: 0.85, status: 'pending' });
-      if (details.includes(`${c} exterior`)) entities.push({ entityType: 'option', fieldName: 'exteriorColor', fieldValue: cap(c), openingNumber: num, confidence: 0.85, status: 'pending' });
+      if (details.includes(c + ' interior')) entities.push({ entityType: 'option', fieldName: 'interiorColor', fieldValue: cap(c), openingNumber: num, confidence: 0.85, status: 'pending' });
+      if (details.includes(c + ' exterior')) entities.push({ entityType: 'option', fieldName: 'exteriorColor', fieldValue: cap(c), openingNumber: num, confidence: 0.85, status: 'pending' });
     }
 
-    // Grid
-    const grids: Record<string, string> = { 'colonial': 'Colonial', 'prairie': 'Prairie', 'diamond': 'Diamond', 'perimeter': 'Perimeter' };
-    for (const [k, v] of Object.entries(grids)) {
-      if (details.includes(`${k} grid`)) entities.push({ entityType: 'option', fieldName: 'gridStyle', fieldValue: v, openingNumber: num, confidence: 0.85, status: 'pending' });
+    for (const [k, v] of Object.entries({ colonial: 'Colonial', prairie: 'Prairie', diamond: 'Diamond', perimeter: 'Perimeter' })) {
+      if (details.includes(k)) entities.push({ entityType: 'option', fieldName: 'gridStyle', fieldValue: v, openingNumber: num, confidence: 0.85, status: 'pending' });
     }
 
-    // Glass options
     if (details.includes('tempered')) entities.push({ entityType: 'option', fieldName: 'temperedGlass', fieldValue: 'full', openingNumber: num, confidence: 0.85, status: 'pending' });
     if (details.includes('obscure')) entities.push({ entityType: 'option', fieldName: 'obscureGlass', fieldValue: 'full', openingNumber: num, confidence: 0.85, status: 'pending' });
     if (details.includes('full screen')) entities.push({ entityType: 'option', fieldName: 'screenOption', fieldValue: 'Full', openingNumber: num, confidence: 0.85, status: 'pending' });
     if (details.includes('foam')) entities.push({ entityType: 'option', fieldName: 'foamEnhanced', fieldValue: 'true', openingNumber: num, confidence: 0.85, status: 'pending' });
+    if (details.includes('ladder')) entities.push({ entityType: 'opening', fieldName: 'installNotes', fieldValue: 'Ladder required', openingNumber: num, confidence: 0.8, status: 'pending' });
+    if (details.includes('remove') && (details.includes('aluminum') || details.includes('vinyl'))) entities.push({ entityType: 'opening', fieldName: 'removalType', fieldValue: 'full_tearout', openingNumber: num, confidence: 0.8, status: 'pending' });
+  }
 
-    // Removal/install
-    if (details.includes('remove') && details.includes('aluminum')) entities.push({ entityType: 'opening', fieldName: 'removalType', fieldValue: 'full_tearout', openingNumber: num, confidence: 0.8, status: 'pending' });
-    if (details.includes('remove') && details.includes('vinyl')) entities.push({ entityType: 'opening', fieldName: 'removalType', fieldValue: 'full_tearout', openingNumber: num, confidence: 0.8, status: 'pending' });
+  // Fallback: dims found but no "window N" pattern
+  if (parsedOpenings.size === 0 && dimMatches.length > 0) {
+    dimMatches.forEach((dm, idx) => {
+      const num = idx + 1;
+      entities.push({ entityType: 'measurement', fieldName: 'width', fieldValue: String(dm.width), openingNumber: num, confidence: 0.85, status: 'pending' });
+      entities.push({ entityType: 'measurement', fieldName: 'height', fieldValue: String(dm.height), openingNumber: num, confidence: 0.85, status: 'pending' });
+    });
+  }
 
-    // Notes
-    const noteMatch = details.match(/notes?[:\s]+(.+)/);
-    if (noteMatch) entities.push({ entityType: 'opening', fieldName: 'installerNotes', fieldValue: cap(noteMatch[1].trim()), openingNumber: num, confidence: 0.7, status: 'pending' });
+  // Fallback: room + product without "window N"
+  if (parsedOpenings.size === 0) {
+    const roomProd = /(living room|kitchen|bedroom|master bedroom|bathroom|master bath|dining room|foyer|garage|den|office)\s+(double hung|picture|slider|casement|patio door|sliding door|awning)/gi;
+    let rm;
+    let n = 1;
+    while ((rm = roomProd.exec(lower)) !== null) {
+      entities.push({ entityType: 'opening', fieldName: 'roomLocation', fieldValue: cap(rm[1]), openingNumber: n, confidence: 0.75, status: 'pending' });
+      entities.push({ entityType: 'opening', fieldName: 'productCategory', fieldValue: PRODUCTS[rm[2].toLowerCase()] || rm[2], openingNumber: n, confidence: 0.8, status: 'pending' });
+      n++;
+    }
   }
 
   return entities;
 }
 
+const PRODUCTS: Record<string, string> = {
+  'double hung': 'double_hung', 'single hung': 'single_hung', 'picture': 'picture', 'slider': 'slider',
+  'casement': 'casement', 'awning': 'awning', 'patio door': 'patio_door', 'sliding door': 'patio_door',
+  'circle top': 'circle_top', 'eyebrow': 'eyebrow', 'quarter arch': 'quarter_arch', 'bay': 'bay', 'bow': 'bow',
+};
+
+const ROOMS: Record<string, string> = {
+  'master bedroom': 'Master Bedroom', 'master bath': 'Master Bath', 'living room': 'Living Room',
+  'dining room': 'Dining Room', 'front bedroom': 'Front Bedroom', 'back bedroom': 'Back Bedroom',
+  'kitchen': 'Kitchen', 'bedroom': 'Bedroom', 'bathroom': 'Bathroom', 'foyer': 'Foyer',
+  'garage': 'Garage', 'laundry': 'Laundry', 'den': 'Den', 'office': 'Office', 'hallway': 'Hallway',
+};
+
+function evalFrac(s: string): number {
+  const parts = s.trim().split(/\s+/);
+  let total = 0;
+  for (const p of parts) {
+    if (p.includes('/')) { const [n, d] = p.split('/'); total += parseInt(n) / parseInt(d); }
+    else total += parseFloat(p) || 0;
+  }
+  return Math.round(total * 1000) / 1000;
+}
+
 function wordToNum(w: string): number | null {
   const nums: Record<string, number> = {
     one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10,
-    eleven: 11, twelve: 12, thirteen: 13, fourteen: 14, fifteen: 15, sixteen: 16, seventeen: 17,
-    eighteen: 18, nineteen: 19, twenty: 20, '1': 1, '2': 2, '3': 3, '4': 4, '5': 5, '6': 6,
-    '7': 7, '8': 8, '9': 9, '10': 10, '11': 11, '12': 12, '13': 13, '14': 14, '15': 15,
-    '16': 16, '17': 17, '18': 18, '19': 19, '20': 20,
+    eleven: 11, twelve: 12, thirteen: 13, fourteen: 14, fifteen: 15, first: 1, second: 2, third: 3,
+    '1': 1, '2': 2, '3': 3, '4': 4, '5': 5, '6': 6, '7': 7, '8': 8, '9': 9, '10': 10,
+    '11': 11, '12': 12, '13': 13, '14': 14, '15': 15, '16': 16, '17': 17, '18': 18, '19': 19, '20': 20,
   };
   return nums[w.toLowerCase()] ?? null;
 }
 
-function parseFraction(text: string): number {
-  let total = 0;
-  const baseMatch = text.match(/(\d+)/);
-  if (baseMatch) total = parseInt(baseMatch[1]);
-  if (text.includes('half')) total += 0.5;
-  if (text.includes('quarter') && !text.includes('three')) total += 0.25;
-  if (text.includes('three quarter') || text.includes('three-quarter')) total += 0.75;
-  if (text.includes('eighth') && !text.includes('three') && !text.includes('five') && !text.includes('seven')) total += 0.125;
-  if (text.includes('three eighth') || text.includes('three-eighth')) total += 0.375;
-  if (text.includes('five eighth') || text.includes('five-eighth')) total += 0.625;
-  if (text.includes('seven eighth') || text.includes('seven-eighth')) total += 0.875;
-  return total;
-}
-
 function cap(s: string): string { return s.replace(/\b\w/g, c => c.toUpperCase()); }
+
+

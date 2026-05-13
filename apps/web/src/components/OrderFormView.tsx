@@ -1,9 +1,27 @@
 import { useState, useEffect } from 'react';
 import { api } from '../utils/api';
 
+// Source tag styles — display only, not in PDF
+const SOURCE_TAGS: Record<string, { icon: string; label: string; bg: string; color: string }> = {
+  voice: { icon: '🎤', label: 'Voice', bg: 'rgba(139,92,246,0.15)', color: '#a78bfa' },
+  typed: { icon: '📝', label: 'Typed', bg: 'rgba(59,130,246,0.15)', color: '#60a5fa' },
+  manual: { icon: '✏️', label: 'Manual', bg: 'rgba(107,114,128,0.15)', color: '#9ca3af' },
+  template: { icon: '📋', label: 'Template', bg: 'rgba(34,197,94,0.15)', color: '#4ade80' },
+};
+
+function SourceTag({ source }: { source: string }) {
+  const tag = SOURCE_TAGS[source] || SOURCE_TAGS.manual;
+  return (
+    <span style={{ fontSize: '0.5625rem', padding: '1px 5px', borderRadius: 4, background: tag.bg, color: tag.color, fontWeight: 700, whiteSpace: 'nowrap' }}>
+      {tag.icon} {tag.label}
+    </span>
+  );
+}
+
 export function OrderFormView({ appointmentId }: { appointmentId: string }) {
   const [formData, setFormData] = useState<any>(null);
   const [loading, setLoading] = useState(false);
+  const [openingSources, setOpeningSources] = useState<Record<number, string>>({});
 
   const autoFill = async () => {
     setLoading(true);
@@ -17,7 +35,27 @@ export function OrderFormView({ appointmentId }: { appointmentId: string }) {
     }
   };
 
-  useEffect(() => { autoFill(); }, [appointmentId]);
+  // Load voice session data to determine which openings came from voice
+  const loadSources = async () => {
+    try {
+      const sessions = await api.get(`/voice/sessions/appointment/${appointmentId}`);
+      const sources: Record<number, string> = {};
+      for (const sess of (sessions || [])) {
+        if (sess.status === 'applied' || sess.status === 'parsed' || sess.status === 'reviewed') {
+          for (const e of (sess.entities || [])) {
+            if (e.openingNumber) {
+              // Check transcript provider
+              const provider = sess.transcripts?.[0]?.provider || 'web_speech';
+              sources[e.openingNumber] = provider === 'typed' ? 'typed' : 'voice';
+            }
+          }
+        }
+      }
+      setOpeningSources(sources);
+    } catch {}
+  };
+
+  useEffect(() => { autoFill(); loadSources(); }, [appointmentId]);
 
   const upd = (field: string, value: any) => setFormData({ ...formData, [field]: value });
 
@@ -48,7 +86,7 @@ export function OrderFormView({ appointmentId }: { appointmentId: string }) {
     doc.line(lm, y, 275, y);
     y += 3;
 
-    // Opening rows
+    // Opening rows — NO source tags in PDF
     doc.setFontSize(6.5);
     for (const o of (formData.openings || [])) {
       if (y > 195) { doc.addPage(); y = 15; }
@@ -92,7 +130,13 @@ export function OrderFormView({ appointmentId }: { appointmentId: string }) {
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
         <h2>📋 Window & Patio Door Order Form</h2>
-        <div style={{ display: 'flex', gap: '0.5rem' }}>
+        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+          {/* Source legend — display only */}
+          <div style={{ display: 'flex', gap: '0.375rem', marginRight: '0.5rem' }}>
+            <SourceTag source="voice" />
+            <SourceTag source="typed" />
+            <SourceTag source="manual" />
+          </div>
           <button className="btn btn-secondary btn-sm" onClick={autoFill}>🔄 Refresh</button>
           <button className="btn btn-primary" onClick={generatePDF}>📄 Export PDF</button>
         </div>
@@ -118,38 +162,42 @@ export function OrderFormView({ appointmentId }: { appointmentId: string }) {
         </div>
       </div>
 
-      {/* Openings table */}
+      {/* Openings table with source indicators */}
       <div className="card" style={{ marginBottom: '1rem' }}>
         <h3 style={{ marginBottom: '0.75rem' }}>Opening Schedule ({formData.openings?.length || 0} openings)</h3>
         <div style={{ overflowX: 'auto' }}>
           <table className="data-table" style={{ fontSize: '0.75rem' }}>
             <thead>
               <tr>
-                <th>#</th><th>Qty</th><th>Model</th><th>Int</th><th>Ext</th><th>W</th><th>H</th><th>UI</th>
+                <th>#</th><th>Src</th><th>Qty</th><th>Model</th><th>Int</th><th>Ext</th><th>W</th><th>H</th><th>UI</th>
                 <th>Grid</th><th>Glass</th><th>Foam</th><th>Temp</th><th>Screen</th><th>Elev</th><th>Room</th><th>Notes</th>
               </tr>
             </thead>
             <tbody>
-              {(formData.openings || []).map((o: any, i: number) => (
-                <tr key={i}>
-                  <td><strong>{o.openingNumber}</strong></td>
-                  <td>{o.qty}</td>
-                  <td>{o.model}</td>
-                  <td>{o.interiorColor}</td>
-                  <td>{o.exteriorColor}</td>
-                  <td>{o.width}"</td>
-                  <td>{o.height}"</td>
-                  <td><strong>{o.unitedInches}"</strong></td>
-                  <td>{o.gridStyle}</td>
-                  <td>{o.glassOption}</td>
-                  <td>{o.foamEnhanced ? '✓' : ''}</td>
-                  <td>{o.tempered}</td>
-                  <td>{o.fullScreen ? 'Full' : ''}</td>
-                  <td>{o.elevation}</td>
-                  <td>{o.roomLocation}</td>
-                  <td style={{ maxWidth: 150, overflow: 'hidden', textOverflow: 'ellipsis' }}>{o.notes}</td>
-                </tr>
-              ))}
+              {(formData.openings || []).map((o: any, i: number) => {
+                const source = openingSources[o.openingNumber] || 'manual';
+                return (
+                  <tr key={i}>
+                    <td><strong>{o.openingNumber}</strong></td>
+                    <td><SourceTag source={source} /></td>
+                    <td>{o.qty}</td>
+                    <td>{o.model}</td>
+                    <td>{o.interiorColor}</td>
+                    <td>{o.exteriorColor}</td>
+                    <td>{o.width}"</td>
+                    <td>{o.height}"</td>
+                    <td><strong>{o.unitedInches}"</strong></td>
+                    <td>{o.gridStyle}</td>
+                    <td>{o.glassOption}</td>
+                    <td>{o.foamEnhanced ? '✓' : ''}</td>
+                    <td>{o.tempered}</td>
+                    <td>{o.fullScreen ? 'Full' : ''}</td>
+                    <td>{o.elevation}</td>
+                    <td>{o.roomLocation}</td>
+                    <td style={{ maxWidth: 150, overflow: 'hidden', textOverflow: 'ellipsis' }}>{o.notes}</td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
