@@ -12,6 +12,7 @@ export function Layout({ children }: { children: ReactNode }) {
   const links = [
     { to: '/', label: '📊 Dashboard' },
     { to: '/appointments', label: '📅 Appointments' },
+    { to: '/office', label: '🏢 Office Queue' },
     { to: '/pricing', label: '💰 Pricing Admin' },
     { to: '/pricing-import', label: '📦 Pricing Import' },
   ];

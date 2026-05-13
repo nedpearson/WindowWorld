@@ -13,6 +13,7 @@ import { MissingInfoCheck } from '../components/MissingInfoCheck';
 import { StepCompletionBadge } from '../components/StepCompletion';
 import { validateAppointment } from '../utils/validationEngine';
 import { AppointmentCoach } from '../components/AppointmentCoach';
+import { OfficeReviewPanel } from '../components/OfficeReviewPanel';
 
 const STEPS = [
   'Customer',
@@ -197,6 +198,9 @@ export function AppointmentDetailPage() {
 
       {/* AI Appointment Coach */}
       <AppointmentCoach appointment={appt} onJumpToStep={setStep} />
+
+      {/* Office Review Panel */}
+      <OfficeReviewPanel appointment={appt} currentUserName={useAuthStore.getState().user?.name || 'Office'} />
 
       {/* Navigation */}
       <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '1.5rem' }}>
