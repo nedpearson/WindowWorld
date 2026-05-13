@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { api } from '../utils/api';
 import { learnFromOpening } from '../utils/repMemory';
 import { SmartSuggestionBar, ConfigPicker, RoomAutocomplete, InstallNoteSuggestions } from './SmartSuggestions';
+import { QuickWxH, SameAsPrevious, QuickAddMultiple } from './QuickMeasure';
 
 const CATEGORIES = ['double_hung','picture','slider','casement','awning','eyebrow','circle_top','quarter_arch','patio_door','custom_shape'];
 const ELEVATIONS = ['front','rear','left','right','garage','other'];
@@ -93,9 +94,18 @@ export function OpeningEditor({ appointmentId, onUpdate }: { appointmentId: stri
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.5rem' }}>
         <h2>🪟 Openings ({openings.length})</h2>
-        <button className="btn btn-primary" onClick={addOpening}>+ Add Opening</button>
+        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+          <QuickAddMultiple onAdd={async (count, template) => {
+            for (let i = 0; i < count; i++) {
+              const num = openings.length + i + 1;
+              try { await api.createOpening({ ...empty(appointmentId, num), ...template }); } catch {}
+            }
+            await load(); onUpdate();
+          }} />
+          <button className="btn btn-primary" onClick={addOpening}>+ Add Opening</button>
+        </div>
       </div>
 
       {/* ═══ SMART SUGGESTION BAR ═══ */}
@@ -149,6 +159,13 @@ export function OpeningEditor({ appointmentId, onUpdate }: { appointmentId: stri
           <div className="card fade-in" style={{ width: '100%', maxWidth: 700, maxHeight: '90vh', overflow: 'auto', padding: '1.5rem' }}>
             <h2 style={{ marginBottom: '0.75rem' }}>Opening #{editing.openingNumber}</h2>
 
+            {/* ═══ SAME AS PREVIOUS ═══ */}
+            <SameAsPrevious
+              previousOpening={openings.find((o: any) => o.openingNumber === editing.openingNumber - 1) || null}
+              currentOpening={editing}
+              onApply={(fields) => setEditing({ ...editing, ...fields })}
+            />
+
             {/* ═══ CONFIG PICKER ═══ */}
             <ConfigPicker
               currentOpening={editing}
@@ -180,12 +197,14 @@ export function OpeningEditor({ appointmentId, onUpdate }: { appointmentId: stri
               </div>
             </div>
 
-            {/* Measurements */}
-            <div className="form-row">
-              <div className="form-group"><label className="form-label">Width (inches)</label><input className="form-input" type="number" value={editing.width || ''} onChange={e => upd('width', +e.target.value)} /></div>
-              <div className="form-group"><label className="form-label">Height (inches)</label><input className="form-input" type="number" value={editing.height || ''} onChange={e => upd('height', +e.target.value)} /></div>
-              <div className="form-group"><label className="form-label">United Inches</label><input className="form-input" readOnly value={(editing.width || 0) + (editing.height || 0)} style={{ background: 'var(--bg-card)', fontWeight: 700 }} /></div>
-            </div>
+            {/* ═══ QUICK MEASUREMENT ENTRY ═══ */}
+            <QuickWxH
+              width={editing.width || 0}
+              height={editing.height || 0}
+              onWidthChange={(v) => upd('width', v)}
+              onHeightChange={(v) => upd('height', v)}
+              productCategory={editing.productCategory || 'double_hung'}
+            />
 
             {/* Product */}
             <div className="form-row">
