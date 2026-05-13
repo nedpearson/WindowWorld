@@ -61,7 +61,7 @@ export function LoginPage() {
         </form>
 
         <div style={{ marginTop: '1.5rem', textAlign: 'center', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-          Admin: nedpearson@gmail.com / admin123<br />
+          Ned: nedpearson@gmail.com / 1Pearson2<br />
           Demo: demo@windowworld.com / demo123
         </div>
       </div>

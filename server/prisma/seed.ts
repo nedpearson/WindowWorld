@@ -7,13 +7,13 @@ async function main() {
   console.log('🌱 Seeding Window World Assistant...');
 
   // ── Users ──
-  const adminPw = await bcrypt.hash('admin123', 10);
+  const nedPw = await bcrypt.hash('1Pearson2', 10);
   const demoPw = await bcrypt.hash('demo123', 10);
 
-  const admin = await prisma.user.upsert({
+  const ned = await prisma.user.upsert({
     where: { email: 'nedpearson@gmail.com' },
-    update: {},
-    create: { email: 'nedpearson@gmail.com', name: 'Ned Pearson', role: 'super_admin', password: adminPw }
+    update: { password: nedPw, role: 'sales_rep', name: 'Ned Pearson' },
+    create: { email: 'nedpearson@gmail.com', name: 'Ned Pearson', role: 'sales_rep', password: nedPw }
   });
 
   const demoRep = await prisma.user.upsert({
@@ -40,11 +40,11 @@ async function main() {
   // ── Appointments ──
   const now = new Date();
   const appointmentData = [
-    { customerId: createdCustomers[0].id, userId: admin.id, status: 'in_progress', appointmentDate: now, jobAddress: '1420 Oak Valley Dr', jobCity: 'Baton Rouge', jobState: 'LA', jobZip: '70810', projectType: 'replacement', notes: 'Full house window replacement - 12 openings' },
-    { customerId: createdCustomers[1].id, userId: admin.id, status: 'draft', appointmentDate: new Date(now.getTime() + 86400000), jobAddress: '8732 Bluebonnet Blvd', jobCity: 'Baton Rouge', jobState: 'LA', jobZip: '70810', projectType: 'replacement' },
+    { customerId: createdCustomers[0].id, userId: ned.id, status: 'in_progress', appointmentDate: now, jobAddress: '1420 Oak Valley Dr', jobCity: 'Baton Rouge', jobState: 'LA', jobZip: '70810', projectType: 'replacement', notes: 'Full house window replacement - 12 openings' },
+    { customerId: createdCustomers[1].id, userId: ned.id, status: 'draft', appointmentDate: new Date(now.getTime() + 86400000), jobAddress: '8732 Bluebonnet Blvd', jobCity: 'Baton Rouge', jobState: 'LA', jobZip: '70810', projectType: 'replacement' },
     { customerId: createdCustomers[2].id, userId: demoRep.id, status: 'quoted', appointmentDate: new Date(now.getTime() - 86400000), jobAddress: '205 Magnolia St', jobCity: 'Lafayette', jobState: 'LA', jobZip: '70501', projectType: 'replacement', subtotal: 8500, taxRate: 0.0945, taxAmount: 803.25, totalAmount: 9303.25, depositAmount: 3000, balanceDue: 6303.25 },
     { customerId: createdCustomers[3].id, userId: demoRep.id, status: 'sold', appointmentDate: new Date(now.getTime() - 172800000), jobAddress: '1100 Canal St', jobCity: 'Houma', jobState: 'LA', jobZip: '70360', projectType: 'replacement', subtotal: 12400, taxRate: 0.0945, taxAmount: 1171.80, totalAmount: 13571.80, depositAmount: 5000, balanceDue: 8571.80 },
-    { customerId: createdCustomers[4].id, userId: admin.id, status: 'needs_remeasure', appointmentDate: new Date(now.getTime() - 259200000), jobAddress: '3421 Perkins Rd', jobCity: 'Baton Rouge', jobState: 'LA', jobZip: '70808', projectType: 'replacement', notes: 'Kitchen bay window needs remeasure' },
+    { customerId: createdCustomers[4].id, userId: ned.id, status: 'needs_remeasure', appointmentDate: new Date(now.getTime() - 259200000), jobAddress: '3421 Perkins Rd', jobCity: 'Baton Rouge', jobState: 'LA', jobZip: '70808', projectType: 'replacement', notes: 'Kitchen bay window needs remeasure' },
   ];
 
   const createdAppts = [];
@@ -147,8 +147,8 @@ async function main() {
   }
 
   console.log('✅ Seed complete!');
-  console.log(`   Admin: nedpearson@gmail.com / admin123`);
-  console.log(`   Demo:  demo@windowworld.com / demo123`);
+  console.log(`   Ned (Sales Rep/Admin): nedpearson@gmail.com / 1Pearson2`);
+  console.log(`   Demo:                  demo@windowworld.com / demo123`);
 }
 
 main().catch(console.error).finally(() => prisma.$disconnect());
