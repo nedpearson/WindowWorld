@@ -186,7 +186,11 @@ export function MobileFieldPage() {
   // ── No appointment selected ────────────────────────────
   if (!appt) return (
     <div className="mobile-field">
-      <div className="mf-header"><h2>📱 Field App</h2><span className={`mf-sync ${mobile.isOnline ? 'online' : 'offline'}`}>{mobile.isOnline ? '🟢' : '🔴'}</span></div>
+      <div className="mf-header">
+        <button className="mf-back" onClick={() => navigate('/')}>←</button>
+        <h2 style={{ flex: 1 }}>📱 Field App</h2>
+        <span className={`mf-sync ${mobile.isOnline ? 'online' : 'offline'}`}>{mobile.isOnline ? '🟢' : '🔴'}</span>
+      </div>
       <div style={{ padding: '1rem' }}>
         <h3 style={{ marginBottom: '1rem' }}>Select Appointment</h3>
         {appointments.map((a: any) => (
