@@ -15,6 +15,7 @@ import { pricingVersionRoutes } from './routes/pricingVersions.js';
 import { formsRoutes } from './routes/forms.js';
 import { validationRoutes } from './routes/validation.js';
 import { sketchRoutes } from './routes/sketches.js';
+import { mobileRoutes } from './routes/mobile.js';
 
 export const prisma = new PrismaClient();
 
@@ -43,6 +44,7 @@ app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/house-maps', houseMapRoutes);
 app.use('/api/validation', validationRoutes);
 app.use('/api/sketches', sketchRoutes);
+app.use('/api/mobile', mobileRoutes);
 
 app.listen(PORT, () => {
   console.log(`🪟 Window World Assistant API running on port ${PORT}`);

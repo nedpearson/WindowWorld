@@ -10,6 +10,7 @@ import { PricingImportPage } from './pages/PricingImportPage';
 import { OfficeQueuePage } from './pages/OfficeQueuePage';
 import { FormsDashboard } from './pages/FormsDashboard';
 import { SigningPage } from './pages/SigningPage';
+import { MobileFieldPage } from './pages/MobileFieldPage';
 
 export default function App() {
   const user = useAuthStore((s) => s.user);
@@ -18,8 +19,9 @@ export default function App() {
 
   return (
     <Routes>
-      {/* Isolated signing page — no Layout, no sidebar, scoped to token */}
+      {/* Isolated pages — no Layout */}
       <Route path="/sign/:token" element={<SigningPage />} />
+      <Route path="/mobile" element={<MobileFieldPage />} />
 
       {/* Main app with sidebar */}
       <Route path="/*" element={
@@ -39,3 +41,4 @@ export default function App() {
   </Routes>
   );
 }
+
