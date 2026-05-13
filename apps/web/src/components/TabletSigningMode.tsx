@@ -156,16 +156,16 @@ export function TabletSigningMode({ appointment, onClose }: { appointment: any; 
       display: 'flex', flexDirection: 'column', overflow: 'hidden',
     }}>
       {/* Top bar */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem 1.5rem', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-          <span style={{ fontSize: '1.5rem' }}>🪟</span>
-          <div>
-            <div style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.5)', fontWeight: 600, letterSpacing: '0.08em' }}>WINDOW WORLD — CUSTOMER SIGNING</div>
-            <div style={{ fontSize: '1rem', fontWeight: 700, color: 'white' }}>{customerName}</div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem 1rem', borderBottom: '1px solid rgba(255,255,255,0.08)', gap: '0.5rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', minWidth: 0, flex: 1, overflow: 'hidden' }}>
+          <span style={{ fontSize: '1.25rem', flexShrink: 0 }}>🪟</span>
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontSize: '0.625rem', color: 'rgba(255,255,255,0.5)', fontWeight: 600, letterSpacing: '0.06em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>WINDOW WORLD — CUSTOMER SIGNING</div>
+            <div style={{ fontSize: '0.9375rem', fontWeight: 700, color: 'white', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{customerName}</div>
           </div>
         </div>
-        <button onClick={onClose} style={{ padding: '0.5rem 1rem', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 6, color: 'rgba(255,255,255,0.6)', cursor: 'pointer', fontSize: '0.875rem' }}>
-          Exit Signing Mode
+        <button onClick={onClose} style={{ padding: '0.375rem 0.75rem', flexShrink: 0, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 6, color: 'rgba(255,255,255,0.6)', cursor: 'pointer', fontSize: '0.75rem', whiteSpace: 'nowrap' }}>
+          Exit
         </button>
       </div>
 
@@ -175,13 +175,13 @@ export function TabletSigningMode({ appointment, onClose }: { appointment: any; 
           STEP {step + 1} OF {total}
         </div>
         <ProgressDots total={total} current={step} sigs={sigs} />
-        {/* Step labels */}
-        <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.25rem' }}>
+        {/* Step labels — scrollable on mobile */}
+        <div style={{ display: 'flex', gap: '0.375rem', marginTop: '0.25rem', overflowX: 'auto', maxWidth: '100%', paddingBottom: '2px' }}>
           {SIGNATURE_FIELDS.map((f, i) => {
             const done = !!sigs[f.key];
             return (
               <button key={f.key} onClick={() => setStep(i)} style={{
-                fontSize: '0.5625rem', padding: '2px 8px', borderRadius: 12, border: 'none', cursor: 'pointer', fontWeight: 600,
+                fontSize: '0.5625rem', padding: '2px 8px', borderRadius: 12, border: 'none', cursor: 'pointer', fontWeight: 600, whiteSpace: 'nowrap', flexShrink: 0,
                 background: done ? 'rgba(34,197,94,0.2)' : i === step ? 'rgba(59,130,246,0.25)' : 'rgba(255,255,255,0.05)',
                 color: done ? '#22c55e' : i === step ? '#93c5fd' : 'rgba(255,255,255,0.35)',
               }}>
@@ -218,6 +218,7 @@ export function TabletSigningMode({ appointment, onClose }: { appointment: any; 
             {field.label}
           </div>
           <SignaturePad
+            key={field.key}
             onSave={handleSave}
             onClear={handleClear}
             height={field.type === 'initials' ? 120 : 180}

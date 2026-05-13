@@ -42,6 +42,13 @@ export function AppointmentDetailPage() {
     if (!id) return;
     try {
       const data = await api.getAppointment(id);
+      // If openings aren't embedded in the appointment response, fetch separately
+      if (!data.openings || data.openings.length === 0) {
+        try {
+          const openings = await api.getOpenings(id);
+          if (openings?.length > 0) data.openings = openings;
+        } catch {}
+      }
       setAppt(data);
       saveDraft(`appt_${id}`, data);
     } catch { navigate('/appointments'); }
@@ -73,6 +80,10 @@ export function AppointmentDetailPage() {
   if (!appt) return <div className="loading" style={{ padding: '3rem', textAlign: 'center' }}>Loading appointment...</div>;
 
   const fmt = (n: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(n || 0);
+
+  // Compute total from openings array (more reliable than totalAmount field)
+  const computedTotal = (appt.openings || []).reduce((s: number, o: any) => s + (o.totalPrice || 0), 0);
+  const displayTotal = computedTotal > 0 ? computedTotal : (appt.totalAmount || 0);
 
   // Ready state indicator
   const readyConfig: Record<string, { color: string; label: string }> = {
@@ -254,7 +265,7 @@ export function AppointmentDetailPage() {
             </span>
           )}
         </div>
-        <span className="total-value">{fmt(appt.totalAmount)}</span>
+        <span className="total-value">{fmt(displayTotal)}</span>
       </div>
     </div>
   );
