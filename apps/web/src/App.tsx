@@ -6,6 +6,7 @@ import { DashboardPage } from './pages/DashboardPage';
 import { AppointmentsPage } from './pages/AppointmentsPage';
 import { AppointmentDetailPage } from './pages/AppointmentDetailPage';
 import { PricingAdminPage } from './pages/PricingAdminPage';
+import { PricingImportPage } from './pages/PricingImportPage';
 
 export default function App() {
   const user = useAuthStore((s) => s.user);
@@ -19,6 +20,7 @@ export default function App() {
         <Route path="/appointments" element={<AppointmentsPage />} />
         <Route path="/appointments/:id" element={<AppointmentDetailPage />} />
         <Route path="/pricing" element={<PricingAdminPage />} />
+        <Route path="/pricing-import" element={<PricingImportPage />} />
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>
     </Layout>

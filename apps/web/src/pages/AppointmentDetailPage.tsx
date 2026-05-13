@@ -1,14 +1,17 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { api } from '../utils/api';
-import { useDraftStore } from '../store';
+import { useDraftStore, useAuthStore } from '../store';
 import { OpeningEditor } from '../components/OpeningEditor';
 import { HouseMapView } from '../components/HouseMapView';
 import { PricingReview } from '../components/PricingReview';
 import { ContractExport } from '../components/ContractExport';
 import { ValidationWarnings } from '../components/ValidationWarnings';
+import { VoiceAssistant } from '../components/VoiceAssistant';
+import { OrderFormView } from '../components/OrderFormView';
+import { ContractFormView } from '../components/ContractFormView';
 
-const STEPS = ['Customer', 'Job Info', 'Openings', 'House Map', 'Pricing', 'Contract'];
+const STEPS = ['Customer', 'Job Info', 'Openings', 'House Map', 'Pricing', 'Order Form', 'Contract', 'Export'];
 
 export function AppointmentDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -90,7 +93,12 @@ export function AppointmentDetailPage() {
       {step === 2 && <OpeningEditor appointmentId={id!} onUpdate={load} />}
       {step === 3 && <HouseMapView appointmentId={id!} openings={appt.openings || []} />}
       {step === 4 && <PricingReview appointment={appt} onRecalculate={recalc} onSave={save} />}
-      {step === 5 && <ContractExport appointment={appt} />}
+      {step === 5 && <OrderFormView appointmentId={id!} />}
+      {step === 6 && <ContractFormView appointmentId={id!} />}
+      {step === 7 && <ContractExport appointment={appt} />}
+
+      {/* Floating Voice Assistant */}
+      <VoiceAssistant appointmentId={id!} userId={useAuthStore.getState().user?.id || ''} onApplied={load} />
 
       {/* Navigation */}
       <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '1.5rem' }}>

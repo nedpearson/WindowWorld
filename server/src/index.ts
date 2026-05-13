@@ -10,6 +10,9 @@ import { authRoutes } from './routes/auth.js';
 import { exportRoutes } from './routes/exports.js';
 import { dashboardRoutes } from './routes/dashboard.js';
 import { houseMapRoutes } from './routes/housemap.js';
+import { voiceRoutes } from './routes/voice.js';
+import { pricingVersionRoutes } from './routes/pricingVersions.js';
+import { formsRoutes } from './routes/forms.js';
 
 export const prisma = new PrismaClient();
 
@@ -30,6 +33,9 @@ app.use('/api/customers', customerRoutes);
 app.use('/api/appointments', appointmentRoutes);
 app.use('/api/openings', openingRoutes);
 app.use('/api/pricing', pricingRoutes);
+app.use('/api/pricing-versions', pricingVersionRoutes);
+app.use('/api/voice', voiceRoutes);
+app.use('/api/forms', formsRoutes);
 app.use('/api/exports', exportRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/house-maps', houseMapRoutes);

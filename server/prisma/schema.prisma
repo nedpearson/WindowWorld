@@ -8,28 +8,33 @@ generator client {
   provider = "prisma-client-js"
 }
 
-// ─── Users ───────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════
+// CORE TABLES
+// ═══════════════════════════════════════════════════════════
+
 model User {
   id        String   @id @default(cuid())
   email     String   @unique
   name      String
-  role      String   @default("sales_rep") // super_admin | sales_rep | installer | office
+  role      String   @default("sales_rep")
   password  String
   avatarUrl String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  appointments Appointment[]
-  auditLogs    AuditLog[]
+  appointments    Appointment[]
+  auditLogs       AuditLog[]
+  voiceSessions   VoiceSession[]
+  pricingVersions PricingVersion[]
 }
 
-// ─── Customers ───────────────────────────────────────────
 model Customer {
   id          String   @id @default(cuid())
   firstName   String
   lastName    String
   email       String?
   phone       String?
+  phone2      String?
   address     String?
   city        String?
   state       String?  @default("LA")
@@ -37,75 +42,104 @@ model Customer {
   notes       String?
   leadSource  String?
   preLead1978 Boolean  @default(false)
+  customerId  String?  // WW account/customer ID
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
   appointments Appointment[]
 }
 
-// ─── Appointments ────────────────────────────────────────
 model Appointment {
-  id             String   @id @default(cuid())
-  customerId     String
-  userId         String
-  status         String   @default("draft") // draft | in_progress | quoted | sold | cancelled | needs_remeasure
+  id              String    @id @default(cuid())
+  customerId      String
+  userId          String
+  status          String    @default("draft")
   appointmentDate DateTime?
-  jobAddress     String?
-  jobCity        String?
-  jobState       String?  @default("LA")
-  jobZip         String?
-  projectType    String?  // replacement | new_construction | remodel
-  notes          String?
-  estimatorNotes String?
-  installerNotes String?
-  officeNotes    String?
-  subtotal       Float    @default(0)
-  taxRate        Float    @default(0.0945)
-  taxAmount      Float    @default(0)
-  adminFee       Float    @default(0)
-  discount       Float    @default(0)
-  totalAmount    Float    @default(0)
-  depositAmount  Float    @default(0)
-  balanceDue     Float    @default(0)
-  financingAmount Float   @default(0)
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  jobAddress      String?
+  jobCity         String?
+  jobState        String?   @default("LA")
+  jobZip          String?
+  projectType     String?
+  completeJob     Boolean   @default(true)
+  poNumber        String?
+  accountNumber   String?
+  notes           String?
+  estimatorNotes  String?
+  installerNotes  String?
+  officeNotes     String?
+  subtotal        Float     @default(0)
+  taxRate         Float     @default(0.0945)
+  taxAmount       Float     @default(0)
+  adminFee        Float     @default(0)
+  discount        Float     @default(0)
+  totalAmount     Float     @default(0)
+  depositAmount   Float     @default(0)
+  balanceDue      Float     @default(0)
+  financingAmount Float     @default(0)
+  pricingVersionId String?
+  completionPct   Float     @default(0)
+  lockedAt        DateTime?
+  lockedReason    String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 
-  customer      Customer      @relation(fields: [customerId], references: [id])
-  user          User          @relation(fields: [userId], references: [id])
-  openings      Opening[]
-  lineItems     QuoteLineItem[]
-  contracts     Contract[]
-  signatures    Signature[]
-  payments      Payment[]
-  houseMap      HouseMap?
+  customer       Customer        @relation(fields: [customerId], references: [id])
+  user           User            @relation(fields: [userId], references: [id])
+  pricingVersion PricingVersion? @relation(fields: [pricingVersionId], references: [id])
+  openings       Opening[]
+  lineItems      QuoteLineItem[]
+  contracts      Contract[]
+  signatures     Signature[]
+  payments       Payment[]
+  houseMap       HouseMap?
+  voiceSessions  VoiceSession[]
+  formInstances  FormInstance[]
+
+  @@index([customerId])
+  @@index([userId])
+  @@index([status])
+  @@index([appointmentDate])
 }
 
-// ─── Openings ────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════
+// OPENINGS
+// ═══════════════════════════════════════════════════════════
+
 model Opening {
   id              String   @id @default(cuid())
   appointmentId   String
   openingNumber   Int
+  quantity        Int      @default(1)
   roomLocation    String?
-  elevation       String?  // front | rear | left | right | garage | other
+  elevation       String?
+  floorNumber     Int?     @default(1)
   width           Float?
   height          Float?
   unitedInches    Float?
-  productCategory String?  // double_hung | picture | slider | casement | awning | eyebrow | circle_top | quarter_arch | patio_door | custom_shape
+  productCategory String?
+  productModel    String?
   seriesModel     String?
   interiorColor   String?
   exteriorColor   String?
   gridStyle       String?
   gridPattern     String?
   glassPackage    String?
-  temperedGlass   Boolean  @default(false)
-  obscureGlass    Boolean  @default(false)
+  temperedGlass   String?  // none | full | half
+  obscureGlass    String?  // none | full | half
   argon           Boolean  @default(false)
   foamEnhanced    Boolean  @default(false)
   lowEPackage     String?
   screenOption    String?
+  nailFin         Boolean  @default(false)
+  oriel           Boolean  @default(false)
+  horizontalRR    Boolean  @default(false)
+  hinge           String?
+  exteriorType    String?
+  trimType        String?
   trimNotes       String?
-  removalType     String?  // full_tearout | insert | none
+  removalType     String?
+  installType     String?
+  sillRepair      Boolean  @default(false)
   installNotes    String?
   customerNotes   String?
   installerNotes  String?
@@ -113,20 +147,21 @@ model Opening {
   optionsPrice    Float    @default(0)
   laborPrice      Float    @default(0)
   totalPrice      Float    @default(0)
-  // Specialty shape fields
   radius          Float?
   customRadius    Float?
   legHeight       Float?
   specialtyNotes  String?
   needsVerification Boolean @default(false)
+  pricingStatus   String?  @default("pending")
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
   appointment     Appointment    @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
   photos          OpeningPhoto[]
+
+  @@index([appointmentId])
 }
 
-// ─── Opening Photos ──────────────────────────────────────
 model OpeningPhoto {
   id        String   @id @default(cuid())
   openingId String
@@ -137,16 +172,113 @@ model OpeningPhoto {
   opening   Opening  @relation(fields: [openingId], references: [id], onDelete: Cascade)
 }
 
-// ─── Pricing Tables ──────────────────────────────────────
+// ═══════════════════════════════════════════════════════════
+// PRICING ENGINE
+// ═══════════════════════════════════════════════════════════
+
+model PricingVersion {
+  id          String    @id @default(cuid())
+  name        String
+  status      String    @default("draft") // draft | review | published | archived
+  publishedAt DateTime?
+  publishedBy String?
+  importId    String?
+  notes       String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  publisher    User?              @relation(fields: [publishedBy], references: [id])
+  import       PricingImport?     @relation(fields: [importId], references: [id])
+  items        PricingVersionItem[]
+  appointments Appointment[]
+}
+
+model PricingVersionItem {
+  id               String  @id @default(cuid())
+  pricingVersionId String
+  category         String  // product | option | labor | specialty | tax | removal
+  productCategory  String?
+  seriesModel      String?
+  label            String
+  unitedInchesMin  Float?
+  unitedInchesMax  Float?
+  price            Float   @default(0)
+  priceType        String  @default("flat")
+  confidence       Float   @default(1.0)
+  needsVerification Boolean @default(false)
+  sortOrder        Int     @default(0)
+  createdAt        DateTime @default(now())
+
+  pricingVersion   PricingVersion @relation(fields: [pricingVersionId], references: [id], onDelete: Cascade)
+
+  @@index([pricingVersionId])
+  @@index([category])
+  @@index([productCategory])
+}
+
+model PricingImport {
+  id             String   @id @default(cuid())
+  fileName       String
+  fileType       String   // pdf | csv | xlsx | docx
+  fileSize       Int?
+  source         String   @default("local") // local | google_drive
+  driveFileId    String?
+  status         String   @default("uploaded") // uploaded | parsing | parsed | reviewed | applied | failed
+  parsedRowCount Int?
+  errorMessage   String?
+  createdBy      String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  rows     PricingImportRow[]
+  versions PricingVersion[]
+}
+
+model PricingImportRow {
+  id              String  @id @default(cuid())
+  importId        String
+  rowNumber       Int
+  rawData         String? // original text
+  category        String?
+  productCategory String?
+  seriesModel     String?
+  label           String?
+  unitedInchesMin Float?
+  unitedInchesMax Float?
+  price           Float?
+  priceType       String?
+  confidence      Float   @default(0.5)
+  needsVerification Boolean @default(true)
+  status          String  @default("pending") // pending | accepted | rejected | edited
+  createdAt       DateTime @default(now())
+
+  import PricingImport @relation(fields: [importId], references: [id], onDelete: Cascade)
+
+  @@index([importId])
+}
+
+model MissingPricingRule {
+  id              String   @id @default(cuid())
+  appointmentId   String?
+  openingId       String?
+  productCategory String?
+  seriesModel     String?
+  unitedInches    Float?
+  optionLabel     String?
+  description     String
+  resolved        Boolean  @default(false)
+  createdAt       DateTime @default(now())
+}
+
+// Legacy tables kept for backward compat
 model PricingTable {
   id          String   @id @default(cuid())
-  name        String   // e.g. "Double Hung Base", "Grid Options", "Labor Rates"
-  category    String   // product | option | labor | specialty | tax
+  name        String
+  category    String
   description String?
   isActive    Boolean  @default(true)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
-
   items       PricingItem[]
 }
 
@@ -160,22 +292,24 @@ model PricingItem {
   seriesModel       String?
   productCategory   String?
   price             Float    @default(0)
-  priceType         String   @default("flat") // flat | per_unit | per_sqft | per_linft | percentage
+  priceType         String   @default("flat")
   isDefault         Boolean  @default(false)
   needsVerification Boolean  @default(false)
   sortOrder         Int      @default(0)
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
-
   pricingTable      PricingTable @relation(fields: [pricingTableId], references: [id], onDelete: Cascade)
 }
 
-// ─── Quote Line Items ────────────────────────────────────
+// ═══════════════════════════════════════════════════════════
+// QUOTES / LINE ITEMS
+// ═══════════════════════════════════════════════════════════
+
 model QuoteLineItem {
   id            String   @id @default(cuid())
   appointmentId String
   label         String
-  category      String   // product | option | labor | admin | discount | custom
+  category      String
   quantity      Int      @default(1)
   unitPrice     Float    @default(0)
   totalPrice    Float    @default(0)
@@ -184,76 +318,157 @@ model QuoteLineItem {
   sortOrder     Int      @default(0)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
-
   appointment   Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
 }
 
-// ─── Contracts ───────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════
+// CONTRACTS / SIGNATURES / PAYMENTS
+// ═══════════════════════════════════════════════════════════
+
 model Contract {
   id            String   @id @default(cuid())
   appointmentId String
   pdfUrl        String?
   version       Int      @default(1)
-  status        String   @default("draft") // draft | sent | signed | voided
+  status        String   @default("draft")
+  formData      String?  // JSON blob of all contract fields
   generatedAt   DateTime @default(now())
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
-
   appointment   Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
 }
 
-// ─── Signatures ──────────────────────────────────────────
 model Signature {
   id            String   @id @default(cuid())
   appointmentId String
   signerName    String
-  signerRole    String   // customer | estimator
-  signatureData String   // base64 PNG
+  signerRole    String
+  signatureData String
   signedAt      DateTime @default(now())
   createdAt     DateTime @default(now())
-
   appointment   Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
 }
 
-// ─── Payments / Deposits ─────────────────────────────────
 model Payment {
   id            String   @id @default(cuid())
   appointmentId String
   amount        Float
-  method        String   // cash | check | card | financing
+  method        String
   reference     String?
   notes         String?
   paidAt        DateTime @default(now())
   createdAt     DateTime @default(now())
-
   appointment   Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
 }
 
-// ─── House Map ───────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════
+// HOUSE MAP / SKETCH
+// ═══════════════════════════════════════════════════════════
+
 model HouseMap {
   id            String   @id @default(cuid())
   appointmentId String   @unique
+  sketchData    String?  // JSON canvas data
+  sketchImage   String?  // base64 or URL of sketch
+  exteriorMaterial String?
   notes         String?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
-
   appointment   Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
   markers       HouseMapMarker[]
 }
 
 model HouseMapMarker {
-  id          String @id @default(cuid())
-  houseMapId  String
-  elevation   String // front | rear | left | right
-  x           Float  // 0-100 percentage position
-  y           Float  // 0-100 percentage position
+  id            String  @id @default(cuid())
+  houseMapId    String
+  elevation     String
+  x             Float
+  y             Float
   openingNumber Int
-  label       String?
-
-  houseMap    HouseMap @relation(fields: [houseMapId], references: [id], onDelete: Cascade)
+  label         String?
+  roomName      String?
+  floorLevel    Int?    @default(1)
+  accessNotes   String?
+  installNotes  String?
+  houseMap      HouseMap @relation(fields: [houseMapId], references: [id], onDelete: Cascade)
 }
 
-// ─── Audit Logs ──────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════
+// VOICE-TO-TEXT
+// ═══════════════════════════════════════════════════════════
+
+model VoiceSession {
+  id            String   @id @default(cuid())
+  appointmentId String?
+  userId        String
+  status        String   @default("recording") // recording | transcribing | parsed | reviewed | applied
+  audioUrl      String?
+  duration      Float?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  appointment   Appointment? @relation(fields: [appointmentId], references: [id])
+  user          User         @relation(fields: [userId], references: [id])
+  transcripts   VoiceTranscript[]
+  entities      VoiceExtractedEntity[]
+
+  @@index([appointmentId])
+  @@index([userId])
+}
+
+model VoiceTranscript {
+  id             String   @id @default(cuid())
+  voiceSessionId String
+  rawText        String
+  cleanedText    String?
+  confidence     Float    @default(0)
+  provider       String?  // web_speech | whisper | google
+  createdAt      DateTime @default(now())
+
+  voiceSession   VoiceSession @relation(fields: [voiceSessionId], references: [id], onDelete: Cascade)
+}
+
+model VoiceExtractedEntity {
+  id             String   @id @default(cuid())
+  voiceSessionId String
+  entityType     String   // customer | opening | measurement | option | note
+  fieldName      String   // e.g. "width", "firstName", "gridStyle"
+  fieldValue     String
+  openingNumber  Int?
+  confidence     Float    @default(0.5)
+  status         String   @default("pending") // pending | accepted | rejected | edited
+  createdAt      DateTime @default(now())
+
+  voiceSession   VoiceSession @relation(fields: [voiceSessionId], references: [id], onDelete: Cascade)
+
+  @@index([voiceSessionId])
+}
+
+// ═══════════════════════════════════════════════════════════
+// FORMS ENGINE
+// ═══════════════════════════════════════════════════════════
+
+model FormInstance {
+  id            String   @id @default(cuid())
+  appointmentId String
+  formType      String   // order_form | contract
+  status        String   @default("draft") // draft | filled | reviewed | finalized | exported
+  formData      String?  // JSON blob
+  pdfUrl        String?
+  exportedAt    DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  appointment   Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+
+  @@index([appointmentId])
+  @@index([formType])
+}
+
+// ═══════════════════════════════════════════════════════════
+// AUDIT
+// ═══════════════════════════════════════════════════════════
+
 model AuditLog {
   id        String   @id @default(cuid())
   userId    String?
@@ -262,6 +477,8 @@ model AuditLog {
   entityId  String?
   details   String?
   createdAt DateTime @default(now())
-
   user      User?    @relation(fields: [userId], references: [id])
+
+  @@index([entity])
+  @@index([userId])
 }

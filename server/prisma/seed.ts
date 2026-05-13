@@ -59,12 +59,12 @@ async function main() {
     { appointmentId: createdAppts[0].id, openingNumber: 2, roomLocation: 'Living Room - Front', elevation: 'front', width: 36, height: 60, productCategory: 'double_hung', seriesModel: '4000 Series', interiorColor: 'White', exteriorColor: 'White', gridStyle: 'Colonial', gridPattern: '2x2', glassPackage: 'SolarZone', basePrice: 450, totalPrice: 520 },
     { appointmentId: createdAppts[0].id, openingNumber: 3, roomLocation: 'Kitchen', elevation: 'rear', width: 48, height: 36, productCategory: 'slider', seriesModel: '4000 Series', interiorColor: 'White', exteriorColor: 'Almond', glassPackage: 'SolarZone', basePrice: 380, totalPrice: 430 },
     { appointmentId: createdAppts[0].id, openingNumber: 4, roomLocation: 'Master Bedroom', elevation: 'left', width: 36, height: 60, productCategory: 'double_hung', seriesModel: '6000 Series', interiorColor: 'White', exteriorColor: 'Clay', gridStyle: 'Prairie', gridPattern: '3x1', glassPackage: 'SolarZone Elite', argon: true, foamEnhanced: true, basePrice: 650, totalPrice: 780 },
-    { appointmentId: createdAppts[0].id, openingNumber: 5, roomLocation: 'Master Bath', elevation: 'left', width: 24, height: 36, productCategory: 'awning', seriesModel: '4000 Series', interiorColor: 'White', exteriorColor: 'Clay', obscureGlass: true, glassPackage: 'SolarZone', basePrice: 320, totalPrice: 370 },
-    { appointmentId: createdAppts[0].id, openingNumber: 6, roomLocation: 'Dining Room', elevation: 'front', width: 72, height: 48, productCategory: 'picture', seriesModel: '4000 Series', interiorColor: 'White', exteriorColor: 'White', glassPackage: 'SolarZone', temperedGlass: true, basePrice: 520, totalPrice: 600 },
+    { appointmentId: createdAppts[0].id, openingNumber: 5, roomLocation: 'Master Bath', elevation: 'left', width: 24, height: 36, productCategory: 'awning', seriesModel: '4000 Series', interiorColor: 'White', exteriorColor: 'Clay', obscureGlass: 'full', glassPackage: 'SolarZone', basePrice: 320, totalPrice: 370 },
+    { appointmentId: createdAppts[0].id, openingNumber: 6, roomLocation: 'Dining Room', elevation: 'front', width: 72, height: 48, productCategory: 'picture', seriesModel: '4000 Series', interiorColor: 'White', exteriorColor: 'White', glassPackage: 'SolarZone', temperedGlass: 'full', basePrice: 520, totalPrice: 600 },
     { appointmentId: createdAppts[0].id, openingNumber: 7, roomLocation: 'Foyer', elevation: 'front', width: 24, height: 24, productCategory: 'circle_top', seriesModel: '4000 Series', interiorColor: 'White', exteriorColor: 'White', radius: 12, basePrice: 380, totalPrice: 420, specialtyNotes: 'Above front door' },
     { appointmentId: createdAppts[0].id, openingNumber: 8, roomLocation: 'Bedroom 2', elevation: 'right', width: 30, height: 54, productCategory: 'double_hung', seriesModel: '4000 Series', interiorColor: 'White', exteriorColor: 'White', glassPackage: 'SolarZone', basePrice: 420, totalPrice: 470 },
     { appointmentId: createdAppts[0].id, openingNumber: 9, roomLocation: 'Bedroom 3', elevation: 'right', width: 30, height: 54, productCategory: 'double_hung', seriesModel: '4000 Series', interiorColor: 'White', exteriorColor: 'White', glassPackage: 'SolarZone', basePrice: 420, totalPrice: 470 },
-    { appointmentId: createdAppts[0].id, openingNumber: 10, roomLocation: 'Back Patio', elevation: 'rear', width: 72, height: 80, productCategory: 'patio_door', seriesModel: '6000 Series', interiorColor: 'White', exteriorColor: 'Clay', glassPackage: 'SolarZone Elite', argon: true, temperedGlass: true, screenOption: 'Retractable', basePrice: 1800, totalPrice: 2100 },
+    { appointmentId: createdAppts[0].id, openingNumber: 10, roomLocation: 'Back Patio', elevation: 'rear', width: 72, height: 80, productCategory: 'patio_door', seriesModel: '6000 Series', interiorColor: 'White', exteriorColor: 'Clay', glassPackage: 'SolarZone Elite', argon: true, temperedGlass: 'full', screenOption: 'Retractable', basePrice: 1800, totalPrice: 2100 },
   ];
 
   for (const o of openingsData) {
@@ -145,10 +145,65 @@ async function main() {
   for (let i = 0; i < specItems.length; i++) {
     await prisma.pricingItem.create({ data: { ...specItems[i], pricingTableId: specTable.id, sortOrder: i } });
   }
+  // ── Pricing Version (Published) ──
+  const pv = await prisma.pricingVersion.upsert({
+    where: { id: 'seed-pricing-v1' },
+    update: {},
+    create: {
+      id: 'seed-pricing-v1',
+      name: 'Window World 2026 Standard',
+      status: 'published',
+      publishedAt: new Date(),
+      publishedBy: ned.id,
+      notes: 'Initial seed pricing - verify against current price sheets',
+    }
+  });
+
+  const pvItems = [
+    // Products - Double Hung by UI tier
+    { category: 'product', productCategory: 'double_hung', label: 'DH 6100 ≤70 UI', unitedInchesMin: 0, unitedInchesMax: 70, price: 289, priceType: 'flat', seriesModel: '6100' },
+    { category: 'product', productCategory: 'double_hung', label: 'DH 6100 71-84 UI', unitedInchesMin: 71, unitedInchesMax: 84, price: 329, priceType: 'flat', seriesModel: '6100' },
+    { category: 'product', productCategory: 'double_hung', label: 'DH 6100 85-101 UI', unitedInchesMin: 85, unitedInchesMax: 101, price: 389, priceType: 'flat', seriesModel: '6100' },
+    { category: 'product', productCategory: 'double_hung', label: 'DH 6100 102-120 UI', unitedInchesMin: 102, unitedInchesMax: 120, price: 449, priceType: 'flat', seriesModel: '6100' },
+    { category: 'product', productCategory: 'slider', label: 'Slider ≤84 UI', unitedInchesMin: 0, unitedInchesMax: 84, price: 329, priceType: 'flat' },
+    { category: 'product', productCategory: 'slider', label: 'Slider 85-120 UI', unitedInchesMin: 85, unitedInchesMax: 120, price: 419, priceType: 'flat' },
+    { category: 'product', productCategory: 'picture', label: 'Picture ≤84 UI', unitedInchesMin: 0, unitedInchesMax: 84, price: 299, priceType: 'flat' },
+    { category: 'product', productCategory: 'picture', label: 'Picture 85-120 UI', unitedInchesMin: 85, unitedInchesMax: 120, price: 379, priceType: 'flat' },
+    { category: 'product', productCategory: 'casement', label: 'Casement ≤84 UI', unitedInchesMin: 0, unitedInchesMax: 84, price: 389, priceType: 'flat' },
+    { category: 'product', productCategory: 'patio_door', label: 'Patio Door 6ft', unitedInchesMin: 0, unitedInchesMax: 200, price: 1299, priceType: 'flat' },
+    // Options
+    { category: 'option', label: 'Colonial Grids', price: 55, priceType: 'flat' },
+    { category: 'option', label: 'Prairie Grids', price: 55, priceType: 'flat' },
+    { category: 'option', label: 'Diamond Grids', price: 65, priceType: 'flat' },
+    { category: 'option', label: 'Tempered Glass', price: 40, priceType: 'flat' },
+    { category: 'option', label: 'Obscure Glass', price: 35, priceType: 'flat' },
+    { category: 'option', label: 'Foam Enhanced Frame', price: 35, priceType: 'flat' },
+    { category: 'option', label: 'Argon Gas Fill', price: 30, priceType: 'flat' },
+    { category: 'option', label: 'Full Screen', price: 25, priceType: 'flat' },
+    { category: 'option', label: 'Nail Fin', price: 20, priceType: 'flat' },
+    { category: 'option', label: 'Color Upgrade - Exterior', price: 45, priceType: 'flat' },
+    // Labor
+    { category: 'labor', label: 'Full Tearout Installation', price: 85, priceType: 'flat' },
+    { category: 'labor', label: 'Insert Installation', price: 65, priceType: 'flat' },
+    { category: 'labor', label: 'Sill Repair', price: 45, priceType: 'flat' },
+    { category: 'labor', label: 'Trim Package - Interior/Exterior', price: 75, priceType: 'flat' },
+    { category: 'labor', label: '2nd Floor Additional', price: 30, priceType: 'flat' },
+    { category: 'labor', label: 'Lead Paint Containment', price: 125, priceType: 'flat' },
+    // Specialty
+    { category: 'specialty', productCategory: 'circle_top', label: 'Circle Top ≤48 UI', unitedInchesMin: 0, unitedInchesMax: 48, price: 350, priceType: 'flat', needsVerification: true },
+    { category: 'specialty', productCategory: 'eyebrow', label: 'Eyebrow ≤60 UI', unitedInchesMin: 0, unitedInchesMax: 60, price: 380, priceType: 'flat', needsVerification: true },
+  ];
+
+  for (let i = 0; i < pvItems.length; i++) {
+    await prisma.pricingVersionItem.create({
+      data: { ...pvItems[i], pricingVersionId: pv.id, sortOrder: i, confidence: 0.85 }
+    });
+  }
 
   console.log('✅ Seed complete!');
   console.log(`   Ned (Sales Rep/Admin): nedpearson@gmail.com / 1Pearson2`);
   console.log(`   Demo:                  demo@windowworld.com / demo123`);
+  console.log(`   Published Pricing:     Window World 2026 Standard (${pvItems.length} items)`);
 }
 
 main().catch(console.error).finally(() => prisma.$disconnect());

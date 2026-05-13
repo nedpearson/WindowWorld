@@ -13,6 +13,7 @@ export function Layout({ children }: { children: ReactNode }) {
     { to: '/', label: '📊 Dashboard' },
     { to: '/appointments', label: '📅 Appointments' },
     { to: '/pricing', label: '💰 Pricing Admin' },
+    { to: '/pricing-import', label: '📦 Pricing Import' },
   ];
 
   return (

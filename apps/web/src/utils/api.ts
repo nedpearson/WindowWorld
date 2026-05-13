@@ -18,6 +18,12 @@ async function request(path: string, options: RequestInit = {}) {
 }
 
 export const api = {
+  // Generic
+  get: (path: string) => request(path),
+  post: (path: string, data: any) => request(path, { method: 'POST', body: JSON.stringify(data) }),
+  put: (path: string, data: any) => request(path, { method: 'PUT', body: JSON.stringify(data) }),
+  del: (path: string) => request(path, { method: 'DELETE' }),
+
   // Auth
   login: (email: string, password: string) => request('/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) }),
   me: () => request('/auth/me'),
@@ -51,7 +57,7 @@ export const api = {
   updateOpening: (id: string, data: any) => request(`/openings/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   deleteOpening: (id: string) => request(`/openings/${id}`, { method: 'DELETE' }),
 
-  // Pricing
+  // Pricing Tables (legacy)
   getPricingTables: () => request('/pricing/tables'),
   createPricingTable: (data: any) => request('/pricing/tables', { method: 'POST', body: JSON.stringify(data) }),
   updatePricingTable: (id: string, data: any) => request(`/pricing/tables/${id}`, { method: 'PUT', body: JSON.stringify(data) }),

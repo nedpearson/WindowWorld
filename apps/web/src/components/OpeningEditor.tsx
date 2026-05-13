@@ -10,11 +10,12 @@ const REMOVAL = ['full_tearout','insert','none'];
 const SPECIALTY = ['eyebrow','circle_top','quarter_arch','custom_shape'];
 
 const empty = (appointmentId: string, num: number) => ({
-  appointmentId, openingNumber: num, roomLocation: '', elevation: 'front', width: 0, height: 0,
+  appointmentId, openingNumber: num, quantity: 1, roomLocation: '', elevation: 'front', floorNumber: 1, width: 0, height: 0,
   productCategory: 'double_hung', seriesModel: '4000 Series', interiorColor: 'White', exteriorColor: 'White',
-  gridStyle: 'None', gridPattern: '', glassPackage: 'SolarZone', temperedGlass: false, obscureGlass: false,
-  argon: false, foamEnhanced: false, lowEPackage: '', screenOption: 'Standard', trimNotes: '',
-  removalType: 'full_tearout', installNotes: '', customerNotes: '', installerNotes: '',
+  gridStyle: 'None', gridPattern: '', glassPackage: 'SolarZone', temperedGlass: 'none', obscureGlass: 'none',
+  argon: false, foamEnhanced: false, nailFin: false, oriel: false, horizontalRR: false, sillRepair: false,
+  lowEPackage: '', screenOption: 'Standard', trimNotes: '', hinge: '',
+  removalType: 'full_tearout', installType: '', installNotes: '', customerNotes: '', installerNotes: '',
   basePrice: 0, optionsPrice: 0, laborPrice: 0, totalPrice: 0,
   radius: null, customRadius: null, legHeight: null, specialtyNotes: '', needsVerification: false
 });
@@ -193,12 +194,24 @@ export function OpeningEditor({ appointmentId, onUpdate }: { appointmentId: stri
               </div>
             </div>
 
-            {/* Options checkboxes */}
+            {/* Options */}
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', margin: '0.75rem 0' }}>
-              <div className="form-check"><input type="checkbox" checked={editing.temperedGlass} onChange={e => upd('temperedGlass', e.target.checked)} /><label>Tempered</label></div>
-              <div className="form-check"><input type="checkbox" checked={editing.obscureGlass} onChange={e => upd('obscureGlass', e.target.checked)} /><label>Obscure</label></div>
+              <div className="form-group" style={{ minWidth: 120 }}><label className="form-label">Tempered</label>
+                <select className="form-select" value={editing.temperedGlass || 'none'} onChange={e => upd('temperedGlass', e.target.value)}>
+                  <option value="none">None</option><option value="full">Full</option><option value="half">Half</option>
+                </select>
+              </div>
+              <div className="form-group" style={{ minWidth: 120 }}><label className="form-label">Obscure</label>
+                <select className="form-select" value={editing.obscureGlass || 'none'} onChange={e => upd('obscureGlass', e.target.value)}>
+                  <option value="none">None</option><option value="full">Full</option><option value="half">Half</option>
+                </select>
+              </div>
               <div className="form-check"><input type="checkbox" checked={editing.argon} onChange={e => upd('argon', e.target.checked)} /><label>Argon</label></div>
               <div className="form-check"><input type="checkbox" checked={editing.foamEnhanced} onChange={e => upd('foamEnhanced', e.target.checked)} /><label>Foam Enhanced</label></div>
+              <div className="form-check"><input type="checkbox" checked={editing.nailFin} onChange={e => upd('nailFin', e.target.checked)} /><label>Nail Fin</label></div>
+              <div className="form-check"><input type="checkbox" checked={editing.oriel} onChange={e => upd('oriel', e.target.checked)} /><label>Oriel</label></div>
+              <div className="form-check"><input type="checkbox" checked={editing.horizontalRR} onChange={e => upd('horizontalRR', e.target.checked)} /><label>H R&R</label></div>
+              <div className="form-check"><input type="checkbox" checked={editing.sillRepair} onChange={e => upd('sillRepair', e.target.checked)} /><label>Sill Repair</label></div>
             </div>
 
             {/* Specialty fields */}
