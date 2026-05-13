@@ -156,6 +156,9 @@ function AppointmentFormCard({ appt, navigate }: { appt: any; navigate: any }) {
       </div>
 
       {/* Open button */}
+      <button className="btn btn-secondary btn-sm" onClick={() => navigate(`/forms/order/${appt.id}`)}>
+        📋 Form
+      </button>
       <button className="btn btn-primary btn-sm" onClick={() => navigate(`/appointments/${appt.id}`)}>
         Open →
       </button>

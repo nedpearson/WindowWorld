@@ -12,6 +12,8 @@ import { FormsDashboard } from './pages/FormsDashboard';
 import { SigningPage } from './pages/SigningPage';
 import { MobileFieldPage } from './pages/MobileFieldPage';
 import { WalkthroughPage } from './pages/WalkthroughPage';
+import { OrderFormPage } from './pages/OrderFormPage';
+import { MobileOrderFormPage } from './pages/MobileOrderFormPage';
 
 export default function App() {
   const user = useAuthStore((s) => s.user);
@@ -23,6 +25,7 @@ export default function App() {
       {/* Isolated pages — no Layout */}
       <Route path="/sign/:token" element={<SigningPage />} />
       <Route path="/mobile" element={<MobileFieldPage />} />
+      <Route path="/mobile/order/:appointmentId" element={<MobileOrderFormPage />} />
 
       {/* Main app with sidebar */}
       <Route path="/*" element={
@@ -36,6 +39,7 @@ export default function App() {
         <Route path="/pricing-import" element={<PricingImportPage />} />
         <Route path="/office" element={<OfficeQueuePage />} />
           <Route path="/forms" element={<FormsDashboard />} />
+          <Route path="/forms/order/:appointmentId" element={<OrderFormPage />} />
           <Route path="*" element={<Navigate to="/" />} />
         </Routes>
       </Layout>
