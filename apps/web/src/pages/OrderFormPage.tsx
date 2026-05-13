@@ -219,7 +219,7 @@ export function OrderFormPage() {
 
       <div style={{ display: 'flex', gap: '0.5rem' }}>
         <div style={{ flex: 1 }} className="paper-form-wrapper">
-          <PaperOrderForm ref={formRef} initialData={formData} editable={mode === 'edit'} onDataChange={d => { setFormData(d); runAIValidation(d); }} />
+          <PaperOrderForm ref={formRef} initialData={formData} editable={mode === 'edit'} appointmentId={appointmentId || ''} onDataChange={d => { setFormData(d); runAIValidation(d); }} />
         </div>
 
         {showAI && (

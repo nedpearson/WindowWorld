@@ -1,4 +1,5 @@
 import { useRef, useEffect, useState, useCallback, forwardRef, useImperativeHandle } from 'react';
+import { DrawableSketchCanvas, DrawableSketchHandle } from './DrawableSketch';
 import '../styles/paper-form.css';
 
 // ═══════════════════════════════════════════════════════════════
@@ -59,14 +60,15 @@ export interface PaperOrderFormHandle {
 interface PaperOrderFormProps {
   initialData?: Partial<OrderFormData>;
   editable?: boolean;
+  appointmentId?: string;
   onDataChange?: (data: OrderFormData) => void;
   onSketchChange?: (dataUrl: string) => void;
 }
 
 export const PaperOrderForm = forwardRef<PaperOrderFormHandle, PaperOrderFormProps>(
-  ({ initialData, editable = true, onDataChange, onSketchChange }, ref) => {
+  ({ initialData, editable = true, appointmentId = '', onDataChange, onSketchChange }, ref) => {
     const formRef = useRef<HTMLDivElement>(null);
-    const sketchRef = useRef<HTMLCanvasElement>(null);
+    const sketchRef = useRef<DrawableSketchHandle>(null);
     const [data, setData] = useState<OrderFormData>(() => ({
       ...emptyFormData(), ...initialData,
       openings: initialData?.openings
@@ -74,39 +76,15 @@ export const PaperOrderForm = forwardRef<PaperOrderFormHandle, PaperOrderFormPro
         : Array.from({ length: 20 }, () => ({ ...EMPTY_OPENING })),
     }));
 
-    const sketchDrawing = useRef(false);
-    const sketchCtx = useRef<CanvasRenderingContext2D | null>(null);
-    const SW = 420, SH = 200;
-
-    useEffect(() => {
-      const canvas = sketchRef.current;
-      if (!canvas) return;
-      const ctx = canvas.getContext('2d');
-      if (!ctx) return;
-      sketchCtx.current = ctx;
-      ctx.fillStyle = '#fff';
-      ctx.fillRect(0, 0, SW, SH);
-      if (data.sketchDataUrl) {
-        const img = new Image();
-        img.onload = () => ctx.drawImage(img, 0, 0, SW, SH);
-        img.src = data.sketchDataUrl;
-      }
-    }, []);
-
-    const getPos = (e: React.MouseEvent | React.TouchEvent) => {
-      const r = sketchRef.current!.getBoundingClientRect();
-      const sx = SW / r.width, sy = SH / r.height;
-      if ('touches' in e) { const t = e.touches[0]; return { x: (t.clientX - r.left) * sx, y: (t.clientY - r.top) * sy }; }
-      return { x: ((e as React.MouseEvent).clientX - r.left) * sx, y: ((e as React.MouseEvent).clientY - r.top) * sy };
-    };
-    const skStart = (e: React.MouseEvent | React.TouchEvent) => { if (!editable) return; e.preventDefault(); sketchDrawing.current = true; const ctx = sketchCtx.current!; const p = getPos(e); ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.strokeStyle = '#000'; ctx.lineWidth = 1.5; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; };
-    const skMove = (e: React.MouseEvent | React.TouchEvent) => { if (!sketchDrawing.current || !editable) return; e.preventDefault(); const ctx = sketchCtx.current!; const p = getPos(e); ctx.lineTo(p.x, p.y); ctx.stroke(); };
-    const skEnd = () => { if (!sketchDrawing.current) return; sketchDrawing.current = false; const d = sketchRef.current?.toDataURL('image/png') || ''; setData(prev => ({ ...prev, sketchDataUrl: d })); onSketchChange?.(d); };
-
     const updateField = useCallback((field: keyof OrderFormData, value: any) => { setData(prev => { const next = { ...prev, [field]: value }; onDataChange?.(next); return next; }); }, [onDataChange]);
     const updateOpening = useCallback((i: number, field: keyof OpeningRow, value: any) => { setData(prev => { const o = [...prev.openings]; o[i] = { ...o[i], [field]: value }; const next = { ...prev, openings: o }; onDataChange?.(next); return next; }); }, [onDataChange]);
 
-    useImperativeHandle(ref, () => ({ getFormData: () => data, getFormElement: () => formRef.current, getSketchDataUrl: () => sketchRef.current?.toDataURL('image/png') || '' }));
+    const handleSketchChange = useCallback((dataUrl: string) => {
+      setData(prev => ({ ...prev, sketchDataUrl: dataUrl }));
+      onSketchChange?.(dataUrl);
+    }, [onSketchChange]);
+
+    useImperativeHandle(ref, () => ({ getFormData: () => data, getFormElement: () => formRef.current, getSketchDataUrl: () => sketchRef.current?.getDataUrl() || '' }));
 
     // Helper: text input cell
     const TI = (row: number, key: keyof OpeningRow) => <input className="pf-cell-input" value={(data.openings[row][key] as string) || ''} onChange={e => updateOpening(row, key, e.target.value)} readOnly={!editable} />;
@@ -128,9 +106,20 @@ export const PaperOrderForm = forwardRef<PaperOrderFormHandle, PaperOrderFormPro
         {/* ═══ TOP: Sketch + Customer Info ═══ */}
         <div className="pf-top">
           <div className="pf-sketch-box">
-            <canvas ref={sketchRef} width={SW} height={SH} style={{ touchAction: 'none' }}
-              onMouseDown={skStart} onMouseMove={skMove} onMouseUp={skEnd} onMouseLeave={skEnd}
-              onTouchStart={skStart} onTouchMove={skMove} onTouchEnd={skEnd} />
+            {editable ? (
+              <DrawableSketchCanvas
+                ref={sketchRef}
+                appointmentId={appointmentId}
+                openings={data.openings.filter(o => o.qty > 0 || o.model).map((o, i) => ({ ...o, openingNumber: o.windowNumber || i + 1, roomLocation: '', productCategory: o.model }))}
+                elevation="front"
+                compact={true}
+                onSketchChange={handleSketchChange}
+              />
+            ) : (
+              <div style={{ width: '100%', height: '100%', minHeight: '2in' }}>
+                {data.sketchDataUrl && <img src={data.sketchDataUrl} alt="Sketch" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />}
+              </div>
+            )}
           </div>
 
           {/* Customer Info — individually bordered boxes matching portrait image */}

@@ -1,4 +1,4 @@
-import { useRef, useEffect, useState, useCallback } from 'react';
+import { useRef, useEffect, useState, useCallback, forwardRef, useImperativeHandle } from 'react';
 
 // ── Types ────────────────────────────────────────────────
 type Tool = 'pen' | 'line' | 'rect' | 'text' | 'arrow' | 'eraser' | 'marker';
@@ -70,17 +70,25 @@ function ToolBtn({ active, onClick, title, children }: { active?: boolean; onCli
 // ══════════════════════════════════════════════════════════
 // DRAWABLE SKETCH CANVAS
 // ══════════════════════════════════════════════════════════
-export function DrawableSketchCanvas({
-  appointmentId,
-  openings = [],
-  elevation = 'front',
-  onMarkersChange,
-}: {
+export interface DrawableSketchHandle {
+  getDataUrl: () => string;
+}
+
+export const DrawableSketchCanvas = forwardRef<DrawableSketchHandle, {
   appointmentId: string;
   openings: any[];
   elevation: string;
   onMarkersChange?: (markers: SketchMarker[]) => void;
-}) {
+  onSketchChange?: (dataUrl: string) => void;
+  compact?: boolean;
+}>(function DrawableSketchCanvasInner({
+  appointmentId,
+  openings = [],
+  elevation = 'front',
+  onMarkersChange,
+  onSketchChange,
+  compact = false,
+}, ref) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const overlayRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -100,8 +108,10 @@ export function DrawableSketchCanvas({
   const startPos = useRef<{ x: number; y: number } | null>(null);
   const savedCanvas = useRef<ImageData | null>(null);
 
-  const CANVAS_W = 700;
-  const CANVAS_H = 420;
+  const CANVAS_W = compact ? 480 : 700;
+  const CANVAS_H = compact ? 240 : 420;
+
+  useImperativeHandle(ref, () => ({ getDataUrl: () => canvasRef.current?.toDataURL('image/png') || '' }));
 
   // Init canvas
   useEffect(() => {
@@ -165,9 +175,8 @@ export function DrawableSketchCanvas({
       markers: mkrs ?? markers,
     };
     localStorage.setItem(`wwa_sketch_${appointmentId}_${elevation}`, JSON.stringify(state));
-    // Try syncing to backend
-    // fetch(`/api/sketches`, { method: 'POST' ... }) // Simplified for demo
-  }, [appointmentId, elevation, markers]);
+    onSketchChange?.(state.dataUrl);
+  }, [appointmentId, elevation, markers, onSketchChange]);
 
   const getPos = (e: React.MouseEvent | React.TouchEvent): { x: number; y: number } => {
     const canvas = canvasRef.current!;
@@ -345,32 +354,30 @@ export function DrawableSketchCanvas({
   return (
     <div ref={containerRef}>
       {/* Toolbar */}
-      <div style={{ display: 'flex', gap: '0.375rem', alignItems: 'center', marginBottom: '0.5rem', flexWrap: 'wrap', padding: '0.5rem 0.75rem', background: 'rgba(255,255,255,0.03)', borderRadius: 8, border: '1px solid var(--border)' }}>
+      <div style={{ display: 'flex', gap: compact ? '0.2rem' : '0.375rem', alignItems: 'center', marginBottom: compact ? '0.25rem' : '0.5rem', flexWrap: 'wrap', padding: compact ? '0.25rem 0.375rem' : '0.5rem 0.75rem', background: compact ? 'rgba(0,0,0,0.03)' : 'rgba(255,255,255,0.03)', borderRadius: compact ? 4 : 8, border: '1px solid var(--border)' }}>
         {/* Tool group */}
-        <div style={{ display: 'flex', gap: '0.25rem' }}>
+        <div style={{ display: 'flex', gap: '0.15rem' }}>
           <ToolBtn active={tool === 'pen'} onClick={() => setTool('pen')} title="Pen (freehand)">✏️</ToolBtn>
           <ToolBtn active={tool === 'line'} onClick={() => setTool('line')} title="Straight line">📏</ToolBtn>
           <ToolBtn active={tool === 'rect'} onClick={() => setTool('rect')} title="Rectangle">⬜</ToolBtn>
           <ToolBtn active={tool === 'arrow'} onClick={() => setTool('arrow')} title="Arrow">➡️</ToolBtn>
           <ToolBtn active={tool === 'text'} onClick={() => setTool('text')} title="Text label">T</ToolBtn>
-          <ToolBtn active={tool === 'marker'} onClick={() => setTool('marker')} title="Add opening marker">📍</ToolBtn>
+          {!compact && <ToolBtn active={tool === 'marker'} onClick={() => setTool('marker')} title="Add opening marker">📍</ToolBtn>}
           <ToolBtn active={tool === 'eraser'} onClick={() => setTool('eraser')} title="Eraser">🧹</ToolBtn>
         </div>
 
-        <div style={{ width: 1, height: 28, background: 'var(--border)', margin: '0 0.25rem' }} />
+        <div style={{ width: 1, height: compact ? 20 : 28, background: 'var(--border)', margin: '0 0.15rem' }} />
 
         {/* Color */}
-        <div style={{ display: 'flex', gap: '0.25rem' }}>
-          {['#1e293b', '#3b82f6', '#ef4444', '#22c55e', '#f59e0b', '#8b5cf6'].map(c => (
-            <button key={c} onClick={() => setColor(c)} style={{ width: 20, height: 20, borderRadius: '50%', border: color === c ? '2px solid white' : '2px solid transparent', background: c, cursor: 'pointer' }} />
+        <div style={{ display: 'flex', gap: '0.15rem' }}>
+          {['#1e293b', '#3b82f6', '#ef4444', '#22c55e', '#f59e0b'].map(c => (
+            <button key={c} onClick={() => setColor(c)} style={{ width: compact ? 16 : 20, height: compact ? 16 : 20, borderRadius: '50%', border: color === c ? '2px solid white' : '2px solid transparent', background: c, cursor: 'pointer' }} />
           ))}
         </div>
 
-        {/* Line width */}
-        <input type="range" min={1} max={8} value={lineWidth} onChange={e => setLineWidth(+e.target.value)}
-          style={{ width: 60 }} title="Stroke width" />
+        {!compact && <input type="range" min={1} max={8} value={lineWidth} onChange={e => setLineWidth(+e.target.value)} style={{ width: 60 }} title="Stroke width" />}
 
-        <div style={{ width: 1, height: 28, background: 'var(--border)', margin: '0 0.25rem' }} />
+        <div style={{ width: 1, height: compact ? 20 : 28, background: 'var(--border)', margin: '0 0.15rem' }} />
 
         {/* Undo/Redo/Clear */}
         <ToolBtn onClick={undo} title="Undo">↩</ToolBtn>
@@ -440,7 +447,7 @@ export function DrawableSketchCanvas({
       )}
     </div>
   );
-}
+});
 
 // ══════════════════════════════════════════════════════════
 // MULTI-ELEVATION SKETCH (tabs for Front/Rear/Left/Right/Garage)
