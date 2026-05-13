@@ -336,3 +336,21 @@ button, input, select, textarea {
   .coach-panel { width: 100vw; }
   .coach-fab { bottom: 10rem; right: 1rem; width: 44px; height: 44px; }
 }
+
+/* ── Smart Suggestions ─────────────────────────────────── */
+.smart-bar {
+  display: flex; align-items: center; padding: 0.5rem 0.75rem; margin-bottom: 0.75rem;
+  background: linear-gradient(135deg, rgba(139,92,246,0.08) 0%, rgba(59,130,246,0.06) 100%);
+  border: 1px solid rgba(139,92,246,0.15); border-radius: var(--radius-sm);
+}
+.smart-chip {
+  display: inline-flex; align-items: center; gap: 0.25rem;
+  padding: 0.25rem 0.625rem; font-size: 0.6875rem; font-weight: 600;
+  background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 9999px; color: var(--text-primary); cursor: pointer;
+  white-space: nowrap; transition: all 0.15s;
+}
+.smart-chip:hover {
+  background: rgba(139,92,246,0.15); border-color: rgba(139,92,246,0.3);
+  color: #c4b5fd; transform: translateY(-1px);
+}

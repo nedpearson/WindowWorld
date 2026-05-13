@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
 import { api } from '../utils/api';
+import { learnFromOpening } from '../utils/repMemory';
+import { SmartSuggestionBar, ConfigPicker, RoomAutocomplete, InstallNoteSuggestions } from './SmartSuggestions';
 
 const CATEGORIES = ['double_hung','picture','slider','casement','awning','eyebrow','circle_top','quarter_arch','patio_door','custom_shape'];
 const ELEVATIONS = ['front','rear','left','right','garage','other'];
@@ -46,6 +48,8 @@ export function OpeningEditor({ appointmentId, onUpdate }: { appointmentId: stri
       } else {
         await api.createOpening(editing);
       }
+      // Learn from saved opening
+      learnFromOpening(editing);
       setEditing(null);
       await load();
       onUpdate();
@@ -56,6 +60,19 @@ export function OpeningEditor({ appointmentId, onUpdate }: { appointmentId: stri
   const deleteOpening = async (id: string) => {
     if (!confirm('Delete this opening?')) return;
     await api.deleteOpening(id);
+    await load();
+    onUpdate();
+  };
+
+  // Bulk update handler for smart suggestions
+  const handleBulkUpdate = async (field: string, value: any, targets: 'all' | 'remaining') => {
+    for (const op of openings) {
+      if (targets === 'remaining' && op[field] === value) continue;
+      if (!op.id) continue;
+      try {
+        await api.updateOpening(op.id, { [field]: value });
+      } catch {}
+    }
     await load();
     onUpdate();
   };
@@ -80,6 +97,11 @@ export function OpeningEditor({ appointmentId, onUpdate }: { appointmentId: stri
         <h2>🪟 Openings ({openings.length})</h2>
         <button className="btn btn-primary" onClick={addOpening}>+ Add Opening</button>
       </div>
+
+      {/* ═══ SMART SUGGESTION BAR ═══ */}
+      {openings.length >= 2 && (
+        <SmartSuggestionBar openings={openings} onBulkUpdate={handleBulkUpdate} />
+      )}
 
       {/* Opening list */}
       {openings.length > 0 && (
@@ -125,7 +147,13 @@ export function OpeningEditor({ appointmentId, onUpdate }: { appointmentId: stri
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200, padding: '1rem' }}
           onClick={e => e.target === e.currentTarget && setEditing(null)}>
           <div className="card fade-in" style={{ width: '100%', maxWidth: 700, maxHeight: '90vh', overflow: 'auto', padding: '1.5rem' }}>
-            <h2 style={{ marginBottom: '1rem' }}>Opening #{editing.openingNumber}</h2>
+            <h2 style={{ marginBottom: '0.75rem' }}>Opening #{editing.openingNumber}</h2>
+
+            {/* ═══ CONFIG PICKER ═══ */}
+            <ConfigPicker
+              currentOpening={editing}
+              onApply={(fields) => setEditing({ ...editing, ...fields })}
+            />
 
             {/* Specialty warnings */}
             {specWarnings().length > 0 && (
@@ -134,12 +162,20 @@ export function OpeningEditor({ appointmentId, onUpdate }: { appointmentId: stri
               </ul>
             )}
 
-            {/* Basic info */}
+            {/* Basic info — with Room autocomplete */}
             <div className="form-row">
-              <div className="form-group"><label className="form-label">Room / Location</label><input className="form-input" value={editing.roomLocation || ''} onChange={e => upd('roomLocation', e.target.value)} /></div>
+              <div className="form-group">
+                <label className="form-label">Room / Location</label>
+                <RoomAutocomplete value={editing.roomLocation || ''} onChange={(v) => upd('roomLocation', v)} />
+              </div>
               <div className="form-group"><label className="form-label">Elevation</label>
                 <select className="form-select" value={editing.elevation || ''} onChange={e => upd('elevation', e.target.value)}>
                   {ELEVATIONS.map(e => <option key={e} value={e}>{e}</option>)}
+                </select>
+              </div>
+              <div className="form-group"><label className="form-label">Floor</label>
+                <select className="form-select" value={editing.floorNumber || 1} onChange={e => upd('floorNumber', +e.target.value)}>
+                  {[1,2,3].map(f => <option key={f} value={f}>{f}</option>)}
                 </select>
               </div>
             </div>
@@ -249,9 +285,17 @@ export function OpeningEditor({ appointmentId, onUpdate }: { appointmentId: stri
               <div className="form-group"><label className="form-label">Total Price</label><input className="form-input" type="number" step="0.01" value={editing.totalPrice || ''} onChange={e => upd('totalPrice', +e.target.value)} /></div>
             </div>
 
-            {/* Notes */}
+            {/* Notes with smart suggestions */}
             <div className="form-group"><label className="form-label">Trim / Sill / Jamb Notes</label><input className="form-input" value={editing.trimNotes || ''} onChange={e => upd('trimNotes', e.target.value)} /></div>
-            <div className="form-group"><label className="form-label">Install Notes</label><textarea className="form-textarea" value={editing.installNotes || ''} onChange={e => upd('installNotes', e.target.value)} /></div>
+            <div className="form-group">
+              <label className="form-label">Install Notes</label>
+              <textarea className="form-textarea" value={editing.installNotes || ''} onChange={e => upd('installNotes', e.target.value)} />
+              {/* ═══ SMART NOTE SUGGESTIONS ═══ */}
+              <InstallNoteSuggestions opening={editing} onAppend={(note) => {
+                const existing = editing.installNotes || '';
+                upd('installNotes', existing ? `${existing}\n${note}` : note);
+              }} />
+            </div>
 
             <div className="form-check" style={{ marginTop: '0.5rem' }}>
               <input type="checkbox" checked={editing.needsVerification} onChange={e => upd('needsVerification', e.target.checked)} />
