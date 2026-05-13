@@ -22,15 +22,57 @@ export function DashboardPage() {
 
   const fmt = (n: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(n);
 
+  // Find appointments that need form completion (not sold/cancelled)
+  const activeAppts = recent.filter((a: any) => !['sold', 'cancelled'].includes(a.status));
+  const incompleteAppts = activeAppts.filter((a: any) => (a.completionPct || 0) < 100);
+
   return (
     <div className="fade-in">
-      <div className="card-header" style={{ marginBottom: '1.5rem' }}>
-        <h1>📊 Dashboard</h1>
-        <button className="btn btn-primary" onClick={() => navigate('/appointments')}>
-          + New Appointment
-        </button>
+      {/* ═══ PRIMARY CTA ═══ */}
+      <div style={{
+        marginBottom: '1.5rem', padding: '1.5rem', borderRadius: 'var(--radius-lg)',
+        background: 'linear-gradient(135deg, rgba(59,130,246,0.15) 0%, rgba(139,92,246,0.1) 100%)',
+        border: '1px solid rgba(59,130,246,0.3)',
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+          <div>
+            <h1 style={{ fontSize: '1.5rem', marginBottom: '0.375rem' }}>📋 Complete Appointment Forms</h1>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem' }}>
+              {incompleteAppts.length > 0
+                ? `${incompleteAppts.length} appointment${incompleteAppts.length > 1 ? 's' : ''} need form completion`
+                : 'All appointments are up to date'
+              }
+            </p>
+          </div>
+          <div style={{ display: 'flex', gap: '0.75rem' }}>
+            <button className="btn btn-primary btn-lg" onClick={() => navigate('/appointments')}
+              style={{ background: 'linear-gradient(135deg, #3b82f6, #8b5cf6)', boxShadow: '0 4px 16px rgba(59,130,246,0.3)' }}>
+              📋 Start Forms →
+            </button>
+            <button className="btn btn-secondary" onClick={() => navigate('/appointments')}>
+              + New Appointment
+            </button>
+          </div>
+        </div>
+
+        {/* Quick links to incomplete appointments */}
+        {incompleteAppts.length > 0 && (
+          <div style={{ marginTop: '1rem', display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+            {incompleteAppts.slice(0, 5).map((a: any) => (
+              <button key={a.id} className="btn btn-sm"
+                style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)', color: 'var(--text-primary)' }}
+                onClick={() => navigate(`/appointments/${a.id}`)}>
+                {a.customer.firstName} {a.customer.lastName}
+                <span style={{ marginLeft: '0.375rem', fontSize: '0.625rem', color: '#f59e0b' }}>
+                  {a._count?.openings || 0} openings
+                </span>
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
+      {/* Stats */}
       {stats ? (
         <div className="stats-grid">
           <div className="stat-card">
@@ -60,6 +102,7 @@ export function DashboardPage() {
         </div>
       ) : <div className="loading" style={{ padding: '2rem', textAlign: 'center' }}>Loading...</div>}
 
+      {/* Recent activity */}
       <div className="card" style={{ marginTop: '1rem' }}>
         <h2 style={{ marginBottom: '1rem' }}>Recent Activity</h2>
         {recent.length === 0 ? (
