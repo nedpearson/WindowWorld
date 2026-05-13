@@ -11,6 +11,7 @@ import { OfficeQueuePage } from './pages/OfficeQueuePage';
 import { FormsDashboard } from './pages/FormsDashboard';
 import { SigningPage } from './pages/SigningPage';
 import { MobileFieldPage } from './pages/MobileFieldPage';
+import { WalkthroughPage } from './pages/WalkthroughPage';
 
 export default function App() {
   const user = useAuthStore((s) => s.user);
@@ -30,6 +31,7 @@ export default function App() {
         <Route path="/" element={<DashboardPage />} />
         <Route path="/appointments" element={<AppointmentsPage />} />
         <Route path="/appointments/:id" element={<AppointmentDetailPage />} />
+        <Route path="/appointments/:appointmentId/walkthrough" element={<WalkthroughPage />} />
         <Route path="/pricing" element={<PricingAdminPage />} />
         <Route path="/pricing-import" element={<PricingImportPage />} />
         <Route path="/office" element={<OfficeQueuePage />} />
@@ -41,4 +43,3 @@ export default function App() {
   </Routes>
   );
 }
-

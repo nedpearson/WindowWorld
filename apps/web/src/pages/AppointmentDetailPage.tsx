@@ -119,6 +119,11 @@ export function AppointmentDetailPage() {
               <option key={s} value={s}>{s.replace('_', ' ')}</option>
             ))}
           </select>
+          <button className="btn btn-sm" title="Room-by-room walkthrough"
+            onClick={() => navigate(`/appointments/${id}/walkthrough`)}
+            style={{ background: 'linear-gradient(135deg,#059669,#10b981)', border: 'none', color: 'white', fontWeight: 700 }}>
+            🏠 Walkthrough
+          </button>
           <button className="btn btn-sm" title="Generate QR code for customer signing on tablet"
             onClick={() => setQrOpen(true)}
             style={{ background: 'linear-gradient(135deg,#4f46e5,#7c3aed)', border: 'none', color: 'white', fontWeight: 700 }}>
