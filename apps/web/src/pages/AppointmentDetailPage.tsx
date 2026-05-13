@@ -16,6 +16,7 @@ import { AppointmentCoach } from '../components/AppointmentCoach';
 import { OfficeReviewPanel } from '../components/OfficeReviewPanel';
 import { TabletSigningMode, SigningStatusBadge } from '../components/TabletSigningMode';
 import { getSignatures, allSignaturesComplete } from '../utils/signatureStore';
+import { QRSyncModal } from '../components/QRSyncModal';
 
 const STEPS = [
   'Customer',
@@ -36,6 +37,7 @@ export function AppointmentDetailPage() {
   const [step, setStep] = useState(0);
   const [saving, setSaving] = useState(false);
   const [signingMode, setSigningMode] = useState(false);
+  const [qrOpen, setQrOpen] = useState(false);
   const { saveDraft } = useDraftStore();
 
   const load = useCallback(async () => {
@@ -117,6 +119,11 @@ export function AppointmentDetailPage() {
               <option key={s} value={s}>{s.replace('_', ' ')}</option>
             ))}
           </select>
+          <button className="btn btn-sm" title="Generate QR code for customer signing on tablet"
+            onClick={() => setQrOpen(true)}
+            style={{ background: 'linear-gradient(135deg,#4f46e5,#7c3aed)', border: 'none', color: 'white', fontWeight: 700 }}>
+            📱 QR Sign
+          </button>
           <button className="btn btn-primary btn-sm" onClick={() => save(appt)} disabled={saving}>
             {saving ? 'Saving...' : '💾 Save'}
           </button>
@@ -238,6 +245,16 @@ export function AppointmentDetailPage() {
 
       {/* Tablet Signing Mode — fullscreen overlay */}
       {signingMode && <TabletSigningMode appointment={appt} onClose={() => setSigningMode(false)} />}
+
+      {/* QR Sync Modal — scoped signing session for customer tablet */}
+      {qrOpen && (
+        <QRSyncModal
+          appointment={appt}
+          userId={useAuthStore.getState().user?.id || ''}
+          userEmail={useAuthStore.getState().user?.email || ''}
+          onClose={() => setQrOpen(false)}
+        />
+      )}
 
       {/* Navigation */}
       <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '1.5rem' }}>

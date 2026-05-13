@@ -9,6 +9,7 @@ import { PricingAdminPage } from './pages/PricingAdminPage';
 import { PricingImportPage } from './pages/PricingImportPage';
 import { OfficeQueuePage } from './pages/OfficeQueuePage';
 import { FormsDashboard } from './pages/FormsDashboard';
+import { SigningPage } from './pages/SigningPage';
 
 export default function App() {
   const user = useAuthStore((s) => s.user);
@@ -16,7 +17,13 @@ export default function App() {
   if (!user) return <LoginPage />;
 
   return (
-    <Layout>
+    <Routes>
+      {/* Isolated signing page — no Layout, no sidebar, scoped to token */}
+      <Route path="/sign/:token" element={<SigningPage />} />
+
+      {/* Main app with sidebar */}
+      <Route path="/*" element={
+        <Layout>
       <Routes>
         <Route path="/" element={<DashboardPage />} />
         <Route path="/appointments" element={<AppointmentsPage />} />
@@ -24,9 +31,11 @@ export default function App() {
         <Route path="/pricing" element={<PricingAdminPage />} />
         <Route path="/pricing-import" element={<PricingImportPage />} />
         <Route path="/office" element={<OfficeQueuePage />} />
-        <Route path="/forms" element={<FormsDashboard />} />
-        <Route path="*" element={<Navigate to="/" />} />
-      </Routes>
-    </Layout>
+          <Route path="/forms" element={<FormsDashboard />} />
+          <Route path="*" element={<Navigate to="/" />} />
+        </Routes>
+      </Layout>
+    } />
+  </Routes>
   );
 }
