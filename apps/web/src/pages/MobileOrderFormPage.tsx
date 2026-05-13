@@ -42,6 +42,7 @@ export function MobileOrderFormPage() {
         state: fd.state || '',
         zip: fd.zip || '',
         estimator: fd.estimator || '',
+        estimatorPhone: fd.estimatorPhone || '',
         notes: fd.sketchNotes || '',
         sketchDataUrl: '',
         pageNumber: 1,
@@ -54,34 +55,21 @@ export function MobileOrderFormPage() {
 
   const mapOpenings = (arr: any[]): OpeningRow[] => {
     const rows = arr.map((o: any) => ({
-      qty: o.qty || 1,
-      model: o.model || '',
-      vinylColor: o.vinylColor || '',
-      intColor: o.interiorColor || '',
-      extColor: o.exteriorColor || '',
-      width: o.width ? String(o.width) : '',
-      height: o.height ? String(o.height) : '',
-      legHeight: o.legHeight ? String(o.legHeight) : '',
-      customRadius: o.customRadius ? String(o.customRadius) : '',
+      qty: o.qty || 1, model: o.model || '', vinylColor: o.vinylColor || '',
+      intColor: o.interiorColor || '', extColor: o.exteriorColor || '',
+      width: o.width ? String(o.width) : '', height: o.height ? String(o.height) : '',
+      legHeight: o.legHeight ? String(o.legHeight) : '', customRadius: o.customRadius ? String(o.customRadius) : '',
       windowNumber: o.windowNumber ? String(o.windowNumber) : String(o.openingNumber || ''),
-      hinge: o.hinge || '',
-      glassOption: o.glassOption || '',
-      foamEnhanced: !!o.foamEnhanced,
-      gridOptions: o.gridStyle || '',
-      obsc: o.obscure === 'none' ? '' : (o.obscure || ''),
-      temp: o.tempered === 'none' ? '' : (o.tempered || ''),
-      fullScreen: !!o.fullScreen,
-      oriel: !!o.oriel,
-      hor: !!o.horizontalRR,
-      typeExt: o.exteriorType || '',
-      floor: o.floorNumber ? String(o.floorNumber) : '',
-      typeInt: o.trimType || '',
-      rmvInst: o.removeInstallType || '',
-      sill: !!o.sillRepair,
+      hinge: o.hinge || '', glassOption: o.glassOption || '', foamEnhanced: !!o.foamEnhanced,
+      gridStyle: o.gridStyle || '', gridPattern: o.gridPattern || '', gridFull: !!o.gridFull, gridSpec: !!o.gridSpec,
+      typeFill: !!o.typeFill, typeHalf: !!o.typeHalf, typeMine: !!o.typeMine,
+      tempFull: !!o.tempFull, tempS: !!o.tempS, tempU: !!o.tempU,
+      nailFin: !!o.nailFin, fullScreen: !!o.fullScreen, oriel: !!o.oriel, hor: !!o.horizontalRR,
+      typeExt: o.exteriorType || '', typeInt: o.trimType || '', rmvInst: o.removeInstallType || '', sill: !!o.sillRepair,
+      gridOptions: o.gridStyle || '', obsc: '', temp: '', floor: o.floorNumber ? String(o.floorNumber) : '',
     }));
-    while (rows.length < 20) {
-      rows.push({ qty: 0, model: '', vinylColor: '', intColor: '', extColor: '', width: '', height: '', legHeight: '', customRadius: '', windowNumber: '', hinge: '', glassOption: '', foamEnhanced: false, gridOptions: '', obsc: '', temp: '', fullScreen: false, oriel: false, hor: false, typeExt: '', floor: '', typeInt: '', rmvInst: '', sill: false });
-    }
+    const empty: OpeningRow = { qty: 0, model: '', vinylColor: '', intColor: '', extColor: '', width: '', height: '', legHeight: '', customRadius: '', windowNumber: '', hinge: '', glassOption: '', foamEnhanced: false, gridStyle: '', gridPattern: '', gridFull: false, gridSpec: false, typeFill: false, typeHalf: false, typeMine: false, tempFull: false, tempS: false, tempU: false, nailFin: false, fullScreen: false, oriel: false, hor: false, typeExt: '', typeInt: '', rmvInst: '', sill: false, gridOptions: '', obsc: '', temp: '', floor: '' };
+    while (rows.length < 20) rows.push({ ...empty });
     return rows.slice(0, 20);
   };
 
@@ -247,11 +235,17 @@ export function MobileOrderFormPage() {
                       </div>
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', marginTop: '0.25rem' }}>
                         {[
-                          { key: 'foamEnhanced' as keyof OpeningRow, label: 'Foam' },
+                          { key: 'foamEnhanced' as keyof OpeningRow, label: 'Foam Enhanced' },
+                          { key: 'nailFin' as keyof OpeningRow, label: 'Nail Fin' },
                           { key: 'fullScreen' as keyof OpeningRow, label: 'Full Screen' },
                           { key: 'oriel' as keyof OpeningRow, label: 'Oriel' },
                           { key: 'hor' as keyof OpeningRow, label: 'HOR R&R' },
                           { key: 'sill' as keyof OpeningRow, label: 'Sill Repair' },
+                          { key: 'gridFull' as keyof OpeningRow, label: 'Grid Full' },
+                          { key: 'gridSpec' as keyof OpeningRow, label: 'Grid Spec' },
+                          { key: 'typeFill' as keyof OpeningRow, label: 'Type Fill' },
+                          { key: 'typeHalf' as keyof OpeningRow, label: 'Type Half' },
+                          { key: 'tempFull' as keyof OpeningRow, label: 'Temp Full' },
                         ].map(cb => (
                           <label key={cb.key} style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', fontSize: '0.8125rem' }}>
                             <input type="checkbox" checked={!!o[cb.key]} onChange={e => updateOpening(i, cb.key, e.target.checked)}

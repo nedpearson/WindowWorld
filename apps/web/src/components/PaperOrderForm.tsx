@@ -2,61 +2,40 @@ import { useRef, useEffect, useState, useCallback, forwardRef, useImperativeHand
 import '../styles/paper-form.css';
 
 // ═══════════════════════════════════════════════════════════════
-// TYPES
+// TYPES — kept identical for backward compatibility
 // ═══════════════════════════════════════════════════════════════
-
 export interface OrderFormData {
-  poNumber: string;
-  accountNumber: string;
-  orderDate: string;
-  customerName: string;
-  phone: string;
-  phone2: string;
-  address: string;
-  city: string;
-  state: string;
-  zip: string;
-  estimator: string;
-  notes: string;
-  openings: OpeningRow[];
-  sketchDataUrl: string;
-  pageNumber: number;
-  totalPages: number;
+  poNumber: string; accountNumber: string; orderDate: string;
+  customerName: string; phone: string; phone2: string;
+  address: string; city: string; state: string; zip: string;
+  estimator: string; estimatorPhone: string; notes: string;
+  openings: OpeningRow[]; sketchDataUrl: string;
+  pageNumber: number; totalPages: number;
 }
 
 export interface OpeningRow {
-  qty: number;
-  model: string;
-  vinylColor: string;
-  intColor: string;
-  extColor: string;
-  width: string;
-  height: string;
-  legHeight: string;
-  customRadius: string;
-  windowNumber: string;
-  hinge: string;
-  glassOption: string;
-  foamEnhanced: boolean;
-  gridOptions: string;
-  obsc: string;
-  temp: string;
-  fullScreen: boolean;
-  oriel: boolean;
-  hor: boolean;
-  typeExt: string;
-  floor: string;
-  typeInt: string;
-  rmvInst: string;
-  sill: boolean;
+  qty: number; model: string; vinylColor: string; intColor: string; extColor: string;
+  width: string; height: string; legHeight: string; customRadius: string;
+  windowNumber: string; hinge: string; glassOption: string; foamEnhanced: boolean;
+  gridStyle: string; gridPattern: string; gridFull: boolean; gridSpec: boolean;
+  typeFill: boolean; typeHalf: boolean; typeMine: boolean;
+  tempFull: boolean; tempS: boolean; tempU: boolean;
+  nailFin: boolean; fullScreen: boolean; oriel: boolean; hor: boolean;
+  typeExt: string; typeInt: string; rmvInst: string; sill: boolean;
+  // Legacy compat
+  gridOptions: string; obsc: string; temp: string; floor: string;
 }
 
 const EMPTY_OPENING: OpeningRow = {
   qty: 0, model: '', vinylColor: '', intColor: '', extColor: '',
   width: '', height: '', legHeight: '', customRadius: '', windowNumber: '',
-  hinge: '', glassOption: '', foamEnhanced: false, gridOptions: '',
-  obsc: '', temp: '', fullScreen: false, oriel: false, hor: false,
-  typeExt: '', floor: '', typeInt: '', rmvInst: '', sill: false,
+  hinge: '', glassOption: '', foamEnhanced: false,
+  gridStyle: '', gridPattern: '', gridFull: false, gridSpec: false,
+  typeFill: false, typeHalf: false, typeMine: false,
+  tempFull: false, tempS: false, tempU: false,
+  nailFin: false, fullScreen: false, oriel: false, hor: false,
+  typeExt: '', typeInt: '', rmvInst: '', sill: false,
+  gridOptions: '', obsc: '', temp: '', floor: '',
 };
 
 export function emptyFormData(): OrderFormData {
@@ -64,57 +43,13 @@ export function emptyFormData(): OrderFormData {
     poNumber: '', accountNumber: '', orderDate: '',
     customerName: '', phone: '', phone2: '',
     address: '', city: '', state: '', zip: '',
-    estimator: '', notes: '',
+    estimator: '', estimatorPhone: '', notes: '',
     openings: Array.from({ length: 20 }, () => ({ ...EMPTY_OPENING })),
-    sketchDataUrl: '',
-    pageNumber: 1, totalPages: 1,
+    sketchDataUrl: '', pageNumber: 1, totalPages: 1,
   };
 }
 
 // ═══════════════════════════════════════════════════════════════
-// OPENING TABLE COLUMN DEFINITIONS — exact original form order
-// ═══════════════════════════════════════════════════════════════
-
-interface ColDef {
-  key: keyof OpeningRow;
-  label: string;
-  className: string;
-  vertical?: boolean;
-  type: 'text' | 'check';
-  width?: string;
-}
-
-const COLUMNS: ColDef[] = [
-  { key: 'qty', label: 'QTY', className: 'pf-col-qty', type: 'text' },
-  { key: 'model', label: 'MODEL', className: 'pf-col-model', type: 'text' },
-  { key: 'vinylColor', label: 'VINYL\nCOLOR', className: 'pf-col-vinyl', type: 'text', vertical: true },
-  { key: 'intColor', label: 'INT.\nCOLOR', className: 'pf-col-int', type: 'text', vertical: true },
-  { key: 'extColor', label: 'EXT.\nCOLOR', className: 'pf-col-ext', type: 'text', vertical: true },
-  { key: 'width', label: 'WIDTH', className: 'pf-col-width', type: 'text' },
-  { key: 'height', label: 'HEIGHT', className: 'pf-col-height', type: 'text' },
-  { key: 'legHeight', label: 'LEG\nHEIGHT', className: 'pf-col-leg', type: 'text', vertical: true },
-  { key: 'customRadius', label: 'CUSTOM\nRADIUS', className: 'pf-col-radius', type: 'text', vertical: true },
-  { key: 'windowNumber', label: 'WINDOW\nNUMBER', className: 'pf-col-winnum', type: 'text', vertical: true },
-  { key: 'hinge', label: 'HINGE', className: 'pf-col-hinge', type: 'text', vertical: true },
-  { key: 'glassOption', label: 'GLASS\nOPTION', className: 'pf-col-glass', type: 'text', vertical: true },
-  { key: 'foamEnhanced', label: 'FOAM\nENHANCED', className: 'pf-col-foam', type: 'check', vertical: true },
-  { key: 'gridOptions', label: 'GRID OPTIONS', className: 'pf-col-grid', type: 'text', vertical: true },
-  { key: 'obsc', label: 'OBSC', className: 'pf-col-obsc', type: 'text', vertical: true },
-  { key: 'temp', label: 'TEMP\nFull/Half/Full', className: 'pf-col-temp', type: 'text', vertical: true },
-  { key: 'fullScreen', label: 'FULL\nSCREEN', className: 'pf-col-full', type: 'check', vertical: true },
-  { key: 'oriel', label: 'ORIEL', className: 'pf-col-oriel', type: 'check', vertical: true },
-  { key: 'hor', label: 'HOR\nR&R', className: 'pf-col-hor', type: 'check', vertical: true },
-  { key: 'typeExt', label: 'TYPE\nEXT', className: 'pf-col-typeext', type: 'text', vertical: true },
-  { key: 'floor', label: 'FLOOR\n#', className: 'pf-col-floor', type: 'text', vertical: true },
-  { key: 'typeInt', label: 'TYPE\nINT', className: 'pf-col-typeint', type: 'text', vertical: true },
-  { key: 'rmvInst', label: 'Remove/\nInstall', className: 'pf-col-rmvinst', type: 'text', vertical: true },
-  { key: 'sill', label: 'SILL', className: 'pf-col-sill', type: 'check', vertical: true },
-];
-
-// ═══════════════════════════════════════════════════════════════
-// PAPER ORDER FORM COMPONENT
-// ═══════════════════════════════════════════════════════════════
-
 export interface PaperOrderFormHandle {
   getFormData: () => OrderFormData;
   getFormElement: () => HTMLDivElement | null;
@@ -133,321 +68,275 @@ export const PaperOrderForm = forwardRef<PaperOrderFormHandle, PaperOrderFormPro
     const formRef = useRef<HTMLDivElement>(null);
     const sketchRef = useRef<HTMLCanvasElement>(null);
     const [data, setData] = useState<OrderFormData>(() => ({
-      ...emptyFormData(),
-      ...initialData,
+      ...emptyFormData(), ...initialData,
       openings: initialData?.openings
-        ? [...initialData.openings, ...Array.from({ length: Math.max(0, 20 - (initialData.openings?.length || 0)) }, () => ({ ...EMPTY_OPENING }))]
-          .slice(0, 20)
+        ? [...initialData.openings, ...Array.from({ length: Math.max(0, 20 - (initialData.openings?.length || 0)) }, () => ({ ...EMPTY_OPENING }))].slice(0, 20)
         : Array.from({ length: 20 }, () => ({ ...EMPTY_OPENING })),
     }));
 
-    // Sketch state
     const sketchDrawing = useRef(false);
     const sketchCtx = useRef<CanvasRenderingContext2D | null>(null);
+    const SW = 420, SH = 200;
 
-    const SKETCH_W = 560;
-    const SKETCH_H = 180;
-
-    // Init sketch
     useEffect(() => {
       const canvas = sketchRef.current;
       if (!canvas) return;
       const ctx = canvas.getContext('2d');
       if (!ctx) return;
       sketchCtx.current = ctx;
-
-      // White fill
       ctx.fillStyle = '#fff';
-      ctx.fillRect(0, 0, SKETCH_W, SKETCH_H);
-
-      // Load existing sketch
+      ctx.fillRect(0, 0, SW, SH);
       if (data.sketchDataUrl) {
         const img = new Image();
-        img.onload = () => ctx.drawImage(img, 0, 0, SKETCH_W, SKETCH_H);
+        img.onload = () => ctx.drawImage(img, 0, 0, SW, SH);
         img.src = data.sketchDataUrl;
       }
     }, []);
 
-    // Sketch drawing handlers
-    const getSketchPos = (e: React.MouseEvent | React.TouchEvent) => {
-      const canvas = sketchRef.current!;
-      const rect = canvas.getBoundingClientRect();
-      const scaleX = SKETCH_W / rect.width;
-      const scaleY = SKETCH_H / rect.height;
-      if ('touches' in e) {
-        const t = e.touches[0];
-        return { x: (t.clientX - rect.left) * scaleX, y: (t.clientY - rect.top) * scaleY };
-      }
-      return { x: ((e as React.MouseEvent).clientX - rect.left) * scaleX, y: ((e as React.MouseEvent).clientY - rect.top) * scaleY };
+    const getPos = (e: React.MouseEvent | React.TouchEvent) => {
+      const r = sketchRef.current!.getBoundingClientRect();
+      const sx = SW / r.width, sy = SH / r.height;
+      if ('touches' in e) { const t = e.touches[0]; return { x: (t.clientX - r.left) * sx, y: (t.clientY - r.top) * sy }; }
+      return { x: ((e as React.MouseEvent).clientX - r.left) * sx, y: ((e as React.MouseEvent).clientY - r.top) * sy };
     };
+    const skStart = (e: React.MouseEvent | React.TouchEvent) => { if (!editable) return; e.preventDefault(); sketchDrawing.current = true; const ctx = sketchCtx.current!; const p = getPos(e); ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.strokeStyle = '#000'; ctx.lineWidth = 1.5; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; };
+    const skMove = (e: React.MouseEvent | React.TouchEvent) => { if (!sketchDrawing.current || !editable) return; e.preventDefault(); const ctx = sketchCtx.current!; const p = getPos(e); ctx.lineTo(p.x, p.y); ctx.stroke(); };
+    const skEnd = () => { if (!sketchDrawing.current) return; sketchDrawing.current = false; const d = sketchRef.current?.toDataURL('image/png') || ''; setData(prev => ({ ...prev, sketchDataUrl: d })); onSketchChange?.(d); };
 
-    const sketchStart = (e: React.MouseEvent | React.TouchEvent) => {
-      if (!editable) return;
-      e.preventDefault();
-      sketchDrawing.current = true;
-      const ctx = sketchCtx.current!;
-      const pos = getSketchPos(e);
-      ctx.beginPath();
-      ctx.moveTo(pos.x, pos.y);
-      ctx.strokeStyle = '#000';
-      ctx.lineWidth = 1.5;
-      ctx.lineCap = 'round';
-      ctx.lineJoin = 'round';
-    };
+    const updateField = useCallback((field: keyof OrderFormData, value: any) => { setData(prev => { const next = { ...prev, [field]: value }; onDataChange?.(next); return next; }); }, [onDataChange]);
+    const updateOpening = useCallback((i: number, field: keyof OpeningRow, value: any) => { setData(prev => { const o = [...prev.openings]; o[i] = { ...o[i], [field]: value }; const next = { ...prev, openings: o }; onDataChange?.(next); return next; }); }, [onDataChange]);
 
-    const sketchMove = (e: React.MouseEvent | React.TouchEvent) => {
-      if (!sketchDrawing.current || !editable) return;
-      e.preventDefault();
-      const ctx = sketchCtx.current!;
-      const pos = getSketchPos(e);
-      ctx.lineTo(pos.x, pos.y);
-      ctx.stroke();
-    };
+    useImperativeHandle(ref, () => ({ getFormData: () => data, getFormElement: () => formRef.current, getSketchDataUrl: () => sketchRef.current?.toDataURL('image/png') || '' }));
 
-    const sketchEnd = () => {
-      if (!sketchDrawing.current) return;
-      sketchDrawing.current = false;
-      const dataUrl = sketchRef.current?.toDataURL('image/png') || '';
-      setData(prev => ({ ...prev, sketchDataUrl: dataUrl }));
-      onSketchChange?.(dataUrl);
-    };
-
-    // Update helpers
-    const updateField = useCallback((field: keyof OrderFormData, value: any) => {
-      setData(prev => {
-        const next = { ...prev, [field]: value };
-        onDataChange?.(next);
-        return next;
-      });
-    }, [onDataChange]);
-
-    const updateOpening = useCallback((rowIdx: number, field: keyof OpeningRow, value: any) => {
-      setData(prev => {
-        const openings = [...prev.openings];
-        openings[rowIdx] = { ...openings[rowIdx], [field]: value };
-        const next = { ...prev, openings };
-        onDataChange?.(next);
-        return next;
-      });
-    }, [onDataChange]);
-
-    // Expose handle
-    useImperativeHandle(ref, () => ({
-      getFormData: () => data,
-      getFormElement: () => formRef.current,
-      getSketchDataUrl: () => sketchRef.current?.toDataURL('image/png') || '',
-    }));
+    // Helper: text input cell
+    const TI = (row: number, key: keyof OpeningRow) => <input className="pf-cell-input" value={(data.openings[row][key] as string) || ''} onChange={e => updateOpening(row, key, e.target.value)} readOnly={!editable} />;
+    // Helper: checkbox cell
+    const CB = (row: number, key: keyof OpeningRow) => <input type="checkbox" className="pf-check" checked={!!data.openings[row][key]} onChange={e => editable && updateOpening(row, key, e.target.checked)} disabled={!editable} />;
+    // Helper: info field
+    const IF = (label: string, field: keyof OrderFormData) => (
+      <div className="pf-info-box">
+        <span className="pf-field-label">{label}</span>
+        <input className="pf-field-value" value={(data[field] as string) || ''} onChange={e => updateField(field, e.target.value)} readOnly={!editable} />
+      </div>
+    );
 
     return (
       <div ref={formRef} className={`paper-form ${editable ? 'edit-mode' : ''}`}>
         {/* ═══ TITLE ═══ */}
         <div className="pf-title">WINDOW AND PATIO DOOR ORDER FORM</div>
 
-        {/* ═══ TOP: Sketch + Customer ═══ */}
+        {/* ═══ TOP: Sketch + Customer Info ═══ */}
         <div className="pf-top">
-          {/* Sketch Box */}
           <div className="pf-sketch-box">
-            <canvas
-              ref={sketchRef}
-              width={SKETCH_W}
-              height={SKETCH_H}
-              style={{ touchAction: 'none' }}
-              onMouseDown={sketchStart}
-              onMouseMove={sketchMove}
-              onMouseUp={sketchEnd}
-              onMouseLeave={sketchEnd}
-              onTouchStart={sketchStart}
-              onTouchMove={sketchMove}
-              onTouchEnd={sketchEnd}
-            />
+            <canvas ref={sketchRef} width={SW} height={SH} style={{ touchAction: 'none' }}
+              onMouseDown={skStart} onMouseMove={skMove} onMouseUp={skEnd} onMouseLeave={skEnd}
+              onTouchStart={skStart} onTouchMove={skMove} onTouchEnd={skEnd} />
           </div>
 
-          {/* Customer Info Block */}
+          {/* Customer Info — individually bordered boxes matching portrait image */}
           <div className="pf-customer-block">
-            {/* Row 1: PO# | ACCT# */}
-            <div className="pf-field-row">
-              <div className="pf-field pf-po">
-                <span className="pf-field-label">PO#:</span>
-                <input className="pf-field-value" value={data.poNumber}
-                  onChange={e => updateField('poNumber', e.target.value)}
-                  readOnly={!editable} placeholder=" " />
+            {IF('PO#', 'poNumber')}
+            {IF('ACCT #', 'accountNumber')}
+            {IF('ORDER DATE:', 'orderDate')}
+
+            {/* Grouped customer detail box */}
+            <div className="pf-customer-detail-box">
+              <div className="pf-cust-row">
+                <div className="pf-cust-cell pf-cust-cell-divider" style={{ flex: 1 }}>
+                  <span className="pf-cust-label">Customer:</span>
+                  <input className="pf-cust-input" value={data.customerName} onChange={e => updateField('customerName', e.target.value)} readOnly={!editable} />
+                </div>
+                <div className="pf-cust-cell" style={{ flex: 0.6 }}>
+                  <span className="pf-cust-label">Phone:</span>
+                  <input className="pf-cust-input" value={data.phone} onChange={e => updateField('phone', e.target.value)} readOnly={!editable} />
+                </div>
               </div>
-              <div className="pf-field pf-acct">
-                <span className="pf-field-label">ACCT #:</span>
-                <input className="pf-field-value" value={data.accountNumber}
-                  onChange={e => updateField('accountNumber', e.target.value)}
-                  readOnly={!editable} placeholder=" " />
+              <div className="pf-cust-row">
+                <div className="pf-cust-cell pf-cust-cell-divider" style={{ flex: 1 }}></div>
+                <div className="pf-cust-cell" style={{ flex: 0.6 }}>
+                  <span className="pf-cust-label">Phone:</span>
+                  <input className="pf-cust-input" value={data.phone2} onChange={e => updateField('phone2', e.target.value)} readOnly={!editable} />
+                </div>
+              </div>
+              <div className="pf-cust-row">
+                <div className="pf-cust-cell" style={{ flex: 1 }}>
+                  <span className="pf-cust-label">Address</span>
+                  <input className="pf-cust-input" value={data.address} onChange={e => updateField('address', e.target.value)} readOnly={!editable} />
+                </div>
+              </div>
+              <div className="pf-cust-row">
+                <div className="pf-cust-cell" style={{ flex: 1 }}>
+                  <span className="pf-cust-label">City</span>
+                  <input className="pf-cust-input" value={data.city} onChange={e => updateField('city', e.target.value)} readOnly={!editable} style={{ borderBottom: '1px solid #000' }} />
+                </div>
+                <div className="pf-cust-cell" style={{ flex: 0.6 }}>
+                  <span className="pf-cust-label">Zip</span>
+                  <input className="pf-cust-input" value={data.zip} onChange={e => updateField('zip', e.target.value)} readOnly={!editable} style={{ borderBottom: '1px solid #000' }} />
+                </div>
               </div>
             </div>
 
-            {/* Row 2: ORDER DATE */}
-            <div className="pf-field-row">
-              <div className="pf-field pf-date" style={{ flex: 1 }}>
-                <span className="pf-field-label">ORDER DATE:</span>
-                <input className="pf-field-value" value={data.orderDate}
-                  onChange={e => updateField('orderDate', e.target.value)}
-                  readOnly={!editable} placeholder=" " />
-              </div>
-            </div>
-
-            {/* Row 3: Customer | Phone */}
-            <div className="pf-field-row">
-              <div className="pf-field pf-customer">
-                <span className="pf-field-label">Customer:</span>
-                <input className="pf-field-value" value={data.customerName}
-                  onChange={e => updateField('customerName', e.target.value)}
-                  readOnly={!editable} placeholder=" " />
-              </div>
-              <div className="pf-field pf-phone">
-                <span className="pf-field-label">Phone:</span>
-                <input className="pf-field-value" value={data.phone}
-                  onChange={e => updateField('phone', e.target.value)}
-                  readOnly={!editable} placeholder=" " />
-              </div>
-            </div>
-
-            {/* Row 4: Address | Phone2 */}
-            <div className="pf-field-row">
-              <div className="pf-field pf-address">
-                <span className="pf-field-label">Address:</span>
-                <input className="pf-field-value" value={data.address}
-                  onChange={e => updateField('address', e.target.value)}
-                  readOnly={!editable} placeholder=" " />
-              </div>
-              <div className="pf-field pf-phone2">
-                <span className="pf-field-label">Phone:</span>
-                <input className="pf-field-value" value={data.phone2}
-                  onChange={e => updateField('phone2', e.target.value)}
-                  readOnly={!editable} placeholder=" " />
-              </div>
-            </div>
-
-            {/* Row 5: City | Zip */}
-            <div className="pf-field-row">
-              <div className="pf-field pf-city">
-                <span className="pf-field-label">City:</span>
-                <input className="pf-field-value" value={data.city}
-                  onChange={e => updateField('city', e.target.value)}
-                  readOnly={!editable} placeholder=" " />
-              </div>
-              <div className="pf-field pf-zip">
-                <span className="pf-field-label">Zip:</span>
-                <input className="pf-field-value" value={data.zip}
-                  onChange={e => updateField('zip', e.target.value)}
-                  readOnly={!editable} placeholder=" " />
-              </div>
-            </div>
-
-            {/* Row 6: Estimator */}
-            <div className="pf-field-row">
-              <div className="pf-field pf-estimator">
-                <span className="pf-field-label">Estimator:</span>
-                <input className="pf-field-value" value={data.estimator}
-                  onChange={e => updateField('estimator', e.target.value)}
-                  readOnly={!editable} placeholder=" " />
-              </div>
-            </div>
+            {IF('Estimator:', 'estimator')}
+            {IF('Phone:', 'estimatorPhone')}
           </div>
         </div>
 
-        {/* ═══ OPENING TABLE ═══ */}
+        {/* ═══ OPENING TABLE — exact portrait column structure ═══ */}
         <div className="pf-table-wrapper">
           <table className="pf-opening-table">
             <thead>
-              {/* MFG SIZE spanning row */}
+              {/* Row 1: Group spanning headers */}
               <tr>
-                <th className="pf-col-rownum" rowSpan={2} style={{ verticalAlign: 'bottom' }}></th>
-                {COLUMNS.map((col, i) => {
-                  if (col.key === 'width') {
-                    return <th key="mfg" colSpan={2} className="pf-mfg-span" style={{ border: '1px solid #000', fontSize: '5.5pt' }}>MFG SIZE</th>;
-                  }
-                  if (col.key === 'height') return null; // handled by colSpan above
-                  return (
-                    <th key={col.key} className={`${col.className} ${col.vertical ? 'pf-th-vert' : ''}`} rowSpan={2}>
-                      {col.label.split('\n').map((line, li) => (
-                        <span key={li}>{line}{li < col.label.split('\n').length - 1 && <br />}</span>
-                      ))}
-                    </th>
-                  );
-                })}
+                <th className="pf-col-rownum" rowSpan={3}></th>
+                <th className="pf-col-qty pf-th-vert" rowSpan={3}>QTY</th>
+                <th className="pf-col-model pf-th-vert" rowSpan={3}>MODEL</th>
+                <th className="pf-col-vinyl pf-th-vert" rowSpan={3}>VINYL COLOR</th>
+                <th className="pf-col-int pf-th-vert" rowSpan={3}>INT COLOR</th>
+                <th className="pf-col-ext pf-th-vert" rowSpan={3}>EXT COLOR</th>
+                <th colSpan={3} className="pf-th-group" style={{ borderBottom: 'none' }}>MFG SIZE</th>
+                <th className="pf-col-leg pf-th-vert" rowSpan={3}>LEG HEIGHT</th>
+                <th className="pf-col-radius pf-th-vert" rowSpan={3}>CUSTOM RADIUS</th>
+                <th className="pf-col-winnum pf-th-vert" rowSpan={3}>WINDOW NUMBER</th>
+                <th className="pf-col-hinge pf-th-vert" rowSpan={3}>HINGE</th>
+                <th className="pf-col-glass pf-th-vert" rowSpan={3}>GLASS OPTION</th>
+                <th className="pf-col-foam pf-th-vert" rowSpan={3}>FOAM ENHANCED</th>
+                <th colSpan={4} className="pf-th-group">GRID OPTIONS</th>
+                <th colSpan={3} className="pf-th-group">TYPE</th>
+                <th colSpan={3} className="pf-th-group">9&apos; TEMP</th>
+                <th className="pf-col-nailfin pf-th-vert" rowSpan={3}>NAIL FIN</th>
+                <th className="pf-col-full pf-th-vert" rowSpan={3}>FULL SCREEN</th>
+                <th className="pf-col-oriel pf-th-vert" rowSpan={3}>ORIEL</th>
+                <th className="pf-col-hor pf-th-vert" rowSpan={3}>HOR R&amp;R</th>
+                <th className="pf-col-typeext pf-th-vert" rowSpan={3}>TYPE EXT</th>
+                <th className="pf-col-typeint pf-th-vert" rowSpan={3}>TYPE INT</th>
+                <th className="pf-col-rmvinst pf-th-vert" rowSpan={3}>TYPE Remove</th>
+                <th className="pf-col-sill pf-th-vert" rowSpan={3}>SILL Repair</th>
               </tr>
+              {/* Row 2: Sub-headers for MFG SIZE, GRID OPTIONS, TYPE, TEMP */}
               <tr>
-                <th className="pf-col-width" style={{ fontSize: '5pt' }}>WIDTH</th>
-                <th className="pf-col-height" style={{ fontSize: '5pt' }}>HEIGHT</th>
+                <th className="pf-col-width pf-th-sub" rowSpan={2}>WIDTH</th>
+                <th className="pf-col-xsep pf-th-sub" rowSpan={2} style={{ fontSize: '5pt' }}>×</th>
+                <th className="pf-col-height pf-th-sub" rowSpan={2}>HEIGHT</th>
+                <th className="pf-col-grid-style pf-th-sub">STYLE</th>
+                <th className="pf-col-grid-pattern pf-th-sub">PATTERN</th>
+                <th className="pf-col-grid-full pf-th-sub">FULL</th>
+                <th className="pf-col-grid-spec pf-th-sub">SPEC</th>
+                <th className="pf-col-type-fill pf-th-sub">FILL</th>
+                <th className="pf-col-type-half pf-th-sub">HALF</th>
+                <th className="pf-col-type-mine pf-th-sub">MINE</th>
+                <th className="pf-col-temp-full pf-th-sub">FULL<br/>LIT</th>
+                <th className="pf-col-temp-s pf-th-sub">S<br/>OTA</th>
+                <th className="pf-col-temp-u pf-th-sub">U<br/>OTA</th>
               </tr>
             </thead>
             <tbody>
-              {data.openings.map((row, rowIdx) => (
-                <tr key={rowIdx}>
-                  <td className="pf-row-num">{rowIdx + 1}</td>
-                  {COLUMNS.map(col => (
-                    <td key={col.key} className={col.className}>
-                      {col.type === 'check' ? (
-                        <input
-                          type="checkbox"
-                          className="pf-check"
-                          checked={!!row[col.key]}
-                          onChange={e => editable && updateOpening(rowIdx, col.key, e.target.checked)}
-                          disabled={!editable}
-                        />
-                      ) : (
-                        <input
-                          className="pf-cell-input"
-                          value={row[col.key] as string || ''}
-                          onChange={e => updateOpening(rowIdx, col.key, e.target.value)}
-                          readOnly={!editable}
-                        />
-                      )}
-                    </td>
-                  ))}
+              {data.openings.map((_, ri) => (
+                <tr key={ri}>
+                  <td className="pf-row-num">{ri + 1}</td>
+                  {/* Core columns */}
+                  <td>{TI(ri, 'qty')}</td>
+                  <td>{TI(ri, 'model')}</td>
+                  <td>{TI(ri, 'vinylColor')}</td>
+                  <td>{TI(ri, 'intColor')}</td>
+                  <td>{TI(ri, 'extColor')}</td>
+                  {/* MFG SIZE: Width × Height */}
+                  <td>{TI(ri, 'width')}</td>
+                  <td className="pf-xsep-cell">×</td>
+                  <td>{TI(ri, 'height')}</td>
+                  <td>{TI(ri, 'legHeight')}</td>
+                  <td>{TI(ri, 'customRadius')}</td>
+                  <td>{TI(ri, 'windowNumber')}</td>
+                  <td>{TI(ri, 'hinge')}</td>
+                  <td>{TI(ri, 'glassOption')}</td>
+                  <td>{CB(ri, 'foamEnhanced')}</td>
+                  {/* GRID OPTIONS sub-columns */}
+                  <td>{TI(ri, 'gridStyle')}</td>
+                  <td>{TI(ri, 'gridPattern')}</td>
+                  <td>{CB(ri, 'gridFull')}</td>
+                  <td>{CB(ri, 'gridSpec')}</td>
+                  {/* TYPE sub-columns */}
+                  <td>{CB(ri, 'typeFill')}</td>
+                  <td>{CB(ri, 'typeHalf')}</td>
+                  <td>{CB(ri, 'typeMine')}</td>
+                  {/* 9' TEMP sub-columns */}
+                  <td>{CB(ri, 'tempFull')}</td>
+                  <td>{CB(ri, 'tempS')}</td>
+                  <td>{CB(ri, 'tempU')}</td>
+                  {/* Remaining columns */}
+                  <td>{CB(ri, 'nailFin')}</td>
+                  <td>{CB(ri, 'fullScreen')}</td>
+                  <td>{CB(ri, 'oriel')}</td>
+                  <td>{CB(ri, 'hor')}</td>
+                  <td>{TI(ri, 'typeExt')}</td>
+                  <td>{TI(ri, 'typeInt')}</td>
+                  <td>{TI(ri, 'rmvInst')}</td>
+                  <td>{CB(ri, 'sill')}</td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
 
-        {/* ═══ BOTTOM: Notes + Certification ═══ */}
+        {/* ═══ BOTTOM: Notes ═══ */}
         <div className="pf-bottom">
-          {/* Notes */}
           <div className="pf-notes-box">
             <div className="pf-notes-label">NOTES:</div>
-            <textarea
-              className="pf-notes-content"
-              value={data.notes}
-              onChange={e => updateField('notes', e.target.value)}
-              readOnly={!editable}
-            />
+            <textarea className="pf-notes-content" value={data.notes} onChange={e => updateField('notes', e.target.value)} readOnly={!editable} />
           </div>
 
-          {/* Certification */}
-          <div className="pf-certification">
-            <div className="pf-cert-text">
-              I certify this salesperson has explained and identified each and every abbreviation,
-              term, and drawing on this page to my full and complete understanding including how
-              each and every window is removed, installed, trimmed, accessorized, and warranted.
-            </div>
-            <div className="pf-signature-row">
-              <div className="pf-sig-field">
-                <span>OWNER</span>
-                <span className="pf-sig-line"></span>
-              </div>
-              <div className="pf-sig-field">
-                <span>DATE</span>
-                <span className="pf-sig-line-short"></span>
-              </div>
-            </div>
+          {/* Certification text */}
+          <div className="pf-cert-text">
+            I certify the salesperson has explained and identified each and every abbreviation, term, and drawing on this page to my full satisfaction,
+            and I have complete understanding how each and every window or entrance is measured, how it's constructed, accessorized, and warranted.
           </div>
-        </div>
 
-        {/* ═══ FOOTER ═══ */}
-        <div className="pf-footer">
-          <div className="pf-copy-labels">
-            <span>White Copy - Original</span>
-            <span>Yellow Copy - Estimator</span>
-            <span>Pink Copy - Customer</span>
+          {/* Bottom info grid — 3-column repeated customer info for carbon copies */}
+          <table className="pf-bottom-info-grid">
+            <colgroup><col style={{ width: '22%' }} /><col style={{ width: '48%' }} /><col style={{ width: '30%' }} /></colgroup>
+            <tbody>
+              <tr>
+                <td><span className="pf-bi-label">Estimator:</span></td>
+                <td><span className="pf-bi-label">Customer:</span><input className="pf-bi-input" value={data.customerName} readOnly style={{ width: '70%' }} /></td>
+                <td><span className="pf-bi-label">PO#</span></td>
+              </tr>
+              <tr>
+                <td></td>
+                <td><span className="pf-bi-label">Address</span></td>
+                <td><span className="pf-bi-label">ACCT #</span></td>
+              </tr>
+              <tr>
+                <td><span className="pf-bi-label">Phone:</span></td>
+                <td>
+                  <span className="pf-bi-label">Phone:</span><span className="pf-bi-line-short"></span>
+                  <span className="pf-bi-label" style={{ marginLeft: '0.15in' }}>Phone:</span><span className="pf-bi-line-short"></span>
+                </td>
+                <td><span className="pf-bi-label">ORDER DATE:</span></td>
+              </tr>
+              <tr>
+                <td></td>
+                <td>
+                  <span className="pf-bi-label">City</span><span className="pf-bi-line"></span>
+                  <span className="pf-bi-label" style={{ marginLeft: '0.15in' }}>Zip</span><span className="pf-bi-line-short"></span>
+                </td>
+                <td></td>
+              </tr>
+            </tbody>
+          </table>
+
+          {/* OWNER / DATE signature */}
+          <div className="pf-signature-row">
+            <div className="pf-sig-field"><span>OWNER</span><span className="pf-sig-line"></span></div>
+            <div className="pf-sig-field"><span>DATE</span><span className="pf-sig-line-short"></span></div>
           </div>
-          <div className="pf-page-num">
-            PAGE {data.pageNumber} OF {data.totalPages}
+
+          {/* Footer */}
+          <div className="pf-footer">
+            <div className="pf-footer-left">PAGE {data.pageNumber} OF <span className="pf-sig-line-short" style={{ minWidth: '0.5in' }}></span></div>
+            <div className="pf-copy-labels">
+              <span>White Copy - Original</span>
+              <span>Yellow Copy - Estimator</span>
+              <span>Pink Copy - Customer</span>
+            </div>
           </div>
         </div>
       </div>
