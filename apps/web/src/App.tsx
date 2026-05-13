@@ -8,6 +8,7 @@ import { AppointmentDetailPage } from './pages/AppointmentDetailPage';
 import { PricingAdminPage } from './pages/PricingAdminPage';
 import { PricingImportPage } from './pages/PricingImportPage';
 import { OfficeQueuePage } from './pages/OfficeQueuePage';
+import { FormsDashboard } from './pages/FormsDashboard';
 
 export default function App() {
   const user = useAuthStore((s) => s.user);
@@ -23,6 +24,7 @@ export default function App() {
         <Route path="/pricing" element={<PricingAdminPage />} />
         <Route path="/pricing-import" element={<PricingImportPage />} />
         <Route path="/office" element={<OfficeQueuePage />} />
+        <Route path="/forms" element={<FormsDashboard />} />
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>
     </Layout>

@@ -10,6 +10,7 @@ export function Layout({ children }: { children: ReactNode }) {
   const handleLogout = () => { logout(); navigate('/'); };
 
   const links = [
+    { to: '/forms', label: '📋 Fill Forms' },
     { to: '/', label: '📊 Dashboard' },
     { to: '/appointments', label: '📅 Appointments' },
     { to: '/office', label: '🏢 Office Queue' },

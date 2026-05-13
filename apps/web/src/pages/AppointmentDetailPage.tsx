@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { api } from '../utils/api';
 import { useDraftStore, useAuthStore } from '../store';
 import { OpeningEditor } from '../components/OpeningEditor';
-import { HouseMapView } from '../components/HouseMapView';
+import { SketchBoard } from '../components/DrawableSketch';
 import { PricingReview } from '../components/PricingReview';
 import { ContractExport } from '../components/ContractExport';
 import { OrderFormView } from '../components/OrderFormView';
@@ -169,7 +169,7 @@ export function AppointmentDetailPage() {
       {/* Step content */}
       {step === 0 && <CustomerStep appt={appt} onSave={save} validation={validation} />}
       {step === 1 && <JobInfoStep appt={appt} onSave={save} />}
-      {step === 2 && <HouseMapView appointmentId={id!} openings={appt.openings || []} />}
+      {step === 2 && <SketchBoard appointmentId={id!} openings={appt.openings || []} />}
       {step === 3 && <OpeningEditor appointmentId={id!} onUpdate={load} />}
       {step === 4 && <PricingReview appointment={appt} onRecalculate={recalc} onSave={save} />}
       {step === 5 && <OrderFormView appointmentId={id!} />}
