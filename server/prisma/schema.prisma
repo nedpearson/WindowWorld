@@ -1,0 +1,266 @@
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// ─── Users ───────────────────────────────────────────────
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String
+  role      String   @default("sales_rep") // super_admin | sales_rep | installer | office
+  password  String
+  avatarUrl String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  appointments Appointment[]
+  auditLogs    AuditLog[]
+}
+
+// ─── Customers ───────────────────────────────────────────
+model Customer {
+  id          String   @id @default(cuid())
+  firstName   String
+  lastName    String
+  email       String?
+  phone       String?
+  address     String?
+  city        String?
+  state       String?  @default("LA")
+  zip         String?
+  notes       String?
+  leadSource  String?
+  preLead1978 Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  appointments Appointment[]
+}
+
+// ─── Appointments ────────────────────────────────────────
+model Appointment {
+  id             String   @id @default(cuid())
+  customerId     String
+  userId         String
+  status         String   @default("draft") // draft | in_progress | quoted | sold | cancelled | needs_remeasure
+  appointmentDate DateTime?
+  jobAddress     String?
+  jobCity        String?
+  jobState       String?  @default("LA")
+  jobZip         String?
+  projectType    String?  // replacement | new_construction | remodel
+  notes          String?
+  estimatorNotes String?
+  installerNotes String?
+  officeNotes    String?
+  subtotal       Float    @default(0)
+  taxRate        Float    @default(0.0945)
+  taxAmount      Float    @default(0)
+  adminFee       Float    @default(0)
+  discount       Float    @default(0)
+  totalAmount    Float    @default(0)
+  depositAmount  Float    @default(0)
+  balanceDue     Float    @default(0)
+  financingAmount Float   @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  customer      Customer      @relation(fields: [customerId], references: [id])
+  user          User          @relation(fields: [userId], references: [id])
+  openings      Opening[]
+  lineItems     QuoteLineItem[]
+  contracts     Contract[]
+  signatures    Signature[]
+  payments      Payment[]
+  houseMap      HouseMap?
+}
+
+// ─── Openings ────────────────────────────────────────────
+model Opening {
+  id              String   @id @default(cuid())
+  appointmentId   String
+  openingNumber   Int
+  roomLocation    String?
+  elevation       String?  // front | rear | left | right | garage | other
+  width           Float?
+  height          Float?
+  unitedInches    Float?
+  productCategory String?  // double_hung | picture | slider | casement | awning | eyebrow | circle_top | quarter_arch | patio_door | custom_shape
+  seriesModel     String?
+  interiorColor   String?
+  exteriorColor   String?
+  gridStyle       String?
+  gridPattern     String?
+  glassPackage    String?
+  temperedGlass   Boolean  @default(false)
+  obscureGlass    Boolean  @default(false)
+  argon           Boolean  @default(false)
+  foamEnhanced    Boolean  @default(false)
+  lowEPackage     String?
+  screenOption    String?
+  trimNotes       String?
+  removalType     String?  // full_tearout | insert | none
+  installNotes    String?
+  customerNotes   String?
+  installerNotes  String?
+  basePrice       Float    @default(0)
+  optionsPrice    Float    @default(0)
+  laborPrice      Float    @default(0)
+  totalPrice      Float    @default(0)
+  // Specialty shape fields
+  radius          Float?
+  customRadius    Float?
+  legHeight       Float?
+  specialtyNotes  String?
+  needsVerification Boolean @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  appointment     Appointment    @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+  photos          OpeningPhoto[]
+}
+
+// ─── Opening Photos ──────────────────────────────────────
+model OpeningPhoto {
+  id        String   @id @default(cuid())
+  openingId String
+  url       String
+  caption   String?
+  createdAt DateTime @default(now())
+
+  opening   Opening  @relation(fields: [openingId], references: [id], onDelete: Cascade)
+}
+
+// ─── Pricing Tables ──────────────────────────────────────
+model PricingTable {
+  id          String   @id @default(cuid())
+  name        String   // e.g. "Double Hung Base", "Grid Options", "Labor Rates"
+  category    String   // product | option | labor | specialty | tax
+  description String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  items       PricingItem[]
+}
+
+model PricingItem {
+  id                String   @id @default(cuid())
+  pricingTableId    String
+  label             String
+  sku               String?
+  unitedInchesMin   Float?
+  unitedInchesMax   Float?
+  seriesModel       String?
+  productCategory   String?
+  price             Float    @default(0)
+  priceType         String   @default("flat") // flat | per_unit | per_sqft | per_linft | percentage
+  isDefault         Boolean  @default(false)
+  needsVerification Boolean  @default(false)
+  sortOrder         Int      @default(0)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  pricingTable      PricingTable @relation(fields: [pricingTableId], references: [id], onDelete: Cascade)
+}
+
+// ─── Quote Line Items ────────────────────────────────────
+model QuoteLineItem {
+  id            String   @id @default(cuid())
+  appointmentId String
+  label         String
+  category      String   // product | option | labor | admin | discount | custom
+  quantity      Int      @default(1)
+  unitPrice     Float    @default(0)
+  totalPrice    Float    @default(0)
+  notes         String?
+  needsVerification Boolean @default(false)
+  sortOrder     Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  appointment   Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+}
+
+// ─── Contracts ───────────────────────────────────────────
+model Contract {
+  id            String   @id @default(cuid())
+  appointmentId String
+  pdfUrl        String?
+  version       Int      @default(1)
+  status        String   @default("draft") // draft | sent | signed | voided
+  generatedAt   DateTime @default(now())
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  appointment   Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+}
+
+// ─── Signatures ──────────────────────────────────────────
+model Signature {
+  id            String   @id @default(cuid())
+  appointmentId String
+  signerName    String
+  signerRole    String   // customer | estimator
+  signatureData String   // base64 PNG
+  signedAt      DateTime @default(now())
+  createdAt     DateTime @default(now())
+
+  appointment   Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+}
+
+// ─── Payments / Deposits ─────────────────────────────────
+model Payment {
+  id            String   @id @default(cuid())
+  appointmentId String
+  amount        Float
+  method        String   // cash | check | card | financing
+  reference     String?
+  notes         String?
+  paidAt        DateTime @default(now())
+  createdAt     DateTime @default(now())
+
+  appointment   Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+}
+
+// ─── House Map ───────────────────────────────────────────
+model HouseMap {
+  id            String   @id @default(cuid())
+  appointmentId String   @unique
+  notes         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  appointment   Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+  markers       HouseMapMarker[]
+}
+
+model HouseMapMarker {
+  id          String @id @default(cuid())
+  houseMapId  String
+  elevation   String // front | rear | left | right
+  x           Float  // 0-100 percentage position
+  y           Float  // 0-100 percentage position
+  openingNumber Int
+  label       String?
+
+  houseMap    HouseMap @relation(fields: [houseMapId], references: [id], onDelete: Cascade)
+}
+
+// ─── Audit Logs ──────────────────────────────────────────
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  action    String
+  entity    String
+  entityId  String?
+  details   String?
+  createdAt DateTime @default(now())
+
+  user      User?    @relation(fields: [userId], references: [id])
+}
