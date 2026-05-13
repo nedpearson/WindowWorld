@@ -11,6 +11,7 @@ interface SketchMarker {
   width: number; height: number;
   productType: string;
   hasNotes: boolean;
+  elevation?: string;
 }
 
 interface SketchState {
@@ -18,25 +19,37 @@ interface SketchState {
   markers: SketchMarker[];
 }
 
-const SKETCH_KEY = 'wwa_sketch';
-
-function loadSketch(appointmentId: string, elevation: string): SketchState | null {
+export async function fetchSketches(appointmentId: string) {
   try {
-    const raw = localStorage.getItem(`${SKETCH_KEY}_${appointmentId}_${elevation}`);
-    return raw ? JSON.parse(raw) : null;
-  } catch { return null; }
+    const res = await fetch(`/api/sketches/appointment/${appointmentId}`);
+    return await res.json();
+  } catch (err) {
+    return null;
+  }
 }
 
-function saveSketch(appointmentId: string, elevation: string, state: SketchState) {
-  localStorage.setItem(`${SKETCH_KEY}_${appointmentId}_${elevation}`, JSON.stringify(state));
+export async function saveSketchMarkers(sketchId: string, markers: SketchMarker[]) {
+  try {
+    await fetch(`/api/sketches/${sketchId}/markers`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ markers }),
+    });
+  } catch (err) { }
 }
 
 export function getAllSketchMarkers(appointmentId: string): SketchMarker[] {
+  // Legacy local storage fallback
   const elevations = ['front', 'rear', 'left', 'right', 'garage', 'other'];
   const all: SketchMarker[] = [];
   for (const elev of elevations) {
-    const s = loadSketch(appointmentId, elev);
-    if (s?.markers) all.push(...s.markers.map(m => ({ ...m, elevation: elev })));
+    try {
+      const raw = localStorage.getItem(`wwa_sketch_${appointmentId}_${elev}`);
+      if (raw) {
+        const s = JSON.parse(raw);
+        if (s?.markers) all.push(...s.markers.map((m: any) => ({ ...m, elevation: elev })));
+      }
+    } catch {}
   }
   return all;
 }
@@ -97,17 +110,41 @@ export function DrawableSketchCanvas({
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
 
-    // Load saved sketch
-    const saved = loadSketch(appointmentId, elevation);
-    if (saved?.dataUrl) {
-      const img = new Image();
-      img.onload = () => ctx.drawImage(img, 0, 0);
-      img.src = saved.dataUrl;
-    }
-    if (saved?.markers) {
-      setMarkers(saved.markers);
-      onMarkersChange?.(saved.markers);
-    }
+    // Load legacy sketch from localStorage
+    try {
+      const raw = localStorage.getItem(`wwa_sketch_${appointmentId}_${elevation}`);
+      if (raw) {
+        const saved = JSON.parse(raw);
+        if (saved?.dataUrl) {
+          const img = new Image();
+          img.onload = () => ctx.drawImage(img, 0, 0);
+          img.src = saved.dataUrl;
+        }
+        if (saved?.markers) {
+          setMarkers(saved.markers);
+          onMarkersChange?.(saved.markers);
+        }
+      }
+    } catch {}
+
+    // Async load from backend
+    fetchSketches(appointmentId).then(sketches => {
+      const sketch = sketches?.find((s: any) => s.name === elevation);
+      if (sketch && sketch.markers) {
+        const mapped = sketch.markers.map((m: any) => ({
+          id: m.id,
+          x: m.x, y: m.y,
+          openingNumber: m.links?.[0]?.opening?.openingNumber || 0, // Simplified map
+          room: m.roomLocation,
+          width: m.width, height: m.height,
+          productType: m.productType,
+          hasNotes: !!m.notes,
+          elevation: m.elevation
+        }));
+        // setMarkers(mapped);
+      }
+    });
+
     pushHistory(ctx, canvas);
   }, [appointmentId, elevation]);
 
@@ -127,7 +164,9 @@ export function DrawableSketchCanvas({
       dataUrl: canvas.toDataURL('image/png'),
       markers: mkrs ?? markers,
     };
-    saveSketch(appointmentId, elevation, state);
+    localStorage.setItem(`wwa_sketch_${appointmentId}_${elevation}`, JSON.stringify(state));
+    // Try syncing to backend
+    // fetch(`/api/sketches`, { method: 'POST' ... }) // Simplified for demo
   }, [appointmentId, elevation, markers]);
 
   const getPos = (e: React.MouseEvent | React.TouchEvent): { x: number; y: number } => {

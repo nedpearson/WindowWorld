@@ -94,6 +94,7 @@ model Appointment {
   houseMap       HouseMap?
   voiceSessions  VoiceSession[]
   formInstances  FormInstance[]
+  formSketches   FormSketch[]
 
   @@index([customerId])
   @@index([userId])
@@ -158,6 +159,7 @@ model Opening {
 
   appointment     Appointment    @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
   photos          OpeningPhoto[]
+  sketchLinks     SketchMarkerLink[]
 
   @@index([appointmentId])
 }
@@ -481,4 +483,192 @@ model AuditLog {
 
   @@index([entity])
   @@index([userId])
+}
+
+// ═══════════════════════════════════════════════════════════
+// NEW DRAWING ENGINE
+// ═══════════════════════════════════════════════════════════
+
+model FormSketch {
+  id              String   @id @default(uuid())
+  appointmentId   String
+  companyId       String?
+  name            String?
+  completenessScore Float?
+  installerClarityScore Float?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  appointment     Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+  layers          SketchLayer[]
+  markers         SketchMarker[]
+  validations     SketchMeasurementValidation[]
+  pricingValidations SketchPricingValidation[]
+  aiInterpretations SketchAiInterpretation[]
+  warnings        SketchWarningFlag[]
+  scores          SketchCompletenessScore[]
+  clarityScores   InstallerClarityScore[]
+
+  @@index([appointmentId])
+  @@index([companyId])
+}
+
+model SketchLayer {
+  id          String   @id @default(uuid())
+  sketchId    String
+  companyId   String?
+  name        String
+  isVisible   Boolean  @default(true)
+  zIndex      Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  sketch      FormSketch @relation(fields: [sketchId], references: [id], onDelete: Cascade)
+
+  @@index([sketchId])
+  @@index([companyId])
+}
+
+model SketchMarker {
+  id              String   @id @default(uuid())
+  sketchId        String
+  companyId       String?
+  markerType      String   // window | door | note | dimension | warning
+  x               Float
+  y               Float
+  width           Float?
+  height          Float?
+  unitedInches    Float?
+  elevation       String?
+  roomLocation    String?
+  floorNumber     Int?     @default(1)
+  productType     String?
+  specialtyType   String?
+  installComplexity String?
+  ladderReq       Boolean  @default(false)
+  removalType     String?
+  installType     String?
+  exteriorMaterial String?
+  notes           String?
+  pricingStatus   String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  sketch          FormSketch @relation(fields: [sketchId], references: [id], onDelete: Cascade)
+  links           SketchMarkerLink[]
+
+  @@index([sketchId])
+  @@index([companyId])
+}
+
+model SketchMarkerLink {
+  id              String   @id @default(uuid())
+  markerId        String
+  openingId       String?
+  companyId       String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  marker          SketchMarker @relation(fields: [markerId], references: [id], onDelete: Cascade)
+  opening         Opening?     @relation(fields: [openingId], references: [id], onDelete: SetNull)
+
+  @@index([markerId])
+  @@index([openingId])
+  @@index([companyId])
+}
+
+model SketchMeasurementValidation {
+  id              String   @id @default(uuid())
+  sketchId        String
+  companyId       String?
+  openingId       String?
+  markerId        String?
+  status          String   // pass | fail | warning
+  mismatchDetails String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  sketch          FormSketch @relation(fields: [sketchId], references: [id], onDelete: Cascade)
+  
+  @@index([sketchId])
+  @@index([companyId])
+}
+
+model SketchPricingValidation {
+  id              String   @id @default(uuid())
+  sketchId        String
+  companyId       String?
+  openingId       String?
+  issueType       String   // missing_labor | missing_specialty | missing_patio
+  description     String?
+  resolved        Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  sketch          FormSketch @relation(fields: [sketchId], references: [id], onDelete: Cascade)
+
+  @@index([sketchId])
+  @@index([companyId])
+}
+
+model SketchAiInterpretation {
+  id              String   @id @default(uuid())
+  sketchId        String
+  companyId       String?
+  interpretationType String // warning | suggestion | labor | pricing
+  message         String
+  confidence      Float    @default(0.0)
+  applied         Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  sketch          FormSketch @relation(fields: [sketchId], references: [id], onDelete: Cascade)
+
+  @@index([sketchId])
+  @@index([companyId])
+}
+
+model SketchWarningFlag {
+  id              String   @id @default(uuid())
+  sketchId        String
+  companyId       String?
+  warningType     String   // unlinked_marker | missing_dimensions | access_issue
+  description     String
+  severity        String   // low | medium | high | critical
+  resolved        Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  sketch          FormSketch @relation(fields: [sketchId], references: [id], onDelete: Cascade)
+
+  @@index([sketchId])
+  @@index([companyId])
+}
+
+model SketchCompletenessScore {
+  id              String   @id @default(uuid())
+  sketchId        String
+  companyId       String?
+  score           Float
+  factors         String?  // JSON string
+  createdAt       DateTime @default(now())
+
+  sketch          FormSketch @relation(fields: [sketchId], references: [id], onDelete: Cascade)
+
+  @@index([sketchId])
+  @@index([companyId])
+}
+
+model InstallerClarityScore {
+  id              String   @id @default(uuid())
+  sketchId        String
+  companyId       String?
+  score           Float
+  feedback        String?
+  createdAt       DateTime @default(now())
+
+  sketch          FormSketch @relation(fields: [sketchId], references: [id], onDelete: Cascade)
+
+  @@index([sketchId])
+  @@index([companyId])
 }
