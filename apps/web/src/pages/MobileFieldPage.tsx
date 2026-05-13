@@ -84,7 +84,10 @@ export function MobileFieldPage() {
         createdAt: Date.now(), appointmentId: appt.id, synced: true
       });
 
-      setLastParseResult(`✅ Applied ${entities.length} field(s) to the order form. ${applied.appliedOpenings || 0} opening(s) updated.`);
+      // Build detailed result message
+      const details = applied.details || [];
+      const lines = details.map((d: any) => `  #${d.openingNumber}: ${d.action} (${d.fields.join(', ')})`).join('\n');
+      setLastParseResult(`✅ Applied ${entities.length} field(s) to the order form.\n${applied.appliedOpenings || 0} opening(s) updated.\n${lines}`);
       // Reload appointment to show updated data
       await loadAppt(appt.id);
       setTranscript('');
@@ -295,7 +298,7 @@ export function MobileFieldPage() {
             {/* Parse result feedback */}
             {lastParseResult && (
               <div className="card" style={{ marginTop: '0.75rem', padding: '0.75rem', background: lastParseResult.startsWith('✅') ? 'rgba(34,197,94,0.08)' : lastParseResult.startsWith('❌') ? 'rgba(239,68,68,0.08)' : 'rgba(245,158,11,0.08)', borderColor: lastParseResult.startsWith('✅') ? 'rgba(34,197,94,0.3)' : lastParseResult.startsWith('❌') ? 'rgba(239,68,68,0.3)' : 'rgba(245,158,11,0.3)' }}>
-                <div style={{ fontSize: '0.8125rem' }}>{lastParseResult}</div>
+                <div style={{ fontSize: '0.8125rem', whiteSpace: 'pre-wrap' }}>{lastParseResult}</div>
               </div>
             )}
 

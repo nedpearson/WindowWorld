@@ -79,6 +79,29 @@ voiceRoutes.post('/apply/:sessionId', async (req, res) => {
     });
     if (!session || !session.appointmentId) return res.status(400).json({ error: 'No appointment linked' });
 
+    console.log(`[Voice Apply] Session ${session.id} — ${session.entities.length} accepted entities`);
+
+    // Field type definitions for Opening model
+    const BOOL_FIELDS = new Set(['foamEnhanced', 'sillRepair', 'nailFin', 'oriel', 'horizontalRR', 'argon', 'needsVerification']);
+    const FLOAT_FIELDS = new Set(['width', 'height', 'unitedInches', 'basePrice', 'optionsPrice', 'laborPrice', 'totalPrice', 'radius', 'customRadius', 'legHeight']);
+    const INT_FIELDS = new Set(['floorNumber', 'quantity', 'openingNumber']);
+    const STRING_FIELDS = new Set([
+      'roomLocation', 'elevation', 'productCategory', 'productModel', 'seriesModel',
+      'interiorColor', 'exteriorColor', 'gridStyle', 'gridPattern', 'glassPackage',
+      'temperedGlass', 'obscureGlass', 'lowEPackage', 'screenOption', 'hinge',
+      'exteriorType', 'trimType', 'trimNotes', 'removalType', 'installType',
+      'installNotes', 'customerNotes', 'installerNotes', 'specialtyNotes', 'pricingStatus'
+    ]);
+    const ALL_OPENING_FIELDS = new Set([...BOOL_FIELDS, ...FLOAT_FIELDS, ...INT_FIELDS, ...STRING_FIELDS]);
+
+    // Cast a value to the correct type for the Opening schema
+    function castField(fieldName: string, rawValue: string): any {
+      if (BOOL_FIELDS.has(fieldName)) return rawValue === 'true' || rawValue === '1' || rawValue === 'yes';
+      if (FLOAT_FIELDS.has(fieldName)) return parseFloat(rawValue) || 0;
+      if (INT_FIELDS.has(fieldName)) return parseInt(rawValue) || 1;
+      return rawValue; // string
+    }
+
     // Group entities by type
     const customerFields: Record<string, string> = {};
     const openingMap: Record<number, Record<string, any>> = {};
@@ -89,49 +112,82 @@ voiceRoutes.post('/apply/:sessionId', async (req, res) => {
       } else if (e.entityType === 'opening' || e.entityType === 'measurement' || e.entityType === 'option') {
         const num = e.openingNumber || 1;
         if (!openingMap[num]) openingMap[num] = {};
-        const val = isNaN(Number(e.fieldValue)) ? e.fieldValue : Number(e.fieldValue);
-        openingMap[num][e.fieldName] = val;
+        // Only include valid Opening fields, properly typed
+        if (ALL_OPENING_FIELDS.has(e.fieldName)) {
+          openingMap[num][e.fieldName] = castField(e.fieldName, e.fieldValue);
+        } else {
+          console.log(`[Voice Apply] Skipping unknown field: ${e.fieldName} = ${e.fieldValue}`);
+        }
       }
     }
 
     // Apply customer fields
+    let appliedCustomer = 0;
     if (Object.keys(customerFields).length > 0) {
       const appt = await prisma.appointment.findUnique({ where: { id: session.appointmentId } });
       if (appt) {
-        await prisma.customer.update({ where: { id: appt.customerId }, data: customerFields });
+        try {
+          await prisma.customer.update({ where: { id: appt.customerId }, data: customerFields });
+          appliedCustomer = Object.keys(customerFields).length;
+          console.log(`[Voice Apply] Updated customer ${appt.customerId}: ${JSON.stringify(customerFields)}`);
+        } catch (ce: any) {
+          console.error(`[Voice Apply] Customer update failed:`, ce.message);
+        }
       }
     }
 
     // Apply opening fields
+    const appliedOpenings: { openingNumber: number; action: string; fields: string[] }[] = [];
     for (const [numStr, fields] of Object.entries(openingMap)) {
       const num = Number(numStr);
-      const existing = await prisma.opening.findFirst({
-        where: { appointmentId: session.appointmentId, openingNumber: num }
-      });
-      if (existing) {
-        const width = fields.width ?? existing.width ?? 0;
-        const height = fields.height ?? existing.height ?? 0;
-        await prisma.opening.update({
-          where: { id: existing.id },
-          data: { ...fields, unitedInches: width + height }
+      const width = fields.width ?? 0;
+      const height = fields.height ?? 0;
+      // Always compute unitedInches if we have dimensions
+      if (fields.width || fields.height) {
+        fields.unitedInches = (fields.width || 0) + (fields.height || 0);
+      }
+
+      try {
+        const existing = await prisma.opening.findFirst({
+          where: { appointmentId: session.appointmentId, openingNumber: num }
         });
-      } else {
-        const width = fields.width ?? 0;
-        const height = fields.height ?? 0;
-        await prisma.opening.create({
-          data: {
-            appointmentId: session.appointmentId,
-            openingNumber: num,
-            unitedInches: width + height,
-            ...fields
+        if (existing) {
+          // Merge: use new values for provided fields, keep existing for others
+          const mergedWidth = fields.width ?? existing.width ?? 0;
+          const mergedHeight = fields.height ?? existing.height ?? 0;
+          if (fields.width || fields.height) {
+            fields.unitedInches = mergedWidth + mergedHeight;
           }
-        });
+          await prisma.opening.update({ where: { id: existing.id }, data: fields });
+          appliedOpenings.push({ openingNumber: num, action: 'updated', fields: Object.keys(fields) });
+          console.log(`[Voice Apply] Updated opening #${num}: ${JSON.stringify(fields)}`);
+        } else {
+          await prisma.opening.create({
+            data: {
+              appointmentId: session.appointmentId,
+              openingNumber: num,
+              quantity: 1,
+              ...fields
+            }
+          });
+          appliedOpenings.push({ openingNumber: num, action: 'created', fields: Object.keys(fields) });
+          console.log(`[Voice Apply] Created opening #${num}: ${JSON.stringify(fields)}`);
+        }
+      } catch (oe: any) {
+        console.error(`[Voice Apply] Opening #${num} failed:`, oe.message);
+        appliedOpenings.push({ openingNumber: num, action: 'error', fields: [oe.message] });
       }
     }
 
     await prisma.voiceSession.update({ where: { id: session.id }, data: { status: 'applied' } });
-    res.json({ success: true, appliedCustomerFields: Object.keys(customerFields).length, appliedOpenings: Object.keys(openingMap).length });
+    res.json({
+      success: true,
+      appliedCustomerFields: appliedCustomer,
+      appliedOpenings: appliedOpenings.filter(o => o.action !== 'error').length,
+      details: appliedOpenings
+    });
   } catch (err: any) {
+    console.error(`[Voice Apply] Fatal error:`, err.message);
     res.status(500).json({ error: 'Apply failed', details: err.message });
   }
 });
