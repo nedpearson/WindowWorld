@@ -1,11 +1,15 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { api } from '../utils/api';
 import { useAuthStore } from '../store';
 
 export function AppointmentsPage() {
+  const [searchParams] = useSearchParams();
+  const location = useLocation();
   const [appointments, setAppointments] = useState<any[]>([]);
-  const [filter, setFilter] = useState('all');
+  
+  const [filter, setFilter] = useState(searchParams.get('status') || 'all');
+  const [dateFilter, setDateFilter] = useState(searchParams.get('date') || '');
   const [search, setSearch] = useState('');
   const [showNew, setShowNew] = useState(false);
   const [newCust, setNewCust] = useState({ firstName: '', lastName: '', phone: '', email: '', address: '', city: '', state: 'LA', zip: '' });
@@ -13,14 +17,21 @@ export function AppointmentsPage() {
   const navigate = useNavigate();
   const user = useAuthStore(s => s.user);
 
+  useEffect(() => {
+    // Sync state with URL params on navigation (e.g. going back/forward or clicking drilldown from dashboard while already on page)
+    setFilter(searchParams.get('status') || 'all');
+    setDateFilter(searchParams.get('date') || '');
+  }, [location.search]);
+
   const load = () => {
     const params: Record<string, string> = {};
     if (filter !== 'all') params.status = filter;
+    if (dateFilter === 'today') params.date = new Date().toISOString().split('T')[0];
     if (search) params.search = search;
     api.getAppointments(params).then(setAppointments).catch(console.error);
   };
 
-  useEffect(() => { load(); }, [filter, search]);
+  useEffect(() => { load(); }, [filter, dateFilter, search]);
 
   const createNew = async () => {
     try {
@@ -54,11 +65,23 @@ export function AppointmentsPage() {
       {/* Filters */}
       <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
         {['all', 'draft', 'in_progress', 'quoted', 'sold', 'needs_remeasure'].map(s => (
-          <button key={s} className={`btn btn-sm ${filter === s ? 'btn-primary' : 'btn-secondary'}`}
-            onClick={() => setFilter(s)}>
+          <button key={s} className={`btn btn-sm ${(filter === s && !dateFilter) ? 'btn-primary' : 'btn-secondary'}`}
+            onClick={() => {
+              setFilter(s);
+              setDateFilter('');
+              navigate(s === 'all' ? '/appointments' : `/appointments?status=${s}`);
+            }}>
             {s === 'all' ? 'All' : s.replace('_', ' ')}
           </button>
         ))}
+        {dateFilter === 'today' && (
+          <button className="btn btn-sm btn-primary" onClick={() => {
+            setDateFilter('');
+            navigate('/appointments');
+          }}>
+            Today's Appts ✕
+          </button>
+        )}
       </div>
 
       <input className="form-input" placeholder="Search by name or address..." value={search}

@@ -75,27 +75,27 @@ export function DashboardPage() {
       {/* Stats */}
       {stats ? (
         <div className="stats-grid">
-          <div className="stat-card">
+          <div className="stat-card" style={{ cursor: 'pointer' }} onClick={() => navigate('/appointments?date=today')}>
             <div className="stat-value" style={{ color: 'var(--accent)' }}>{stats.todayAppointments}</div>
             <div className="stat-label">Today's Appts</div>
           </div>
-          <div className="stat-card">
+          <div className="stat-card" style={{ cursor: 'pointer' }} onClick={() => navigate('/appointments?status=draft')}>
             <div className="stat-value" style={{ color: 'var(--warning)' }}>{stats.draftCount}</div>
             <div className="stat-label">Drafts</div>
           </div>
-          <div className="stat-card">
+          <div className="stat-card" style={{ cursor: 'pointer' }} onClick={() => navigate('/appointments?status=quoted')}>
             <div className="stat-value" style={{ color: 'var(--info)' }}>{stats.quotedCount}</div>
             <div className="stat-label">Quoted</div>
           </div>
-          <div className="stat-card">
+          <div className="stat-card" style={{ cursor: 'pointer' }} onClick={() => navigate('/appointments?status=sold')}>
             <div className="stat-value" style={{ color: 'var(--success)' }}>{stats.soldCount}</div>
             <div className="stat-label">Sold</div>
           </div>
-          <div className="stat-card">
+          <div className="stat-card" style={{ cursor: 'pointer' }} onClick={() => navigate('/appointments?status=needs_remeasure')}>
             <div className="stat-value" style={{ color: 'var(--danger)' }}>{stats.needsRemeasure}</div>
             <div className="stat-label">Needs Remeasure</div>
           </div>
-          <div className="stat-card">
+          <div className="stat-card" style={{ cursor: 'pointer' }} onClick={() => navigate('/appointments?status=sold')}>
             <div className="stat-value" style={{ color: 'var(--success)' }}>{fmt(stats.totalRevenue)}</div>
             <div className="stat-label">Total Revenue (Sold)</div>
           </div>
