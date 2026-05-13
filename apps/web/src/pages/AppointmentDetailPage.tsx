@@ -12,6 +12,7 @@ import { VoiceAssistant } from '../components/VoiceAssistant';
 import { MissingInfoCheck } from '../components/MissingInfoCheck';
 import { StepCompletionBadge } from '../components/StepCompletion';
 import { validateAppointment } from '../utils/validationEngine';
+import { AppointmentCoach } from '../components/AppointmentCoach';
 
 const STEPS = [
   'Customer',
@@ -193,6 +194,9 @@ export function AppointmentDetailPage() {
 
       {/* Floating Voice Assistant */}
       <VoiceAssistant appointmentId={id!} userId={useAuthStore.getState().user?.id || ''} onApplied={load} />
+
+      {/* AI Appointment Coach */}
+      <AppointmentCoach appointment={appt} onJumpToStep={setStep} />
 
       {/* Navigation */}
       <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '1.5rem' }}>
