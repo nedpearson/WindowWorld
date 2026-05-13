@@ -44,30 +44,53 @@ export function MobileFieldPage() {
 
   // ── Recording ──────────────────────────────────────────
   const [processing, setProcessing] = useState(false);
+  const [lastParseResult, setLastParseResult] = useState<string>('');
+  const [lastSessionId, setLastSessionId] = useState<string>('');
 
-  const processTranscript = async (text?: string) => {
-    const input = (text || transcript).trim();
+  const parseAndApply = async () => {
+    const input = transcript.trim();
     if (!input || !appt) return;
     setProcessing(true);
-    const localId = mobile.addRecording({
-      localId: '', status: 'transcribing', transcript: input, extractions: [],
-      createdAt: Date.now(), appointmentId: appt.id, synced: false
-    });
+    setLastParseResult('');
     try {
+      // 1. Create voice session
       const session = await api.post('/voice/sessions', { appointmentId: appt.id, userId: user!.id, status: 'recording' });
+      setLastSessionId(session.id);
+      // 2. Save transcript
       await api.post('/voice/transcripts', { voiceSessionId: session.id, rawText: input, provider: 'web_speech', confidence: 0.85 });
+      // 3. Parse into entities
       const result = await api.post('/voice/parse', { voiceSessionId: session.id, text: input });
-      const exts: FieldExtraction[] = (result.entities || []).map((e: any) => ({
-        sourceType: 'recording' as const, sourceText: input, targetTable: e.entityType === 'customer' ? 'Customer' : 'Opening',
-        targetField: e.fieldName, originalValue: e.fieldValue, normalizedValue: e.fieldValue,
-        confidenceScore: e.confidence, requiresReview: e.confidence < 0.8, status: e.confidence >= 0.8 ? 'approved' as const : 'pending' as const,
-        openingNumber: e.openingNumber, pricingImpact: ['temperedGlass','gridStyle','screenOption','foamEnhanced'].includes(e.fieldName),
-      }));
-      mobile.setExtractions(localId, exts);
-      mobile.updateRecording(localId, { synced: true });
+      const entities = result.entities || [];
+
+      if (entities.length === 0) {
+        setLastParseResult('⚠ No fields detected. Try being more specific, e.g. "Window one is a double hung, 35 3/8 by 59 7/8, front bedroom"');
+        setProcessing(false);
+        return;
+      }
+
+      // 4. Accept all entities
+      await api.post(`/voice/sessions/${session.id}/accept-all`, {});
+      // 5. Apply directly to the order form / appointment openings
+      const applied = await api.post(`/voice/apply/${session.id}`, {});
+
+      // 6. Also store in mobile store for local tracking
+      const localId = mobile.addRecording({
+        localId: '', status: 'applied_to_form', transcript: input, extractions: entities.map((e: any) => ({
+          sourceType: 'recording' as const, sourceText: input, targetTable: e.entityType === 'customer' ? 'Customer' : 'Opening',
+          targetField: e.fieldName, originalValue: e.fieldValue, normalizedValue: e.fieldValue,
+          confidenceScore: e.confidence, requiresReview: false, status: 'approved' as const,
+          openingNumber: e.openingNumber,
+        })),
+        createdAt: Date.now(), appointmentId: appt.id, synced: true
+      });
+
+      setLastParseResult(`✅ Applied ${entities.length} field(s) to the order form. ${applied.appliedOpenings || 0} opening(s) updated.`);
+      // Reload appointment to show updated data
+      await loadAppt(appt.id);
       setTranscript('');
-      setTab('review');
-    } catch { mobile.updateRecording(localId, { status: 'failed' }); }
+    } catch (err: any) {
+      setLastParseResult(`❌ Failed to parse: ${err?.message || 'Unknown error'}. Try again.`);
+    }
     setProcessing(false);
   };
 
@@ -87,15 +110,11 @@ export function MobileFieldPage() {
     r.onerror = () => setRecording(false);
     r.onend = () => {
       setRecording(false);
-      const text = final.trim();
-      if (text) {
-        setTranscript(text);
-        // Auto-process the transcript immediately
-        processTranscript(text);
-      }
+      if (final.trim()) setTranscript(final.trim());
+      // Stay on home tab — let user review/edit transcript before parsing
     };
-    recognitionRef.current = r; r.start(); setRecording(true); setTranscript('');
-  }, [appt, user]);
+    recognitionRef.current = r; r.start(); setRecording(true); setTranscript(''); setLastParseResult('');
+  }, []);
 
   const stopRecording = useCallback(() => {
     recognitionRef.current?.stop(); recognitionRef.current = null; setRecording(false);
@@ -251,14 +270,28 @@ export function MobileFieldPage() {
               </div>
             )}
 
-            {/* Transcript ready (fallback for manual re-process) */}
+            {/* Transcript ready — edit then apply */}
             {!recording && !processing && transcript && (
               <div className="card" style={{ marginTop: '1rem' }}>
-                <textarea className="form-textarea" value={transcript} onChange={e => setTranscript(e.target.value)} rows={3} />
-                <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
-                  <button className="btn btn-primary" onClick={() => processTranscript()}>🔍 Parse & Extract</button>
-                  <button className="btn btn-secondary" onClick={() => setTranscript('')}>Clear</button>
+                <h3 style={{ fontSize: '0.875rem', marginBottom: '0.5rem' }}>📝 Your Recording</h3>
+                <p style={{ fontSize: '0.6875rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>Edit the text below if needed, then click Apply to populate the order form.</p>
+                <textarea className="form-textarea" value={transcript} onChange={e => setTranscript(e.target.value)} rows={4} style={{ fontSize: '0.9375rem' }} />
+                <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.75rem' }}>
+                  <button className="btn btn-primary" onClick={parseAndApply} style={{ flex: 1, padding: '0.75rem', fontSize: '0.9375rem', background: 'linear-gradient(135deg, #3b82f6, #8b5cf6)' }}>
+                    🔍 Parse & Apply to Order Form
+                  </button>
+                  <button className="btn btn-secondary" onClick={() => setTranscript('')}>✕</button>
                 </div>
+                <div style={{ fontSize: '0.625rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>
+                  💡 Tip: Say things like "Window one is a double hung, 35 3/8 by 59 7/8, front bedroom, second floor, ladder required"
+                </div>
+              </div>
+            )}
+
+            {/* Parse result feedback */}
+            {lastParseResult && (
+              <div className="card" style={{ marginTop: '0.75rem', padding: '0.75rem', background: lastParseResult.startsWith('✅') ? 'rgba(34,197,94,0.08)' : lastParseResult.startsWith('❌') ? 'rgba(239,68,68,0.08)' : 'rgba(245,158,11,0.08)', borderColor: lastParseResult.startsWith('✅') ? 'rgba(34,197,94,0.3)' : lastParseResult.startsWith('❌') ? 'rgba(239,68,68,0.3)' : 'rgba(245,158,11,0.3)' }}>
+                <div style={{ fontSize: '0.8125rem' }}>{lastParseResult}</div>
               </div>
             )}
 
