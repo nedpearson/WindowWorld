@@ -42,6 +42,34 @@ export function MobileFieldPage() {
   };
 
   // ── Recording ──────────────────────────────────────────
+  const [processing, setProcessing] = useState(false);
+
+  const processTranscript = async (text?: string) => {
+    const input = (text || transcript).trim();
+    if (!input || !appt) return;
+    setProcessing(true);
+    const localId = mobile.addRecording({
+      localId: '', status: 'transcribing', transcript: input, extractions: [],
+      createdAt: Date.now(), appointmentId: appt.id, synced: false
+    });
+    try {
+      const session = await api.post('/voice/sessions', { appointmentId: appt.id, userId: user!.id, status: 'recording' });
+      await api.post('/voice/transcripts', { voiceSessionId: session.id, rawText: input, provider: 'web_speech', confidence: 0.85 });
+      const result = await api.post('/voice/parse', { voiceSessionId: session.id, text: input });
+      const exts: FieldExtraction[] = (result.entities || []).map((e: any) => ({
+        sourceType: 'recording' as const, sourceText: input, targetTable: e.entityType === 'customer' ? 'Customer' : 'Opening',
+        targetField: e.fieldName, originalValue: e.fieldValue, normalizedValue: e.fieldValue,
+        confidenceScore: e.confidence, requiresReview: e.confidence < 0.8, status: e.confidence >= 0.8 ? 'approved' as const : 'pending' as const,
+        openingNumber: e.openingNumber, pricingImpact: ['temperedGlass','gridStyle','screenOption','foamEnhanced'].includes(e.fieldName),
+      }));
+      mobile.setExtractions(localId, exts);
+      mobile.updateRecording(localId, { synced: true });
+      setTranscript('');
+      setTab('review');
+    } catch { mobile.updateRecording(localId, { status: 'failed' }); }
+    setProcessing(false);
+  };
+
   const startRecording = useCallback(() => {
     const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SR) { alert('Speech not supported — use Chrome'); return; }
@@ -56,35 +84,21 @@ export function MobileFieldPage() {
       setTranscript(final + interim);
     };
     r.onerror = () => setRecording(false);
-    r.onend = () => { setRecording(false); if (final.trim()) setTranscript(final.trim()); };
+    r.onend = () => {
+      setRecording(false);
+      const text = final.trim();
+      if (text) {
+        setTranscript(text);
+        // Auto-process the transcript immediately
+        processTranscript(text);
+      }
+    };
     recognitionRef.current = r; r.start(); setRecording(true); setTranscript('');
-  }, []);
+  }, [appt, user]);
 
   const stopRecording = useCallback(() => {
     recognitionRef.current?.stop(); recognitionRef.current = null; setRecording(false);
   }, []);
-
-  const processTranscript = async () => {
-    if (!transcript.trim() || !appt) return;
-    const localId = mobile.addRecording({
-      localId: '', status: 'transcribing', transcript, extractions: [],
-      createdAt: Date.now(), appointmentId: appt.id, synced: false
-    });
-    try {
-      const session = await api.post('/voice/sessions', { appointmentId: appt.id, userId: user!.id, status: 'recording' });
-      await api.post('/voice/transcripts', { voiceSessionId: session.id, rawText: transcript, provider: 'web_speech', confidence: 0.85 });
-      const result = await api.post('/voice/parse', { voiceSessionId: session.id, text: transcript });
-      const exts: FieldExtraction[] = (result.entities || []).map((e: any) => ({
-        sourceType: 'recording' as const, sourceText: transcript, targetTable: e.entityType === 'customer' ? 'Customer' : 'Opening',
-        targetField: e.fieldName, originalValue: e.fieldValue, normalizedValue: e.fieldValue,
-        confidenceScore: e.confidence, requiresReview: e.confidence < 0.8, status: e.confidence >= 0.8 ? 'approved' as const : 'pending' as const,
-        openingNumber: e.openingNumber, pricingImpact: ['temperedGlass','gridStyle','screenOption','foamEnhanced'].includes(e.fieldName),
-      }));
-      mobile.setExtractions(localId, exts);
-      mobile.updateRecording(localId, { synced: true });
-      setTab('review');
-    } catch { mobile.updateRecording(localId, { status: 'failed' }); }
-  };
 
   // ── Text Note ──────────────────────────────────────────
   const saveNote = async () => {
@@ -225,12 +239,23 @@ export function MobileFieldPage() {
               </div>
             )}
 
-            {/* Transcript ready */}
-            {!recording && transcript && (
+            {/* Processing indicator */}
+            {processing && (
+              <div className="mf-recording-active" style={{ borderColor: 'rgba(59,130,246,0.3)', background: 'rgba(59,130,246,0.08)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <span className="loading" style={{ fontSize: '1.25rem' }}>🔍</span>
+                  <strong style={{ fontSize: '0.875rem' }}>Extracting fields from your recording...</strong>
+                </div>
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>AI is parsing your notes and will show results on the Review tab.</div>
+              </div>
+            )}
+
+            {/* Transcript ready (fallback for manual re-process) */}
+            {!recording && !processing && transcript && (
               <div className="card" style={{ marginTop: '1rem' }}>
                 <textarea className="form-textarea" value={transcript} onChange={e => setTranscript(e.target.value)} rows={3} />
                 <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
-                  <button className="btn btn-primary" onClick={processTranscript}>🔍 Parse & Extract</button>
+                  <button className="btn btn-primary" onClick={() => processTranscript()}>🔍 Parse & Extract</button>
                   <button className="btn btn-secondary" onClick={() => setTranscript('')}>Clear</button>
                 </div>
               </div>
