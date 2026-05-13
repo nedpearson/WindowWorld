@@ -4,6 +4,7 @@ import { api } from '../utils/api';
 import { useAuthStore } from '../store';
 import { useMobileStore, type FieldExtraction } from '../store/mobileStore';
 import { parseWxH, validateMeasurement, FRACTION_BUTTONS } from '../utils/measurementParser';
+import { SketchBoard } from '../components/DrawableSketch';
 
 type MobileTab = 'home' | 'openings' | 'notes' | 'sketch' | 'review';
 
@@ -367,9 +368,7 @@ export function MobileFieldPage() {
         {/* ── Sketch Tab ────────────────────────────────── */}
         {tab === 'sketch' && (
           <div>
-            <h3 style={{ marginBottom: '0.5rem' }}>Sketch</h3>
-            <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginBottom: '1rem' }}>Use the desktop Sketch Board for full drawing tools. Mobile sketch coming soon.</p>
-            <button className="btn btn-primary" onClick={() => navigate(`/appointments/${appt.id}`)}>Open Desktop Sketch →</button>
+            <SketchBoard appointmentId={appt.id} openings={appt.openings || []} />
           </div>
         )}
       </div>
