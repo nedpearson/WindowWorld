@@ -14,6 +14,8 @@ import { StepCompletionBadge } from '../components/StepCompletion';
 import { validateAppointment } from '../utils/validationEngine';
 import { AppointmentCoach } from '../components/AppointmentCoach';
 import { OfficeReviewPanel } from '../components/OfficeReviewPanel';
+import { TabletSigningMode, SigningStatusBadge } from '../components/TabletSigningMode';
+import { getSignatures, allSignaturesComplete } from '../utils/signatureStore';
 
 const STEPS = [
   'Customer',
@@ -33,6 +35,7 @@ export function AppointmentDetailPage() {
   const [appt, setAppt] = useState<any>(null);
   const [step, setStep] = useState(0);
   const [saving, setSaving] = useState(false);
+  const [signingMode, setSigningMode] = useState(false);
   const { saveDraft } = useDraftStore();
 
   const load = useCallback(async () => {
@@ -170,25 +173,38 @@ export function AppointmentDetailPage() {
       {step === 3 && <OpeningEditor appointmentId={id!} onUpdate={load} />}
       {step === 4 && <PricingReview appointment={appt} onRecalculate={recalc} onSave={save} />}
       {step === 5 && <OrderFormView appointmentId={id!} />}
-      {step === 6 && <ContractFormView appointmentId={id!} />}
+      {step === 6 && (
+        <div>
+          {/* Signing Status Badge on contract step */}
+          <SigningStatusBadge appointmentId={id!} onEnterSigningMode={() => setSigningMode(true)} />
+          <ContractFormView appointmentId={id!} />
+        </div>
+      )}
       {step === 7 && <MissingInfoCheck appointment={appt} onJumpToStep={setStep} />}
       {step === 8 && (
         <div>
           {validation && !validation.canExport && (
-            <div className="card" style={{
-              marginBottom: '1rem', background: 'rgba(239,68,68,0.08)', borderColor: 'rgba(239,68,68,0.3)',
-              textAlign: 'center', padding: '2rem',
-            }}>
+            <div className="card" style={{ marginBottom: '1rem', background: 'rgba(239,68,68,0.08)', borderColor: 'rgba(239,68,68,0.3)', textAlign: 'center', padding: '2rem' }}>
               <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>🛑</div>
               <h3 style={{ color: '#ef4444' }}>Cannot Export — {validation.blockers} Blocker{validation.blockers > 1 ? 's' : ''} Remaining</h3>
-              <p style={{ color: 'var(--text-secondary)', marginTop: '0.5rem', fontSize: '0.875rem' }}>
-                Fix all blockers on the Missing Info Check step before generating the final packet.
-              </p>
-              <button className="btn btn-danger" style={{ marginTop: '1rem' }} onClick={() => setStep(7)}>
-                Go to Missing Info Check
-              </button>
+              <p style={{ color: 'var(--text-secondary)', marginTop: '0.5rem', fontSize: '0.875rem' }}>Fix all blockers on the Missing Info Check step before generating the final packet.</p>
+              <button className="btn btn-danger" style={{ marginTop: '1rem' }} onClick={() => setStep(7)}>Go to Missing Info Check</button>
             </div>
           )}
+          {/* Signature gate */}
+          {(() => { const sigs = getSignatures(id!); const sigsDone = allSignaturesComplete(sigs); return (
+            <div style={{ marginBottom: '1rem' }}>
+              <SigningStatusBadge appointmentId={id!} onEnterSigningMode={() => setSigningMode(true)} />
+              {!sigsDone && (
+                <div className="card" style={{ background: 'rgba(59,130,246,0.08)', borderColor: 'rgba(59,130,246,0.3)', textAlign: 'center', padding: '1.5rem', marginBottom: '1rem' }}>
+                  <div style={{ fontSize: '1.75rem', marginBottom: '0.5rem' }}>✍️</div>
+                  <h3 style={{ color: '#60a5fa' }}>Signatures Required Before Export</h3>
+                  <p style={{ color: 'var(--text-secondary)', marginTop: '0.5rem', fontSize: '0.875rem' }}>All required customer signatures must be collected before generating the final packet.</p>
+                  <button className="btn btn-primary" style={{ marginTop: '1rem' }} onClick={() => setSigningMode(true)}>Start Customer Signing →</button>
+                </div>
+              )}
+            </div>
+          ); })()}
           <ContractExport appointment={appt} />
         </div>
       )}
@@ -201,6 +217,16 @@ export function AppointmentDetailPage() {
 
       {/* Office Review Panel */}
       <OfficeReviewPanel appointment={appt} currentUserName={useAuthStore.getState().user?.name || 'Office'} />
+
+      {/* Signing Mode FAB */}
+      <button onClick={() => setSigningMode(true)}
+        className="coach-fab" title="Customer Signing Mode"
+        style={{ bottom: '24rem', background: 'linear-gradient(135deg,#059669,#10b981)' }}>
+        ✍️
+      </button>
+
+      {/* Tablet Signing Mode — fullscreen overlay */}
+      {signingMode && <TabletSigningMode appointment={appt} onClose={() => setSigningMode(false)} />}
 
       {/* Navigation */}
       <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '1.5rem' }}>
