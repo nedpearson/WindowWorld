@@ -193,25 +193,45 @@
   text-transform: uppercase;
   background: #fff;
   vertical-align: bottom;
-  overflow: hidden;
+  overflow: visible;
+  position: relative;
 }
 
-/* Vertical header text for narrow columns */
+/* Angled header text for narrow columns — horizontal text rotated to fit */
 .pf-opening-table th.pf-th-vert {
-  writing-mode: vertical-rl;
-  text-orientation: mixed;
-  transform: rotate(180deg);
-  height: 0.65in;
-  padding: 0.02in 0;
-  font-size: 4.5pt;
-  letter-spacing: -0.3pt;
+  height: 0.72in;
+  padding: 0;
+  font-size: 5pt;
+  letter-spacing: -0.2pt;
   white-space: nowrap;
-  vertical-align: middle;
+  vertical-align: bottom;
+  overflow: visible;
+  position: relative;
+}
+
+.pf-opening-table th.pf-th-vert > span,
+.pf-opening-table th.pf-th-vert::after {
+  display: block;
+}
+
+/* Use a wrapper span inside each th.pf-th-vert for rotation */
+.pf-th-vert-inner {
+  display: block;
+  transform: rotate(-55deg);
+  transform-origin: bottom left;
+  position: absolute;
+  bottom: 0.04in;
+  left: 50%;
+  white-space: nowrap;
+  font-size: 5pt;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: -0.2pt;
 }
 
 /* Horizontal header for wide columns */
 .pf-opening-table th.pf-th-horiz {
-  height: 0.65in;
+  height: 0.72in;
   font-size: 5pt;
   vertical-align: bottom;
   padding-bottom: 0.02in;
@@ -230,12 +250,14 @@
 }
 
 .pf-opening-table th.pf-th-sub {
-  font-size: 4pt;
+  font-size: 4.5pt;
   font-weight: 700;
   height: auto;
   padding: 0.005in 0;
   vertical-align: middle;
   white-space: nowrap;
+  position: relative;
+  overflow: visible;
 }
 
 .pf-opening-table td {

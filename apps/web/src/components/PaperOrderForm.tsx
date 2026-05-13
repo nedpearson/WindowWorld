@@ -177,45 +177,45 @@ export const PaperOrderForm = forwardRef<PaperOrderFormHandle, PaperOrderFormPro
               {/* Row 1: Group spanning headers */}
               <tr>
                 <th className="pf-col-rownum" rowSpan={3}></th>
-                <th className="pf-col-qty pf-th-vert" rowSpan={3}>QTY</th>
-                <th className="pf-col-model pf-th-vert" rowSpan={3}>MODEL</th>
-                <th className="pf-col-vinyl pf-th-vert" rowSpan={3}>VINYL COLOR</th>
-                <th className="pf-col-int pf-th-vert" rowSpan={3}>INT COLOR</th>
-                <th className="pf-col-ext pf-th-vert" rowSpan={3}>EXT COLOR</th>
+                <th className="pf-col-qty pf-th-vert" rowSpan={3}><span className="pf-th-vert-inner">QTY</span></th>
+                <th className="pf-col-model pf-th-vert" rowSpan={3}><span className="pf-th-vert-inner">MODEL</span></th>
+                <th className="pf-col-vinyl pf-th-vert" rowSpan={3}><span className="pf-th-vert-inner">VINYL COLOR</span></th>
+                <th className="pf-col-int pf-th-vert" rowSpan={3}><span className="pf-th-vert-inner">INT COLOR</span></th>
+                <th className="pf-col-ext pf-th-vert" rowSpan={3}><span className="pf-th-vert-inner">EXT COLOR</span></th>
                 <th colSpan={3} className="pf-th-group" style={{ borderBottom: 'none' }}>MFG SIZE</th>
-                <th className="pf-col-leg pf-th-vert" rowSpan={3}>LEG HEIGHT</th>
-                <th className="pf-col-radius pf-th-vert" rowSpan={3}>CUSTOM RADIUS</th>
-                <th className="pf-col-winnum pf-th-vert" rowSpan={3}>WINDOW NUMBER</th>
-                <th className="pf-col-hinge pf-th-vert" rowSpan={3}>HINGE</th>
-                <th className="pf-col-glass pf-th-vert" rowSpan={3}>GLASS OPTION</th>
-                <th className="pf-col-foam pf-th-vert" rowSpan={3}>FOAM ENHANCED</th>
+                <th className="pf-col-leg pf-th-vert" rowSpan={3}><span className="pf-th-vert-inner">LEG HEIGHT</span></th>
+                <th className="pf-col-radius pf-th-vert" rowSpan={3}><span className="pf-th-vert-inner">CUSTOM RADIUS</span></th>
+                <th className="pf-col-winnum pf-th-vert" rowSpan={3}><span className="pf-th-vert-inner">WINDOW NUMBER</span></th>
+                <th className="pf-col-hinge pf-th-vert" rowSpan={3}><span className="pf-th-vert-inner">HINGE</span></th>
+                <th className="pf-col-glass pf-th-vert" rowSpan={3}><span className="pf-th-vert-inner">GLASS OPTION</span></th>
+                <th className="pf-col-foam pf-th-vert" rowSpan={3}><span className="pf-th-vert-inner">FOAM ENHANCED</span></th>
                 <th colSpan={4} className="pf-th-group">GRID OPTIONS</th>
                 <th colSpan={3} className="pf-th-group">TYPE</th>
                 <th colSpan={3} className="pf-th-group">9&apos; TEMP</th>
-                <th className="pf-col-nailfin pf-th-vert" rowSpan={3}>NAIL FIN</th>
-                <th className="pf-col-full pf-th-vert" rowSpan={3}>FULL SCREEN</th>
-                <th className="pf-col-oriel pf-th-vert" rowSpan={3}>ORIEL</th>
-                <th className="pf-col-hor pf-th-vert" rowSpan={3}>HOR R&amp;R</th>
-                <th className="pf-col-typeext pf-th-vert" rowSpan={3}>TYPE EXT</th>
-                <th className="pf-col-typeint pf-th-vert" rowSpan={3}>TYPE INT</th>
-                <th className="pf-col-rmvinst pf-th-vert" rowSpan={3}>TYPE Remove</th>
-                <th className="pf-col-sill pf-th-vert" rowSpan={3}>SILL Repair</th>
+                <th className="pf-col-nailfin pf-th-vert" rowSpan={3}><span className="pf-th-vert-inner">NAIL FIN</span></th>
+                <th className="pf-col-full pf-th-vert" rowSpan={3}><span className="pf-th-vert-inner">FULL SCREEN</span></th>
+                <th className="pf-col-oriel pf-th-vert" rowSpan={3}><span className="pf-th-vert-inner">ORIEL</span></th>
+                <th className="pf-col-hor pf-th-vert" rowSpan={3}><span className="pf-th-vert-inner">HOR R&amp;R</span></th>
+                <th className="pf-col-typeext pf-th-vert" rowSpan={3}><span className="pf-th-vert-inner">TYPE EXT</span></th>
+                <th className="pf-col-typeint pf-th-vert" rowSpan={3}><span className="pf-th-vert-inner">TYPE INT</span></th>
+                <th className="pf-col-rmvinst pf-th-vert" rowSpan={3}><span className="pf-th-vert-inner">TYPE Remove</span></th>
+                <th className="pf-col-sill pf-th-vert" rowSpan={3}><span className="pf-th-vert-inner">SILL Repair</span></th>
               </tr>
               {/* Row 2: Sub-headers for MFG SIZE, GRID OPTIONS, TYPE, TEMP */}
               <tr>
-                <th className="pf-col-width pf-th-sub" rowSpan={2}>WIDTH</th>
+                <th className="pf-col-width pf-th-sub" rowSpan={2}><span className="pf-th-vert-inner">WIDTH</span></th>
                 <th className="pf-col-xsep pf-th-sub" rowSpan={2} style={{ fontSize: '5pt' }}>×</th>
-                <th className="pf-col-height pf-th-sub" rowSpan={2}>HEIGHT</th>
-                <th className="pf-col-grid-style pf-th-sub">STYLE</th>
-                <th className="pf-col-grid-pattern pf-th-sub">PATTERN</th>
-                <th className="pf-col-grid-full pf-th-sub">FULL</th>
-                <th className="pf-col-grid-spec pf-th-sub">SPEC</th>
-                <th className="pf-col-type-fill pf-th-sub">FILL</th>
-                <th className="pf-col-type-half pf-th-sub">HALF</th>
-                <th className="pf-col-type-mine pf-th-sub">MINE</th>
-                <th className="pf-col-temp-full pf-th-sub">FULL<br/>LIT</th>
-                <th className="pf-col-temp-s pf-th-sub">S<br/>OTA</th>
-                <th className="pf-col-temp-u pf-th-sub">U<br/>OTA</th>
+                <th className="pf-col-height pf-th-sub" rowSpan={2}><span className="pf-th-vert-inner">HEIGHT</span></th>
+                <th className="pf-col-grid-style pf-th-sub"><span className="pf-th-vert-inner">STYLE</span></th>
+                <th className="pf-col-grid-pattern pf-th-sub"><span className="pf-th-vert-inner">PATTERN</span></th>
+                <th className="pf-col-grid-full pf-th-sub"><span className="pf-th-vert-inner">FULL</span></th>
+                <th className="pf-col-grid-spec pf-th-sub"><span className="pf-th-vert-inner">SPEC</span></th>
+                <th className="pf-col-type-fill pf-th-sub"><span className="pf-th-vert-inner">FILL</span></th>
+                <th className="pf-col-type-half pf-th-sub"><span className="pf-th-vert-inner">HALF</span></th>
+                <th className="pf-col-type-mine pf-th-sub"><span className="pf-th-vert-inner">MINE</span></th>
+                <th className="pf-col-temp-full pf-th-sub"><span className="pf-th-vert-inner">FULL LIT</span></th>
+                <th className="pf-col-temp-s pf-th-sub"><span className="pf-th-vert-inner">S OTA</span></th>
+                <th className="pf-col-temp-u pf-th-sub"><span className="pf-th-vert-inner">U OTA</span></th>
               </tr>
             </thead>
             <tbody>
