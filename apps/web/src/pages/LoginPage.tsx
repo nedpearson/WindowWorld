@@ -23,6 +23,19 @@ export function LoginPage() {
     }
   };
 
+  const handleDemoLogin = async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const { token, user } = await api.login('demo@windowworld.com', 'demo123');
+      setAuth(user, token);
+    } catch (err: any) {
+      setError(err.message || 'Demo login failed');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div style={{
       minHeight: '100dvh', display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -47,7 +60,7 @@ export function LoginPage() {
           <div className="form-group">
             <label className="form-label">Email</label>
             <input className="form-input" type="email" value={email} onChange={(e) => setEmail(e.target.value)}
-              placeholder="nedpearson@gmail.com" required autoFocus />
+              placeholder="Enter your email" required autoFocus />
           </div>
           <div className="form-group">
             <label className="form-label">Password</label>
@@ -60,9 +73,21 @@ export function LoginPage() {
           </button>
         </form>
 
-        <div style={{ marginTop: '1.5rem', textAlign: 'center', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-          Ned: nedpearson@gmail.com / 1Pearson2<br />
-          Demo: demo@windowworld.com / demo123
+        <div style={{ marginTop: '1.5rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+            <div style={{ flex: 1, height: '1px', background: 'var(--border)' }}></div>
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>OR</span>
+            <div style={{ flex: 1, height: '1px', background: 'var(--border)' }}></div>
+          </div>
+          <button 
+            type="button" 
+            className="btn btn-secondary" 
+            style={{ width: '100%' }}
+            onClick={handleDemoLogin}
+            disabled={loading}
+          >
+            Try Interactive Demo
+          </button>
         </div>
       </div>
     </div>

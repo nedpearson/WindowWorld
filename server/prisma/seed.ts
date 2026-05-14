@@ -12,16 +12,21 @@ async function main() {
 
   const ned = await prisma.user.upsert({
     where: { email: 'nedpearson@gmail.com' },
-    update: { password: nedPw, role: 'sales_rep', name: 'Ned Pearson' },
-    create: { email: 'nedpearson@gmail.com', name: 'Ned Pearson', role: 'sales_rep', password: nedPw }
+    update: { password: nedPw, role: 'admin', name: 'Ned Pearson' },
+    create: { email: 'nedpearson@gmail.com', name: 'Ned Pearson', role: 'admin', password: nedPw }
   });
 
   const demoRep = await prisma.user.upsert({
     where: { email: 'demo@windowworld.com' },
-    update: {},
+    update: { password: demoPw, name: 'Demo Sales Rep', role: 'sales_rep' },
     create: { email: 'demo@windowworld.com', name: 'Demo Sales Rep', role: 'sales_rep', password: demoPw }
   });
 
+  // ── Clean Up Existing Data ──
+  // Be careful with this in production, but for seeding demo it's fine.
+  // Actually, we should just ensure Ned has no appointments, and Demo has many.
+  await prisma.appointment.deleteMany({ where: { userId: ned.id } });
+  
   // ── Customers ──
   const customers = [
     { firstName: 'James', lastName: 'Robertson', email: 'jrobertson@email.com', phone: '225-555-0101', address: '1420 Oak Valley Dr', city: 'Baton Rouge', state: 'LA', zip: '70810' },
@@ -29,6 +34,9 @@ async function main() {
     { firstName: 'Robert', lastName: 'Thibodeaux', email: 'rthibodeaux@email.com', phone: '337-555-0303', address: '205 Magnolia St', city: 'Lafayette', state: 'LA', zip: '70501' },
     { firstName: 'Maria', lastName: 'Guidry', email: 'mguidry@email.com', phone: '985-555-0404', address: '1100 Canal St', city: 'Houma', state: 'LA', zip: '70360', preLead1978: true },
     { firstName: 'David', lastName: 'Landry', email: 'dlandry@email.com', phone: '225-555-0505', address: '3421 Perkins Rd', city: 'Baton Rouge', state: 'LA', zip: '70808' },
+    { firstName: 'Emily', lastName: 'Chen', email: 'echen@email.com', phone: '504-555-0606', address: '101 St Charles Ave', city: 'New Orleans', state: 'LA', zip: '70130' },
+    { firstName: 'Michael', lastName: 'Williams', email: 'mwilliams@email.com', phone: '985-555-0707', address: '500 Corporate Dr', city: 'Houma', state: 'LA', zip: '70360' },
+    { firstName: 'Jessica', lastName: 'Brown', email: 'jbrown@email.com', phone: '337-555-0808', address: '1000 W Pinhook Rd', city: 'Lafayette', state: 'LA', zip: '70503' }
   ];
 
   const createdCustomers = [];
@@ -37,14 +45,17 @@ async function main() {
     createdCustomers.push(cust);
   }
 
-  // ── Appointments ──
+  // ── Appointments for Demo Rep ──
   const now = new Date();
   const appointmentData = [
-    { customerId: createdCustomers[0].id, userId: ned.id, status: 'in_progress', appointmentDate: now, jobAddress: '1420 Oak Valley Dr', jobCity: 'Baton Rouge', jobState: 'LA', jobZip: '70810', projectType: 'replacement', notes: 'Full house window replacement - 12 openings' },
-    { customerId: createdCustomers[1].id, userId: ned.id, status: 'draft', appointmentDate: new Date(now.getTime() + 86400000), jobAddress: '8732 Bluebonnet Blvd', jobCity: 'Baton Rouge', jobState: 'LA', jobZip: '70810', projectType: 'replacement' },
+    { customerId: createdCustomers[0].id, userId: demoRep.id, status: 'in_progress', appointmentDate: now, jobAddress: '1420 Oak Valley Dr', jobCity: 'Baton Rouge', jobState: 'LA', jobZip: '70810', projectType: 'replacement', notes: 'Full house window replacement - 12 openings' },
+    { customerId: createdCustomers[1].id, userId: demoRep.id, status: 'draft', appointmentDate: new Date(now.getTime() + 86400000), jobAddress: '8732 Bluebonnet Blvd', jobCity: 'Baton Rouge', jobState: 'LA', jobZip: '70810', projectType: 'replacement' },
     { customerId: createdCustomers[2].id, userId: demoRep.id, status: 'quoted', appointmentDate: new Date(now.getTime() - 86400000), jobAddress: '205 Magnolia St', jobCity: 'Lafayette', jobState: 'LA', jobZip: '70501', projectType: 'replacement', subtotal: 8500, taxRate: 0.0945, taxAmount: 803.25, totalAmount: 9303.25, depositAmount: 3000, balanceDue: 6303.25 },
     { customerId: createdCustomers[3].id, userId: demoRep.id, status: 'sold', appointmentDate: new Date(now.getTime() - 172800000), jobAddress: '1100 Canal St', jobCity: 'Houma', jobState: 'LA', jobZip: '70360', projectType: 'replacement', subtotal: 12400, taxRate: 0.0945, taxAmount: 1171.80, totalAmount: 13571.80, depositAmount: 5000, balanceDue: 8571.80 },
-    { customerId: createdCustomers[4].id, userId: ned.id, status: 'needs_remeasure', appointmentDate: new Date(now.getTime() - 259200000), jobAddress: '3421 Perkins Rd', jobCity: 'Baton Rouge', jobState: 'LA', jobZip: '70808', projectType: 'replacement', notes: 'Kitchen bay window needs remeasure' },
+    { customerId: createdCustomers[4].id, userId: demoRep.id, status: 'needs_remeasure', appointmentDate: new Date(now.getTime() - 259200000), jobAddress: '3421 Perkins Rd', jobCity: 'Baton Rouge', jobState: 'LA', jobZip: '70808', projectType: 'replacement', notes: 'Kitchen bay window needs remeasure' },
+    { customerId: createdCustomers[5].id, userId: demoRep.id, status: 'in_progress', appointmentDate: new Date(now.getTime() + 172800000), jobAddress: '101 St Charles Ave', jobCity: 'New Orleans', jobState: 'LA', jobZip: '70130', projectType: 'replacement', notes: 'Historic district, needs special approval' },
+    { customerId: createdCustomers[6].id, userId: demoRep.id, status: 'sold', appointmentDate: new Date(now.getTime() - 500000000), jobAddress: '500 Corporate Dr', jobCity: 'Houma', jobState: 'LA', jobZip: '70360', projectType: 'new_construction', subtotal: 25000, taxRate: 0.0945, taxAmount: 2362.50, totalAmount: 27362.50, depositAmount: 10000, balanceDue: 17362.50 },
+    { customerId: createdCustomers[7].id, userId: demoRep.id, status: 'draft', appointmentDate: new Date(now.getTime() + 300000000), jobAddress: '1000 W Pinhook Rd', jobCity: 'Lafayette', jobState: 'LA', jobZip: '70503', projectType: 'replacement' }
   ];
 
   const createdAppts = [];
@@ -72,138 +83,146 @@ async function main() {
     await prisma.opening.create({ data: { ...o, unitedInches } });
   }
 
-  // ── Pricing Tables ──
-  const dhTable = await prisma.pricingTable.create({
-    data: { name: 'Double Hung Base Pricing', category: 'product', description: 'Base pricing for double hung windows by united inches' }
-  });
+  // ── Pricing Tables (Only create if missing to avoid duplicates) ──
+  const existingDhTable = await prisma.pricingTable.findFirst({ where: { name: 'Double Hung Base Pricing' } });
+  
+  if (!existingDhTable) {
+      const dhTable = await prisma.pricingTable.create({
+        data: { name: 'Double Hung Base Pricing', category: 'product', description: 'Base pricing for double hung windows by united inches' }
+      });
 
-  const dhPrices = [
-    { label: 'DH ≤73 UI', unitedInchesMin: 0, unitedInchesMax: 73, price: 289, productCategory: 'double_hung', seriesModel: '4000 Series', needsVerification: true },
-    { label: 'DH 74-87 UI', unitedInchesMin: 74, unitedInchesMax: 87, price: 319, productCategory: 'double_hung', seriesModel: '4000 Series', needsVerification: true },
-    { label: 'DH 88-101 UI', unitedInchesMin: 88, unitedInchesMax: 101, price: 369, productCategory: 'double_hung', seriesModel: '4000 Series', needsVerification: true },
-    { label: 'DH 102-120 UI', unitedInchesMin: 102, unitedInchesMax: 120, price: 449, productCategory: 'double_hung', seriesModel: '4000 Series', needsVerification: true },
-    { label: 'DH >120 UI', unitedInchesMin: 121, unitedInchesMax: 200, price: 549, productCategory: 'double_hung', seriesModel: '4000 Series', needsVerification: true },
-  ];
+      const dhPrices = [
+        { label: 'DH ≤73 UI', unitedInchesMin: 0, unitedInchesMax: 73, price: 289, productCategory: 'double_hung', seriesModel: '4000 Series', needsVerification: true },
+        { label: 'DH 74-87 UI', unitedInchesMin: 74, unitedInchesMax: 87, price: 319, productCategory: 'double_hung', seriesModel: '4000 Series', needsVerification: true },
+        { label: 'DH 88-101 UI', unitedInchesMin: 88, unitedInchesMax: 101, price: 369, productCategory: 'double_hung', seriesModel: '4000 Series', needsVerification: true },
+        { label: 'DH 102-120 UI', unitedInchesMin: 102, unitedInchesMax: 120, price: 449, productCategory: 'double_hung', seriesModel: '4000 Series', needsVerification: true },
+        { label: 'DH >120 UI', unitedInchesMin: 121, unitedInchesMax: 200, price: 549, productCategory: 'double_hung', seriesModel: '4000 Series', needsVerification: true },
+      ];
 
-  for (let i = 0; i < dhPrices.length; i++) {
-    await prisma.pricingItem.create({ data: { ...dhPrices[i], pricingTableId: dhTable.id, sortOrder: i } });
+      for (let i = 0; i < dhPrices.length; i++) {
+        await prisma.pricingItem.create({ data: { ...dhPrices[i], pricingTableId: dhTable.id, sortOrder: i } });
+      }
+
+      const optTable = await prisma.pricingTable.create({
+        data: { name: 'Window Options', category: 'option', description: 'Add-on options for windows' }
+      });
+
+      const options = [
+        { label: 'Grid - Colonial', price: 45, needsVerification: true },
+        { label: 'Grid - Prairie', price: 55, needsVerification: true },
+        { label: 'Grid - Diamond', price: 65, needsVerification: true },
+        { label: 'Tempered Glass', price: 35, needsVerification: true },
+        { label: 'Obscure Glass', price: 25, needsVerification: true },
+        { label: 'Argon Gas Fill', price: 30, needsVerification: true },
+        { label: 'Foam Enhanced Frame', price: 40, needsVerification: true },
+        { label: 'Low-E Standard', price: 0, isDefault: true },
+        { label: 'Low-E SolarZone', price: 25, needsVerification: true },
+        { label: 'Low-E SolarZone Elite', price: 55, needsVerification: true },
+        { label: 'Screen - Standard', price: 0, isDefault: true },
+        { label: 'Screen - Retractable', price: 85, needsVerification: true },
+      ];
+
+      for (let i = 0; i < options.length; i++) {
+        await prisma.pricingItem.create({ data: { ...options[i], pricingTableId: optTable.id, sortOrder: i } });
+      }
+
+      const laborTable = await prisma.pricingTable.create({
+        data: { name: 'Labor & Installation', category: 'labor', description: 'Installation and removal charges' }
+      });
+
+      const laborItems = [
+        { label: 'Standard Installation', price: 75, needsVerification: true },
+        { label: 'Full Tearout & Replace', price: 150, needsVerification: true },
+        { label: 'Insert Installation', price: 50, needsVerification: true },
+        { label: 'Wood Rot Repair - Minor', price: 125, needsVerification: true },
+        { label: 'Wood Rot Repair - Major', price: 275, needsVerification: true },
+        { label: 'Trim / Capping - Per LF', price: 8, priceType: 'per_linft', needsVerification: true },
+        { label: 'Sill Replacement', price: 95, needsVerification: true },
+      ];
+
+      for (let i = 0; i < laborItems.length; i++) {
+        await prisma.pricingItem.create({ data: { ...laborItems[i], pricingTableId: laborTable.id, sortOrder: i } });
+      }
+
+      // Specialty shape pricing
+      const specTable = await prisma.pricingTable.create({
+        data: { name: 'Specialty Shapes', category: 'specialty', description: 'Pricing for specialty window shapes' }
+      });
+
+      const specItems = [
+        { label: 'Circle Top ≤48 UI', unitedInchesMin: 0, unitedInchesMax: 48, price: 350, productCategory: 'circle_top', needsVerification: true },
+        { label: 'Circle Top 49-72 UI', unitedInchesMin: 49, unitedInchesMax: 72, price: 450, productCategory: 'circle_top', needsVerification: true },
+        { label: 'Eyebrow ≤60 UI', unitedInchesMin: 0, unitedInchesMax: 60, price: 380, productCategory: 'eyebrow', needsVerification: true },
+        { label: 'Quarter Arch ≤48 UI', unitedInchesMin: 0, unitedInchesMax: 48, price: 320, productCategory: 'quarter_arch', needsVerification: true },
+      ];
+
+      for (let i = 0; i < specItems.length; i++) {
+        await prisma.pricingItem.create({ data: { ...specItems[i], pricingTableId: specTable.id, sortOrder: i } });
+      }
   }
 
-  const optTable = await prisma.pricingTable.create({
-    data: { name: 'Window Options', category: 'option', description: 'Add-on options for windows' }
-  });
-
-  const options = [
-    { label: 'Grid - Colonial', price: 45, needsVerification: true },
-    { label: 'Grid - Prairie', price: 55, needsVerification: true },
-    { label: 'Grid - Diamond', price: 65, needsVerification: true },
-    { label: 'Tempered Glass', price: 35, needsVerification: true },
-    { label: 'Obscure Glass', price: 25, needsVerification: true },
-    { label: 'Argon Gas Fill', price: 30, needsVerification: true },
-    { label: 'Foam Enhanced Frame', price: 40, needsVerification: true },
-    { label: 'Low-E Standard', price: 0, isDefault: true },
-    { label: 'Low-E SolarZone', price: 25, needsVerification: true },
-    { label: 'Low-E SolarZone Elite', price: 55, needsVerification: true },
-    { label: 'Screen - Standard', price: 0, isDefault: true },
-    { label: 'Screen - Retractable', price: 85, needsVerification: true },
-  ];
-
-  for (let i = 0; i < options.length; i++) {
-    await prisma.pricingItem.create({ data: { ...options[i], pricingTableId: optTable.id, sortOrder: i } });
-  }
-
-  const laborTable = await prisma.pricingTable.create({
-    data: { name: 'Labor & Installation', category: 'labor', description: 'Installation and removal charges' }
-  });
-
-  const laborItems = [
-    { label: 'Standard Installation', price: 75, needsVerification: true },
-    { label: 'Full Tearout & Replace', price: 150, needsVerification: true },
-    { label: 'Insert Installation', price: 50, needsVerification: true },
-    { label: 'Wood Rot Repair - Minor', price: 125, needsVerification: true },
-    { label: 'Wood Rot Repair - Major', price: 275, needsVerification: true },
-    { label: 'Trim / Capping - Per LF', price: 8, priceType: 'per_linft', needsVerification: true },
-    { label: 'Sill Replacement', price: 95, needsVerification: true },
-  ];
-
-  for (let i = 0; i < laborItems.length; i++) {
-    await prisma.pricingItem.create({ data: { ...laborItems[i], pricingTableId: laborTable.id, sortOrder: i } });
-  }
-
-  // Specialty shape pricing
-  const specTable = await prisma.pricingTable.create({
-    data: { name: 'Specialty Shapes', category: 'specialty', description: 'Pricing for specialty window shapes' }
-  });
-
-  const specItems = [
-    { label: 'Circle Top ≤48 UI', unitedInchesMin: 0, unitedInchesMax: 48, price: 350, productCategory: 'circle_top', needsVerification: true },
-    { label: 'Circle Top 49-72 UI', unitedInchesMin: 49, unitedInchesMax: 72, price: 450, productCategory: 'circle_top', needsVerification: true },
-    { label: 'Eyebrow ≤60 UI', unitedInchesMin: 0, unitedInchesMax: 60, price: 380, productCategory: 'eyebrow', needsVerification: true },
-    { label: 'Quarter Arch ≤48 UI', unitedInchesMin: 0, unitedInchesMax: 48, price: 320, productCategory: 'quarter_arch', needsVerification: true },
-  ];
-
-  for (let i = 0; i < specItems.length; i++) {
-    await prisma.pricingItem.create({ data: { ...specItems[i], pricingTableId: specTable.id, sortOrder: i } });
-  }
   // ── Pricing Version (Published) ──
-  const pv = await prisma.pricingVersion.upsert({
-    where: { id: 'seed-pricing-v1' },
-    update: {},
-    create: {
-      id: 'seed-pricing-v1',
-      name: 'Window World 2026 Standard',
-      status: 'published',
-      publishedAt: new Date(),
-      publishedBy: ned.id,
-      notes: 'Initial seed pricing - verify against current price sheets',
-    }
-  });
+  const existingPv = await prisma.pricingVersion.findUnique({ where: { id: 'seed-pricing-v1' }});
+  
+  if (!existingPv) {
+      const pv = await prisma.pricingVersion.upsert({
+        where: { id: 'seed-pricing-v1' },
+        update: {},
+        create: {
+          id: 'seed-pricing-v1',
+          name: 'Window World 2026 Standard',
+          status: 'published',
+          publishedAt: new Date(),
+          publishedBy: ned.id,
+          notes: 'Initial seed pricing - verify against current price sheets',
+        }
+      });
 
-  const pvItems = [
-    // Products - Double Hung by UI tier
-    { category: 'product', productCategory: 'double_hung', label: 'DH 6100 ≤70 UI', unitedInchesMin: 0, unitedInchesMax: 70, price: 289, priceType: 'flat', seriesModel: '6100' },
-    { category: 'product', productCategory: 'double_hung', label: 'DH 6100 71-84 UI', unitedInchesMin: 71, unitedInchesMax: 84, price: 329, priceType: 'flat', seriesModel: '6100' },
-    { category: 'product', productCategory: 'double_hung', label: 'DH 6100 85-101 UI', unitedInchesMin: 85, unitedInchesMax: 101, price: 389, priceType: 'flat', seriesModel: '6100' },
-    { category: 'product', productCategory: 'double_hung', label: 'DH 6100 102-120 UI', unitedInchesMin: 102, unitedInchesMax: 120, price: 449, priceType: 'flat', seriesModel: '6100' },
-    { category: 'product', productCategory: 'slider', label: 'Slider ≤84 UI', unitedInchesMin: 0, unitedInchesMax: 84, price: 329, priceType: 'flat' },
-    { category: 'product', productCategory: 'slider', label: 'Slider 85-120 UI', unitedInchesMin: 85, unitedInchesMax: 120, price: 419, priceType: 'flat' },
-    { category: 'product', productCategory: 'picture', label: 'Picture ≤84 UI', unitedInchesMin: 0, unitedInchesMax: 84, price: 299, priceType: 'flat' },
-    { category: 'product', productCategory: 'picture', label: 'Picture 85-120 UI', unitedInchesMin: 85, unitedInchesMax: 120, price: 379, priceType: 'flat' },
-    { category: 'product', productCategory: 'casement', label: 'Casement ≤84 UI', unitedInchesMin: 0, unitedInchesMax: 84, price: 389, priceType: 'flat' },
-    { category: 'product', productCategory: 'patio_door', label: 'Patio Door 6ft', unitedInchesMin: 0, unitedInchesMax: 200, price: 1299, priceType: 'flat' },
-    // Options
-    { category: 'option', label: 'Colonial Grids', price: 55, priceType: 'flat' },
-    { category: 'option', label: 'Prairie Grids', price: 55, priceType: 'flat' },
-    { category: 'option', label: 'Diamond Grids', price: 65, priceType: 'flat' },
-    { category: 'option', label: 'Tempered Glass', price: 40, priceType: 'flat' },
-    { category: 'option', label: 'Obscure Glass', price: 35, priceType: 'flat' },
-    { category: 'option', label: 'Foam Enhanced Frame', price: 35, priceType: 'flat' },
-    { category: 'option', label: 'Argon Gas Fill', price: 30, priceType: 'flat' },
-    { category: 'option', label: 'Full Screen', price: 25, priceType: 'flat' },
-    { category: 'option', label: 'Nail Fin', price: 20, priceType: 'flat' },
-    { category: 'option', label: 'Color Upgrade - Exterior', price: 45, priceType: 'flat' },
-    // Labor
-    { category: 'labor', label: 'Full Tearout Installation', price: 85, priceType: 'flat' },
-    { category: 'labor', label: 'Insert Installation', price: 65, priceType: 'flat' },
-    { category: 'labor', label: 'Sill Repair', price: 45, priceType: 'flat' },
-    { category: 'labor', label: 'Trim Package - Interior/Exterior', price: 75, priceType: 'flat' },
-    { category: 'labor', label: '2nd Floor Additional', price: 30, priceType: 'flat' },
-    { category: 'labor', label: 'Lead Paint Containment', price: 125, priceType: 'flat' },
-    // Specialty
-    { category: 'specialty', productCategory: 'circle_top', label: 'Circle Top ≤48 UI', unitedInchesMin: 0, unitedInchesMax: 48, price: 350, priceType: 'flat', needsVerification: true },
-    { category: 'specialty', productCategory: 'eyebrow', label: 'Eyebrow ≤60 UI', unitedInchesMin: 0, unitedInchesMax: 60, price: 380, priceType: 'flat', needsVerification: true },
-  ];
+      const pvItems = [
+        // Products - Double Hung by UI tier
+        { category: 'product', productCategory: 'double_hung', label: 'DH 6100 ≤70 UI', unitedInchesMin: 0, unitedInchesMax: 70, price: 289, priceType: 'flat', seriesModel: '6100' },
+        { category: 'product', productCategory: 'double_hung', label: 'DH 6100 71-84 UI', unitedInchesMin: 71, unitedInchesMax: 84, price: 329, priceType: 'flat', seriesModel: '6100' },
+        { category: 'product', productCategory: 'double_hung', label: 'DH 6100 85-101 UI', unitedInchesMin: 85, unitedInchesMax: 101, price: 389, priceType: 'flat', seriesModel: '6100' },
+        { category: 'product', productCategory: 'double_hung', label: 'DH 6100 102-120 UI', unitedInchesMin: 102, unitedInchesMax: 120, price: 449, priceType: 'flat', seriesModel: '6100' },
+        { category: 'product', productCategory: 'slider', label: 'Slider ≤84 UI', unitedInchesMin: 0, unitedInchesMax: 84, price: 329, priceType: 'flat' },
+        { category: 'product', productCategory: 'slider', label: 'Slider 85-120 UI', unitedInchesMin: 85, unitedInchesMax: 120, price: 419, priceType: 'flat' },
+        { category: 'product', productCategory: 'picture', label: 'Picture ≤84 UI', unitedInchesMin: 0, unitedInchesMax: 84, price: 299, priceType: 'flat' },
+        { category: 'product', productCategory: 'picture', label: 'Picture 85-120 UI', unitedInchesMin: 85, unitedInchesMax: 120, price: 379, priceType: 'flat' },
+        { category: 'product', productCategory: 'casement', label: 'Casement ≤84 UI', unitedInchesMin: 0, unitedInchesMax: 84, price: 389, priceType: 'flat' },
+        { category: 'product', productCategory: 'patio_door', label: 'Patio Door 6ft', unitedInchesMin: 0, unitedInchesMax: 200, price: 1299, priceType: 'flat' },
+        // Options
+        { category: 'option', label: 'Colonial Grids', price: 55, priceType: 'flat' },
+        { category: 'option', label: 'Prairie Grids', price: 55, priceType: 'flat' },
+        { category: 'option', label: 'Diamond Grids', price: 65, priceType: 'flat' },
+        { category: 'option', label: 'Tempered Glass', price: 40, priceType: 'flat' },
+        { category: 'option', label: 'Obscure Glass', price: 35, priceType: 'flat' },
+        { category: 'option', label: 'Foam Enhanced Frame', price: 35, priceType: 'flat' },
+        { category: 'option', label: 'Argon Gas Fill', price: 30, priceType: 'flat' },
+        { category: 'option', label: 'Full Screen', price: 25, priceType: 'flat' },
+        { category: 'option', label: 'Nail Fin', price: 20, priceType: 'flat' },
+        { category: 'option', label: 'Color Upgrade - Exterior', price: 45, priceType: 'flat' },
+        // Labor
+        { category: 'labor', label: 'Full Tearout Installation', price: 85, priceType: 'flat' },
+        { category: 'labor', label: 'Insert Installation', price: 65, priceType: 'flat' },
+        { category: 'labor', label: 'Sill Repair', price: 45, priceType: 'flat' },
+        { category: 'labor', label: 'Trim Package - Interior/Exterior', price: 75, priceType: 'flat' },
+        { category: 'labor', label: '2nd Floor Additional', price: 30, priceType: 'flat' },
+        { category: 'labor', label: 'Lead Paint Containment', price: 125, priceType: 'flat' },
+        // Specialty
+        { category: 'specialty', productCategory: 'circle_top', label: 'Circle Top ≤48 UI', unitedInchesMin: 0, unitedInchesMax: 48, price: 350, priceType: 'flat', needsVerification: true },
+        { category: 'specialty', productCategory: 'eyebrow', label: 'Eyebrow ≤60 UI', unitedInchesMin: 0, unitedInchesMax: 60, price: 380, priceType: 'flat', needsVerification: true },
+      ];
 
-  for (let i = 0; i < pvItems.length; i++) {
-    await prisma.pricingVersionItem.create({
-      data: { ...pvItems[i], pricingVersionId: pv.id, sortOrder: i, confidence: 0.85 }
-    });
+      for (let i = 0; i < pvItems.length; i++) {
+        await prisma.pricingVersionItem.create({
+          data: { ...pvItems[i], pricingVersionId: pv.id, sortOrder: i, confidence: 0.85 }
+        });
+      }
   }
 
   console.log('✅ Seed complete!');
-  console.log(`   Ned (Sales Rep/Admin): nedpearson@gmail.com / 1Pearson2`);
-  console.log(`   Demo:                  demo@windowworld.com / demo123`);
-  console.log(`   Published Pricing:     Window World 2026 Standard (${pvItems.length} items)`);
+  console.log(`   Ned (Admin): nedpearson@gmail.com / 1Pearson2 (Data Cleared)`);
+  console.log(`   Demo (Sales Rep): demo@windowworld.com / demo123 (Rich Data Added)`);
 }
 
 main().catch(console.error).finally(() => prisma.$disconnect());
