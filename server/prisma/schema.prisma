@@ -1034,3 +1034,116 @@ model SpecialtyMeasurementValidation {
 
   @@index([sessionId])
 }
+
+// ═══════════════════════════════════════════════════════════
+// WORKBOOK TEMPLATE ENGINE TABLES
+// ═══════════════════════════════════════════════════════════
+
+model WorkbookTemplate {
+  id            String   @id @default(cuid())
+  name          String
+  description   String?
+  fileName      String
+  filePath      String
+  storageBucket String?
+  isActive      Boolean  @default(false)
+  createdBy     String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  versions      WorkbookTemplateVersion[]
+  exports       WorkbookExportJob[]
+}
+
+model WorkbookTemplateVersion {
+  id            String   @id @default(cuid())
+  templateId    String
+  versionNumber Int
+  fileName      String
+  filePath      String
+  sheetNames    String[] // Array of sheet names detected
+  isActive      Boolean  @default(false)
+  changeNotes   String?
+  createdBy     String?
+  createdAt     DateTime @default(now())
+
+  template      WorkbookTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  fieldMappings WorkbookFieldMapping[]
+  exports       WorkbookExportJob[]
+
+  @@unique([templateId, versionNumber])
+  @@index([templateId])
+}
+
+model WorkbookFieldMapping {
+  id              String   @id @default(cuid())
+  versionId       String
+  sheetName       String
+  cellAddress     String
+  mergeRange      String?
+  fieldKey        String
+  fieldLabel      String
+  fieldType       String   // text, number, currency, date, boolean, select, formula, signature
+  sourceType      String   // customer, appointment, opening, quote, pricing, user, calculated, manual
+  sourcePath      String?
+  formula         String?
+  required        Boolean  @default(false)
+  aiPopulatable   Boolean  @default(false)
+  validationRules String?
+  metadata        Json?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  version         WorkbookTemplateVersion @relation(fields: [versionId], references: [id], onDelete: Cascade)
+  fieldValues     WorkbookFieldValue[]
+
+  @@unique([versionId, sheetName, cellAddress])
+  @@index([versionId])
+  @@index([fieldKey])
+}
+
+model WorkbookFieldValue {
+  id              String   @id @default(cuid())
+  mappingId       String
+  appointmentId   String
+  value           String?
+  normalizedValue String?
+  sourceType      String?  // typed, voice, ai, rule, formula, manual
+  sourceText      String?
+  confidence      Float?
+  reviewStatus    String   @default("pending") // pending, approved, rejected
+  approvedBy      String?
+  approvedAt      DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  mapping         WorkbookFieldMapping @relation(fields: [mappingId], references: [id], onDelete: Cascade)
+
+  @@index([appointmentId])
+  @@index([mappingId])
+}
+
+model WorkbookExportJob {
+  id              String   @id @default(cuid())
+  appointmentId   String
+  templateId      String
+  versionId       String?
+  exportFormat    String   @default("xlsx") // xlsx, pdf
+  status          String   @default("pending") // pending, processing, completed, failed
+  filePath        String?
+  storageBucket   String?
+  fileSize        Int?
+  errorMessage    String?
+  reconciliation  Json?    // Reconciliation results snapshot
+  metadata        Json?
+  createdBy       String?
+  createdAt       DateTime @default(now())
+  completedAt     DateTime?
+
+  template        WorkbookTemplate @relation(fields: [templateId], references: [id])
+  version         WorkbookTemplateVersion? @relation(fields: [versionId], references: [id])
+
+  @@index([appointmentId])
+  @@index([templateId])
+}
+
