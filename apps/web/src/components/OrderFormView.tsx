@@ -60,68 +60,105 @@ export function OrderFormView({ appointmentId }: { appointmentId: string }) {
   const upd = (field: string, value: any) => setFormData({ ...formData, [field]: value });
 
   const generatePDF = async () => {
-    const { jsPDF } = await import('jspdf');
-    const doc = new jsPDF('l', 'mm', 'letter'); // landscape
-    let y = 15;
-    const lm = 10;
+    try {
+      const { jsPDF } = await import('jspdf');
+      const doc = new jsPDF('p', 'pt', 'letter'); // PORTRAIT
+      const pw = 612, m = 28;
+      let y = m;
 
-    doc.setFontSize(16);
-    doc.text('WINDOW AND PATIO DOOR ORDER FORM', 140, y, { align: 'center' });
-    y += 10;
+      // Title
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(14);
+      doc.text('WINDOW AND PATIO DOOR ORDER FORM', pw / 2, y + 14, { align: 'center' });
+      y += 28;
 
-    // Header
-    doc.setFontSize(9);
-    doc.text(`PO#: ${formData.poNumber}    Account#: ${formData.accountNumber}    Date: ${formData.orderDate}`, lm, y); y += 5;
-    doc.text(`Customer: ${formData.customerName}    Phone: ${formData.phone}    Phone2: ${formData.phone2 || ''}`, lm, y); y += 5;
-    doc.text(`Address: ${formData.address}, ${formData.city}, ${formData.state} ${formData.zip}`, lm, y); y += 5;
-    doc.text(`Estimator: ${formData.estimator}`, lm, y); y += 8;
+      // Customer info block
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(9);
+      const s = (v: any) => v ?? '';
+      doc.text(`PO#: ${s(formData.poNumber)}     Account#: ${s(formData.accountNumber)}     Date: ${s(formData.orderDate)}`, m, y); y += 13;
+      doc.text(`Customer: ${s(formData.customerName)}     Phone: ${s(formData.phone)}     Phone2: ${s(formData.phone2)}`, m, y); y += 13;
+      doc.text(`Address: ${s(formData.address)}, ${s(formData.city)}, ${s(formData.state)} ${s(formData.zip)}`, m, y); y += 13;
+      doc.text(`Estimator: ${s(formData.estimator)}`, m, y); y += 18;
 
-    // Column headers
-    doc.setFontSize(6);
-    const cols = ['#', 'Qty', 'Model', 'Color', 'Int', 'Ext', 'Width', 'Height', 'UI', 'Leg', 'Grid', 'Glass', 'Foam', 'Temp', 'Obsc', 'Screen', 'Fin', 'Oriel', 'H R&R', 'Floor', 'Trim', 'Rmv/Inst', 'Sill', 'Elev', 'Room', 'Notes'];
-    const colX = [lm, lm+8, lm+16, lm+32, lm+46, lm+56, lm+66, lm+78, lm+90, lm+100, lm+110, lm+122, lm+136, lm+146, lm+156, lm+166, lm+178, lm+186, lm+194, lm+204, lm+214, lm+224, lm+240, lm+250, lm+258, lm+266];
-    
-    cols.forEach((c, i) => doc.text(c, colX[i], y));
-    y += 1;
-    doc.line(lm, y, 275, y);
-    y += 3;
+      // Column headers
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(5.5);
+      const cols = ['#','Qty','Model','Vinyl','Int','Ext','W','×','H','Leg','Rad','Win#','Hng','Glass','Foam','Grid','Pat','Ful','Spc','Fil','Hlf','Min','F/L','S','U','NF','Scr','Orl','HR','TExt','TInt','Rmv','Sill'];
+      const cw = [14,16,32,20,18,18,24,10,24,18,20,18,18,22,18,16,20,14,14,14,14,14,14,12,12,16,16,16,16,16,16,16,16];
+      let cx = m;
+      cols.forEach((c, i) => {
+        doc.rect(cx, y, cw[i], 14);
+        doc.text(c, cx + cw[i] / 2, y + 10, { align: 'center' });
+        cx += cw[i];
+      });
+      y += 14;
 
-    // Opening rows — NO source tags in PDF
-    doc.setFontSize(6.5);
-    for (const o of (formData.openings || [])) {
-      if (y > 195) { doc.addPage(); y = 15; }
-      const vals = [
-        String(o.openingNumber), String(o.qty || 1), o.model || '', o.vinylColor || '', o.interiorColor || '', o.exteriorColor || '',
-        String(o.width || ''), String(o.height || ''), String(o.unitedInches || ''), String(o.legHeight || ''),
-        o.gridStyle || '', o.glassOption || '', o.foamEnhanced ? '✓' : '', o.tempered || '', o.obscure || '',
-        o.fullScreen ? 'Full' : '', o.nailFin ? '✓' : '', o.oriel ? '✓' : '', o.horizontalRR ? '✓' : '',
-        String(o.floorNumber || ''), o.trimType || '', o.removeInstallType || '', o.sillRepair ? '✓' : '',
-        o.elevation || '', o.roomLocation || '', (o.notes || '').slice(0, 20)
-      ];
-      vals.forEach((v, i) => doc.text(v, colX[i], y));
-      y += 4;
-    }
-
-    // Sketch area placeholder
-    y += 5;
-    doc.setFontSize(8);
-    doc.text('SKETCH / LAYOUT:', lm, y);
-    y += 3;
-    doc.rect(lm, y, 120, 50);
-    doc.text('(See attached sketch page)', lm + 5, y + 25);
-
-    // Sketch markers
-    if (formData.sketchMarkers?.length > 0) {
-      let my = y + 5;
+      // Opening rows
+      doc.setFont('helvetica', 'normal');
       doc.setFontSize(6);
-      for (const m of formData.sketchMarkers) {
-        if (my > y + 45) break;
-        doc.text(`#${m.openingNumber} - ${m.elevation} ${m.label || ''} ${m.roomName || ''}`, lm + 5, my);
-        my += 3;
+      for (const o of (formData.openings || [])) {
+        if (y > 730) { doc.addPage(); y = m; }
+        cx = m;
+        const vals = [
+          String(o.openingNumber || ''), String(o.qty || 1), s(o.model), s(o.vinylColor),
+          s(o.interiorColor), s(o.exteriorColor), String(o.width || ''), '×', String(o.height || ''),
+          String(o.legHeight || ''), String(o.customRadius || ''), String(o.windowNumber || o.openingNumber || ''),
+          s(o.hinge), s(o.glassOption), o.foamEnhanced ? '✓' : '',
+          s(o.gridStyle), s(o.gridPattern), o.gridFull ? '✓' : '', o.gridSpec ? '✓' : '',
+          o.typeFill ? '✓' : '', o.typeHalf ? '✓' : '', o.typeMine ? '✓' : '',
+          o.tempFull ? '✓' : '', o.tempS ? '✓' : '', o.tempU ? '✓' : '',
+          o.nailFin ? '✓' : '', o.fullScreen ? '✓' : '', o.oriel ? '✓' : '', o.horizontalRR ? '✓' : '',
+          s(o.exteriorType), s(o.trimType), s(o.removeInstallType), o.sillRepair ? '✓' : ''
+        ];
+        vals.forEach((v, i) => {
+          doc.rect(cx, y, cw[i], 13);
+          doc.text(v, cx + cw[i] / 2, y + 9.5, { align: 'center' });
+          cx += cw[i];
+        });
+        y += 13;
       }
-    }
+      y += 8;
 
-    doc.save(`OrderForm_${formData.customerName.replace(/ /g, '_')}.pdf`);
+      // Notes
+      if (formData.sketchNotes || formData.notes) {
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(8);
+        doc.text('NOTES:', m, y + 8);
+        doc.rect(m, y + 10, pw - m * 2, 36);
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(7);
+        const notes = formData.sketchNotes || formData.notes || '';
+        doc.text(doc.splitTextToSize(notes, pw - m * 2 - 8), m + 4, y + 20);
+        y += 52;
+      }
+
+      // Certification
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(6);
+      doc.text('I certify the salesperson has explained and identified each and every abbreviation, term, and drawing on this page to my full satisfaction,', m, y + 6);
+      doc.text('and I have complete understanding how each and every window or entrance is measured, how it\'s constructed, accessorized, and warranted.', m, y + 13);
+      y += 22;
+
+      // Signature
+      doc.setFontSize(8);
+      doc.text('OWNER', m, y + 10);
+      doc.line(m + 40, y + 10, m + 200, y + 10);
+      doc.text('DATE', pw / 2 + 40, y + 10);
+      doc.line(pw / 2 + 70, y + 10, pw - m, y + 10);
+      y += 18;
+
+      // Footer
+      doc.setFontSize(6);
+      doc.text('PAGE 1 OF ___', m, 780);
+      doc.text('White Copy - Original     Yellow Copy - Estimator     Pink Copy - Customer', pw / 2, 780, { align: 'center' });
+
+      const name = (formData.customerName || 'blank').replace(/\s+/g, '_');
+      doc.save(`OrderForm_${name}.pdf`);
+    } catch (err) {
+      console.error('PDF generation failed:', err);
+      alert('PDF generation failed. Check the console for details.');
+    }
   };
 
   if (!formData) return <div className="card" style={{ padding: '3rem', textAlign: 'center' }}>{loading ? '⏳ Auto-filling order form...' : 'Click to auto-fill order form'}</div>;
