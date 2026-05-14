@@ -151,7 +151,29 @@ export function AppointmentDetailPage() {
       <div className="stepper">
         {STEPS.map((s, i) => {
           const isActive = step === i;
-          const isCompleted = i < step;
+
+          // Determine completion based on actual data fill, not step position
+          const stepSections: Record<number, string[]> = {
+            0: ['Header'], 1: ['Header'], 2: ['Sketch'], 3: ['Openings'],
+            4: ['Pricing'], 5: [], 6: ['Customer', 'Job Scope', 'Product Counts', 'Pricing', 'Acknowledgments'],
+            7: ['Signatures'],
+          };
+          let stepPct = 0;
+          if (validation) {
+            const sNames = stepSections[i] || [];
+            let total = 0, filled = 0;
+            for (const name of sNames) {
+              const sec = validation.sections[name];
+              if (sec) { total += sec.total; filled += sec.filled; }
+            }
+            if (i === 3) {
+              total = validation.openings.reduce((s: number, o: any) => s + o.total, 0);
+              filled = validation.openings.reduce((s: number, o: any) => s + o.filled, 0);
+            }
+            stepPct = total > 0 ? Math.round((filled / total) * 100) : (i <= 1 ? 100 : 0);
+          }
+          const isCompleted = stepPct >= 60;
+
           // For "Missing Info" step, show blocker count
           const stepBlockers = validation?.issues.filter(iss => iss.jumpStep === i && iss.severity === 'BLOCKER').length || 0;
 

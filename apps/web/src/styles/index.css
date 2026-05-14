@@ -142,13 +142,13 @@ button, input, select, textarea {
 }
 .stepper-step:hover { color: var(--text-secondary); background: var(--bg-card-hover); }
 .stepper-step.active { background: rgba(59,130,246,0.15); color: var(--accent); border-color: var(--accent); }
-.stepper-step.completed { color: var(--success); }
+.stepper-step.completed { color: #22c55e; background: rgba(34,197,94,0.08); border-color: rgba(34,197,94,0.3); }
 .stepper-num {
   width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
   font-size: 0.75rem; font-weight: 700; background: var(--border); color: var(--text-secondary);
 }
 .stepper-step.active .stepper-num { background: var(--accent); color: white; }
-.stepper-step.completed .stepper-num { background: var(--success); color: white; }
+.stepper-step.completed .stepper-num { background: #22c55e; color: white; }
 
 /* Sticky total bar */
 .sticky-total {
