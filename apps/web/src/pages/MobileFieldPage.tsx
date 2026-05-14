@@ -9,6 +9,8 @@ import { SketchBoard } from '../components/DrawableSketch';
 import { OpeningWizard } from '../components/OpeningWizard';
 import { MissingInfoCheck } from '../components/MissingInfoCheck';
 import { PricingReview } from '../components/PricingReview';
+import { MobilePhotoCapture } from '../components/MobilePhotoCapture';
+import { MobileExportMenu } from '../components/MobileExportMenu';
 import { validateAppointment } from '../utils/validationEngine';
 import { runAppointmentCoach } from '../utils/appointmentCoach';
 
@@ -25,6 +27,9 @@ export function MobileFieldPage() {
   const [tab, setTab] = useState<MobileTab>('home');
   const [recording, setRecording] = useState(false);
   const [showWizard, setShowWizard] = useState(false);
+  const [showPhotoCapture, setShowPhotoCapture] = useState<{ openingId?: string; openingNumber?: number } | null>(null);
+  const [showExport, setShowExport] = useState(false);
+  const [editingOpening, setEditingOpening] = useState<any>(null);
   const [nextAction, setNextAction] = useState<any>(null);
   const [transcript, setTranscript] = useState('');
   const [noteText, setNoteText] = useState('');
@@ -349,6 +354,12 @@ export function MobileFieldPage() {
               <button className="mf-action-btn" onClick={() => navigate(`/mobile/order/${appt.id}`)}>
                 <span style={{ fontSize: '2rem' }}>📄</span><span>Order Form</span>
               </button>
+              <button className="mf-action-btn" onClick={() => setShowExport(true)}>
+                <span style={{ fontSize: '2rem' }}>📤</span><span>Export</span>
+              </button>
+              <button className="mf-action-btn" onClick={() => setShowPhotoCapture({})}>
+                <span style={{ fontSize: '2rem' }}>📷</span><span>Photo</span>
+              </button>
             </div>
 
             {/* "What do I do next?" button */}
@@ -438,46 +449,95 @@ export function MobileFieldPage() {
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem' }}>
               <h3>Openings ({appt.openings?.length || 0})</h3>
-              <button className="btn btn-primary btn-sm" onClick={async () => {
-                const num = (appt.openings?.length || 0) + 1;
-                await api.createOpening({ appointmentId: appt.id, openingNumber: num });
-                await loadAppt(appt.id);
-              }}>+ Add</button>
-            </div>
-            {(appt.openings || []).map((op: any) => (
-              <div key={op.id} className="mf-opening-card">
-                <div className="mf-opening-header">
-                  <span style={{ fontWeight: 800, color: 'var(--accent)' }}>#{op.openingNumber}</span>
-                  <span>{op.roomLocation || 'No room'}</span>
-                  <span className="badge badge-draft">{op.productCategory || 'No type'}</span>
-                </div>
-                <div className="mf-opening-dims">
-                  {op.width && op.height ? `${op.width}" × ${op.height}" (${op.unitedInches || (op.width + op.height)} UI)` : <span style={{ color: 'var(--danger)' }}>⚠ No measurements</span>}
-                </div>
-                <div style={{ display: 'flex', gap: '0.375rem', marginTop: '0.5rem', flexWrap: 'wrap' }}>
-                  <button className="btn btn-sm btn-secondary" onClick={() => { setShowMeasure(op.openingNumber); setMeasureInput(''); }}>📏 Measure</button>
-                  <button className="btn btn-sm btn-secondary" onClick={() => navigate(`/appointments/${appt.id}`)}>✏️ Edit</button>
-                  {!op.roomLocation && <span className="mf-missing-badge">Room?</span>}
-                  {!op.elevation && <span className="mf-missing-badge">Side?</span>}
-                  {!op.installNotes && <span className="mf-missing-badge">Install notes?</span>}
-                </div>
-                {/* Inline Measure Keypad */}
-                {showMeasure === op.openingNumber && (
-                  <div className="mf-keypad" style={{ marginTop: '0.75rem' }}>
-                    <input className="form-input" value={measureInput} onChange={e => setMeasureInput(e.target.value)} placeholder="W x H (e.g. 35 3/8 x 59 7/8)" autoFocus />
-                    <div style={{ display: 'flex', gap: '0.25rem', flexWrap: 'wrap', margin: '0.5rem 0' }}>
-                      {FRACTION_BUTTONS.map(f => (
-                        <button key={f.value} className="btn btn-sm btn-secondary" onClick={() => setMeasureInput(prev => prev + ' ' + f.value)}>{f.label}</button>
-                      ))}
-                    </div>
-                    <div style={{ display: 'flex', gap: '0.5rem' }}>
-                      <button className="btn btn-primary btn-sm" onClick={() => applyMeasurement(op.openingNumber)}>✓ Apply</button>
-                      <button className="btn btn-secondary btn-sm" onClick={() => setShowMeasure(null)}>Cancel</button>
-                    </div>
-                  </div>
-                )}
+              <div style={{ display: 'flex', gap: '0.375rem' }}>
+                <button className="btn btn-primary btn-sm" onClick={() => setShowWizard(true)}>🪄 Wizard</button>
+                <button className="btn btn-secondary btn-sm" onClick={async () => {
+                  const num = (appt.openings?.length || 0) + 1;
+                  await api.createOpening({ appointmentId: appt.id, openingNumber: num });
+                  await loadAppt(appt.id);
+                }}>+ Quick</button>
               </div>
-            ))}
+            </div>
+            {(appt.openings || []).map((op: any) => {
+              const missingFields = [
+                !op.roomLocation && 'Room',
+                !op.elevation && 'Side',
+                !op.width && 'Width',
+                !op.height && 'Height',
+                !op.exteriorType && 'Exterior',
+                !op.installNotes && 'Install Notes',
+              ].filter(Boolean);
+              const completePct = Math.round(((6 - missingFields.length) / 6) * 100);
+
+              return (
+                <div key={op.id} className={`mf-opening-card ${mobile.getDraftOpenings(appt.id).some(d => d.openingNumber === op.openingNumber) ? 'has-draft' : ''}`}>
+                  {/* Header */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <div className="mf-opening-header">
+                      <span style={{ fontWeight: 800, color: 'var(--accent)', fontSize: '1rem' }}>#{op.openingNumber}</span>
+                      <span style={{ fontWeight: 600 }}>{op.roomLocation || 'No room'}</span>
+                      <span className="badge badge-draft">{op.productCategory?.replace(/_/g, ' ') || 'No type'}</span>
+                    </div>
+                    <div style={{
+                      width: 32, height: 32, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: '0.625rem', fontWeight: 800, flexShrink: 0,
+                      background: completePct >= 80 ? 'rgba(34,197,94,0.15)' : completePct >= 50 ? 'rgba(245,158,11,0.15)' : 'rgba(239,68,68,0.15)',
+                      color: completePct >= 80 ? '#22c55e' : completePct >= 50 ? '#f59e0b' : '#ef4444',
+                    }}>{completePct}%</div>
+                  </div>
+
+                  {/* Details */}
+                  <div className="mf-opening-dims">
+                    {op.width && op.height
+                      ? `${op.width}" × ${op.height}" (${op.unitedInches || (op.width + op.height)} UI)`
+                      : <span style={{ color: 'var(--danger)' }}>⚠ No measurements</span>}
+                  </div>
+                  <div style={{ display: 'flex', gap: '0.375rem', flexWrap: 'wrap', marginTop: '0.25rem', fontSize: '0.6875rem', color: 'var(--text-muted)' }}>
+                    {op.elevation && <span>📐 {op.elevation}</span>}
+                    {op.glassOption && <span>🔲 {op.glassOption}</span>}
+                    {op.exteriorType && <span>🧱 {op.exteriorType}</span>}
+                    {op.foamEnhanced && <span>🟢 Foam</span>}
+                    {op.screenOption && op.screenOption !== 'No Screen' && <span>🪟 {op.screenOption}</span>}
+                  </div>
+
+                  {/* Missing fields */}
+                  {missingFields.length > 0 && (
+                    <div style={{ display: 'flex', gap: '0.25rem', flexWrap: 'wrap', marginTop: '0.375rem' }}>
+                      {missingFields.map((f, i) => <span key={i} className="mf-missing-badge">{f}?</span>)}
+                    </div>
+                  )}
+
+                  {/* Actions */}
+                  <div style={{ display: 'flex', gap: '0.375rem', marginTop: '0.625rem', flexWrap: 'wrap' }}>
+                    <button className="btn btn-sm btn-secondary" onClick={() => { setShowMeasure(op.openingNumber); setMeasureInput(''); }}>📏 Measure</button>
+                    <button className="btn btn-sm btn-secondary" onClick={() => setShowPhotoCapture({ openingId: op.id, openingNumber: op.openingNumber })}>📷 Photo</button>
+                    <button className="btn btn-sm btn-secondary" onClick={() => setEditingOpening(op)}>✏️ Edit</button>
+                    <button className="btn btn-sm btn-secondary" onClick={async () => {
+                      const num = (appt.openings?.length || 0) + 1;
+                      const { id, ...dup } = op;
+                      await api.createOpening({ ...dup, appointmentId: appt.id, openingNumber: num });
+                      await loadAppt(appt.id);
+                    }}>📋 Dup</button>
+                  </div>
+
+                  {/* Inline Measure Keypad */}
+                  {showMeasure === op.openingNumber && (
+                    <div className="mf-keypad" style={{ marginTop: '0.75rem' }}>
+                      <input className="form-input" value={measureInput} onChange={e => setMeasureInput(e.target.value)} placeholder="W x H (e.g. 35 3/8 x 59 7/8)" autoFocus />
+                      <div style={{ display: 'flex', gap: '0.25rem', flexWrap: 'wrap', margin: '0.5rem 0' }}>
+                        {FRACTION_BUTTONS.map(f => (
+                          <button key={f.value} className="btn btn-sm btn-secondary" onClick={() => setMeasureInput(prev => prev + ' ' + f.value)}>{f.label}</button>
+                        ))}
+                      </div>
+                      <div style={{ display: 'flex', gap: '0.5rem' }}>
+                        <button className="btn btn-primary btn-sm" onClick={() => applyMeasurement(op.openingNumber)}>✓ Apply</button>
+                        <button className="btn btn-secondary btn-sm" onClick={() => setShowMeasure(null)}>Cancel</button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         )}
 
@@ -586,6 +646,48 @@ export function MobileFieldPage() {
               setTab('openings');
             }}
             onCancel={() => setShowWizard(false)}
+          />
+        </div>
+      )}
+
+      {/* ── Photo Capture Modal ──────────────────────────── */}
+      {showPhotoCapture && (
+        <MobilePhotoCapture
+          appointmentId={appt.id}
+          openingId={showPhotoCapture.openingId}
+          openingNumber={showPhotoCapture.openingNumber}
+          onClose={() => setShowPhotoCapture(null)}
+          onPhotoAdded={() => loadAppt(appt.id)}
+        />
+      )}
+
+      {/* ── Export Menu ──────────────────────────────────── */}
+      {showExport && (
+        <MobileExportMenu
+          appointmentId={appt.id}
+          appointmentName={`${appt.customer?.firstName}_${appt.customer?.lastName}`}
+          onClose={() => setShowExport(false)}
+        />
+      )}
+
+      {/* ── Edit Opening Wizard ──────────────────────────── */}
+      {editingOpening && (
+        <div style={{
+          position: 'fixed', inset: 0, background: 'var(--bg-primary)', zIndex: 300,
+          display: 'flex', flexDirection: 'column', overflowY: 'auto',
+          paddingTop: 'max(0.5rem, env(safe-area-inset-top))',
+          paddingBottom: 'max(0.5rem, env(safe-area-inset-bottom))',
+        }}>
+          <OpeningWizard
+            initialData={editingOpening}
+            appointmentId={appt.id}
+            allOpenings={appt.openings || []}
+            onSave={async (data: any) => {
+              await api.updateOpening(editingOpening.id, data);
+              await loadAppt(appt.id);
+              setEditingOpening(null);
+            }}
+            onCancel={() => setEditingOpening(null)}
           />
         </div>
       )}
