@@ -81,9 +81,8 @@ sketchRoutes.post('/:sketchId/markers', async (req, res) => {
 // Upload rendered sketch PNG for Order Form Excel insertion
 sketchRoutes.post('/upload-for-export', async (req, res) => {
   try {
-    const multer = (await import('multer')).default;
-    const path = (await import('path'));
-    const fs = (await import('fs'));
+    const path = await import('path');
+    const fs = await import('fs');
     const { fileURLToPath } = await import('url');
     const __filename3 = fileURLToPath(import.meta.url);
     const __dirname3 = path.dirname(__filename3);
