@@ -1,7 +1,9 @@
 import { Router } from 'express';
+import { requireAuth } from '../middleware/auth.js';
 import { prisma } from '../index.js';
 
 export const exportRoutes = Router();
+exportRoutes.use(requireAuth);
 
 // Export appointment as JSON
 exportRoutes.get('/json/:appointmentId', async (req, res) => {

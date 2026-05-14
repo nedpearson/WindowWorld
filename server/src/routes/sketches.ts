@@ -1,7 +1,9 @@
 import { Router } from 'express';
+import { requireAuth } from '../middleware/auth.js';
 import { prisma } from '../index.js';
 
 export const sketchRoutes = Router();
+sketchRoutes.use(requireAuth);
 
 // Get sketches by appointment ID
 sketchRoutes.get('/appointment/:appointmentId', async (req, res) => {

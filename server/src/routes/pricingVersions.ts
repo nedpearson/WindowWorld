@@ -1,7 +1,11 @@
 import { Router } from 'express';
 import { prisma } from '../index.js';
+import { requireAuth, requireAdmin } from '../middleware/auth.js';
 
 export const pricingVersionRoutes = Router();
+
+// All pricing-version routes require a valid JWT
+pricingVersionRoutes.use(requireAuth);
 
 // Get active published version
 pricingVersionRoutes.get('/active', async (_req, res) => {
@@ -45,8 +49,8 @@ pricingVersionRoutes.get('/:id', async (req, res) => {
   }
 });
 
-// Create version from import
-pricingVersionRoutes.post('/', async (req, res) => {
+// Create version from import — admin only
+pricingVersionRoutes.post('/', requireAdmin, async (req, res) => {
   try {
     const { name, importId, items, notes } = req.body;
     const version = await prisma.pricingVersion.create({
@@ -64,16 +68,15 @@ pricingVersionRoutes.post('/', async (req, res) => {
   }
 });
 
-// Publish version (admin only)
-pricingVersionRoutes.post('/:id/publish', async (req, res) => {
+// Publish version — admin only
+pricingVersionRoutes.post('/:id/publish', requireAdmin, async (req, res) => {
   try {
-    // Unpublish all others
     await prisma.pricingVersion.updateMany({
       where: { status: 'published' },
       data: { status: 'archived' }
     });
     const v = await prisma.pricingVersion.update({
-      where: { id: req.params.id },
+      where: { id: String(req.params.id) },
       data: { status: 'published', publishedAt: new Date(), publishedBy: req.body.userId }
     });
     res.json(v);
@@ -284,14 +287,17 @@ pricingVersionRoutes.post('/imports/:id/parse-csv', async (req, res) => {
   }
 });
 
-// Convert import to version
-pricingVersionRoutes.post('/imports/:id/to-version', async (req, res) => {
+// Convert import to version — admin only
+pricingVersionRoutes.post('/imports/:id/to-version', requireAdmin, async (req, res) => {
   try {
     const imp = await prisma.pricingImport.findUnique({
-      where: { id: req.params.id },
-      include: { rows: { where: { status: { not: 'rejected' } } } }
+      where: { id: String(req.params.id) },
     });
     if (!imp) return res.status(404).json({ error: 'Not found' });
+
+    const rows = await prisma.pricingImportRow.findMany({
+      where: { importId: imp.id, status: { not: 'rejected' } }
+    });
 
     const version = await prisma.pricingVersion.create({
       data: {
@@ -299,7 +305,7 @@ pricingVersionRoutes.post('/imports/:id/to-version', async (req, res) => {
         importId: imp.id,
         items: {
           createMany: {
-            data: imp.rows.map((r, i) => ({
+            data: rows.map((r: any, i: number) => ({
               category: r.category || 'product',
               productCategory: r.productCategory,
               seriesModel: r.seriesModel,

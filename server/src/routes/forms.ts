@@ -1,7 +1,10 @@
 import { Router } from 'express';
+import { requireAuth } from '../middleware/auth.js';
 import { prisma } from '../index.js';
 
 export const formsRoutes = Router();
+formsRoutes.use(requireAuth);
+
 
 // Create form instance
 formsRoutes.post('/', async (req, res) => {

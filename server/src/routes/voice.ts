@@ -1,7 +1,9 @@
 import { Router } from 'express';
+import { requireAuth } from '../middleware/auth.js';
 import { prisma } from '../index.js';
 
 export const voiceRoutes = Router();
+voiceRoutes.use(requireAuth);
 
 // Create voice session
 voiceRoutes.post('/sessions', async (req, res) => {

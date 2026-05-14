@@ -1,7 +1,9 @@
 import { Router } from 'express';
+import { requireAuth } from '../middleware/auth.js';
 import { prisma } from '../index.js';
 
 export const mobileRoutes = Router();
+mobileRoutes.use(requireAuth);
 
 // ── Recordings ──────────────────────────────────────────
 

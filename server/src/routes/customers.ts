@@ -1,7 +1,9 @@
 import { Router } from 'express';
+import { requireAuth } from '../middleware/auth.js';
 import { prisma } from '../index.js';
 
 export const customerRoutes = Router();
+customerRoutes.use(requireAuth);
 
 // List customers
 customerRoutes.get('/', async (_req, res) => {

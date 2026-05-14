@@ -1,7 +1,9 @@
 import { Router } from 'express';
 import { prisma } from '../index.js';
+import { requireAuth } from '../middleware/auth.js';
 
 export const appointmentRoutes = Router();
+appointmentRoutes.use(requireAuth);
 
 // List appointments (with filters)
 appointmentRoutes.get('/', async (req, res) => {

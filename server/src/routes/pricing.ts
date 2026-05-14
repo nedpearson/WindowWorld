@@ -1,7 +1,11 @@
 import { Router } from 'express';
 import { prisma } from '../index.js';
+import { requireAuth, requireAdmin } from '../middleware/auth.js';
 
 export const pricingRoutes = Router();
+
+// All pricing routes require a valid JWT
+pricingRoutes.use(requireAuth);
 
 // ─── Pricing Tables CRUD ────────────────────────────────
 
@@ -32,8 +36,8 @@ pricingRoutes.get('/tables/:id', async (req, res) => {
   }
 });
 
-// Create pricing table
-pricingRoutes.post('/tables', async (req, res) => {
+// Create pricing table — admin only
+pricingRoutes.post('/tables', requireAdmin, async (req, res) => {
   try {
     const table = await prisma.pricingTable.create({ data: req.body });
     res.status(201).json(table);
@@ -42,11 +46,11 @@ pricingRoutes.post('/tables', async (req, res) => {
   }
 });
 
-// Update pricing table
-pricingRoutes.put('/tables/:id', async (req, res) => {
+// Update pricing table — admin only
+pricingRoutes.put('/tables/:id', requireAdmin, async (req, res) => {
   try {
     const table = await prisma.pricingTable.update({
-      where: { id: req.params.id },
+      where: { id: String(req.params.id) },
       data: req.body
     });
     res.json(table);
@@ -55,10 +59,10 @@ pricingRoutes.put('/tables/:id', async (req, res) => {
   }
 });
 
-// Delete pricing table
-pricingRoutes.delete('/tables/:id', async (req, res) => {
+// Delete pricing table — admin only
+pricingRoutes.delete('/tables/:id', requireAdmin, async (req, res) => {
   try {
-    await prisma.pricingTable.delete({ where: { id: req.params.id } });
+    await prisma.pricingTable.delete({ where: { id: String(req.params.id) } });
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: 'Failed to delete table' });
@@ -67,8 +71,8 @@ pricingRoutes.delete('/tables/:id', async (req, res) => {
 
 // ─── Pricing Items CRUD ─────────────────────────────────
 
-// Create pricing item
-pricingRoutes.post('/items', async (req, res) => {
+// Create pricing item — admin only
+pricingRoutes.post('/items', requireAdmin, async (req, res) => {
   try {
     const item = await prisma.pricingItem.create({ data: req.body });
     res.status(201).json(item);
@@ -77,11 +81,11 @@ pricingRoutes.post('/items', async (req, res) => {
   }
 });
 
-// Update pricing item
-pricingRoutes.put('/items/:id', async (req, res) => {
+// Update pricing item — admin only
+pricingRoutes.put('/items/:id', requireAdmin, async (req, res) => {
   try {
     const item = await prisma.pricingItem.update({
-      where: { id: req.params.id },
+      where: { id: String(req.params.id) },
       data: req.body
     });
     res.json(item);
@@ -90,10 +94,10 @@ pricingRoutes.put('/items/:id', async (req, res) => {
   }
 });
 
-// Delete pricing item
-pricingRoutes.delete('/items/:id', async (req, res) => {
+// Delete pricing item — admin only
+pricingRoutes.delete('/items/:id', requireAdmin, async (req, res) => {
   try {
-    await prisma.pricingItem.delete({ where: { id: req.params.id } });
+    await prisma.pricingItem.delete({ where: { id: String(req.params.id) } });
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: 'Failed to delete item' });
