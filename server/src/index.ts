@@ -103,9 +103,11 @@ if (IS_PROD) {
   const staticPath = path.join(__dirname, 'public');
   app.use(express.static(staticPath));
   // SPA fallback — all non-API routes → index.html
-  app.get('*', (req, res) => {
-    if (!req.path.startsWith('/api')) {
+  app.use((req, res, next) => {
+    if (req.method === 'GET' && !req.path.startsWith('/api')) {
       res.sendFile(path.join(staticPath, 'index.html'));
+    } else {
+      next();
     }
   });
 }
