@@ -16,6 +16,7 @@ export function Layout({ children }: { children: ReactNode }) {
     { to: '/office', label: '🏢 Office Queue' },
     { to: '/pricing', label: '💰 Pricing Admin' },
     { to: '/pricing-import', label: '📦 Pricing Import' },
+    { to: '/rules', label: '⚡ Rule Engine' },
     { to: '/mobile', label: '📱 Mobile Field App' },
   ];
 

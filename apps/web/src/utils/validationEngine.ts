@@ -10,6 +10,7 @@ import {
   CONTRACT_FIELDS, SPECIALTY_SHAPES, CASEMENT_AWNING,
   type FieldSeverity, type FormFieldDef,
 } from './formFieldDefs';
+import { evaluateRules } from './businessRules';
 
 export interface ValidationIssue {
   id: string;
@@ -247,6 +248,64 @@ export function validateAppointment(appointment: any): ValidationResult {
       oIssues.push(priceIssue);
       issues.push(priceIssue);
       missing.push('Price');
+    }
+
+    // Evaluate Business Rules
+    const ruleResults = evaluateRules(op, { allOpenings: openings, appointment }, ['form_validate', 'pre_export']);
+    for (const res of ruleResults) {
+      const sev = res.severity.toUpperCase();
+      // Only include warnings/blockers, not info
+      if (sev !== 'INFO' && sev !== 'LOW') {
+        const issue: ValidationIssue = {
+          id: `rule-${res.ruleId}-${op.openingNumber}`,
+          fieldId: res.ruleId,
+          label: res.ruleName,
+          severity: sev as FieldSeverity,
+          section: 'Openings',
+          form: 'order_form',
+          openingNumber: op.openingNumber,
+          message: `Opening #${op.openingNumber}: ${res.ruleName} — ${res.actions.map((a: any) => a.message).join('; ')}`,
+          jumpStep: 3,
+          fieldPath: `opening.${op.openingNumber}`,
+        };
+        oIssues.push(issue);
+        issues.push(issue);
+        if (sev === 'BLOCKER' || sev === 'HIGH') missing.push(res.ruleName);
+      }
+    }
+
+    // Photo requirement check
+    const photos = appointment.photos || [];
+    const hasPhoto = photos.some((p: any) => p.openingNumber === op.openingNumber);
+    
+    let needsPhoto = false;
+    let photoReason = '';
+    const cat = (op.productCategory || '').toLowerCase();
+    
+    if (op.sillRepair) { needsPhoto = true; photoReason = 'Sill Repair requires photo documentation'; }
+    else if (op.oriel) { needsPhoto = true; photoReason = 'Oriel measurement confirmation requires photo'; }
+    else if (cat.includes('patio')) { needsPhoto = true; photoReason = 'Patio door track/frame requires photo'; }
+    else if (op.clearStory || (op.floorNumber && op.floorNumber >= 2)) { needsPhoto = true; photoReason = 'Second floor / Clear Story requires exterior photo'; }
+    
+    if (needsPhoto && !hasPhoto) {
+      const issue: ValidationIssue = {
+        id: `photo-${op.openingNumber}`,
+        fieldId: 'photo-req',
+        label: 'Required Photo',
+        severity: 'HIGH',
+        section: 'Photos',
+        form: 'order_form',
+        openingNumber: op.openingNumber,
+        message: `Opening #${op.openingNumber}: ${photoReason}`,
+        jumpStep: 3,
+        fieldPath: `opening.${op.openingNumber}.photos`,
+      };
+      oIssues.push(issue);
+      issues.push(issue);
+      missing.push('Required Photo');
+      track('Photos', false);
+    } else if (needsPhoto && hasPhoto) {
+      track('Photos', true);
     }
 
     openingResults.push({

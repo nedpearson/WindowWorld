@@ -148,6 +148,7 @@ export function RoomAutocomplete({
 }
 
 // ─── INSTALL NOTES SUGGESTIONS ──────────────────────────
+// ─── INSTALL NOTES SUGGESTIONS ──────────────────────────
 export function InstallNoteSuggestions({
   opening,
   onAppend,
@@ -155,39 +156,44 @@ export function InstallNoteSuggestions({
   opening: any;
   onAppend: (note: string) => void;
 }) {
-  const suggestions = useMemo(() => {
-    const notes: string[] = [];
-    if ((opening.floorNumber || 1) >= 2) {
-      notes.push('Second floor — ladder required');
-      notes.push('Verify exterior access for scaffold');
-    }
-    if (opening.exteriorType?.toLowerCase()?.includes('brick')) {
-      notes.push('Brick opening — verify return depth');
-    }
-    if (opening.sillRepair) notes.push('Sill repair required — see photo');
-    if (opening.roomLocation?.toLowerCase()?.match(/bath|shower/)) {
-      notes.push('Bathroom — verify tempered glass requirement');
-    }
-    if (opening.productCategory === 'patio_door') {
-      notes.push('Verify track condition and threshold height');
-    }
-    // General common notes
-    notes.push('Verify sill condition');
-    notes.push('Shutters present — note removal');
-    notes.push('Narrow access — tight space');
-    return notes.slice(0, 6);
-  }, [opening]);
+  const { generateSmartInstallNotes } = require('../utils/businessRules');
+  const suggestions = generateSmartInstallNotes(opening);
 
   if (suggestions.length === 0) return null;
 
   return (
     <div style={{ display: 'flex', gap: '0.25rem', flexWrap: 'wrap', marginTop: '0.25rem' }}>
-      {suggestions.map((note, i) => (
-        <button key={i} onClick={() => onAppend(note)}
+      {suggestions.map((sn: any, i: number) => (
+        <button key={i} onClick={() => onAppend(sn.note)} title={sn.reason}
           style={{ fontSize: '0.5625rem', padding: '2px 6px', background: 'rgba(6,182,212,0.08)', border: '1px solid rgba(6,182,212,0.2)', borderRadius: 4, color: '#06b6d4', cursor: 'pointer' }}>
-          + {note}
+          + {sn.note}
         </button>
       ))}
     </div>
   );
 }
+
+// ─── QUICK PACKAGES ───────────────────────────────────────
+export function QuickPackages({
+  openings,
+  onApplyPackage
+}: {
+  openings: any[];
+  onApplyPackage: (pkg: any) => void;
+}) {
+  const { QUICK_PACKAGES } = require('../utils/businessRules');
+
+  return (
+    <div className="card" style={{ marginBottom: '1rem', padding: '1rem' }}>
+      <h3 style={{ marginBottom: '0.5rem', fontSize: '0.875rem' }}>📦 One-Tap Packages</h3>
+      <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+        {QUICK_PACKAGES.map((pkg: any) => (
+          <button key={pkg.id} className="btn btn-sm" style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border)', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.375rem' }} onClick={() => onApplyPackage(pkg)} title={pkg.description}>
+            <span>{pkg.icon}</span> {pkg.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+

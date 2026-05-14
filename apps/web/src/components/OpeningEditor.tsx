@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import { api } from '../utils/api';
 import { learnFromOpening } from '../utils/repMemory';
-import { SmartSuggestionBar, ConfigPicker, RoomAutocomplete, InstallNoteSuggestions } from './SmartSuggestions';
+import { SmartSuggestionBar, ConfigPicker, RoomAutocomplete, InstallNoteSuggestions, QuickPackages } from './SmartSuggestions';
 import { QuickWxH, SameAsPrevious, QuickAddMultiple } from './QuickMeasure';
+import { OpeningWizard } from './OpeningWizard';
 
 const CATEGORIES = ['double_hung','picture','slider','casement','awning','eyebrow','circle_top','quarter_arch','patio_door','custom_shape'];
 const ELEVATIONS = ['front','rear','left','right','garage','other'];
@@ -27,6 +28,8 @@ export function OpeningEditor({ appointmentId, onUpdate }: { appointmentId: stri
   const [openings, setOpenings] = useState<any[]>([]);
   const [editing, setEditing] = useState<any>(null);
   const [saving, setSaving] = useState(false);
+  const [wizardActive, setWizardActive] = useState(false);
+  const [simpleMode, setSimpleMode] = useState(false);
 
   const load = async () => {
     const data = await api.getOpenings(appointmentId);
@@ -40,23 +43,25 @@ export function OpeningEditor({ appointmentId, onUpdate }: { appointmentId: stri
     setEditing(empty(appointmentId, num));
   };
 
-  const saveOpening = async () => {
-    if (!editing) return;
+  const saveOpening = async (dataToSave?: any) => {
+    const data = dataToSave || editing;
+    if (!data) return;
     setSaving(true);
     try {
-      if (editing.id) {
-        await api.updateOpening(editing.id, editing);
+      if (data.id) {
+        await api.updateOpening(data.id, data);
       } else {
-        await api.createOpening(editing);
+        await api.createOpening(data);
       }
       // Learn from saved opening
-      learnFromOpening(editing);
+      learnFromOpening(data);
       setEditing(null);
       await load();
       onUpdate();
     } catch (err: any) { alert(err.message); }
     finally { setSaving(false); }
   };
+
 
   const deleteOpening = async (id: string) => {
     if (!confirm('Delete this opening?')) return;
@@ -113,8 +118,69 @@ export function OpeningEditor({ appointmentId, onUpdate }: { appointmentId: stri
         <SmartSuggestionBar openings={openings} onBulkUpdate={handleBulkUpdate} />
       )}
 
+      {/* ═══ QUICK PACKAGES ═══ */}
+      {openings.length > 0 && !editing && !wizardActive && (
+        <QuickPackages openings={openings} onApplyPackage={async (pkg) => {
+          let updated = false;
+          for (const op of openings) {
+            if (pkg.targetFilter && !pkg.targetFilter(op)) continue;
+            try {
+              await api.updateOpening(op.id, pkg.applyFields);
+              updated = true;
+            } catch {}
+          }
+          if (updated) {
+            await load();
+            onUpdate();
+          }
+        }} />
+      )}
+
       {/* Opening list */}
-      {openings.length > 0 && (
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', marginTop: '1.5rem' }}>
+        <h3>🪟 Opening Schedule</h3>
+        <button className="btn btn-sm" onClick={() => setSimpleMode(!simpleMode)} style={{ background: simpleMode ? 'var(--primary)' : 'var(--bg-input)', color: simpleMode ? '#fff' : 'var(--text-primary)', border: '1px solid var(--border)' }}>
+          ⚡ {simpleMode ? 'Simple Mode ON' : 'Simple Mode OFF'}
+        </button>
+      </div>
+
+      {openings.length > 0 && !simpleMode && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1rem' }}>
+          {openings.map((o: any) => {
+            const isComplete = o.width > 0 && o.height > 0 && o.totalPrice > 0;
+            return (
+              <div key={o.id} className="card" style={{ padding: '1rem', borderLeft: `4px solid ${isComplete ? 'var(--success)' : 'var(--warning)'}` }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
+                  <div style={{ fontWeight: 700 }}>
+                    #{o.openingNumber} — {o.roomLocation || 'Unnamed'} {o.elevation ? `(${o.elevation})` : ''}
+                  </div>
+                  <div style={{ fontSize: '0.75rem', fontWeight: 600, color: isComplete ? 'var(--success)' : 'var(--warning)' }}>
+                    {isComplete ? 'Complete' : 'Needs Info'}
+                  </div>
+                </div>
+
+                <div style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>
+                  <div><strong>{o.width || '?'}</strong>" W × <strong>{o.height || '?'}</strong>" H</div>
+                  <div>{o.productCategory?.replace('_', ' ')} • {o.interiorColor}/{o.exteriorColor}</div>
+                  <div>{o.gridStyle !== 'None' ? `${o.gridStyle} Grids • ` : ''}{o.glassOption}</div>
+                </div>
+
+                <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem' }}>
+                  <button className="btn btn-secondary btn-sm" style={{ flex: 1 }} onClick={() => setEditing(o)}>Edit</button>
+                  <button className="btn btn-secondary btn-sm" style={{ flex: 1 }} onClick={async () => {
+                    const num = openings.length + 1;
+                    const dup = { ...o, id: undefined, openingNumber: num };
+                    try { await api.createOpening(dup); await load(); onUpdate(); } catch {}
+                  }}>Duplicate</button>
+                  <button className="btn btn-danger btn-sm" onClick={() => deleteOpening(o.id)}>×</button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {openings.length > 0 && simpleMode && (
         <div style={{ overflowX: 'auto' }}>
           <table className="data-table">
             <thead><tr>
@@ -145,19 +211,39 @@ export function OpeningEditor({ appointmentId, onUpdate }: { appointmentId: stri
         </div>
       )}
 
-      {openings.length === 0 && !editing && (
+      {openings.length === 0 && !editing && !wizardActive && (
         <div className="card" style={{ textAlign: 'center', padding: '3rem' }}>
           <p style={{ color: 'var(--text-muted)', fontSize: '1.125rem' }}>No openings yet</p>
-          <button className="btn btn-primary" style={{ marginTop: '1rem' }} onClick={addOpening}>Add First Opening</button>
+          <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', marginTop: '1rem' }}>
+            <button className="btn btn-primary" onClick={() => { addOpening(); setWizardActive(true); }}>🪄 Start Wizard</button>
+            <button className="btn btn-secondary" onClick={addOpening}>Manual Entry</button>
+          </div>
         </div>
       )}
 
-      {/* Editor modal */}
-      {editing && (
+      {/* Wizard modal */}
+      {editing && wizardActive && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200, padding: '1rem' }}>
+          <OpeningWizard
+            initialData={editing}
+            appointmentId={appointmentId}
+            allOpenings={openings}
+            onSave={async (data) => {
+              setEditing(data);
+              await saveOpening(data);
+              setWizardActive(false);
+            }}
+            onCancel={() => { setEditing(null); setWizardActive(false); }}
+          />
+        </div>
+      )}
+
+      {/* Editor modal (Manual) */}
+      {editing && !wizardActive && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200, padding: '1rem' }}
           onClick={e => e.target === e.currentTarget && setEditing(null)}>
           <div className="card fade-in" style={{ width: '100%', maxWidth: 700, maxHeight: '90vh', overflow: 'auto', padding: '1.5rem' }}>
-            <h2 style={{ marginBottom: '0.75rem' }}>Opening #{editing.openingNumber}</h2>
+            <h2 style={{ marginBottom: '0.75rem' }}>Opening #{editing.openingNumber} (Manual)</h2>
 
             {/* ═══ SAME AS PREVIOUS ═══ */}
             <SameAsPrevious

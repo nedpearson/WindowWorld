@@ -2,12 +2,21 @@ import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { PaperOrderForm, PaperOrderFormHandle, OrderFormData, OpeningRow, emptyFormData } from '../components/PaperOrderForm';
 import { api } from '../utils/api';
+import { OpeningWizard } from '../components/OpeningWizard';
+import { QuoteHealthWidget } from '../components/QuoteHealthWidget';
+import { analyzeQuoteHealth, QuoteHealth } from '../utils/quoteHealth';
+import { createOpeningWithDefaults } from '../utils/openingDefaults';
+import { getSuggestedDefaults, detectBulkApplyOpportunities, BulkApplyOpportunity, learnFromSavedOpening } from '../utils/neverAskTwice';
+import { AppointmentRecap } from '../components/AppointmentRecap';
+import { SafetyGlazingBadge } from '../components/SafetyGlazingPanel';
+import { FinalTemperedReview } from '../components/FinalTemperedReview';
+import { buildSafetyReview, detectSafetyGlazingFromVoice, checkExportReadiness, OpeningSafetyReview, TemperedDecision } from '../utils/safetyGlazingRules';
 
 // ═══════════════════════════════════════════════════════════════
 // MOBILE ORDER FORM — Field-friendly editing with form fidelity
 // ═══════════════════════════════════════════════════════════════
 
-type MobileTab = 'customer' | 'openings' | 'sketch' | 'notes' | 'preview';
+type MobileTab = 'customer' | 'openings' | 'sketch' | 'notes' | 'recap' | 'preview';
 
 export function MobileOrderFormPage() {
   const { appointmentId } = useParams<{ appointmentId: string }>();
@@ -20,11 +29,22 @@ export function MobileOrderFormPage() {
   const [editingOpening, setEditingOpening] = useState<number | null>(null);
   const [isRecording, setIsRecording] = useState(false);
   const [voiceText, setVoiceText] = useState('');
+  const [health, setHealth] = useState<QuoteHealth | null>(null);
+  const [bulkOpportunities, setBulkOpportunities] = useState<BulkApplyOpportunity[]>([]);
+  const [safetyReviews, setSafetyReviews] = useState<Record<number, OpeningSafetyReview>>({});
+  const [voiceSafetyWarnings, setVoiceSafetyWarnings] = useState<string[]>([]);
 
   useEffect(() => {
     if (!appointmentId) { setLoading(false); return; }
     loadData();
   }, [appointmentId]);
+
+  useEffect(() => {
+    // Recalculate health & bulk opportunities whenever openings change
+    const validOpenings = formData.openings.filter(o => o.qty > 0 || o.model);
+    setHealth(analyzeQuoteHealth(formData, validOpenings));
+    setBulkOpportunities(detectBulkApplyOpportunities(validOpenings));
+  }, [formData]);
 
   const loadData = async () => {
     try {
@@ -55,17 +75,18 @@ export function MobileOrderFormPage() {
 
   const mapOpenings = (arr: any[]): OpeningRow[] => {
     const rows = arr.map((o: any) => ({
-      qty: o.qty || 1, model: o.model || '', vinylColor: o.vinylColor || '',
+      qty: o.qty || 1, model: o.model || o.seriesModel || o.productCategory || '', vinylColor: o.vinylColor || '',
       intColor: o.interiorColor || '', extColor: o.exteriorColor || '',
       width: o.width ? String(o.width) : '', height: o.height ? String(o.height) : '',
       legHeight: o.legHeight ? String(o.legHeight) : '', customRadius: o.customRadius ? String(o.customRadius) : '',
       windowNumber: o.windowNumber ? String(o.windowNumber) : String(o.openingNumber || ''),
-      hinge: o.hinge || '', glassOption: o.glassOption || '', foamEnhanced: !!o.foamEnhanced,
+      hinge: o.hinge || '', glassOption: o.glassOption || o.glassPackage || '', foamEnhanced: !!o.foamEnhanced,
       gridStyle: o.gridStyle || '', gridPattern: o.gridPattern || '', gridFull: !!o.gridFull, gridSpec: !!o.gridSpec,
       typeFill: !!o.typeFill, typeHalf: !!o.typeHalf, typeMine: !!o.typeMine,
       tempFull: !!o.tempFull, tempS: !!o.tempS, tempU: !!o.tempU,
-      nailFin: !!o.nailFin, fullScreen: !!o.fullScreen, oriel: !!o.oriel, hor: !!o.horizontalRR,
-      typeExt: o.exteriorType || '', typeInt: o.trimType || '', rmvInst: o.removeInstallType || '', sill: !!o.sillRepair,
+      nailFin: !!o.nailFin, fullScreen: !!o.fullScreen || (o.screenOption?.toLowerCase().includes('full')),
+      oriel: !!o.oriel, hor: !!o.horizontalRR,
+      typeExt: o.exteriorType || '', typeInt: o.trimType || o.installType || '', rmvInst: o.removeInstallType || o.removalType || '', sill: !!o.sillRepair,
       gridOptions: o.gridStyle || '', obsc: '', temp: '', floor: o.floorNumber ? String(o.floorNumber) : '',
     }));
     const empty: OpeningRow = { qty: 0, model: '', vinylColor: '', intColor: '', extColor: '', width: '', height: '', legHeight: '', customRadius: '', windowNumber: '', hinge: '', glassOption: '', foamEnhanced: false, gridStyle: '', gridPattern: '', gridFull: false, gridSpec: false, typeFill: false, typeHalf: false, typeMine: false, tempFull: false, tempS: false, tempU: false, nailFin: false, fullScreen: false, oriel: false, hor: false, typeExt: '', typeInt: '', rmvInst: '', sill: false, gridOptions: '', obsc: '', temp: '', floor: '' };
@@ -85,6 +106,90 @@ export function MobileOrderFormPage() {
     });
   };
 
+  const handleBulkApply = (opp: BulkApplyOpportunity) => {
+    if (!confirm(`Apply ${opp.value} to ${opp.targetCount} remaining openings?`)) return;
+    
+    setFormData(prev => {
+      const openings = [...prev.openings];
+      for (let i = 0; i < openings.length; i++) {
+        if (openings[i].qty > 0 || openings[i].model) {
+          const mapToOpeningRowField: Record<string, keyof OpeningRow> = {
+            interiorColor: 'intColor',
+            exteriorColor: 'extColor',
+            glassOption: 'glassOption',
+            glassPackage: 'glassOption',
+            gridStyle: 'gridStyle',
+            foamEnhanced: 'foamEnhanced',
+            removalType: 'rmvInst'
+          };
+          const targetField = mapToOpeningRowField[opp.field];
+          if (targetField) {
+            const currentVal = openings[i][targetField];
+            if (!currentVal || currentVal === 'none' || String(currentVal) !== String(opp.value)) {
+              openings[i] = { ...openings[i], [targetField]: opp.value };
+            }
+          }
+        }
+      }
+      return { ...prev, openings };
+    });
+  };
+
+  const handleFixIssue = (issue: any) => {
+    if (issue.openingNumber) {
+      setEditingOpening(issue.openingNumber - 1);
+      setTab('openings');
+    } else {
+      setTab('customer');
+    }
+  };
+
+  const addNewOpeningWizard = () => {
+    const firstEmpty = formData.openings.findIndex(o => !o.model && !o.qty);
+    if (firstEmpty >= 0) {
+      setEditingOpening(firstEmpty);
+    }
+  };
+
+  const handleSaveWizard = async (wizardData: any) => {
+    if (editingOpening === null) return;
+    
+    // Map wizard data to OpeningRow format
+    updateOpening(editingOpening, 'qty', wizardData.quantity || 1);
+    updateOpening(editingOpening, 'model', wizardData.model || wizardData.seriesModel || wizardData.productCategory || '');
+    updateOpening(editingOpening, 'width', String(wizardData.width || ''));
+    updateOpening(editingOpening, 'height', String(wizardData.height || ''));
+    updateOpening(editingOpening, 'intColor', wizardData.interiorColor || '');
+    updateOpening(editingOpening, 'extColor', wizardData.exteriorColor || '');
+    updateOpening(editingOpening, 'glassOption', wizardData.glassOption || wizardData.glassPackage || '');
+    updateOpening(editingOpening, 'gridStyle', wizardData.gridStyle || '');
+    updateOpening(editingOpening, 'foamEnhanced', !!wizardData.foamEnhanced);
+    updateOpening(editingOpening, 'rmvInst', wizardData.removalType || wizardData.typeRemoved || '');
+    updateOpening(editingOpening, 'windowNumber', String(editingOpening + 1));
+    updateOpening(editingOpening, 'floor', String(wizardData.floorNumber || 1));
+    updateOpening(editingOpening, 'typeExt', wizardData.exteriorType || '');
+    updateOpening(editingOpening, 'typeInt', wizardData.installType || '');
+
+    // Store safety review from wizard
+    if (wizardData.safetyReview) {
+      setSafetyReviews(prev => ({ ...prev, [editingOpening + 1]: wizardData.safetyReview }));
+    } else {
+      // Auto-build from opening data
+      const autoReview = buildSafetyReview(wizardData, editingOpening + 1);
+      if (autoReview.flags.length > 0) {
+        setSafetyReviews(prev => ({ ...prev, [editingOpening + 1]: autoReview }));
+      }
+    }
+
+    // Learn from this opening for Never Ask Twice
+    learnFromSavedOpening(wizardData, 'current_rep_id');
+    setEditingOpening(null);
+  };
+
+  const updateSafetyReview = (openingNum: number, updated: OpeningSafetyReview) => {
+    setSafetyReviews(prev => ({ ...prev, [openingNum]: updated }));
+  };
+
   const filledCount = formData.openings.filter(o => o.qty > 0 || o.model).length;
 
   // Voice-to-field (Web Speech API)
@@ -100,6 +205,11 @@ export function MobileOrderFormPage() {
     recognition.onresult = (e: any) => {
       const text = Array.from(e.results).map((r: any) => r[0].transcript).join(' ');
       setVoiceText(text);
+      // Detect safety glazing keywords in voice
+      const voiceMatches = detectSafetyGlazingFromVoice(text);
+      if (voiceMatches.length > 0) {
+        setVoiceSafetyWarnings(voiceMatches.map(m => `⚠️ "${m.matchedPhrase}" detected — ${m.flagReason}`));
+      }
     };
     recognition.onend = () => setIsRecording(false);
     recognition.start();
@@ -114,9 +224,9 @@ export function MobileOrderFormPage() {
   }
 
   return (
-    <div className="mobile-field">
+    <div className="mobile-field" style={{ paddingBottom: '70px', height: '100vh', overflowY: 'auto' }}>
       {/* Header */}
-      <div className="mf-header">
+      <div className="mf-header" style={{ position: 'sticky', top: 0, zIndex: 10, background: '#fff' }}>
         <button className="mf-back" onClick={() => navigate(-1)}>←</button>
         <div style={{ flex: 1 }}>
           <div style={{ fontWeight: 700, fontSize: '0.9375rem' }}>📋 Order Form</div>
@@ -129,19 +239,23 @@ export function MobileOrderFormPage() {
             await api.post('/forms', { appointmentId, formType: 'order_form', formData: JSON.stringify(formData), status: 'filled' });
             alert('Saved!');
           } catch { alert('Save failed'); }
-        }}>💾</button>
+        }}>💾 Save</button>
       </div>
 
+      {/* Quote Health Widget */}
+      {health && <QuoteHealthWidget health={health} onFixIssue={handleFixIssue} />}
+
       {/* Tab bar */}
-      <div style={{ display: 'flex', borderBottom: '1px solid var(--border)', overflow: 'auto' }}>
+      <div style={{ display: 'flex', borderBottom: '1px solid var(--border)', overflow: 'auto', background: '#fff', position: 'sticky', top: '56px', zIndex: 9 }}>
         {([
           { id: 'customer' as MobileTab, icon: '👤', label: 'Customer' },
           { id: 'openings' as MobileTab, icon: '🪟', label: `Openings (${filledCount})` },
           { id: 'sketch' as MobileTab, icon: '🏠', label: 'Sketch' },
           { id: 'notes' as MobileTab, icon: '📝', label: 'Notes' },
+          { id: 'recap' as MobileTab, icon: '✅', label: 'Recap' },
           { id: 'preview' as MobileTab, icon: '🖨️', label: 'Preview' },
         ]).map(t => (
-          <button key={t.id} onClick={() => setTab(t.id)} style={{
+          <button key={t.id} onClick={() => { setTab(t.id); setEditingOpening(null); }} style={{
             flex: 1, padding: '0.625rem 0.5rem', border: 'none', cursor: 'pointer',
             fontWeight: 600, fontSize: '0.6875rem', whiteSpace: 'nowrap',
             background: tab === t.id ? 'rgba(59,130,246,0.1)' : 'transparent',
@@ -152,7 +266,7 @@ export function MobileOrderFormPage() {
       </div>
 
       {/* Content */}
-      <div className="mf-content">
+      <div className="mf-content" style={{ padding: '1rem' }}>
         {/* ═══ CUSTOMER TAB ═══ */}
         {tab === 'customer' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
@@ -168,6 +282,19 @@ export function MobileOrderFormPage() {
             {voiceText && (
               <div style={{ padding: '0.5rem 0.75rem', background: 'rgba(139,92,246,0.08)', borderRadius: 6, fontSize: '0.8125rem', color: 'var(--text-secondary)' }}>
                 Heard: "{voiceText}"
+              </div>
+            )}
+            {voiceSafetyWarnings.length > 0 && (
+              <div style={{ padding: '0.75rem', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 8 }}>
+                <div style={{ fontWeight: 700, color: 'var(--danger)', fontSize: '0.875rem', marginBottom: '0.5rem' }}>
+                  🛡️ Safety Glazing Keywords Detected
+                </div>
+                {voiceSafetyWarnings.map((w, i) => (
+                  <div key={i} style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)', marginBottom: '0.25rem' }}>{w}</div>
+                ))}
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.375rem', fontStyle: 'italic' }}>
+                  Review tempered glass when editing the affected opening.
+                </div>
               </div>
             )}
 
@@ -196,72 +323,92 @@ export function MobileOrderFormPage() {
         {/* ═══ OPENINGS TAB ═══ */}
         {tab === 'openings' && (
           <div>
-            {/* Quick add */}
-            <button className="btn btn-primary" style={{ width: '100%', marginBottom: '0.75rem' }}
-              onClick={() => {
-                const firstEmpty = formData.openings.findIndex(o => !o.model && !o.qty);
-                if (firstEmpty >= 0) setEditingOpening(firstEmpty);
-              }}>
-              + Add Opening
-            </button>
+            {editingOpening !== null ? (
+              // Use the new Wizard for editing/adding
+              <OpeningWizard
+                initialData={{
+                  ...formData.openings[editingOpening],
+                  // Pre-fill with Never Ask Twice defaults if it's a completely new opening
+                  ...(!formData.openings[editingOpening].model && !formData.openings[editingOpening].qty 
+                        ? getSuggestedDefaults(formData.openings.filter(o => o.qty > 0 || o.model), 'current_rep_id')
+                        : {})
+                }}
+                appointmentId={appointmentId || ''}
+                allOpenings={formData.openings.filter(o => o.qty > 0 || o.model)}
+                onSave={handleSaveWizard}
+                onCancel={() => setEditingOpening(null)}
+              />
+            ) : (
+              // List View
+              <>
+                {/* Quick add */}
+                <button className="btn btn-primary" style={{ width: '100%', marginBottom: '1rem', padding: '1rem', fontSize: '1rem' }}
+                  onClick={addNewOpeningWizard}>
+                  + Add Opening
+                </button>
 
-            {/* Opening cards */}
-            {formData.openings.map((o, i) => {
-              if (!o.model && !o.qty && editingOpening !== i) return null;
-              const isEditing = editingOpening === i;
-              return (
-                <div key={i} className="mf-opening-card" onClick={() => !isEditing && setEditingOpening(i)}>
-                  <div className="mf-opening-header">
-                    <span style={{ fontWeight: 800, fontSize: '1rem', color: 'var(--accent)' }}>#{i + 1}</span>
-                    <span style={{ fontWeight: 600 }}>{o.model || 'Untitled'}</span>
-                    {o.width && o.height && <span style={{ color: 'var(--text-muted)' }}>{o.width}" × {o.height}"</span>}
-                  </div>
-
-                  {isEditing && (
-                    <div style={{ marginTop: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
-                        <div><label className="form-label">QTY</label><input className="form-input" type="number" value={o.qty || ''} onChange={e => updateOpening(i, 'qty', +e.target.value)} /></div>
-                        <div><label className="form-label">Model</label><input className="form-input" value={o.model} onChange={e => updateOpening(i, 'model', e.target.value)} /></div>
-                        <div><label className="form-label">Width</label><input className="form-input" value={o.width} onChange={e => updateOpening(i, 'width', e.target.value)} /></div>
-                        <div><label className="form-label">Height</label><input className="form-input" value={o.height} onChange={e => updateOpening(i, 'height', e.target.value)} /></div>
-                        <div><label className="form-label">Vinyl Color</label><input className="form-input" value={o.vinylColor} onChange={e => updateOpening(i, 'vinylColor', e.target.value)} /></div>
-                        <div><label className="form-label">Int Color</label><input className="form-input" value={o.intColor} onChange={e => updateOpening(i, 'intColor', e.target.value)} /></div>
-                        <div><label className="form-label">Ext Color</label><input className="form-input" value={o.extColor} onChange={e => updateOpening(i, 'extColor', e.target.value)} /></div>
-                        <div><label className="form-label">Glass Option</label><input className="form-input" value={o.glassOption} onChange={e => updateOpening(i, 'glassOption', e.target.value)} /></div>
-                        <div><label className="form-label">Grid Options</label><input className="form-input" value={o.gridOptions} onChange={e => updateOpening(i, 'gridOptions', e.target.value)} /></div>
-                        <div><label className="form-label">Floor #</label><input className="form-input" value={o.floor} onChange={e => updateOpening(i, 'floor', e.target.value)} /></div>
-                        <div><label className="form-label">Window #</label><input className="form-input" value={o.windowNumber} onChange={e => updateOpening(i, 'windowNumber', e.target.value)} /></div>
-                        <div><label className="form-label">Hinge</label><input className="form-input" value={o.hinge} onChange={e => updateOpening(i, 'hinge', e.target.value)} /></div>
-                      </div>
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', marginTop: '0.25rem' }}>
-                        {[
-                          { key: 'foamEnhanced' as keyof OpeningRow, label: 'Foam Enhanced' },
-                          { key: 'nailFin' as keyof OpeningRow, label: 'Nail Fin' },
-                          { key: 'fullScreen' as keyof OpeningRow, label: 'Full Screen' },
-                          { key: 'oriel' as keyof OpeningRow, label: 'Oriel' },
-                          { key: 'hor' as keyof OpeningRow, label: 'HOR R&R' },
-                          { key: 'sill' as keyof OpeningRow, label: 'Sill Repair' },
-                          { key: 'gridFull' as keyof OpeningRow, label: 'Grid Full' },
-                          { key: 'gridSpec' as keyof OpeningRow, label: 'Grid Spec' },
-                          { key: 'typeFill' as keyof OpeningRow, label: 'Type Fill' },
-                          { key: 'typeHalf' as keyof OpeningRow, label: 'Type Half' },
-                          { key: 'tempFull' as keyof OpeningRow, label: 'Temp Full' },
-                        ].map(cb => (
-                          <label key={cb.key} style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', fontSize: '0.8125rem' }}>
-                            <input type="checkbox" checked={!!o[cb.key]} onChange={e => updateOpening(i, cb.key, e.target.checked)}
-                              style={{ width: 18, height: 18, accentColor: 'var(--accent)' }} />
-                            {cb.label}
-                          </label>
-                        ))}
-                      </div>
-                      <button className="btn btn-secondary btn-sm" style={{ marginTop: '0.5rem' }} onClick={e => { e.stopPropagation(); setEditingOpening(null); }}>
-                        Done
-                      </button>
+                {/* Bulk Apply Opportunities (Never Ask Twice) */}
+                {bulkOpportunities.length > 0 && (
+                  <div style={{ marginBottom: '1.5rem' }}>
+                    <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '0.5rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                      Never Ask Twice Suggestions
                     </div>
-                  )}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                      {bulkOpportunities.map(opp => (
+                        <div key={opp.id} className="card" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.75rem', background: 'var(--bg-secondary)', borderLeft: '3px solid var(--accent)' }}>
+                          <div>
+                            <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)' }}>{opp.icon} {opp.value}</div>
+                            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{opp.description}</div>
+                          </div>
+                          <button className="btn btn-sm" onClick={() => handleBulkApply(opp)} style={{ background: 'var(--accent)', color: '#fff', border: 'none' }}>
+                            Apply All
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Opening cards */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                  {formData.openings.map((o, i) => {
+                    if (!o.model && !o.qty) return null;
+                    const opNum = i + 1;
+                    const review = safetyReviews[opNum] || buildSafetyReview(o, opNum);
+                    return (
+                      <div key={i} className="card" style={{ padding: '0.75rem', border: `1px solid ${review.flags.length > 0 && review.safetyReviewStatus === 'not_started' ? 'var(--danger)' : 'var(--border)'}` }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }} onClick={() => setEditingOpening(i)}>
+                          <div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                              <span style={{ background: 'var(--accent)', color: '#fff', fontWeight: 800, padding: '0.125rem 0.375rem', borderRadius: '4px', fontSize: '0.75rem' }}>#{i + 1}</span>
+                              <span style={{ fontWeight: 600 }}>{o.model || 'Untitled'}</span>
+                            </div>
+                            <div style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }}>
+                              {o.width && o.height ? `${o.width}" × ${o.height}"` : 'Missing dimensions'}
+                            </div>
+                            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.125rem', display: 'flex', gap: '0.5rem' }}>
+                              {o.intColor && <span>Int: {o.intColor}</span>}
+                              {o.extColor && <span>Ext: {o.extColor}</span>}
+                              {o.gridStyle && <span>Grid: {o.gridStyle}</span>}
+                            </div>
+                          </div>
+                          <button className="btn btn-sm" style={{ padding: '0.25rem 0.5rem', background: 'transparent', border: '1px solid var(--border)' }}>Edit</button>
+                        </div>
+                        {/* Safety Glazing Badge */}
+                        <SafetyGlazingBadge
+                          review={review}
+                          onQuickMark={(decision: TemperedDecision) => {
+                            const updated = { ...review, temperedRequired: decision, safetyReviewStatus: decision === 'yes' ? 'reviewed' as const : decision === 'unsure' ? 'unsure' as const : 'override' as const, reviewedAt: new Date() };
+                            updateSafetyReview(opNum, updated);
+                          }}
+                        />
+                      </div>
+                    );
+                  })}
+
                 </div>
-              );
-            })}
+              </>
+            )}
           </div>
         )}
 
@@ -292,6 +439,36 @@ export function MobileOrderFormPage() {
           </div>
         )}
 
+        {/* ═══ RECAP TAB ═══ */}
+        {tab === 'recap' && (
+          <div style={{ margin: '-1rem' }}>
+            {/* Tempered Glass Final Review — must resolve before signoff */}
+            <div style={{ padding: '1rem' }}>
+              <FinalTemperedReview
+                reviews={Object.values(safetyReviews)}
+                onResolve={(updated) => {
+                  const newMap: Record<number, OpeningSafetyReview> = {};
+                  updated.forEach(r => { newMap[r.openingNumber] = r; });
+                  setSafetyReviews(newMap);
+                }}
+              />
+            </div>
+            <AppointmentRecap
+              appointment={{ ...formData, id: appointmentId }}
+              openings={formData.openings}
+              health={health || { score: 0, status: 'Critical', issues: [], missingBlockers: 0, openingsCount: 0 }}
+              onSignoff={() => {
+                const exportResult = checkExportReadiness(Object.values(safetyReviews));
+                if (exportResult.blocked) {
+                  alert('Cannot sign off:\n\n' + exportResult.blockers.join('\n'));
+                  return;
+                }
+                alert('Order Locked & Customer Signed!');
+              }}
+            />
+          </div>
+        )}
+
         {/* ═══ PREVIEW TAB ═══ */}
         {tab === 'preview' && (
           <div className="paper-form-wrapper" style={{ padding: 0 }}>
@@ -305,18 +482,19 @@ export function MobileOrderFormPage() {
       </div>
 
       {/* Bottom nav */}
-      <div className="mf-bottom-nav">
+      <div className="mf-bottom-nav" style={{ position: 'fixed', bottom: 0, left: 0, right: 0, display: 'flex', background: '#fff', borderTop: '1px solid var(--border)', paddingBottom: 'env(safe-area-inset-bottom)' }}>
         {([
           { id: 'customer' as MobileTab, icon: '👤', label: 'Customer' },
           { id: 'openings' as MobileTab, icon: '🪟', label: 'Openings' },
           { id: 'sketch' as MobileTab, icon: '🏠', label: 'Sketch' },
-          { id: 'notes' as MobileTab, icon: '📝', label: 'Notes' },
+          { id: 'recap' as MobileTab, icon: '✅', label: 'Recap' },
           { id: 'preview' as MobileTab, icon: '🖨️', label: 'Preview' },
         ]).map(t => (
           <button key={t.id} className={`mf-nav-btn ${tab === t.id ? 'active' : ''}`}
-            onClick={() => setTab(t.id)}>
-            <span>{t.icon}</span>
-            <span>{t.label}</span>
+            onClick={() => setTab(t.id)}
+            style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '0.5rem', background: 'none', border: 'none', color: tab === t.id ? 'var(--accent)' : 'var(--text-muted)' }}>
+            <span style={{ fontSize: '1.25rem', marginBottom: '0.25rem' }}>{t.icon}</span>
+            <span style={{ fontSize: '0.625rem', fontWeight: 600 }}>{t.label}</span>
           </button>
         ))}
       </div>

@@ -26,6 +26,7 @@ model User {
   auditLogs       AuditLog[]
   voiceSessions   VoiceSession[]
   pricingVersions PricingVersion[]
+  timelineEvents  AppointmentTimelineEvent[]
 }
 
 model Customer {
@@ -95,6 +96,10 @@ model Appointment {
   voiceSessions  VoiceSession[]
   formInstances  FormInstance[]
   formSketches   FormSketch[]
+  timelineEvents AppointmentTimelineEvent[]
+  safetyReviews  OpeningSafetyGlazingReview[]
+  temperedFlags  TemperedGlazingFlag[]
+  aiWarnings     AiValidationWarning[]
 
   @@index([customerId])
   @@index([userId])
@@ -672,3 +677,143 @@ model InstallerClarityScore {
   @@index([sketchId])
   @@index([companyId])
 }
+
+// ═══════════════════════════════════════════════════════════
+// BUSINESS RULES ENGINE
+// ═══════════════════════════════════════════════════════════
+
+model BusinessRule {
+  id              String   @id @default(cuid())
+  name            String
+  description     String
+  isActive        Boolean  @default(true)
+  severity        String   @default("high") // blocker | high | medium | low
+  triggerField    String?
+  triggerValue    String?
+  actionType      String   // set_field | warn | require_confirmation
+  actionField     String?
+  actionValue     String?
+  message         String
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+// ═══════════════════════════════════════════════════════════
+// APPOINTMENT TIMELINE
+// ═══════════════════════════════════════════════════════════
+
+model AppointmentTimelineEvent {
+  id              String   @id @default(cuid())
+  appointmentId   String
+  eventType       String   // created | updated | status_change | signoff | pricing_run
+  title           String
+  description     String?
+  userId          String?
+  createdAt       DateTime @default(now())
+
+  appointment     Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+  user            User?       @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([appointmentId])
+}
+
+// ═══════════════════════════════════════════════════════════
+// SAFETY GLAZING / TEMPERED GLASS
+// Louisiana-configurable safety glazing review system
+// ═══════════════════════════════════════════════════════════
+
+model OpeningSafetyGlazingReview {
+  id                  String   @id @default(cuid())
+  appointmentId       String
+  openingId           String?
+  openingNumber       Int
+  safetyReviewStatus  String   @default("not_started")
+  // not_started | reviewed | unsure | override | flagged
+  temperedRequired    String   @default("not_reviewed")
+  // yes | no | unsure | not_reviewed
+  temperedFull        Boolean  @default(false)
+  temperedHalf        Boolean  @default(false)
+  flaggedReasons      String[] @default([])
+  sourceType          String   @default("rule")
+  // manual | voice | text | ai | rule | wizard_question
+  sourcePhrase        String?
+  confidenceScore     Int      @default(0)
+  overrideReason      String?
+  reviewedBy          String?
+  reviewedAt          DateTime?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+  metadata            Json?
+
+  appointment         Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+
+  @@index([appointmentId])
+  @@index([openingId])
+  @@index([safetyReviewStatus])
+  @@index([temperedRequired])
+}
+
+model TemperedGlazingFlag {
+  id              String   @id @default(cuid())
+  reviewId        String?
+  appointmentId   String
+  openingNumber   Int
+  ruleId          String
+  ruleName        String
+  category        String
+  severity        String   @default("high")
+  flagReason      String
+  sourceType      String   @default("rule")
+  sourcePhrase    String?
+  confidence      Float    @default(0.85)
+  requiresPhoto   Boolean  @default(false)
+  photoHint       String?
+  createdAt       DateTime @default(now())
+
+  appointment     Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+
+  @@index([appointmentId])
+  @@index([ruleId])
+}
+
+model BusinessRuleExecutionLog {
+  id              String   @id @default(cuid())
+  ruleId          String
+  ruleName        String
+  appointmentId   String?
+  openingId       String?
+  openingNumber   Int?
+  triggered       Boolean
+  autoApplied     Boolean  @default(false)
+  overridden      Boolean  @default(false)
+  overrideReason  String?
+  severity        String
+  executedAt      DateTime @default(now())
+  metadata        Json?
+
+  @@index([ruleId])
+  @@index([appointmentId])
+}
+
+model AiValidationWarning {
+  id              String   @id @default(cuid())
+  appointmentId   String
+  openingId       String?
+  openingNumber   Int?
+  category        String
+  message         String
+  sourceType      String   @default("ai")
+  sourcePhrase    String?
+  confidence      Float    @default(0.75)
+  resolved        Boolean  @default(false)
+  resolvedAt      DateTime?
+  resolvedBy      String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  appointment     Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+
+  @@index([appointmentId])
+  @@index([resolved])
+}
+
