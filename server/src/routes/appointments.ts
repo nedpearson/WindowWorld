@@ -62,6 +62,42 @@ appointmentRoutes.get('/:id', async (req, res) => {
   }
 });
 
+// Get appointment timeline events
+appointmentRoutes.get('/:id/timeline', async (req, res) => {
+  try {
+    const events = await prisma.appointmentTimelineEvent.findMany({
+      where: { appointmentId: req.params.id },
+      include: { user: { select: { id: true, name: true } } },
+      orderBy: { createdAt: 'asc' },
+    });
+    res.json(events);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch timeline' });
+  }
+});
+
+// Post a timeline event
+appointmentRoutes.post('/:id/timeline', async (req, res) => {
+  try {
+    const { eventType, title, description, userId } = req.body;
+    const event = await prisma.appointmentTimelineEvent.create({
+      data: {
+        appointmentId: req.params.id,
+        eventType: eventType || 'updated',
+        title,
+        description,
+        userId: userId || null,
+      },
+      include: { user: { select: { id: true, name: true } } },
+    });
+    res.status(201).json(event);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to create timeline event' });
+  }
+});
+
+
+
 // Create appointment
 appointmentRoutes.post('/', async (req, res) => {
   try {

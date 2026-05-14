@@ -121,7 +121,7 @@ export function analyzeQuoteHealth(appointment: any, openings: any[]): QuoteHeal
     score -= 1;
   }
 
-  // Pricing checks (Mock logic for now, relies on actual pricing engine)
+  // Pricing completeness check
   if (appointment.totalAmount === 0 && openings.length > 0) {
       issues.push({ id: 'no-price', type: 'error', category: 'pricing', message: 'Total price is $0.00. Please run pricing engine.', actionRequired: true });
       score -= 10;

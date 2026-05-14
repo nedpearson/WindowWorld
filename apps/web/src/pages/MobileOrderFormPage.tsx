@@ -30,6 +30,14 @@ export function MobileOrderFormPage() {
   const [tab, setTab] = useState<MobileTab>('customer');
   const [formData, setFormData] = useState<OrderFormData>(emptyFormData());
   const [loading, setLoading] = useState(true);
+  const [toast, setToast] = useState<{ msg: string; type: 'success' | 'error' } | null>(null);
+  const [saving, setSaving] = useState(false);
+  const userId = (() => { try { return JSON.parse(atob((localStorage.getItem('wwa_token') || '').split('.')[1] || '{}')).id || ''; } catch { return ''; } })();
+
+  const showToast = (msg: string, type: 'success' | 'error' = 'success') => {
+    setToast({ msg, type });
+    setTimeout(() => setToast(null), 3500);
+  };
   const [editingOpening, setEditingOpening] = useState<number | null>(null);
   const [isRecording, setIsRecording] = useState(false);
   const [voiceText, setVoiceText] = useState('');
@@ -232,6 +240,18 @@ export function MobileOrderFormPage() {
 
   return (
     <div className="mobile-field" style={{ paddingBottom: '70px', height: '100vh', overflowY: 'auto' }}>
+      {/* Toast notification */}
+      {toast && (
+        <div style={{
+          position: 'fixed', top: 12, left: '50%', transform: 'translateX(-50%)',
+          background: toast.type === 'error' ? 'var(--danger, #e53e3e)' : 'var(--success, #38a169)',
+          color: '#fff', padding: '0.625rem 1.25rem', borderRadius: 8,
+          fontWeight: 600, fontSize: '0.9rem', zIndex: 9999,
+          boxShadow: '0 4px 16px rgba(0,0,0,0.25)',
+        }}>
+          {toast.msg}
+        </div>
+      )}
       {/* Header */}
       <div className="mf-header" style={{ position: 'sticky', top: 0, zIndex: 10, background: '#fff' }}>
         <button className="mf-back" onClick={() => navigate(-1)}>←</button>
@@ -241,12 +261,15 @@ export function MobileOrderFormPage() {
             {formData.customerName || 'New Form'} · {filledCount} openings
           </div>
         </div>
-        <button className="btn btn-primary btn-sm" onClick={async () => {
+        <button className="btn btn-primary btn-sm" disabled={saving} onClick={async () => {
+          setSaving(true);
           try {
             await api.post('/forms', { appointmentId, formType: 'order_form', formData: JSON.stringify(formData), status: 'filled' });
-            alert('Saved!');
-          } catch { alert('Save failed'); }
-        }}>💾 Save</button>
+            showToast('Form saved ✓');
+          } catch (err: any) {
+            showToast(err?.message || 'Save failed', 'error');
+          } finally { setSaving(false); }
+        }}>{saving ? '⏳' : '💾'} Save</button>
       </div>
 
       {/* Quote Health Widget */}
@@ -565,7 +588,23 @@ export function MobileOrderFormPage() {
                   alert('Cannot sign off — measurement issues:\n\n' + measureResult.blockers.join('\n'));
                   return;
                 }
-                alert('Order Locked & Customer Signed!');
+                setSaving(true);
+                (async () => {
+                  try {
+                    await api.post('/forms', { appointmentId, formType: 'order_form', formData: JSON.stringify(formData), status: 'finalized' });
+                    await api.post(`/appointments/${appointmentId}/timeline`, {
+                      eventType: 'signoff',
+                      title: 'Order Locked & Customer Signed',
+                      description: `${formData.openings.filter(o => o.model || o.qty).length} opening(s) — signed on ${new Date().toLocaleString()}`,
+                      userId,
+                    });
+                    await api.put(`/appointments/${appointmentId}`, { status: 'signed' });
+                    showToast('Order locked & customer signed ✓');
+                    setTimeout(() => navigate(-1), 1800);
+                  } catch (err: any) {
+                    showToast(err?.message || 'Signoff failed — check connection', 'error');
+                  } finally { setSaving(false); }
+                })();
               }}
             />
           </div>
