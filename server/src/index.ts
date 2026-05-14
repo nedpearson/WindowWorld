@@ -32,6 +32,25 @@ app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
+// Network IP — returns the machine's LAN IP so the QR code works on phones
+app.get('/api/network-ip', (_req, res) => {
+  let lanIp = 'localhost';
+  try {
+    // os is a Node built-in — sync, always available
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { networkInterfaces } = require('os') as typeof import('os');
+    const nets = networkInterfaces();
+    outer: for (const iface of Object.values(nets)) {
+      if (!iface) continue;
+      for (const addr of iface) {
+        if (addr.family === 'IPv4' && !addr.internal) { lanIp = addr.address; break outer; }
+      }
+    }
+  } catch {}
+  res.json({ ip: lanIp });
+});
+
+
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/customers', customerRoutes);

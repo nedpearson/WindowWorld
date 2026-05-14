@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react';
+import { useState, useEffect, type ReactNode } from 'react';
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { QRCodeSVG } from 'qrcode.react';
 import { useAuthStore } from '../store';
@@ -6,6 +6,8 @@ import { useAuthStore } from '../store';
 export function Layout({ children }: { children: ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showQR, setShowQR] = useState(false);
+  const [lanIp, setLanIp] = useState<string | null>(null);
+  const [ipError, setIpError] = useState(false);
   const { user, logout } = useAuthStore();
   const navigate = useNavigate();
   const location = useLocation();
@@ -13,8 +15,10 @@ export function Layout({ children }: { children: ReactNode }) {
   const handleLogout = () => { logout(); navigate('/'); };
   const canGoBack = location.pathname !== '/';
 
-  // Builds the mobile URL from the current browser host — works on any local network
-  const mobileUrl = `${window.location.protocol}//${window.location.host}/mobile`;
+  // Build the mobile URL using the server's LAN IP + the frontend port
+  const mobileUrl = lanIp
+    ? `http://${lanIp}:${window.location.port || 80}/mobile`
+    : `${window.location.protocol}//${window.location.host}/mobile`;
 
   const links = [
     { to: '/forms', label: '📋 Fill Forms' },
@@ -27,6 +31,18 @@ export function Layout({ children }: { children: ReactNode }) {
     { to: '/measurement-rules', label: '📐 Measurement Rules' },
     { to: '/mobile', label: '📱 Mobile Field App' },
   ];
+
+  // Fetch the real LAN IP when the QR panel is first opened
+  useEffect(() => {
+    if (!showQR || lanIp !== null) return; // only fetch once
+    fetch('/api/network-ip')
+      .then(r => r.json())
+      .then(data => {
+        if (data.ip && data.ip !== 'localhost') setLanIp(data.ip);
+        else setIpError(true);
+      })
+      .catch(() => setIpError(true));
+  }, [showQR]);
 
   return (
     <div className="app-layout">
@@ -85,20 +101,46 @@ export function Layout({ children }: { children: ReactNode }) {
               padding: '1rem', background: 'white', borderRadius: 10,
               boxShadow: '0 4px 24px rgba(0,0,0,0.5)',
             }}>
-              <QRCodeSVG
-                value={mobileUrl}
-                size={172}
-                bgColor="#ffffff"
-                fgColor="#0f172a"
-                level="M"
-                includeMargin={false}
-              />
-              <div style={{
-                fontSize: '0.5625rem', color: '#475569', textAlign: 'center',
-                wordBreak: 'break-all', maxWidth: 172, lineHeight: 1.4,
-              }}>
-                {mobileUrl}
-              </div>
+              {/* Loading state while fetching IP */}
+              {!lanIp && !ipError && (
+                <div style={{ height: 172, width: 172, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', fontSize: '0.75rem' }}>
+                  Finding network IP…
+                </div>
+              )}
+
+              {/* Error state */}
+              {ipError && (
+                <div style={{ width: 172, color: '#ef4444', fontSize: '0.6875rem', textAlign: 'center', lineHeight: 1.5 }}>
+                  Could not detect LAN IP.
+                  <br />Run <code style={{ background: '#f1f5f9', padding: '1px 4px', borderRadius: 3, color: '#0f172a' }}>ipconfig</code> (Windows) or <code style={{ background: '#f1f5f9', padding: '1px 4px', borderRadius: 3, color: '#0f172a' }}>ifconfig</code> (Mac) and type the IP below:<br />
+                  <input
+                    style={{ marginTop: 6, width: '100%', border: '1px solid #cbd5e1', borderRadius: 6, padding: '4px 8px', fontSize: '0.75rem', color: '#0f172a', textAlign: 'center' }}
+                    placeholder="192.168.x.x"
+                    onChange={e => { if (e.target.value.match(/^\d+\.\d+\.\d+\.\d+$/)) setLanIp(e.target.value); }}
+                  />
+                </div>
+              )}
+
+              {/* QR code — only render once we have a real IP */}
+              {lanIp && (
+                <>
+                  <QRCodeSVG
+                    value={mobileUrl}
+                    size={172}
+                    bgColor="#ffffff"
+                    fgColor="#0f172a"
+                    level="M"
+                    includeMargin={false}
+                  />
+                  <div style={{
+                    fontSize: '0.5625rem', color: '#475569', textAlign: 'center',
+                    wordBreak: 'break-all', maxWidth: 172, lineHeight: 1.4, fontWeight: 600,
+                  }}>
+                    {mobileUrl}
+                  </div>
+                </>
+              )}
+
               <div style={{ fontSize: '0.5625rem', color: '#94a3b8', textAlign: 'center' }}>
                 📶 Same Wi-Fi network required
               </div>
