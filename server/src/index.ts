@@ -1,6 +1,8 @@
 import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import { PrismaClient } from '@prisma/client';
 import { appointmentRoutes } from './routes/appointments.js';
 import { customerRoutes } from './routes/customers.js';
@@ -23,8 +25,11 @@ export const prisma = new PrismaClient();
 
 const app = express();
 const PORT = process.env.PORT || 3001;
+const IS_PROD = process.env.NODE_ENV === 'production';
 
-app.use(cors({ origin: true, credentials: true }));
+// In production: same-origin (frontend served from this server)
+// In dev: open CORS for Vite dev server on :5173
+app.use(cors({ origin: IS_PROD ? false : true, credentials: true }));
 app.use(express.json({ limit: '50mb' }));
 
 // Health check
@@ -32,11 +37,10 @@ app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-// Network IP — returns the machine's LAN IP so the QR code works on phones
+// Network IP — returns machine's LAN IP for QR code
 app.get('/api/network-ip', (_req, res) => {
   let lanIp = 'localhost';
   try {
-    // os is a Node built-in — sync, always available
     // eslint-disable-next-line @typescript-eslint/no-var-requires
     const { networkInterfaces } = require('os') as typeof import('os');
     const nets = networkInterfaces();
@@ -50,8 +54,7 @@ app.get('/api/network-ip', (_req, res) => {
   res.json({ ip: lanIp });
 });
 
-
-// Routes
+// API Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/customers', customerRoutes);
 app.use('/api/appointments', appointmentRoutes);
@@ -69,6 +72,19 @@ app.use('/api/mobile', mobileRoutes);
 app.use('/api/walkthrough', walkthroughRoutes);
 app.use('/api/rules', rulesRoutes);
 
+// ── Production: serve built Vite frontend as PWA ──────────
+if (IS_PROD) {
+  const __dirname = path.dirname(fileURLToPath(import.meta.url));
+  const staticPath = path.join(__dirname, 'public');
+  app.use(express.static(staticPath));
+  // SPA fallback — all non-API routes → index.html
+  app.get('*', (req, res) => {
+    if (!req.path.startsWith('/api')) {
+      res.sendFile(path.join(staticPath, 'index.html'));
+    }
+  });
+}
+
 app.listen(PORT, () => {
-  console.log(`🪟 Window World Assistant API running on port ${PORT}`);
+  console.log(`🪟 WindowWorldAssistant on :${PORT} [${IS_PROD ? 'PROD' : 'DEV'}]`);
 });
