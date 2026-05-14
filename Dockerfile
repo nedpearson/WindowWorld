@@ -1,51 +1,58 @@
 # ══════════════════════════════════════════════════════════
 # Window World Assistant — Production Dockerfile
-# Builds the Vite frontend + serves it + runs the API
-# Single container — deploy anywhere (Cloud Run, Railway, Render, VPS)
+# Single container: Vite frontend + Express API
+# Deploy: Railway, Cloud Run, Render, or any Docker host
 # ══════════════════════════════════════════════════════════
 
 FROM node:20-alpine AS base
 WORKDIR /app
 
-# ── Stage 1: Install root workspace deps ──────────────────
+# ── Stage 1: Install ALL workspace deps ───────────────────
 FROM base AS deps
 COPY package.json package-lock.json ./
-RUN npm ci --ignore-scripts
-
-# ── Stage 2: Build the frontend ───────────────────────────
-FROM base AS frontend-build
 COPY apps/web/package.json ./apps/web/
-RUN cd apps/web && npm ci --ignore-scripts
-COPY apps/web ./apps/web
-# Point the frontend API proxy at the local server (same container)
-ENV VITE_API_URL=/api
-RUN cd apps/web && npm run build
-
-# ── Stage 3: Build the server ─────────────────────────────
-FROM base AS server-build
 COPY server/package.json ./server/
-RUN cd server && npm ci --ignore-scripts
-COPY server ./server
-RUN cd server && npm run build
+RUN npm ci
 
-# ── Stage 4: Production runtime ───────────────────────────
+# ── Stage 2: Generate Prisma Client ───────────────────────
+FROM deps AS prisma
+COPY server/prisma ./server/prisma
+RUN cd server && npx prisma generate
+
+# ── Stage 3: Build the frontend ──────────────────────────
+FROM prisma AS frontend-build
+COPY apps/web ./apps/web
+ENV VITE_API_URL=/api
+RUN cd apps/web && npx vite build
+
+# ── Stage 4: Build the server ────────────────────────────
+FROM prisma AS server-build
+COPY server ./server
+RUN cd server && npx tsc
+
+# ── Stage 5: Production runtime ──────────────────────────
 FROM node:20-alpine AS production
 WORKDIR /app
 
 # Install only production server deps
 COPY server/package.json ./server/
-RUN cd server && npm ci --omit=dev --ignore-scripts
+RUN cd server && npm install --omit=dev --ignore-scripts
 
-# Copy built artifacts
+# Copy Prisma client (generated during prisma stage)
+COPY --from=prisma /app/node_modules/.prisma ./node_modules/.prisma
+COPY --from=prisma /app/node_modules/@prisma ./node_modules/@prisma
+COPY --from=prisma /app/server/node_modules/.prisma ./server/node_modules/.prisma
+COPY --from=prisma /app/server/node_modules/@prisma ./server/node_modules/@prisma
+
+# Copy built server
 COPY --from=server-build /app/server/dist ./server/dist
+
+# Copy built frontend into server's public dir
 COPY --from=frontend-build /app/apps/web/dist ./server/dist/public
 
-# Copy Prisma client (generated during server build)
-COPY --from=server-build /app/server/node_modules/.prisma ./server/node_modules/.prisma
-COPY --from=server-build /app/server/node_modules/@prisma ./server/node_modules/@prisma
+# Copy prisma schema (needed at runtime for some Prisma features)
+COPY server/prisma ./server/prisma
 
-# Serve static frontend files from the Express server
-# The server will be updated to serve ./dist/public
 ENV NODE_ENV=production
 ENV PORT=8080
 
