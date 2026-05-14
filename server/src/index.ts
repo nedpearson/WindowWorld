@@ -44,10 +44,35 @@ app.get('/api/network-ip', (_req, res) => {
     // eslint-disable-next-line @typescript-eslint/no-var-requires
     const { networkInterfaces } = require('os') as typeof import('os');
     const nets = networkInterfaces();
-    outer: for (const iface of Object.values(nets)) {
+    
+    // First pass: look for a clear physical adapter (Wi-Fi or Ethernet)
+    // Ignore virtual adapters like WSL, Hyper-V, VMware, Docker
+    for (const [name, iface] of Object.entries(nets)) {
       if (!iface) continue;
+      const isVirtual = name.toLowerCase().includes('wsl') || 
+                        name.toLowerCase().includes('hyper') || 
+                        name.toLowerCase().includes('vbox') || 
+                        name.toLowerCase().includes('vmware');
+      
+      if (isVirtual) continue;
+
       for (const addr of iface) {
-        if (addr.family === 'IPv4' && !addr.internal) { lanIp = addr.address; break outer; }
+        if (addr.family === 'IPv4' && !addr.internal) { 
+          // Prefer 192.168.x.x or 10.x.x.x (standard local subnets)
+          if (addr.address.startsWith('192.168.') || addr.address.startsWith('10.')) {
+            lanIp = addr.address; 
+          }
+        }
+      }
+    }
+    
+    // If we didn't find one, fallback to the old method (any non-internal IPv4)
+    if (lanIp === 'localhost') {
+      outer: for (const iface of Object.values(nets)) {
+        if (!iface) continue;
+        for (const addr of iface) {
+          if (addr.family === 'IPv4' && !addr.internal) { lanIp = addr.address; break outer; }
+        }
       }
     }
   } catch {}
