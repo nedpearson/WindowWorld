@@ -97,9 +97,12 @@ model Appointment {
   formInstances  FormInstance[]
   formSketches   FormSketch[]
   timelineEvents AppointmentTimelineEvent[]
-  safetyReviews  OpeningSafetyGlazingReview[]
-  temperedFlags  TemperedGlazingFlag[]
-  aiWarnings     AiValidationWarning[]
+  safetyReviews      OpeningSafetyGlazingReview[]
+  temperedFlags      TemperedGlazingFlag[]
+  aiWarnings         AiValidationWarning[]
+  measurementAdj     MeasurementAdjustment[]
+  measurePhotos      MeasurementCapturePhoto[]
+  specialtySessions  SpecialtyMeasurementSession[]
 
   @@index([customerId])
   @@index([userId])
@@ -817,3 +820,217 @@ model AiValidationWarning {
   @@index([resolved])
 }
 
+// ═══════════════════════════════════════════════════════════════
+// MEASUREMENT INTELLIGENCE — Configurable takeoff/deduction engine
+// ═══════════════════════════════════════════════════════════════
+
+model MeasurementRule {
+  id                     String   @id @default(cuid())
+  name                   String
+  description            String?
+  status                 String   @default("needs_verification")
+  windowType             String?
+  exteriorType           String?
+  installType            String?
+  removalType            String?
+  conditionJson          Json?
+  widthTakeoffFraction   String?
+  heightTakeoffFraction  String?
+  widthTakeoffDecimal    Float    @default(0)
+  heightTakeoffDecimal   Float    @default(0)
+  minDeduction           Float?
+  maxDeduction           Float?
+  actionType             String   @default("deduct")
+  requiresConfirmation   Boolean  @default(true)
+  requiresPhoto          Boolean  @default(false)
+  requiresNote           Boolean  @default(false)
+  severity               String   @default("high")
+  notes                  String?
+  effectiveDate          DateTime?
+  version                Int      @default(1)
+  active                 Boolean  @default(true)
+  createdBy              String?
+  updatedBy              String?
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+
+  adjustments  MeasurementAdjustment[]
+  photoReads   MeasurementPhotoRead[]
+  execLogs     MeasurementRuleExecutionLog[]
+
+  @@index([windowType])
+  @@index([exteriorType])
+  @@index([status])
+}
+
+model MeasurementAdjustment {
+  id              String   @id @default(cuid())
+  appointmentId   String
+  openingId       String?
+  openingNumber   Int
+  sourceType      String   @default("manual")
+  rawWidth        Float?
+  rawHeight       Float?
+  adjWidth        Float?
+  adjHeight       Float?
+  widthTakeoff    Float    @default(0)
+  heightTakeoff   Float    @default(0)
+  ruleId          String?
+  ruleStatus      String?
+  confidence      Float?
+  approved        Boolean  @default(false)
+  approvedBy      String?
+  approvedAt      DateTime?
+  overrideReason  String?
+  notes           String[] @default([])
+  warnings        String[] @default([])
+  metadata        Json?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  appointment     Appointment    @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+  rule            MeasurementRule? @relation(fields: [ruleId], references: [id])
+
+  @@index([appointmentId])
+  @@index([approved])
+}
+
+model MeasurementCapturePhoto {
+  id              String   @id @default(cuid())
+  appointmentId   String
+  openingId       String?
+  openingNumber   Int?
+  measurementType String
+  photoUrl        String?
+  storagePath     String?
+  capturedBy      String?
+  capturedAt      DateTime @default(now())
+  metadata        Json?
+
+  reads           MeasurementPhotoRead[]
+
+  appointment     Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+
+  @@index([appointmentId])
+}
+
+model MeasurementPhotoRead {
+  id                String   @id @default(cuid())
+  photoId           String?
+  appointmentId     String
+  openingNumber     Int?
+  measurementType   String
+  rawAiText         String?
+  detectedFraction  String?
+  detectedDecimal   Float?
+  confidenceScore   Float?
+  candidates        String[] @default([])
+  selectedValue     Float?
+  correctedValue    Float?
+  ruleAppliedId     String?
+  takeoffAmount     Float?
+  finalDecimal      Float?
+  finalFraction     String?
+  status            String   @default("pending")
+  requiresManual    Boolean  @default(false)
+  approvedBy        String?
+  approvedAt        DateTime?
+  metadata          Json?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  photo             MeasurementCapturePhoto? @relation(fields: [photoId], references: [id])
+  rule              MeasurementRule?         @relation(fields: [ruleAppliedId], references: [id])
+
+  @@index([appointmentId])
+  @@index([status])
+}
+
+model MeasurementRuleExecutionLog {
+  id              String   @id @default(cuid())
+  ruleId          String?
+  appointmentId   String?
+  openingId       String?
+  openingNumber   Int?
+  windowType      String?
+  exteriorType    String?
+  installType     String?
+  rawWidth        Float?
+  rawHeight       Float?
+  adjWidth        Float?
+  adjHeight       Float?
+  widthTakeoff    Float?
+  heightTakeoff   Float?
+  applied         Boolean  @default(false)
+  approvedBy      String?
+  approvedAt      DateTime?
+  overridden      Boolean  @default(false)
+  overrideReason  String?
+  metadata        Json?
+  createdAt       DateTime @default(now())
+
+  rule            MeasurementRule? @relation(fields: [ruleId], references: [id])
+
+  @@index([appointmentId])
+  @@index([ruleId])
+}
+
+model SpecialtyMeasurementSession {
+  id              String   @id @default(cuid())
+  appointmentId   String
+  openingId       String?
+  openingNumber   Int
+  windowType      String
+  status          String   @default("in_progress")
+  startedBy       String?
+  completedBy     String?
+  completedAt     DateTime?
+  metadata        Json?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  values          SpecialtyMeasurementValue[]
+  validations     SpecialtyMeasurementValidation[]
+
+  appointment     Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+
+  @@index([appointmentId])
+  @@index([status])
+}
+
+model SpecialtyMeasurementValue {
+  id              String   @id @default(cuid())
+  sessionId       String
+  appointmentId   String
+  openingNumber   Int?
+  dimensionKey    String
+  dimensionLabel  String
+  rawValue        Float?
+  adjustedValue   Float?
+  sourceType      String   @default("manual")
+  approved        Boolean  @default(false)
+  approvedAt      DateTime?
+  metadata        Json?
+  createdAt       DateTime @default(now())
+
+  session         SpecialtyMeasurementSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId])
+}
+
+model SpecialtyMeasurementValidation {
+  id              String   @id @default(cuid())
+  sessionId       String
+  appointmentId   String
+  openingNumber   Int?
+  issueType       String
+  message         String
+  severity        String   @default("high")
+  resolved        Boolean  @default(false)
+  resolvedAt      DateTime?
+  createdAt       DateTime @default(now())
+
+  session         SpecialtyMeasurementSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId])
+}

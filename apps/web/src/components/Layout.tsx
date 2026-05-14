@@ -17,6 +17,7 @@ export function Layout({ children }: { children: ReactNode }) {
     { to: '/pricing', label: '💰 Pricing Admin' },
     { to: '/pricing-import', label: '📦 Pricing Import' },
     { to: '/rules', label: '⚡ Rule Engine' },
+    { to: '/measurement-rules', label: '📐 Measurement Rules' },
     { to: '/mobile', label: '📱 Mobile Field App' },
   ];
 

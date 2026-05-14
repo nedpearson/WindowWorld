@@ -15,6 +15,7 @@ import { WalkthroughPage } from './pages/WalkthroughPage';
 import { OrderFormPage } from './pages/OrderFormPage';
 import { MobileOrderFormPage } from './pages/MobileOrderFormPage';
 import { RuleEngineAdminPage } from './pages/RuleEngineAdminPage';
+import { MeasurementRulesAdminPage } from './pages/MeasurementRulesAdminPage';
 
 export default function App() {
   const user = useAuthStore((s) => s.user);
@@ -39,6 +40,7 @@ export default function App() {
         <Route path="/pricing" element={<PricingAdminPage />} />
         <Route path="/pricing-import" element={<PricingImportPage />} />
         <Route path="/rules" element={<RuleEngineAdminPage />} />
+        <Route path="/measurement-rules" element={<MeasurementRulesAdminPage />} />
         <Route path="/office" element={<OfficeQueuePage />} />
           <Route path="/forms" element={<FormsDashboard />} />
           <Route path="/forms/order/:appointmentId" element={<OrderFormPage />} />

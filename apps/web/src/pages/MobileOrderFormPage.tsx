@@ -11,6 +11,10 @@ import { AppointmentRecap } from '../components/AppointmentRecap';
 import { SafetyGlazingBadge } from '../components/SafetyGlazingPanel';
 import { FinalTemperedReview } from '../components/FinalTemperedReview';
 import { buildSafetyReview, detectSafetyGlazingFromVoice, checkExportReadiness, OpeningSafetyReview, TemperedDecision } from '../utils/safetyGlazingRules';
+import { OrielMeasurementMode, OrielMeasurementResult } from '../components/OrielMeasurementMode';
+import { SpecialtyMeasurementMode, SpecialtyMeasurementResult } from '../components/SpecialtyMeasurementMode';
+import { FinalMeasurementReview } from '../components/FinalMeasurementReview';
+import { MeasurementAdjustment, checkMeasurementExportReadiness } from '../utils/measurementRules';
 
 // ═══════════════════════════════════════════════════════════════
 // MOBILE ORDER FORM — Field-friendly editing with form fidelity
@@ -33,6 +37,9 @@ export function MobileOrderFormPage() {
   const [bulkOpportunities, setBulkOpportunities] = useState<BulkApplyOpportunity[]>([]);
   const [safetyReviews, setSafetyReviews] = useState<Record<number, OpeningSafetyReview>>({});
   const [voiceSafetyWarnings, setVoiceSafetyWarnings] = useState<string[]>([]);
+  const [measurementAdjustments, setMeasurementAdjustments] = useState<Record<number, MeasurementAdjustment>>({});
+  const [orielMode, setOrielMode] = useState<number | null>(null);     // openingIndex
+  const [specialtyMode, setSpecialtyMode] = useState<{ index: number; windowType: string } | null>(null);
 
   useEffect(() => {
     if (!appointmentId) { setLoading(false); return; }
@@ -402,6 +409,29 @@ export function MobileOrderFormPage() {
                             updateSafetyReview(opNum, updated);
                           }}
                         />
+                        {/* Measurement Mode Quick Buttons */}
+                        <div style={{ display: 'flex', gap: '0.375rem', marginTop: '0.5rem', flexWrap: 'wrap' }}>
+                          <button
+                            onClick={() => setOrielMode(i)}
+                            style={{ padding: '0.25rem 0.625rem', fontSize: '0.6875rem', fontWeight: 700, background: 'rgba(139,92,246,0.1)', border: '1px solid rgba(139,92,246,0.3)', borderRadius: 6, color: 'var(--primary)', cursor: 'pointer' }}
+                          >
+                            🪟 Oriel Mode
+                          </button>
+                          {['circle_top', 'eyebrow', 'arch', 'quarter_arch'].map(wt => (
+                            <button
+                              key={wt}
+                              onClick={() => setSpecialtyMode({ index: i, windowType: wt })}
+                              style={{ padding: '0.25rem 0.625rem', fontSize: '0.6875rem', fontWeight: 600, background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.2)', borderRadius: 6, color: 'var(--accent)', cursor: 'pointer' }}
+                            >
+                              {wt === 'circle_top' ? '⌒' : wt === 'eyebrow' ? '⌢' : wt === 'arch' ? '⌣' : '◜'} {wt.replace('_', ' ')}
+                            </button>
+                          ))}
+                          {measurementAdjustments[opNum] && (
+                            <span style={{ fontSize: '0.6875rem', padding: '0.25rem 0.5rem', background: measurementAdjustments[opNum].approved ? 'rgba(34,197,94,0.1)' : 'rgba(245,158,11,0.1)', borderRadius: 6, color: measurementAdjustments[opNum].approved ? 'var(--success)' : 'var(--warning)', fontWeight: 700 }}>
+                              {measurementAdjustments[opNum].approved ? '✅ Approved' : '⏳ Pending'}
+                            </span>
+                          )}
+                        </div>
                       </div>
                     );
                   })}
@@ -409,6 +439,63 @@ export function MobileOrderFormPage() {
                 </div>
               </>
             )}
+          </div>
+        )}
+
+        {/* ═══ ORIEL MODE OVERLAY ═══ */}
+        {orielMode !== null && (
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 200, overflowY: 'auto', padding: '1rem' }}>
+            <OrielMeasurementMode
+              openingNumber={orielMode + 1}
+              exteriorType={formData.openings[orielMode]?.typeExt}
+              installType={formData.openings[orielMode]?.typeInt}
+              onApprove={(result: OrielMeasurementResult) => {
+                const opNum = orielMode + 1;
+                setMeasurementAdjustments(prev => ({ ...prev, [opNum]: result.adjustment }));
+                // Write approved measurements to order form
+                setFormData(prev => {
+                  const openings = [...prev.openings];
+                  openings[orielMode] = {
+                    ...openings[orielMode],
+                    width: String(result.adjustment.adjustedWidth),
+                    height: String(result.adjustment.adjustedHeight),
+                    topSashConfirmed: true,
+                  } as any;
+                  return { ...prev, openings };
+                });
+                setOrielMode(null);
+              }}
+              onCancel={() => setOrielMode(null)}
+            />
+          </div>
+        )}
+
+        {/* ═══ SPECIALTY MODE OVERLAY ═══ */}
+        {specialtyMode !== null && (
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 200, overflowY: 'auto', padding: '1rem' }}>
+            <SpecialtyMeasurementMode
+              windowType={specialtyMode.windowType}
+              openingNumber={specialtyMode.index + 1}
+              exteriorType={formData.openings[specialtyMode.index]?.typeExt}
+              installType={formData.openings[specialtyMode.index]?.typeInt}
+              onApprove={(result: SpecialtyMeasurementResult) => {
+                const opNum = specialtyMode.index + 1;
+                setMeasurementAdjustments(prev => ({ ...prev, [opNum]: result.adjustment }));
+                setFormData(prev => {
+                  const openings = [...prev.openings];
+                  openings[specialtyMode.index] = {
+                    ...openings[specialtyMode.index],
+                    width: String(result.adjustment.adjustedWidth || result.dimensions.width || ''),
+                    height: String(result.adjustment.adjustedHeight || result.dimensions.height || ''),
+                    legHeight: result.dimensions.legHeight ? String(result.dimensions.legHeight) : openings[specialtyMode.index]?.legHeight,
+                    customRadius: result.computedDimensions?.radius ? String(result.computedDimensions.radius) : openings[specialtyMode.index]?.customRadius,
+                  } as any;
+                  return { ...prev, openings };
+                });
+                setSpecialtyMode(null);
+              }}
+              onCancel={() => setSpecialtyMode(null)}
+            />
           </div>
         )}
 
@@ -442,7 +529,7 @@ export function MobileOrderFormPage() {
         {/* ═══ RECAP TAB ═══ */}
         {tab === 'recap' && (
           <div style={{ margin: '-1rem' }}>
-            {/* Tempered Glass Final Review — must resolve before signoff */}
+            {/* Tempered Glass Final Review */}
             <div style={{ padding: '1rem' }}>
               <FinalTemperedReview
                 reviews={Object.values(safetyReviews)}
@@ -453,14 +540,29 @@ export function MobileOrderFormPage() {
                 }}
               />
             </div>
+            {/* Measurement Accuracy Review */}
+            <div style={{ padding: '1rem', borderTop: '1px solid var(--border)' }}>
+              <FinalMeasurementReview
+                openings={formData.openings.filter(o => o.model || o.qty).map((o, i) => ({ ...o, openingNumber: i + 1 }))}
+                adjustments={measurementAdjustments}
+              />
+            </div>
             <AppointmentRecap
               appointment={{ ...formData, id: appointmentId }}
               openings={formData.openings}
               health={health || { score: 0, status: 'Critical', issues: [], missingBlockers: 0, openingsCount: 0 }}
               onSignoff={() => {
-                const exportResult = checkExportReadiness(Object.values(safetyReviews));
-                if (exportResult.blocked) {
-                  alert('Cannot sign off:\n\n' + exportResult.blockers.join('\n'));
+                const safetyResult = checkExportReadiness(Object.values(safetyReviews));
+                if (safetyResult.blocked) {
+                  alert('Cannot sign off — safety glazing issues:\n\n' + safetyResult.blockers.join('\n'));
+                  return;
+                }
+                const measureResult = checkMeasurementExportReadiness(
+                  formData.openings.filter(o => o.model || o.qty).map((o, i) => ({ ...o, openingNumber: i + 1 })),
+                  measurementAdjustments,
+                );
+                if (measureResult.blocked) {
+                  alert('Cannot sign off — measurement issues:\n\n' + measureResult.blockers.join('\n'));
                   return;
                 }
                 alert('Order Locked & Customer Signed!');
