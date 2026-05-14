@@ -21,6 +21,7 @@ import { documentRoutes } from './routes/documents.js';
 import { mobileRoutes } from './routes/mobile.js';
 import { walkthroughRoutes } from './routes/walkthrough.js';
 import { rulesRoutes } from './routes/rules.js';
+import { commissionRoutes } from './routes/commissions.js';
 
 export const prisma = new PrismaClient();
 
@@ -98,6 +99,7 @@ app.use('/api/mobile', mobileRoutes);
 app.use('/api/walkthrough', walkthroughRoutes);
 app.use('/api/rules', rulesRoutes);
 app.use('/api/documents', documentRoutes);
+app.use('/api/commissions', commissionRoutes);
 
 // ── Production: serve built Vite frontend as PWA ──────────
 if (IS_PROD) {

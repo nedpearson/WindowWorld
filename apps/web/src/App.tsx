@@ -17,6 +17,7 @@ import { OrderFormPage } from './pages/OrderFormPage';
 import { MobileOrderFormPage } from './pages/MobileOrderFormPage';
 import { RuleEngineAdminPage } from './pages/RuleEngineAdminPage';
 import { MeasurementRulesAdminPage } from './pages/MeasurementRulesAdminPage';
+import { CommissionsPage } from './pages/CommissionsPage';
 import { useEffect, useState } from 'react';
 
 export default function App() {
@@ -62,6 +63,7 @@ export default function App() {
         <Route path="/rules" element={<RuleEngineAdminPage />} />
         <Route path="/measurement-rules" element={<MeasurementRulesAdminPage />} />
         <Route path="/office" element={<OfficeQueuePage />} />
+          <Route path="/commissions" element={<CommissionsPage />} />
           <Route path="/forms" element={<FormsDashboard />} />
           <Route path="/forms/order/:appointmentId" element={<OrderFormPage />} />
           <Route path="*" element={<Navigate to="/" />} />
