@@ -112,4 +112,5 @@ if (IS_PROD) {
 
 app.listen(PORT, () => {
   console.log(`🪟 WindowWorldAssistant on :${PORT} [${IS_PROD ? 'PROD' : 'DEV'}]`);
+  console.log('Backend successfully reloaded!');
 });

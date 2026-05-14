@@ -8,11 +8,17 @@ export interface AuthRequest extends Request {
 }
 
 /** Verifies JWT and attaches req.user. Returns 401 if missing or invalid. */
-export function requireAuth(req: AuthRequest, res: Response, next: NextFunction) {
+export async function requireAuth(req: AuthRequest, res: Response, next: NextFunction) {
   const token = req.headers.authorization?.replace('Bearer ', '');
   if (!token) return res.status(401).json({ error: 'Authentication required' });
   try {
     const decoded = jwt.verify(token, JWT_SECRET) as { userId: string; role: string };
+    
+    // VERIFY USER STILL EXISTS (handles db resets)
+    const { prisma } = await import('../index.js');
+    const userExists = await prisma.user.findUnique({ where: { id: decoded.userId } });
+    if (!userExists) return res.status(401).json({ error: 'User no longer exists in database' });
+
     req.user = decoded;
     next();
   } catch {

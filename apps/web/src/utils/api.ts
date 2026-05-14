@@ -11,8 +11,15 @@ async function request(path: string, options: RequestInit = {}) {
     },
   });
   if (!res.ok) {
+    if (res.status === 401) {
+      // Force logout if token is invalid or user no longer exists
+      localStorage.removeItem('wwa_token');
+      localStorage.removeItem('wwa-auth');
+      window.location.href = '/';
+      throw new Error('Session expired. Please log in again.');
+    }
     const err = await res.json().catch(() => ({ error: res.statusText }));
-    throw new Error(err.error || 'Request failed');
+    throw new Error(err.details ? `${err.error}: ${err.details}` : (err.error || 'Request failed'));
   }
   return res.json();
 }

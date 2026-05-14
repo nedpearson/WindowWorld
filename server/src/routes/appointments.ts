@@ -105,6 +105,14 @@ appointmentRoutes.post('/:id/timeline', async (req, res) => {
 appointmentRoutes.post('/', async (req, res) => {
   try {
     const { customerId, userId, ...rest } = req.body;
+    
+    // Explicit checks to identify foreign key issues
+    const custExists = await prisma.customer.findUnique({ where: { id: customerId } });
+    if (!custExists) return res.status(400).json({ error: `Customer ID ${customerId} not found in database.` });
+    
+    const userExists = await prisma.user.findUnique({ where: { id: userId } });
+    if (!userExists) return res.status(400).json({ error: `User ID ${userId} not found in database.` });
+
     const appointment = await prisma.appointment.create({
       data: { customerId, userId, ...rest },
       include: { customer: true, user: { select: { id: true, name: true } } }

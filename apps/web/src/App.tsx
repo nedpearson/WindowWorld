@@ -11,6 +11,7 @@ import { OfficeQueuePage } from './pages/OfficeQueuePage';
 import { FormsDashboard } from './pages/FormsDashboard';
 import { SigningPage } from './pages/SigningPage';
 import { MobileFieldPage } from './pages/MobileFieldPage';
+import { MobileHomePage } from './pages/MobileHomePage';
 import { WalkthroughPage } from './pages/WalkthroughPage';
 import { OrderFormPage } from './pages/OrderFormPage';
 import { MobileOrderFormPage } from './pages/MobileOrderFormPage';
@@ -44,7 +45,8 @@ export default function App() {
     <Routes>
       {/* Isolated pages — no Layout */}
       <Route path="/sign/:token" element={<SigningPage />} />
-      <Route path="/mobile" element={<MobileFieldPage />} />
+      <Route path="/mobile" element={<MobileHomePage />} />
+      <Route path="/mobile/field/:appointmentId" element={<MobileFieldPage />} />
       <Route path="/mobile/order/:appointmentId" element={<MobileOrderFormPage />} />
 
       {/* Main app with sidebar */}

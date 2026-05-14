@@ -1,16 +1,22 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { api } from '../utils/api';
 import { useAuthStore } from '../store';
 import { useMobileStore, type FieldExtraction } from '../store/mobileStore';
 import { useSyncWorker } from '../utils/useSyncWorker';
 import { parseWxH, FRACTION_BUTTONS } from '../utils/measurementParser';
 import { SketchBoard } from '../components/DrawableSketch';
+import { OpeningWizard } from '../components/OpeningWizard';
+import { MissingInfoCheck } from '../components/MissingInfoCheck';
+import { PricingReview } from '../components/PricingReview';
+import { validateAppointment } from '../utils/validationEngine';
+import { runAppointmentCoach } from '../utils/appointmentCoach';
 
-type MobileTab = 'home' | 'openings' | 'notes' | 'sketch' | 'review';
+type MobileTab = 'home' | 'openings' | 'notes' | 'sketch' | 'review' | 'pricing' | 'checklist';
 
 export function MobileFieldPage() {
   const navigate = useNavigate();
+  const { appointmentId: routeApptId } = useParams<{ appointmentId: string }>();
   const user = useAuthStore(s => s.user);
   const mobile = useMobileStore();
   const sync = useSyncWorker();
@@ -18,6 +24,8 @@ export function MobileFieldPage() {
   const [appt, setAppt] = useState<any>(null);
   const [tab, setTab] = useState<MobileTab>('home');
   const [recording, setRecording] = useState(false);
+  const [showWizard, setShowWizard] = useState(false);
+  const [nextAction, setNextAction] = useState<any>(null);
   const [transcript, setTranscript] = useState('');
   const [noteText, setNoteText] = useState('');
   const [showNoteModal, setShowNoteModal] = useState(false);
@@ -29,18 +37,23 @@ export function MobileFieldPage() {
   const recognitionRef = useRef<any>(null);
 
   useEffect(() => {
-    // Load appointments — gracefully handle offline
-    api.getAppointments({}).then(data => {
-      setAppointments(Array.isArray(data) ? data : []);
-    }).catch(() => {
-      setApptLoadError('Could not load appointments — working offline');
-    });
+    // If we have a route param, auto-load that appointment
+    if (routeApptId) {
+      loadAppt(routeApptId);
+    } else {
+      // Fallback: load appointment list for selection
+      api.getAppointments({}).then(data => {
+        setAppointments(Array.isArray(data) ? data : []);
+      }).catch(() => {
+        setApptLoadError('Could not load appointments — working offline');
+      });
+    }
     const onLine = () => { mobile.setOnline(true); }
     const offLine = () => mobile.setOnline(false);
     window.addEventListener('online', onLine);
     window.addEventListener('offline', offLine);
     return () => { window.removeEventListener('online', onLine); window.removeEventListener('offline', offLine); };
-  }, []);
+  }, [routeApptId]);
 
   const loadAppt = async (id: string) => {
     setApptLoadError('');
@@ -231,11 +244,12 @@ export function MobileFieldPage() {
   if (!appt) return (
     <div className="mobile-field">
       <div className="mf-header">
-        <button className="mf-back" onClick={() => navigate('/')}>←</button>
+        <button className="mf-back" onClick={() => navigate('/mobile')}>←</button>
         <h2 style={{ flex: 1 }}>📱 Field App</h2>
         <span className={`mf-sync ${mobile.isOnline ? 'online' : 'offline'}`}>{mobile.isOnline ? '🟢' : '🔴'}</span>
       </div>
       <div style={{ padding: '1rem' }}>
+        {apptLoadError && <div style={{ background: 'rgba(245,158,11,0.1)', borderRadius: 10, padding: '0.75rem', marginBottom: '1rem', fontSize: '0.8125rem', color: 'var(--warning)' }}>⚠️ {apptLoadError}</div>}
         <h3 style={{ marginBottom: '1rem' }}>Select Appointment</h3>
         {appointments.map((a: any) => (
           <div key={a.id} className="mf-appt-card" onClick={() => loadAppt(a.id)}>
@@ -244,7 +258,7 @@ export function MobileFieldPage() {
             <span className={`badge badge-${a.status === 'sold' ? 'sold' : a.status === 'quoted' ? 'quoted' : 'draft'}`}>{a.status}</span>
           </div>
         ))}
-        <button className="btn btn-secondary" style={{ width: '100%', marginTop: '1rem' }} onClick={() => navigate('/appointments')}>← Desktop View</button>
+        <button className="btn btn-secondary" style={{ width: '100%', marginTop: '1rem' }} onClick={() => navigate('/mobile')}>← Back to Today</button>
       </div>
     </div>
   );
@@ -254,7 +268,7 @@ export function MobileFieldPage() {
     <div className="mobile-field">
       {/* Header */}
       <div className="mf-header">
-        <button className="mf-back" onClick={() => setAppt(null)}>←</button>
+        <button className="mf-back" onClick={() => navigate('/mobile')}>←</button>
         <div style={{ flex: 1 }}>
           <div style={{ fontWeight: 700, fontSize: '0.875rem' }}>{appt.customer?.firstName} {appt.customer?.lastName}</div>
           <div style={{ fontSize: '0.6875rem', color: 'var(--text-muted)' }}>{appt.jobAddress}</div>
@@ -317,16 +331,48 @@ export function MobileFieldPage() {
               <button className="mf-action-btn" onClick={() => setTab('openings')}>
                 <span style={{ fontSize: '2rem' }}>🪟</span><span>Openings ({appt.openings?.length || 0})</span>
               </button>
+              <button className="mf-action-btn" onClick={() => setShowWizard(true)}>
+                <span style={{ fontSize: '2rem' }}>🪄</span><span>Add Opening</span>
+              </button>
               <button className="mf-action-btn" onClick={() => setTab('sketch')}>
                 <span style={{ fontSize: '2rem' }}>🏠</span><span>Sketch</span>
+              </button>
+              <button className="mf-action-btn" onClick={() => setTab('pricing')}>
+                <span style={{ fontSize: '2rem' }}>💰</span><span>Pricing</span>
               </button>
               <button className="mf-action-btn" onClick={() => { setTab('review'); }}>
                 <span style={{ fontSize: '2rem' }}>🔍</span><span>Review{pendingReview > 0 && <span className="mf-badge">{pendingReview}</span>}</span>
               </button>
-              <button className="mf-action-btn" onClick={runFinalCheck}>
-                <span style={{ fontSize: '2rem' }}>📋</span><span>Export Check</span>
+              <button className="mf-action-btn" onClick={() => setTab('checklist')}>
+                <span style={{ fontSize: '2rem' }}>✅</span><span>Checklist</span>
+              </button>
+              <button className="mf-action-btn" onClick={() => navigate(`/mobile/order/${appt.id}`)}>
+                <span style={{ fontSize: '2rem' }}>📄</span><span>Order Form</span>
               </button>
             </div>
+
+            {/* "What do I do next?" button */}
+            <button onClick={() => {
+              try {
+                const result = runAppointmentCoach(appt);
+                const top = result.items[0];
+                setNextAction(top ? { action: top.message, reason: top.detail || '', priority: top.severity } : { action: 'All clear!', reason: 'No issues found — appointment looks good.', priority: 'info' });
+              } catch { setNextAction({ action: 'Review your appointment', reason: 'Check openings and measurements' }); }
+            }} style={{
+              width: '100%', marginTop: '1rem', padding: '0.875rem', background: 'linear-gradient(135deg, rgba(139,92,246,0.15), rgba(59,130,246,0.1))',
+              border: '1px solid rgba(139,92,246,0.3)', borderRadius: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.75rem',
+              color: 'var(--text-primary)', fontWeight: 600, fontSize: '0.875rem',
+            }}>
+              <span style={{ fontSize: '1.5rem' }}>🤖</span>
+              <span>What do I do next?</span>
+            </button>
+            {nextAction && (
+              <div className="card" style={{ marginTop: '0.75rem', padding: '0.875rem', background: 'rgba(139,92,246,0.06)', borderColor: 'rgba(139,92,246,0.2)' }}>
+                <div style={{ fontWeight: 700, fontSize: '0.875rem', marginBottom: '0.25rem' }}>➡️ {nextAction.action || nextAction.title || 'Review appointment'}</div>
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{nextAction.reason || nextAction.description || ''}</div>
+                {nextAction.priority && <div style={{ fontSize: '0.625rem', color: 'var(--warning)', marginTop: '0.25rem' }}>Priority: {nextAction.priority}</div>}
+              </div>
+            )}
 
             {/* Active Recording */}
             {recording && (
@@ -481,6 +527,29 @@ export function MobileFieldPage() {
             <SketchBoard appointmentId={appt.id} openings={appt.openings || []} />
           </div>
         )}
+
+        {/* ── Pricing Tab ────────────────────────────────── */}
+        {tab === 'pricing' && (
+          <div>
+            <PricingReview
+              appointment={appt}
+              onRecalculate={() => api.recalculate(appt.id).then(() => loadAppt(appt.id))}
+              onSave={(updates: any) => api.updateAppointment(appt.id, updates).then(() => loadAppt(appt.id))}
+            />
+          </div>
+        )}
+
+        {/* ── Checklist Tab ──────────────────────────────── */}
+        {tab === 'checklist' && (
+          <div>
+            <MissingInfoCheck appointment={appt} onJumpToStep={(step) => {
+              if (step <= 2) setTab('openings');
+              else if (step === 3) setTab('sketch');
+              else if (step >= 4) setTab('pricing');
+              else setTab('home');
+            }} />
+          </div>
+        )}
       </div>
 
       {/* ── Note Modal ──────────────────────────────────── */}
@@ -498,10 +567,33 @@ export function MobileFieldPage() {
         </div>
       )}
 
+      {/* ── Opening Wizard Modal ─────────────────────────── */}
+      {showWizard && (
+        <div style={{
+          position: 'fixed', inset: 0, background: 'var(--bg-primary)', zIndex: 300,
+          display: 'flex', flexDirection: 'column', overflowY: 'auto',
+          paddingTop: 'max(0.5rem, env(safe-area-inset-top))',
+          paddingBottom: 'max(0.5rem, env(safe-area-inset-bottom))',
+        }}>
+          <OpeningWizard
+            initialData={{}}
+            appointmentId={appt.id}
+            allOpenings={appt.openings || []}
+            onSave={async (data: any) => {
+              await api.createOpening({ ...data, appointmentId: appt.id });
+              await loadAppt(appt.id);
+              setShowWizard(false);
+              setTab('openings');
+            }}
+            onCancel={() => setShowWizard(false)}
+          />
+        </div>
+      )}
+
       {/* ── Bottom Nav ──────────────────────────────────── */}
       <nav className="mf-bottom-nav">
-        {([['home', '🏠', 'Home'], ['openings', '🪟', 'Openings'], ['notes', '📝', 'Notes'], ['sketch', '🏠', 'Sketch'], ['review', '🔍', 'Review']] as [MobileTab, string, string][]).map(([t, icon, label]) => (
-          <button key={t} className={`mf-nav-btn ${tab === t ? 'active' : ''}`} onClick={() => t === 'notes' ? setShowNoteModal(true) : setTab(t)}>
+        {([['home', '🏠', 'Home'], ['openings', '🪟', 'Open'], ['pricing', '💰', 'Price'], ['checklist', '✅', 'Check'], ['review', '🔍', 'AI']] as [MobileTab, string, string][]).map(([t, icon, label]) => (
+          <button key={t} className={`mf-nav-btn ${tab === t ? 'active' : ''}`} onClick={() => setTab(t)}>
             <span>{icon}</span><span>{label}</span>
             {t === 'review' && pendingReview > 0 && <span className="mf-nav-badge">{pendingReview}</span>}
           </button>
