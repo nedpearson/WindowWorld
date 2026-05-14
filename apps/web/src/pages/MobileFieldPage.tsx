@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { api } from '../utils/api';
 import { useAuthStore } from '../store';
 import { useMobileStore, type FieldExtraction } from '../store/mobileStore';
-import { parseWxH, validateMeasurement, FRACTION_BUTTONS } from '../utils/measurementParser';
+import { useSyncWorker } from '../utils/useSyncWorker';
+import { parseWxH, FRACTION_BUTTONS } from '../utils/measurementParser';
 import { SketchBoard } from '../components/DrawableSketch';
 
 type MobileTab = 'home' | 'openings' | 'notes' | 'sketch' | 'review';
@@ -12,6 +13,7 @@ export function MobileFieldPage() {
   const navigate = useNavigate();
   const user = useAuthStore(s => s.user);
   const mobile = useMobileStore();
+  const sync = useSyncWorker();
   const [appointments, setAppointments] = useState<any[]>([]);
   const [appt, setAppt] = useState<any>(null);
   const [tab, setTab] = useState<MobileTab>('home');
@@ -23,11 +25,17 @@ export function MobileFieldPage() {
   const [measureInput, setMeasureInput] = useState('');
   const [qualityScore, setQualityScore] = useState<any>(null);
   const [finalCheck, setFinalCheck] = useState<any>(null);
+  const [apptLoadError, setApptLoadError] = useState('');
   const recognitionRef = useRef<any>(null);
 
   useEffect(() => {
-    api.getAppointments({}).then(setAppointments).catch(() => {});
-    const onLine = () => mobile.setOnline(true);
+    // Load appointments — gracefully handle offline
+    api.getAppointments({}).then(data => {
+      setAppointments(Array.isArray(data) ? data : []);
+    }).catch(() => {
+      setApptLoadError('Could not load appointments — working offline');
+    });
+    const onLine = () => { mobile.setOnline(true); }
     const offLine = () => mobile.setOnline(false);
     window.addEventListener('online', onLine);
     window.addEventListener('offline', offLine);
@@ -35,9 +43,25 @@ export function MobileFieldPage() {
   }, []);
 
   const loadAppt = async (id: string) => {
-    const data = await api.getAppointment(id);
-    setAppt(data);
-    mobile.setActiveAppointment(id);
+    setApptLoadError('');
+    try {
+      const data = await api.getAppointment(id);
+      setAppt(data);
+      mobile.setActiveAppointment(id);
+      // Save a draft copy for offline access
+      mobile.saveDraft(`appt_${id}`, data);
+    } catch {
+      // Fallback to cached draft if offline
+      const cached = mobile.getDraft(`appt_${id}`);
+      if (cached) {
+        setAppt(cached);
+        mobile.setActiveAppointment(id);
+        setApptLoadError('⚠️ Offline — showing cached data');
+      } else {
+        setApptLoadError('Could not load appointment and no cached data available');
+        return;
+      }
+    }
     setTab('home');
     try { const qs = await api.post(`/mobile/quality-score/${id}`, {}); setQualityScore(qs); } catch {}
   };
@@ -126,10 +150,19 @@ export function MobileFieldPage() {
   // ── Text Note ──────────────────────────────────────────
   const saveNote = async () => {
     if (!noteText.trim() || !appt) return;
-    const localId = mobile.addNote({ localId: '', noteText, extractions: [], status: 'pending', createdAt: Date.now(), appointmentId: appt.id, synced: false });
+    // LOCAL-FIRST: save immediately so note is never lost even if offline
+    const localId = mobile.addNote({
+      localId: '', noteText, extractions: [], status: 'pending',
+      createdAt: Date.now(), appointmentId: appt.id, synced: false
+    });
+    // Queue for server sync (drains automatically when online)
+    mobile.enqueue({ entityType: 'note', entityId: localId, operation: 'create',
+      payload: { userId: user?.id, appointmentId: appt.id, noteText } });
+    setNoteText(''); setShowNoteModal(false); setTab('review');
+    // Attempt AI extraction — non-blocking, failure does not lose the note
     try {
-      await api.post('/mobile/notes', { userId: user!.id, appointmentId: appt.id, noteText });
-      const session = await api.post('/voice/sessions', { appointmentId: appt.id, userId: user!.id, status: 'recording' });
+      await api.post('/mobile/notes', { userId: user?.id, appointmentId: appt.id, noteText });
+      const session = await api.post('/voice/sessions', { appointmentId: appt.id, userId: user?.id, status: 'recording' });
       await api.post('/voice/transcripts', { voiceSessionId: session.id, rawText: noteText, provider: 'typed', confidence: 0.9 });
       const result = await api.post('/voice/parse', { voiceSessionId: session.id, text: noteText });
       const exts: FieldExtraction[] = (result.entities || []).map((e: any) => ({
@@ -137,9 +170,11 @@ export function MobileFieldPage() {
         targetField: e.fieldName, originalValue: e.fieldValue, normalizedValue: e.fieldValue,
         confidenceScore: e.confidence, requiresReview: e.confidence < 0.8, status: 'pending' as const, openingNumber: e.openingNumber,
       }));
-      mobile.updateNote(localId, { extractions: exts, status: 'needs_review', synced: true });
-    } catch {}
-    setNoteText(''); setShowNoteModal(false); setTab('review');
+      mobile.updateNote(localId, { extractions: exts, status: exts.length > 0 ? 'needs_review' : 'saved_as_note', synced: true });
+    } catch (err: any) {
+      // Extraction failed — note is safe locally
+      mobile.updateNote(localId, { status: 'saved_as_note', lastError: err?.message });
+    }
   };
 
   // ── Apply Extractions ──────────────────────────────────
@@ -165,13 +200,19 @@ export function MobileFieldPage() {
     const w = parsed.width.inches;
     const h = parsed.height.valid ? parsed.height.inches : 0;
     const existing = appt.openings?.find((o: any) => o.openingNumber === openingNum);
-    if (existing) {
-      const data: any = { width: w };
-      if (h > 0) { data.height = h; data.unitedInches = w + h; }
-      await api.updateOpening(existing.id, data);
-    }
+    if (!existing) return;
+    const data: any = { width: w };
+    if (h > 0) { data.height = h; data.unitedInches = w + h; }
+    // LOCAL-FIRST: save draft, queue sync, update UI optimistically
+    mobile.saveDraftOpening(appt.id, openingNum, { ...existing, ...data });
+    mobile.enqueue({ entityType: 'measurement', entityId: existing.id, operation: 'update', payload: data });
     setMeasureInput(''); setShowMeasure(null);
-    await loadAppt(appt.id);
+    setAppt((prev: any) => ({
+      ...prev,
+      openings: (prev?.openings || []).map((o: any) => o.openingNumber === openingNum ? { ...o, ...data } : o)
+    }));
+    // Try immediate server save (non-blocking, already queued as backup)
+    try { await api.updateOpening(existing.id, data); } catch { /* queued for retry */ }
   };
 
   // ── Final Check ────────────────────────────────────────
@@ -219,8 +260,37 @@ export function MobileFieldPage() {
           <div style={{ fontSize: '0.6875rem', color: 'var(--text-muted)' }}>{appt.jobAddress}</div>
         </div>
         <div className="mf-completion">{completionPct}%</div>
-        <span className={`mf-sync ${mobile.isOnline ? 'online' : 'offline'}`}>{mobile.isOnline ? '🟢' : '🔴'}</span>
+        <span className={`mf-sync ${mobile.isOnline ? 'online' : 'offline'}`}
+          title={mobile.lastSyncAt ? `Last sync: ${new Date(mobile.lastSyncAt).toLocaleTimeString()}` : 'Never synced'}>
+          {mobile.isOnline ? '🟢' : '🔴'}
+        </span>
       </div>
+
+      {/* Offline warning banner */}
+      {!mobile.isOnline && (
+        <div style={{ background: 'rgba(245,158,11,0.15)', borderBottom: '1px solid rgba(245,158,11,0.3)', padding: '0.375rem 1rem', fontSize: '0.75rem', color: 'var(--warning)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <span>📵</span>
+          <span>Offline mode — changes are saving locally and will sync when you reconnect.</span>
+        </div>
+      )}
+
+      {/* Sync queue status */}
+      {(sync.pendingCount > 0 || sync.failedCount > 0) && (
+        <div style={{ background: sync.failedCount > 0 ? 'rgba(239,68,68,0.1)' : 'rgba(59,130,246,0.08)', borderBottom: `1px solid ${sync.failedCount > 0 ? 'rgba(239,68,68,0.2)' : 'rgba(59,130,246,0.15)'}`, padding: '0.375rem 1rem', fontSize: '0.6875rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          {sync.pendingCount > 0 && <span style={{ color: 'var(--accent)' }}>⏳ {sync.pendingCount} change{sync.pendingCount > 1 ? 's' : ''} syncing…</span>}
+          {sync.failedCount > 0 && (
+            <><span style={{ color: 'var(--danger)' }}>❌ {sync.failedCount} failed</span>
+            <button style={{ marginLeft: 'auto', fontSize: '0.625rem', padding: '2px 6px', border: '1px solid var(--danger)', borderRadius: 4, background: 'none', color: 'var(--danger)', cursor: 'pointer' }} onClick={sync.retryAll}>Retry All</button></>
+          )}
+        </div>
+      )}
+
+      {/* Appointment load error */}
+      {apptLoadError && (
+        <div style={{ padding: '0.5rem 1rem', fontSize: '0.75rem', background: 'rgba(245,158,11,0.1)', color: 'var(--warning)', borderBottom: '1px solid rgba(245,158,11,0.2)' }}>
+          {apptLoadError}
+        </div>
+      )}
 
       {/* Quality Score Bar */}
       {qualityScore && (

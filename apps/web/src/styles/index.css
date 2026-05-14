@@ -540,5 +540,126 @@ button, input, select, textarea {
 .mf-modal {
   width: 100%; max-width: 500px; background: var(--bg-secondary); border-radius: var(--radius-lg) var(--radius-lg) 0 0;
   padding: 1.5rem; animation: slideUp 0.3s ease;
+  /* Prevent keyboard from covering modal */
+  max-height: 90dvh; overflow-y: auto;
+  padding-bottom: max(1.5rem, env(safe-area-inset-bottom));
 }
 @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+
+/* ══════════════════════════════════════════════════════════ */
+/* MOBILE PHONE VIEWPORT HARDENING (375px–430px)            */
+/* ══════════════════════════════════════════════════════════ */
+
+/* Ensure minimum touch target size on phones */
+@media (max-width: 480px) {
+  .mf-action-btn { min-height: 72px; padding: 0.75rem 0.25rem; font-size: 0.6875rem; }
+  .mf-action-grid { grid-template-columns: repeat(3, 1fr); gap: 0.5rem; }
+  .mf-nav-btn { padding: 0.5rem 0; min-height: 44px; }
+  .mf-nav-btn span:first-child { font-size: 1.125rem; }
+
+  /* Keypad fraction buttons — wider touch targets */
+  .keypad-fractions { grid-template-columns: repeat(4, 1fr); }
+  .keypad-btn { min-height: 44px; font-size: 1.0625rem; }
+  .frac-chip { padding: 0.25rem 0.5rem; font-size: 0.8125rem; }
+
+  /* Opening cards — compact but readable */
+  .mf-opening-card { padding: 0.75rem; }
+  .mf-opening-header { gap: 0.375rem; }
+
+  /* Inputs — prevent iOS zoom (must be ≥ 16px) */
+  .form-input, .form-select, .form-textarea { font-size: 1rem; }
+  input, select, textarea { font-size: 1rem !important; }
+
+  /* Prevent horizontal overflow */
+  .mf-content { overflow-x: hidden; }
+  .mf-score-bar { gap: 0.125rem; padding: 0.375rem 0.5rem; }
+  .mf-score-item { min-width: 52px; font-size: 0.5625rem; }
+
+  /* Bottom nav safe area */
+  .mf-bottom-nav {
+    padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
+  }
+}
+
+/* ── iPhone 14 Pro / Dynamic Island notch ── */
+@supports (padding-top: env(safe-area-inset-top)) {
+  .mf-header {
+    padding-top: max(0.75rem, env(safe-area-inset-top));
+  }
+}
+
+/* ── Android small (360px) ── */
+@media (max-width: 375px) {
+  .mf-action-grid { grid-template-columns: repeat(2, 1fr); }
+  h1 { font-size: 1.25rem; }
+  h2 { font-size: 1.125rem; }
+  .mf-completion { font-size: 0.625rem; padding: 0.125rem 0.375rem; }
+}
+
+/* ══════════════════════════════════════════════════════════ */
+/* TABLET / IPAD (768px–1024px)                             */
+/* ══════════════════════════════════════════════════════════ */
+
+@media (min-width: 768px) and (max-width: 1024px) {
+  .mf-action-grid { grid-template-columns: repeat(4, 1fr); }
+  .mf-modal { max-width: 640px; border-radius: var(--radius-lg); margin: auto; }
+  .mf-modal-overlay { align-items: center; }
+  .mf-bottom-nav { max-width: 640px; left: 50%; transform: translateX(-50%); border-radius: var(--radius-lg) var(--radius-lg) 0 0; }
+  .mobile-field { max-width: 640px; margin: 0 auto; box-shadow: 0 0 40px rgba(0,0,0,0.4); }
+
+  /* Show more in keypad on tablet */
+  .keypad-fractions { grid-template-columns: repeat(7, 1fr); }
+  .keypad-btn { min-height: 48px; }
+}
+
+/* ══════════════════════════════════════════════════════════ */
+/* LANDSCAPE PHONE (height < 500px)                         */
+/* ══════════════════════════════════════════════════════════ */
+
+@media (max-height: 500px) and (orientation: landscape) {
+  .mf-header { padding: 0.375rem 1rem; }
+  .mf-score-bar { display: none; } /* hide score bar in landscape to save space */
+  .mf-action-grid { grid-template-columns: repeat(6, 1fr); gap: 0.375rem; }
+  .mf-action-btn { min-height: 56px; padding: 0.5rem 0.25rem; font-size: 0.625rem; }
+  .mf-bottom-nav { padding: 0.25rem 0; }
+  .mf-bottom-nav span:first-child { font-size: 1rem; }
+  .mf-modal { max-height: 95dvh; padding: 0.75rem; }
+}
+
+/* ══════════════════════════════════════════════════════════ */
+/* KEYBOARD AVOIDANCE (iOS Safari / Android Chrome)         */
+/* ══════════════════════════════════════════════════════════ */
+
+/* When virtual keyboard is visible, shrink sticky elements */
+@media (max-height: 400px) {
+  .mf-bottom-nav { display: none; }
+  .mf-content { padding-bottom: 0.5rem; }
+}
+
+/* Scroll textarea into view when focused */
+.mf-modal textarea:focus {
+  scroll-margin-bottom: 200px;
+}
+
+/* ══════════════════════════════════════════════════════════ */
+/* SYNC STATUS UI                                           */
+/* ══════════════════════════════════════════════════════════ */
+
+.sync-banner {
+  display: flex; align-items: center; gap: 0.5rem;
+  padding: 0.375rem 1rem; font-size: 0.75rem; font-weight: 500;
+}
+.sync-banner.offline { background: rgba(245,158,11,0.12); color: var(--warning); border-bottom: 1px solid rgba(245,158,11,0.25); }
+.sync-banner.syncing { background: rgba(59,130,246,0.08); color: var(--accent); border-bottom: 1px solid rgba(59,130,246,0.15); }
+.sync-banner.failed { background: rgba(239,68,68,0.08); color: var(--danger); border-bottom: 1px solid rgba(239,68,68,0.15); }
+
+/* Draft indicator on opening cards */
+.mf-opening-card.has-draft {
+  border-left: 3px solid var(--warning);
+}
+.mf-draft-badge {
+  font-size: 0.5625rem; padding: 1px 4px; border-radius: 3px;
+  background: rgba(245,158,11,0.15); color: var(--warning);
+  border: 1px solid rgba(245,158,11,0.25);
+}
+
