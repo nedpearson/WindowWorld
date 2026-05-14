@@ -18,8 +18,8 @@ authRoutes.post('/login', async (req, res) => {
 
     const token = jwt.sign({ userId: user.id, role: user.role }, JWT_SECRET, { expiresIn: '7d' });
     res.json({ token, user: { id: user.id, email: user.email, name: user.name, role: user.role } });
-  } catch (err) {
-    res.status(500).json({ error: 'Login failed' });
+  } catch (err: any) {
+    res.status(500).json({ error: 'Login failed', details: err?.message, stack: err?.stack });
   }
 });
 
