@@ -140,11 +140,30 @@ export function validateAppointment(appointment: any): ValidationResult {
   }
 
   // ─── SKETCH ───────────────────────────────────────────
+  // Sketches are stored in localStorage (wwa_sketch_{id}_{elevation})
+  // as well as optionally in houseMap from the server
+  const elevations = ['front', 'rear', 'left', 'right', 'garage', 'other'];
+  let hasAnySketch = !!houseMap?.sketchData;
+  let hasAnyMarkers = (houseMap?.markers?.length || 0) > 0;
+
+  // Check localStorage for sketch data (DrawableSketch stores here)
+  if (typeof window !== 'undefined' && appointment.id) {
+    for (const elev of elevations) {
+      try {
+        const raw = localStorage.getItem(`wwa_sketch_${appointment.id}_${elev}`);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (parsed?.dataUrl) hasAnySketch = true;
+          if (parsed?.markers?.length > 0) hasAnyMarkers = true;
+        }
+      } catch {}
+    }
+  }
+
   for (const field of ORDER_FORM_SKETCH) {
-    let val: any;
-    if (field.dataPath === 'sketchData') val = houseMap?.sketchData;
-    else if (field.dataPath === 'markers') val = houseMap?.markers;
-    const filled = !isEmpty(val);
+    let filled = false;
+    if (field.dataPath === 'sketchData') filled = hasAnySketch;
+    else if (field.dataPath === 'markers') filled = hasAnyMarkers;
     track('Sketch', filled);
     if (field.required && !filled) {
       issues.push({
@@ -211,8 +230,23 @@ export function validateAppointment(appointment: any): ValidationResult {
       }
     }
 
-    // Sketch marker check
-    const hasMarker = houseMap?.markers?.some((m: any) => m.openingNumber === op.openingNumber);
+    // Sketch marker check — check both server houseMap and localStorage
+    let hasMarker = houseMap?.markers?.some((m: any) => m.openingNumber === op.openingNumber);
+    if (!hasMarker && typeof window !== 'undefined' && appointment.id) {
+      // Check localStorage markers from DrawableSketch
+      for (const elev of elevations) {
+        try {
+          const raw = localStorage.getItem(`wwa_sketch_${appointment.id}_${elev}`);
+          if (raw) {
+            const parsed = JSON.parse(raw);
+            if (parsed?.markers?.some((m: any) => m.openingNumber === op.openingNumber)) {
+              hasMarker = true;
+              break;
+            }
+          }
+        } catch {}
+      }
+    }
     if (!hasMarker) {
       const markerIssue: ValidationIssue = {
         id: `sketch-marker-${op.openingNumber}`,
