@@ -16,9 +16,27 @@ import { OrderFormPage } from './pages/OrderFormPage';
 import { MobileOrderFormPage } from './pages/MobileOrderFormPage';
 import { RuleEngineAdminPage } from './pages/RuleEngineAdminPage';
 import { MeasurementRulesAdminPage } from './pages/MeasurementRulesAdminPage';
+import { useEffect, useState } from 'react';
 
 export default function App() {
   const user = useAuthStore((s) => s.user);
+  const [hydrated, setHydrated] = useState(false);
+
+  // Wait for Zustand persist to rehydrate from localStorage before rendering.
+  // Without this, the app flashes a blank black screen on direct URL navigation.
+  useEffect(() => {
+    const unsub = useAuthStore.persist.onFinishHydration(() => setHydrated(true));
+    // If already hydrated (synchronous storage), mark immediately
+    if (useAuthStore.persist.hasHydrated()) setHydrated(true);
+    return unsub;
+  }, []);
+
+  if (!hydrated) return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', background: 'var(--bg-primary, #0d1117)', flexDirection: 'column', gap: '1rem' }}>
+      <div style={{ fontSize: '2.5rem' }}>🪟</div>
+      <div style={{ fontSize: '0.9rem', color: 'var(--text-muted, #6b7280)', fontFamily: 'system-ui, sans-serif' }}>Loading…</div>
+    </div>
+  );
 
   if (!user) return <LoginPage />;
 
