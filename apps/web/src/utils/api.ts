@@ -85,4 +85,10 @@ export const api = {
   exportCSV: (id: string) => fetch(`${API_BASE}/exports/csv/${id}`, {
     headers: { Authorization: `Bearer ${localStorage.getItem('wwa_token') || ''}` }
   }).then(r => r.text()),
+  exportExcel: (id: string) => fetch(`${API_BASE}/exports/excel/${id}`, {
+    headers: { Authorization: `Bearer ${localStorage.getItem('wwa_token') || ''}` }
+  }).then(r => {
+    if (!r.ok) throw new Error('Excel export failed');
+    return r.blob();
+  }),
 };
