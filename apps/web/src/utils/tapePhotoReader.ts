@@ -83,17 +83,17 @@ export async function analyzeTapePhoto(
   // Rep MUST correct this before it applies to the order form
   await new Promise(r => setTimeout(r, 1200)); // simulate API latency
 
-  const DEMO_READINGS: Partial<Record<MeasurementType, { text: string; confidence: number; candidates: string[] }>> = {
-    width:            { text: '35 3/8', confidence: 0.88, candidates: ['35 3/8', '35 1/4', '35 5/8'] },
-    height:           { text: '59 7/8', confidence: 0.91, candidates: ['59 7/8', '59 3/4'] },
-    top_sash_width:   { text: '35 3/8', confidence: 0.86, candidates: ['35 3/8'] },
-    top_sash_height:  { text: '29 1/2', confidence: 0.83, candidates: ['29 1/2', '29 3/4'] },
-    leg_height:       { text: '12 0',   confidence: 0.78, candidates: ['12', '12 1/8'] },
-    rise:             { text: '8 3/4',  confidence: 0.80, candidates: ['8 3/4', '8 1/2'] },
-    radius:           { text: '22 1/4', confidence: 0.72, candidates: ['22 1/4', '22 3/8'] },
+  const DEMO_READINGS: Partial<Record<MeasurementType, { detectedText: string; confidence: number; candidates: string[] }>> = {
+    width:            { detectedText: '35 3/8', confidence: 0.88, candidates: ['35 3/8', '35 1/4', '35 5/8'] },
+    height:           { detectedText: '59 7/8', confidence: 0.91, candidates: ['59 7/8', '59 3/4'] },
+    top_sash_width:   { detectedText: '35 3/8', confidence: 0.86, candidates: ['35 3/8'] },
+    top_sash_height:  { detectedText: '29 1/2', confidence: 0.83, candidates: ['29 1/2', '29 3/4'] },
+    leg_height:       { detectedText: '12 0',   confidence: 0.78, candidates: ['12', '12 1/8'] },
+    rise:             { detectedText: '8 3/4',  confidence: 0.80, candidates: ['8 3/4', '8 1/2'] },
+    radius:           { detectedText: '22 1/4', confidence: 0.72, candidates: ['22 1/4', '22 3/8'] },
   };
 
-  return DEMO_READINGS[measurementType] || { text: '36', confidence: 0.70, candidates: ['36'] };
+  return DEMO_READINGS[measurementType] ?? { detectedText: '36', confidence: 0.70, candidates: ['36'] };
 }
 
 // ─── BUILD TAPE PHOTO READ RECORD ───────────────────────────

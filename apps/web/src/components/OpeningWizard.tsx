@@ -58,7 +58,7 @@ export function OpeningWizard({
     
     // Track overrides
     for (const key of Object.keys(fields)) {
-      newTracker = trackOverride(newTracker, key, fields[key as keyof typeof fields]);
+      newTracker = trackOverride(newTracker, key, (fields as Record<string, unknown>)[key]);
     }
     
     // Apply conditional defaults
@@ -70,8 +70,15 @@ export function OpeningWizard({
       
       if (condResult.appliedRules.length > 0) {
         setRuleResults(prev => [
-          ...prev, 
-          ...condResult.appliedRules.map(r => ({ ruleId: r.id, ruleName: r.name, severity: 'high' as any, actions: [{ actionType: 'set_field', targetField: r.setField, message: r.description, applied: true }] }))
+          ...prev,
+          ...condResult.appliedRules.map(r => ({
+            ruleId: r.id,
+            ruleName: r.name,
+            severity: 'high' as const,
+            autoApplied: true,
+            requiresConfirmation: false,
+            actions: [{ type: 'set_field' as const, field: r.setField, message: r.description, applied: true, confirmed: true }]
+          }))
         ]);
       }
     }
