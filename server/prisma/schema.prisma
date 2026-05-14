@@ -1147,3 +1147,144 @@ model WorkbookExportJob {
   @@index([templateId])
 }
 
+// ═══════════════════════════════════════════════════════════
+// REFERENCE DOCUMENT TABLES
+// ═══════════════════════════════════════════════════════════
+
+model ReferenceDocument {
+  id              String   @id @default(cuid())
+  documentKey     String   @unique
+  displayName     String
+  fileName        String
+  filePath        String
+  documentType    String   // warranty, disclosure, finance, compliance, template
+  workflowAreas   String[] // where the document is used
+  customerFacing  Boolean  @default(false)
+  internalOnly    Boolean  @default(false)
+  requiredForPacket Boolean @default(false)
+  appliesWhen     String?  // condition description
+  version         String?
+  effectiveDate   DateTime?
+  summary         String?
+  requiredAcknowledgment Boolean @default(false)
+  exportPacketSection String?
+  isActive        Boolean  @default(true)
+  metadata        Json?
+  createdBy       String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  acknowledgments DocumentAcknowledgment[]
+
+  @@index([documentType])
+}
+
+model DocumentAcknowledgment {
+  id              String   @id @default(cuid())
+  documentId      String
+  appointmentId   String
+  acknowledgmentType String // reviewed, provided, acknowledged, in_packet
+  value           Boolean  @default(false)
+  acknowledgedBy  String?
+  acknowledgedAt  DateTime?
+  notes           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  document        ReferenceDocument @relation(fields: [documentId], references: [id])
+
+  @@unique([documentId, appointmentId, acknowledgmentType])
+  @@index([appointmentId])
+}
+
+model LeadDisclosureReview {
+  id                    String   @id @default(cuid())
+  appointmentId         String   @unique
+  customerId            String
+  homeBuiltYear         Int?
+  pre1978Status         String   @default("unknown") // yes, no, unknown
+  disclosureRequired    Boolean  @default(false)
+  disclosureProvided    Boolean  @default(false)
+  reviewedWithCustomer  Boolean  @default(false)
+  customerAcknowledged  Boolean  @default(false)
+  reviewedBy            String?
+  reviewedAt            DateTime?
+  notes                 String?
+  metadata              Json?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  @@index([customerId])
+}
+
+model FinanceOption {
+  id              String   @id @default(cuid())
+  planKey         String   @unique
+  name            String
+  termMonths      Int
+  apr             Float    @default(0)
+  promoType       String   // interest_free, fixed_rate
+  minimumAmount   Float?
+  paymentFormula  String?
+  disclosureText  String?
+  isActive        Boolean  @default(true)
+  sortOrder       Int      @default(0)
+  metadata        Json?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  selections      AppointmentFinanceSelection[]
+}
+
+model AppointmentFinanceSelection {
+  id              String   @id @default(cuid())
+  appointmentId   String   @unique
+  financeOptionId String
+  jobAmount       Float?
+  monthlyPayment  Float?
+  amountFinanced  Float?
+  discussed       Boolean  @default(false)
+  inPacket        Boolean  @default(false)
+  selectedBy      String?
+  selectedAt      DateTime @default(now())
+  notes           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  financeOption   FinanceOption @relation(fields: [financeOptionId], references: [id])
+
+  @@index([financeOptionId])
+}
+
+model CustomerDocumentPacket {
+  id              String   @id @default(cuid())
+  appointmentId   String
+  customerId      String
+  packetType      String   @default("standard") // standard, proposal, final
+  status          String   @default("draft") // draft, assembled, exported
+  exportFormat    String?  // pdf, xlsx
+  filePath        String?
+  fileSize        Int?
+  documents       Json?    // Array of included document keys
+  metadata        Json?
+  createdBy       String?
+  createdAt       DateTime @default(now())
+  exportedAt      DateTime?
+
+  @@index([appointmentId])
+  @@index([customerId])
+}
+
+model DocumentExportLog {
+  id              String   @id @default(cuid())
+  appointmentId   String
+  documentKey     String
+  documentVersion String?
+  exportFormat    String?
+  exportedBy      String?
+  exportedAt      DateTime @default(now())
+  metadata        Json?
+
+  @@index([appointmentId])
+  @@index([documentKey])
+}

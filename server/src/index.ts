@@ -17,6 +17,7 @@ import { pricingVersionRoutes } from './routes/pricingVersions.js';
 import { formsRoutes } from './routes/forms.js';
 import { validationRoutes } from './routes/validation.js';
 import { sketchRoutes } from './routes/sketches.js';
+import { documentRoutes } from './routes/documents.js';
 import { mobileRoutes } from './routes/mobile.js';
 import { walkthroughRoutes } from './routes/walkthrough.js';
 import { rulesRoutes } from './routes/rules.js';
@@ -96,6 +97,7 @@ app.use('/api/sketches', sketchRoutes);
 app.use('/api/mobile', mobileRoutes);
 app.use('/api/walkthrough', walkthroughRoutes);
 app.use('/api/rules', rulesRoutes);
+app.use('/api/documents', documentRoutes);
 
 // ── Production: serve built Vite frontend as PWA ──────────
 if (IS_PROD) {

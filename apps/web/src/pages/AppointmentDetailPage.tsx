@@ -17,6 +17,10 @@ import { OfficeReviewPanel } from '../components/OfficeReviewPanel';
 import { TabletSigningMode, SigningStatusBadge } from '../components/TabletSigningMode';
 import { getSignatures, allSignaturesComplete } from '../utils/signatureStore';
 import { QRSyncModal } from '../components/QRSyncModal';
+import { WarrantyPanel } from '../components/WarrantyPanel';
+import { LeadDisclosurePanel } from '../components/LeadDisclosurePanel';
+import { FinanceOptionsPanel } from '../components/FinanceOptionsPanel';
+import { DocumentChecklist } from '../components/DocumentChecklist';
 
 const STEPS = [
   'Customer',
@@ -38,7 +42,13 @@ export function AppointmentDetailPage() {
   const [saving, setSaving] = useState(false);
   const [signingMode, setSigningMode] = useState(false);
   const [qrOpen, setQrOpen] = useState(false);
+  const [docAcknowledgments, setDocAcknowledgments] = useState<Record<string, boolean>>({});
+  const [selectedFinancePlan, setSelectedFinancePlan] = useState<string | undefined>();
   const { saveDraft } = useDraftStore();
+
+  const handleDocAcknowledge = (key: string, value: boolean) => {
+    setDocAcknowledgments(prev => ({ ...prev, [key]: value }));
+  };
 
   const load = useCallback(async () => {
     if (!id) return;
@@ -194,13 +204,41 @@ export function AppointmentDetailPage() {
       {step === 1 && <JobInfoStep appt={appt} onSave={save} />}
       {step === 2 && <SketchBoard appointmentId={id!} openings={appt.openings || []} />}
       {step === 3 && <OpeningEditor appointmentId={id!} onUpdate={load} />}
-      {step === 4 && <PricingReview appointment={appt} onRecalculate={recalc} onSave={save} />}
+      {step === 4 && (
+        <div>
+          <PricingReview appointment={appt} onRecalculate={recalc} onSave={save} />
+          <div style={{ marginTop: '1rem' }}>
+            <FinanceOptionsPanel
+              jobAmount={displayTotal}
+              selectedPlanId={selectedFinancePlan}
+              onSelectPlan={(id) => setSelectedFinancePlan(id || undefined)}
+              onAcknowledge={handleDocAcknowledge}
+              acknowledgments={docAcknowledgments}
+            />
+          </div>
+        </div>
+      )}
       {step === 5 && <OrderFormView appointmentId={id!} />}
       {step === 6 && (
         <div>
           {/* Signing Status Badge on contract step */}
           <SigningStatusBadge appointmentId={id!} onEnterSigningMode={() => setSigningMode(true)} />
           <ContractFormView appointmentId={id!} />
+          <div style={{ marginTop: '1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            <WarrantyPanel
+              appointmentId={id!}
+              glassBreakageSelected={appt.openings?.some((o: any) => o.glassBreakage)}
+              onAcknowledge={handleDocAcknowledge}
+              acknowledgments={docAcknowledgments}
+            />
+            <LeadDisclosurePanel
+              pre1978Status={appt.customer?.pre1978 || appt.pre1978Status}
+              homeBuiltYear={appt.customer?.homeBuiltYear}
+              onStatusChange={(status) => save({ pre1978Status: status })}
+              onAcknowledge={handleDocAcknowledge}
+              acknowledgments={docAcknowledgments}
+            />
+          </div>
         </div>
       )}
       {step === 7 && <MissingInfoCheck appointment={appt} onJumpToStep={setStep} />}
@@ -228,7 +266,14 @@ export function AppointmentDetailPage() {
               )}
             </div>
           ); })()}
-          <ContractExport appointment={appt} />
+          <DocumentChecklist
+            appointment={appt}
+            acknowledgments={docAcknowledgments}
+            selectedFinancePlan={selectedFinancePlan}
+          />
+          <div style={{ marginTop: '0.75rem' }}>
+            <ContractExport appointment={appt} />
+          </div>
         </div>
       )}
 

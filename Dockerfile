@@ -56,6 +56,12 @@ COPY --from=frontend-build /app/apps/web/dist ./server/dist/public
 # Copy prisma schema (needed at runtime for some Prisma features)
 COPY server/prisma ./server/prisma
 
+# Copy reference documents (warranty, lead disclosure, finance)
+COPY reference-documents ./reference-documents
+
+# Copy Excel templates (BTR workbook)
+COPY server/templates ./server/templates
+
 ENV NODE_ENV=production
 ENV PORT=8080
 
