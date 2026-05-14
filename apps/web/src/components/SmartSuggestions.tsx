@@ -5,6 +5,52 @@ import {
   type SavedConfig, type SmartSuggestion,
 } from '../utils/repMemory';
 
+// ─── INSTALL NOTE SNIPPETS (inline — no external dependency) ─
+const INSTALL_NOTE_SNIPPETS: Array<{ condition: (op: any) => boolean; note: string; reason: string }> = [
+  { condition: op => (op.floorNumber || 1) >= 2 && !op.installNotes?.toLowerCase().includes('ladder'),
+    note: 'Ladder required — 2nd floor access',
+    reason: 'Second floor window requires ladder for installation' },
+  { condition: op => op.exteriorType?.toLowerCase().includes('brick') && !op.installNotes?.toLowerCase().includes('brickmold'),
+    note: 'Brick exterior — check brickmold condition',
+    reason: 'Brick exteriors require brickmold and return depth notes' },
+  { condition: op => (op.exteriorType?.toLowerCase().includes('siding') || op.exteriorType?.toLowerCase().includes('wood')) && !op.trimNotes,
+    note: 'Vinyl trim/header required (Siding/Wood)',
+    reason: 'Siding and wood exteriors require vinyl trim and header' },
+  { condition: op => op.roomLocation?.toLowerCase().match(/bath|shower|tub/) && !op.installNotes?.toLowerCase().includes('tempered'),
+    note: 'Confirm tempered glass — bathroom location',
+    reason: 'Bathroom windows require tempered glass per building code' },
+  { condition: op => op.productCategory === 'patio_door' && !op.installNotes?.toLowerCase().includes('track'),
+    note: 'Document track/threshold condition',
+    reason: 'Patio doors require track and threshold notes for installers' },
+  { condition: op => op.sillRepair && !op.installNotes?.toLowerCase().includes('sill'),
+    note: 'Sill repair needed — document damage',
+    reason: 'Sill repair requires detailed damage documentation' },
+  { condition: op => op.productCategory === 'oriel' || op.productCategory === 'circle_top' || op.productCategory === 'custom_shape',
+    note: 'Specialty shape — verify dimensions with production',
+    reason: 'Specialty shapes require production verification' },
+];
+
+function generateSmartInstallNotes(opening: any): Array<{ note: string; reason: string }> {
+  if (!opening) return [];
+  return INSTALL_NOTE_SNIPPETS
+    .filter(s => { try { return s.condition(opening); } catch { return false; } })
+    .map(s => ({ note: s.note, reason: s.reason }));
+}
+
+// ─── QUICK PACKAGES ─────────────────────────────────────────
+const QUICK_PACKAGES = [
+  { id: 'pkg_standard_brick', icon: '🧱', label: 'Brick Standard', description: 'Brick / EXT / LEE / ALUM removal / Foam On / Full Screen',
+    defaults: { exteriorType: 'Brick', installType: 'EXT', glassOption: 'LEE', removalType: 'ALUM', foamEnhanced: true, screenOption: 'Full' } },
+  { id: 'pkg_standard_siding', icon: '🏠', label: 'Siding Standard', description: 'Siding / INT / LEE / ALUM removal / Foam On / Full Screen / Vinyl trim',
+    defaults: { exteriorType: 'Siding', installType: 'INT', glassOption: 'LEE', removalType: 'ALUM', foamEnhanced: true, screenOption: 'Full', trimType: 'Vinyl' } },
+  { id: 'pkg_picture_no_screen', icon: '🖼', label: 'Picture Window', description: 'Picture / LEE / No Screen',
+    defaults: { productCategory: 'picture', glassOption: 'LEE', screenOption: 'None' } },
+  { id: 'pkg_bso', icon: '↕', label: 'BSO (Bottom Sash Only)', description: 'Bottom Sash Only replacement',
+    defaults: { installNotes: 'BSO — Bottom Sash Only replacement' } },
+  { id: 'pkg_clear_story', icon: '🪜', label: 'Clear Story', description: 'Upper floor / ladder required',
+    defaults: { floorNumber: 2, installNotes: 'Clear story window — ladder required. Clear story pricing applies.' } },
+];
+
 // ─── SUGGESTION BAR (inline in Opening list) ────────────
 export function SmartSuggestionBar({
   openings,
@@ -156,7 +202,6 @@ export function InstallNoteSuggestions({
   opening: any;
   onAppend: (note: string) => void;
 }) {
-  const { generateSmartInstallNotes } = require('../utils/businessRules');
   const suggestions = generateSmartInstallNotes(opening);
 
   if (suggestions.length === 0) return null;
@@ -181,14 +226,15 @@ export function QuickPackages({
   openings: any[];
   onApplyPackage: (pkg: any) => void;
 }) {
-  const { QUICK_PACKAGES } = require('../utils/businessRules');
-
   return (
     <div className="card" style={{ marginBottom: '1rem', padding: '1rem' }}>
       <h3 style={{ marginBottom: '0.5rem', fontSize: '0.875rem' }}>📦 One-Tap Packages</h3>
       <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-        {QUICK_PACKAGES.map((pkg: any) => (
-          <button key={pkg.id} className="btn btn-sm" style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border)', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.375rem' }} onClick={() => onApplyPackage(pkg)} title={pkg.description}>
+        {QUICK_PACKAGES.map((pkg) => (
+          <button key={pkg.id} className="btn btn-sm"
+            style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border)', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.375rem' }}
+            onClick={() => onApplyPackage(pkg)}
+            title={pkg.description}>
             <span>{pkg.icon}</span> {pkg.label}
           </button>
         ))}
@@ -196,4 +242,3 @@ export function QuickPackages({
     </div>
   );
 }
-
