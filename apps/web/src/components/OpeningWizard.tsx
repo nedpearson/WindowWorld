@@ -123,19 +123,31 @@ export function OpeningWizard({
     <div className="card" style={{ maxWidth: 600, margin: '0 auto', display: 'flex', flexDirection: 'column', height: '80vh' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
         <h3>🪄 Opening Wizard — {generateOpeningName(data)}</h3>
-        <button className="btn btn-sm" onClick={onCancel}>Cancel</button>
+        <button onClick={onCancel} style={{
+          padding: '0.375rem 0.875rem', borderRadius: 6, cursor: 'pointer',
+          background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.35)',
+          color: '#ef4444', fontWeight: 600, fontSize: '0.8125rem',
+        }}>Cancel</button>
       </div>
 
-      <div style={{ display: 'flex', gap: '0.25rem', marginBottom: '1.5rem' }}>
+      {/* Step progress bar */}
+      <div style={{ display: 'flex', gap: '0.25rem', marginBottom: '0.5rem' }}>
         {STEPS.map((s, i) => (
           <div key={s.id} style={{
             flex: 1, height: 6, borderRadius: 3,
-            background: i === currentStep ? 'var(--primary)' : i < currentStep ? 'var(--primary-hover)' : 'var(--border)'
+            background: i === currentStep
+              ? '#3b82f6'
+              : i < currentStep
+                ? '#22c55e'
+                : 'rgba(255,255,255,0.12)',
+            transition: 'background 0.2s',
           }} title={s.label} />
         ))}
       </div>
-
-      <h4 style={{ marginBottom: '1rem', color: 'var(--text-secondary)' }}>{step.label}</h4>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+        <h4 style={{ margin: 0, color: 'var(--text-primary)', fontSize: '0.9375rem' }}>{step.label}</h4>
+        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Step {currentStep + 1} of {STEPS.length}</span>
+      </div>
 
       <div style={{ flex: 1, overflowY: 'auto', paddingRight: '0.5rem' }}>
         {step.id === 'location' && (
