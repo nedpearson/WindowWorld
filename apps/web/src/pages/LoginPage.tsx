@@ -58,13 +58,13 @@ export function LoginPage() {
             }}>{error}</div>
           )}
           <div className="form-group">
-            <label className="form-label">Email</label>
-            <input className="form-input" type="email" value={email} onChange={(e) => setEmail(e.target.value)}
+            <label className="form-label" htmlFor="email">Email</label>
+            <input id="email" name="email" autoComplete="username email" className="form-input" type="email" value={email} onChange={(e) => setEmail(e.target.value)}
               placeholder="Enter your email" required autoFocus />
           </div>
           <div className="form-group">
-            <label className="form-label">Password</label>
-            <input className="form-input" type="password" value={password} onChange={(e) => setPassword(e.target.value)}
+            <label className="form-label" htmlFor="password">Password</label>
+            <input id="password" name="password" autoComplete="current-password" className="form-input" type="password" value={password} onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••" required />
           </div>
           <button className="btn btn-primary btn-lg" type="submit" style={{ width: '100%', marginTop: '0.5rem' }}
