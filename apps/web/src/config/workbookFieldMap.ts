@@ -151,6 +151,48 @@ export const orderFormHeaderFields: WorkbookField[] = [
 ];
 
 // ═══════════════════════════════════════════════════
+//  ORDER FORM — Sketch Box Image Overlay
+//  The large blank box at upper-left of Order Form
+//  Range: B2:R22 — completely empty, bordered area
+// ═══════════════════════════════════════════════════
+export interface SketchBoxConfig {
+  key: string;
+  sheet: 'Order Form';
+  targetType: 'image_overlay';
+  topLeftCell: string;
+  bottomRightCell: string;
+  range: string;
+  label: string;
+  sourcePath: string;
+  required: boolean;
+  exportToPdf: boolean;
+  exportToExcel: boolean;
+  // Approximate pixel dimensions (from column widths × 7.5px, row heights × 1.33px)
+  approxWidthPx: number;
+  approxHeightPx: number;
+  aspectRatio: number;
+  paddingPx: number;
+}
+
+export const ORDER_FORM_SKETCH_BOX: SketchBoxConfig = {
+  key: 'order_form_sketch_box',
+  sheet: 'Order Form',
+  targetType: 'image_overlay',
+  topLeftCell: 'B2',
+  bottomRightCell: 'R22',
+  range: 'B2:R22',
+  label: 'Order Form Sketch / Drawing Box',
+  sourcePath: 'appointment.sketch.primaryImage',
+  required: true,
+  exportToPdf: true,
+  exportToExcel: true,
+  approxWidthPx: 651,
+  approxHeightPx: 215,
+  aspectRatio: 3.03,
+  paddingPx: 4,
+};
+
+// ═══════════════════════════════════════════════════
 //  ORDER FORM TAB — Opening Row Column Mapping
 //  Rows 31-54 are the 24 opening slots
 // ═══════════════════════════════════════════════════

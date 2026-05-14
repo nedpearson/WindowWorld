@@ -21,6 +21,8 @@ import { WarrantyPanel } from '../components/WarrantyPanel';
 import { LeadDisclosurePanel } from '../components/LeadDisclosurePanel';
 import { FinanceOptionsPanel } from '../components/FinanceOptionsPanel';
 import { DocumentChecklist } from '../components/DocumentChecklist';
+import { SketchOrderFormPreview } from '../components/SketchOrderFormPreview';
+import { getAllSketchMarkers } from '../components/DrawableSketch';
 
 const STEPS = [
   'Customer',
@@ -218,7 +220,20 @@ export function AppointmentDetailPage() {
           </div>
         </div>
       )}
-      {step === 5 && <OrderFormView appointmentId={id!} />}
+      {step === 5 && (
+        <div>
+          <SketchOrderFormPreview
+            appointmentId={id!}
+            openings={appt.openings || []}
+            markers={getAllSketchMarkers(id!)}
+            sketchExists={getAllSketchMarkers(id!).length > 0}
+            onEditSketch={() => setStep(2)}
+          />
+          <div style={{ marginTop: '0.75rem' }}>
+            <OrderFormView appointmentId={id!} />
+          </div>
+        </div>
+      )}
       {step === 6 && (
         <div>
           {/* Signing Status Badge on contract step */}

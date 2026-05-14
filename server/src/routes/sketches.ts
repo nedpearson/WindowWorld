@@ -77,3 +77,53 @@ sketchRoutes.post('/:sketchId/markers', async (req, res) => {
     res.status(500).json({ error: 'Failed to sync markers' });
   }
 });
+
+// Upload rendered sketch PNG for Order Form Excel insertion
+sketchRoutes.post('/upload-for-export', async (req, res) => {
+  try {
+    const multer = (await import('multer')).default;
+    const path = (await import('path'));
+    const fs = (await import('fs'));
+    const { fileURLToPath } = await import('url');
+    const __filename3 = fileURLToPath(import.meta.url);
+    const __dirname3 = path.dirname(__filename3);
+
+    const sketchDir = path.resolve(__dirname3, '../../../data/sketches');
+    if (!fs.existsSync(sketchDir)) {
+      fs.mkdirSync(sketchDir, { recursive: true });
+    }
+
+    // Simple file save from multipart form
+    const chunks: Buffer[] = [];
+    req.on('data', (chunk: Buffer) => chunks.push(chunk));
+    req.on('end', () => {
+      const body = Buffer.concat(chunks);
+      // Extract appointmentId from the multipart boundary
+      const bodyStr = body.toString('latin1');
+      const appointmentIdMatch = bodyStr.match(/name="appointmentId"\r\n\r\n([^\r\n]+)/);
+      const appointmentId = appointmentIdMatch?.[1] || 'unknown';
+
+      // Extract PNG data
+      const pngStart = body.indexOf(Buffer.from([0x89, 0x50, 0x4E, 0x47])); // PNG magic
+      if (pngStart < 0) {
+        return res.status(400).json({ error: 'No PNG data found' });
+      }
+
+      // Find boundary end for the file part
+      const boundaryMatch = bodyStr.match(/^--([\S]+)/);
+      const boundary = boundaryMatch ? `--${boundaryMatch[1]}` : '';
+      const endBoundary = Buffer.from(`\r\n${boundary}`);
+      let pngEnd = body.indexOf(endBoundary, pngStart);
+      if (pngEnd < 0) pngEnd = body.length;
+
+      const pngData = body.subarray(pngStart, pngEnd);
+      const filePath = path.join(sketchDir, `${appointmentId}.png`);
+      fs.writeFileSync(filePath, pngData);
+
+      res.json({ success: true, path: filePath, size: pngData.length });
+    });
+  } catch (err: any) {
+    console.error('Sketch upload error:', err);
+    res.status(500).json({ error: 'Failed to upload sketch' });
+  }
+});

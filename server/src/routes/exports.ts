@@ -2,6 +2,12 @@ import { Router } from 'express';
 import { requireAuth } from '../middleware/auth.js';
 import { prisma } from '../index.js';
 import { generateWorkbookBuffer, type AppointmentExportData, type OpeningData } from '../workbookEngine.js';
+import path from 'path';
+import fs from 'fs';
+import { fileURLToPath } from 'url';
+
+const __filename2 = fileURLToPath(import.meta.url);
+const __dirname2 = path.dirname(__filename2);
 
 export const exportRoutes = Router();
 exportRoutes.use(requireAuth);
@@ -103,6 +109,18 @@ exportRoutes.get('/excel/:appointmentId', async (req, res) => {
       orderDate: appt.appointmentDate || new Date(),
       notes: appt.notes || undefined,
     };
+
+    // Look for rendered sketch image for Order Form B2:R22 box
+    const sketchDir = path.resolve(__dirname2, '../../../data/sketches');
+    const sketchCandidates = [
+      path.join(sketchDir, `${req.params.appointmentId}.png`),
+      path.join(sketchDir, `${req.params.appointmentId}_sketch.png`),
+      path.join(sketchDir, `sketch_${req.params.appointmentId}.png`),
+    ];
+    const sketchPath = sketchCandidates.find(p => fs.existsSync(p));
+    if (sketchPath) {
+      exportData.sketchImagePath = sketchPath;
+    }
 
     const buffer = await generateWorkbookBuffer(exportData);
 

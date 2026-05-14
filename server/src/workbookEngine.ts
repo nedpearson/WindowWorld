@@ -54,6 +54,7 @@ export interface AppointmentExportData {
   orderDate?: Date;
   poNumber?: string;
   notes?: string;
+  sketchImagePath?: string; // Path to rendered sketch PNG for Order Form box
 }
 
 /**
@@ -80,6 +81,10 @@ export async function generateFilledWorkbook(data: AppointmentExportData): Promi
   const orderForm = workbook.getWorksheet('Order Form');
   if (orderForm) {
     fillOrderFormSheet(orderForm, data);
+    // Insert sketch image into B2:R22 sketch box
+    if (data.sketchImagePath) {
+      await insertSketchImage(workbook, orderForm, data.sketchImagePath);
+    }
   }
 
   return workbook;
@@ -237,4 +242,72 @@ function countOptions(openings: OpeningData[]): OptionCounts {
 export async function generateWorkbookBuffer(data: AppointmentExportData): Promise<Buffer> {
   const workbook = await generateFilledWorkbook(data);
   return Buffer.from(await workbook.xlsx.writeBuffer());
+}
+
+// ═══════════════════════════════════════════════════
+//  SKETCH IMAGE INSERTION
+//  Inserts the rendered sketch image into the Order Form
+//  blank box at B2:R22 using ExcelJS image anchoring.
+//  Uses contain-fit with padding to preserve aspect ratio.
+// ═══════════════════════════════════════════════════
+
+async function insertSketchImage(
+  workbook: ExcelJS.Workbook,
+  sheet: ExcelJS.Worksheet,
+  imagePath: string
+): Promise<void> {
+  if (!fs.existsSync(imagePath)) {
+    console.warn(`Sketch image not found at ${imagePath} — skipping insertion`);
+    return;
+  }
+
+  const ext = path.extname(imagePath).toLowerCase();
+  const extensionMap: Record<string, 'png' | 'jpeg' | 'gif'> = {
+    '.png': 'png', '.jpg': 'jpeg', '.jpeg': 'jpeg', '.gif': 'gif',
+  };
+  const excelExt = extensionMap[ext] || 'png';
+
+  const imageId = workbook.addImage({
+    filename: imagePath,
+    extension: excelExt,
+  });
+
+  // Anchor the image from B2 to R22 using twoCell positioning
+  // This places the image exactly within the sketch box without
+  // altering any row heights or column widths
+  sheet.addImage(imageId, {
+    tl: { col: 1, row: 1 } as any,  // B2 (0-indexed: col=1, row=1)
+    br: { col: 17, row: 21 } as any, // R22 (0-indexed: col=17, row=21)
+    editAs: 'oneCell', // Image moves with cells but doesn't resize them
+  });
+}
+
+/**
+ * Calculate contain-fit dimensions for a sketch image
+ * to fit inside the Order Form sketch box (B2:R22)
+ */
+export function calculateSketchFit(imageWidth: number, imageHeight: number) {
+  const boxWidth = 651;  // approx px width of B2:R22
+  const boxHeight = 215; // approx px height of B2:R22
+  const padding = 4;
+
+  const availW = boxWidth - (padding * 2);
+  const availH = boxHeight - (padding * 2);
+
+  const scaleX = availW / imageWidth;
+  const scaleY = availH / imageHeight;
+  const scale = Math.min(scaleX, scaleY, 1); // Never scale up
+
+  const fitWidth = Math.round(imageWidth * scale);
+  const fitHeight = Math.round(imageHeight * scale);
+
+  const tooSmall = fitWidth < 200 || fitHeight < 80;
+
+  return {
+    fitWidth,
+    fitHeight,
+    scale,
+    tooSmall,
+    warning: tooSmall ? 'Sketch may be too small to read in the Order Form box. Consider adding a full-size sketch page.' : null,
+  };
 }
