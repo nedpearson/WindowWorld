@@ -15,8 +15,10 @@ export function Layout({ children }: { children: ReactNode }) {
   const handleLogout = () => { logout(); navigate('/'); };
   const canGoBack = location.pathname !== '/';
 
-  // Build the mobile URL using the server's LAN IP + the frontend port
-  const mobileUrl = lanIp
+  // Build the mobile URL
+  const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+  
+  const mobileUrl = isLocalhost && lanIp
     ? `http://${lanIp}:${window.location.port || 80}/mobile`
     : `${window.location.protocol}//${window.location.host}/mobile`;
 
@@ -32,9 +34,9 @@ export function Layout({ children }: { children: ReactNode }) {
     { to: '/mobile', label: '📱 Mobile Field App' },
   ];
 
-  // Fetch the real LAN IP when the QR panel is first opened
+  // Fetch the real LAN IP when the QR panel is first opened (only locally)
   useEffect(() => {
-    if (!showQR || lanIp !== null) return; // only fetch once
+    if (!showQR || lanIp !== null || !isLocalhost) return; // only fetch once, and only on localhost
     fetch('/api/network-ip')
       .then(r => r.json())
       .then(data => {
@@ -42,7 +44,7 @@ export function Layout({ children }: { children: ReactNode }) {
         else setIpError(true);
       })
       .catch(() => setIpError(true));
-  }, [showQR]);
+  }, [showQR, lanIp, isLocalhost]);
 
   return (
     <div className="app-layout">
@@ -102,14 +104,14 @@ export function Layout({ children }: { children: ReactNode }) {
               boxShadow: '0 4px 24px rgba(0,0,0,0.5)',
             }}>
               {/* Loading state while fetching IP */}
-              {!lanIp && !ipError && (
+              {isLocalhost && !lanIp && !ipError && (
                 <div style={{ height: 172, width: 172, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', fontSize: '0.75rem' }}>
                   Finding network IP…
                 </div>
               )}
 
               {/* Error state */}
-              {ipError && (
+              {isLocalhost && ipError && (
                 <div style={{ width: 172, color: '#ef4444', fontSize: '0.6875rem', textAlign: 'center', lineHeight: 1.5 }}>
                   Could not detect LAN IP.
                   <br />Run <code style={{ background: '#f1f5f9', padding: '1px 4px', borderRadius: 3, color: '#0f172a' }}>ipconfig</code> (Windows) or <code style={{ background: '#f1f5f9', padding: '1px 4px', borderRadius: 3, color: '#0f172a' }}>ifconfig</code> (Mac) and type the IP below:<br />
@@ -121,8 +123,8 @@ export function Layout({ children }: { children: ReactNode }) {
                 </div>
               )}
 
-              {/* QR code — only render once we have a real IP */}
-              {lanIp && (
+              {/* QR code — only render once we have a real IP or if we're in prod */}
+              {(!isLocalhost || lanIp) && (
                 <>
                   <QRCodeSVG
                     value={mobileUrl}
@@ -141,9 +143,11 @@ export function Layout({ children }: { children: ReactNode }) {
                 </>
               )}
 
-              <div style={{ fontSize: '0.5625rem', color: '#94a3b8', textAlign: 'center' }}>
-                📶 Same Wi-Fi network required
-              </div>
+              {isLocalhost && (
+                <div style={{ fontSize: '0.5625rem', color: '#94a3b8', textAlign: 'center' }}>
+                  📶 Same Wi-Fi network required
+                </div>
+              )}
             </div>
           )}
         </div>
