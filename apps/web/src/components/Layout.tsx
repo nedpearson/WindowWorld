@@ -1,15 +1,20 @@
 import { useState, type ReactNode } from 'react';
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
+import { QRCodeSVG } from 'qrcode.react';
 import { useAuthStore } from '../store';
 
 export function Layout({ children }: { children: ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [showQR, setShowQR] = useState(false);
   const { user, logout } = useAuthStore();
   const navigate = useNavigate();
   const location = useLocation();
 
   const handleLogout = () => { logout(); navigate('/'); };
   const canGoBack = location.pathname !== '/';
+
+  // Builds the mobile URL from the current browser host — works on any local network
+  const mobileUrl = `${window.location.protocol}//${window.location.host}/mobile`;
 
   const links = [
     { to: '/forms', label: '📋 Fill Forms' },
@@ -30,13 +35,11 @@ export function Layout({ children }: { children: ReactNode }) {
         <button className="burger" onClick={() => setSidebarOpen(!sidebarOpen)}>☰</button>
         <span style={{ fontWeight: 600, fontSize: '0.875rem' }}>Window World</span>
         {canGoBack ? (
-          <button
-            onClick={() => navigate(-1)}
-            style={{
-              background: 'none', border: '1px solid var(--border)', borderRadius: 8,
-              color: 'var(--text-secondary)', fontSize: '0.75rem', padding: '0.25rem 0.625rem',
-              cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.25rem',
-            }}>
+          <button onClick={() => navigate(-1)} style={{
+            background: 'none', border: '1px solid var(--border)', borderRadius: 8,
+            color: 'var(--text-secondary)', fontSize: '0.75rem', padding: '0.25rem 0.625rem',
+            cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.25rem',
+          }}>
             ← Back
           </button>
         ) : <div style={{ width: 60 }} />}
@@ -51,6 +54,7 @@ export function Layout({ children }: { children: ReactNode }) {
           <span style={{ fontSize: '1.5rem' }}>🪟</span>
           <h1>Window World</h1>
         </div>
+
         <nav className="sidebar-nav">
           {links.map((l) => (
             <NavLink key={l.to} to={l.to} end={l.to === '/'} onClick={() => setSidebarOpen(false)}>
@@ -58,7 +62,52 @@ export function Layout({ children }: { children: ReactNode }) {
             </NavLink>
           ))}
         </nav>
-        <div style={{ padding: '1rem', borderTop: '1px solid var(--border)' }}>
+
+        {/* ── QR Code — scan to open Mobile Field App ── */}
+        <div style={{ padding: '0.75rem 1rem', borderTop: '1px solid var(--border)' }}>
+          <button
+            onClick={() => setShowQR(v => !v)}
+            style={{
+              width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              background: showQR ? 'rgba(59,130,246,0.12)' : 'rgba(255,255,255,0.04)',
+              border: `1px solid ${showQR ? 'rgba(59,130,246,0.35)' : 'var(--border)'}`,
+              borderRadius: 8, padding: '0.5rem 0.75rem', cursor: 'pointer',
+              color: showQR ? 'var(--accent)' : 'var(--text-secondary)',
+              fontSize: '0.8125rem', fontWeight: 600, transition: 'all 0.2s',
+            }}>
+            <span>📱 Open on Phone</span>
+            <span style={{ fontSize: '0.625rem', opacity: 0.7 }}>{showQR ? '▲' : '▼'}</span>
+          </button>
+
+          {showQR && (
+            <div style={{
+              marginTop: '0.75rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem',
+              padding: '1rem', background: 'white', borderRadius: 10,
+              boxShadow: '0 4px 24px rgba(0,0,0,0.5)',
+            }}>
+              <QRCodeSVG
+                value={mobileUrl}
+                size={172}
+                bgColor="#ffffff"
+                fgColor="#0f172a"
+                level="M"
+                includeMargin={false}
+              />
+              <div style={{
+                fontSize: '0.5625rem', color: '#475569', textAlign: 'center',
+                wordBreak: 'break-all', maxWidth: 172, lineHeight: 1.4,
+              }}>
+                {mobileUrl}
+              </div>
+              <div style={{ fontSize: '0.5625rem', color: '#94a3b8', textAlign: 'center' }}>
+                📶 Same Wi-Fi network required
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* User / Sign Out */}
+        <div style={{ padding: '0.75rem 1rem', borderTop: '1px solid var(--border)' }}>
           <div style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>
             {user?.name}
           </div>
