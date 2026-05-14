@@ -2,6 +2,7 @@
    PAPER ORDER FORM — Exact Portrait Replication Styles
    Target: Window and Patio Door Order Form (PORTRAIT master)
    Paper: 8.5" × 11" Portrait (Letter)
+   PDF Proof Pass: 2026-05-14
    ═══════════════════════════════════════════════════════════════ */
 
 /* ── Print / Paper dimensions ─────────────────────────────── */
@@ -13,15 +14,16 @@
   font-family: 'Arial Narrow', 'Arial', 'Helvetica Neue', Helvetica, sans-serif;
   font-size: 7.5pt;
   line-height: 1.15;
-  padding: 0.25in 0.3in 0.2in 0.3in;
+  /* 0.25in top, 0.3in sides, 0.2in bottom — matches letter-size margins */
+  padding: 0.22in 0.28in 0.18in 0.28in;
   box-sizing: border-box;
   position: relative;
-  overflow: hidden;
+  /* overflow: hidden removed — allows sketch to be visible during editing */
   display: flex;
   flex-direction: column;
 }
 
-/* On-screen preview scaling */
+/* On-screen preview wrapper */
 .paper-form-wrapper {
   display: flex;
   justify-content: center;
@@ -36,76 +38,98 @@
   box-shadow: 0 4px 24px rgba(0,0,0,0.18), 0 1px 4px rgba(0,0,0,0.1);
   border-radius: 2px;
   flex-shrink: 0;
+  /* Prevent scroll clipping during html2canvas capture */
+  overflow: visible;
 }
 
 /* ── Title Banner ─────────────────────────────────────────── */
 .pf-title {
   text-align: center;
-  font-size: 15pt;
+  font-size: 14.5pt;
   font-weight: 900;
   letter-spacing: 0.5pt;
   text-transform: uppercase;
-  margin-bottom: 0.08in;
-  padding-top: 0.02in;
+  /* Reduced margin to reclaim vertical space for 20 opening rows */
+  margin-bottom: 0.06in;
+  padding-top: 0.01in;
   font-family: 'Arial Black', 'Arial', sans-serif;
+  flex-shrink: 0;
 }
 
 /* ── Top Section: Sketch + Customer Info ──────────────────── */
 .pf-top {
   display: flex;
   gap: 0.1in;
-  margin-bottom: 0.08in;
+  margin-bottom: 0.06in;
   flex-shrink: 0;
+  /* Fixed height keeps sketch + customer info predictable for html2canvas */
+  height: 2.05in;
 }
 
-/* Sketch box */
+/* Sketch box — explicit size prevents overflow during canvas capture */
 .pf-sketch-box {
   flex: 1;
-  min-height: 2.1in;
+  min-height: 2.0in;
+  max-height: 2.05in;
   border: 2px solid #000;
+  box-sizing: border-box;
   position: relative;
-  overflow: visible;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
+  background: #fff;
 }
 
+/* Canvas fills the sketch box exactly */
 .pf-sketch-box canvas {
-  width: 100%;
+  width: 100% !important;
+  height: 100% !important;
   flex: 1;
   display: block;
 }
 
-/* Compact toolbar inside sketch box */
+/* Inner div from DrawableSketch fills box */
 .pf-sketch-box > div {
   display: flex;
   flex-direction: column;
   height: 100%;
+  overflow: hidden;
+}
+
+/* Sketch image (read-only / PDF mode) */
+.pf-sketch-box img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
 }
 
 /* ── Customer info block (right side) ─────────────────────── */
 .pf-customer-block {
-  width: 3.3in;
+  width: 3.25in;
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
   gap: 0;
+  box-sizing: border-box;
 }
 
 /* Individual bordered field boxes — PO#, ACCT#, ORDER DATE */
 .pf-info-box {
   border: 1.5px solid #000;
-  padding: 0.02in 0.06in;
-  min-height: 0.24in;
+  padding: 0.015in 0.05in;
+  min-height: 0.225in;
   display: flex;
   align-items: center;
   margin-bottom: -1.5px; /* collapse borders */
+  box-sizing: border-box;
 }
 
 .pf-info-box .pf-field-label {
   font-weight: 700;
   font-size: 7pt;
   white-space: nowrap;
-  margin-right: 0.06in;
+  margin-right: 0.05in;
 }
 
 .pf-info-box .pf-field-value {
@@ -124,11 +148,13 @@
 .pf-customer-detail-box {
   border: 1.5px solid #000;
   margin-bottom: -1.5px;
+  box-sizing: border-box;
+  flex: 1;
 }
 
 .pf-customer-detail-box .pf-cust-row {
   display: flex;
-  min-height: 0.24in;
+  min-height: 0.22in;
   border-bottom: 1px solid #000;
 }
 
@@ -139,8 +165,9 @@
 .pf-customer-detail-box .pf-cust-cell {
   display: flex;
   align-items: center;
-  padding: 0.02in 0.06in;
+  padding: 0.01in 0.05in;
   font-size: 7pt;
+  box-sizing: border-box;
 }
 
 .pf-customer-detail-box .pf-cust-cell-divider {
@@ -174,6 +201,8 @@
 .pf-table-wrapper {
   flex: 1;
   overflow: hidden;
+  /* Clip table strictly so it doesn't push the bottom section off-page */
+  max-height: calc(11in - 0.22in - 0.18in - 2.05in - 0.06in - 0.06in - 1.85in);
 }
 
 .pf-opening-table {
@@ -186,7 +215,7 @@
 .pf-opening-table th {
   font-weight: 700;
   text-align: center;
-  padding: 0.005in 0.005in;
+  padding: 0.004in 0.004in;
   border: 1px solid #000;
   font-size: 5pt;
   line-height: 1.05;
@@ -197,9 +226,9 @@
   position: relative;
 }
 
-/* Angled header text for narrow columns — horizontal text rotated to fit */
+/* Angled rotated header for narrow columns */
 .pf-opening-table th.pf-th-vert {
-  height: 0.72in;
+  height: 0.68in;
   padding: 0;
   font-size: 5pt;
   letter-spacing: -0.2pt;
@@ -209,12 +238,7 @@
   position: relative;
 }
 
-.pf-opening-table th.pf-th-vert > span,
-.pf-opening-table th.pf-th-vert::after {
-  display: block;
-}
-
-/* Use a wrapper span inside each th.pf-th-vert for rotation */
+/* Rotated label span */
 .pf-th-vert-inner {
   display: block;
   transform: rotate(-55deg);
@@ -223,22 +247,13 @@
   bottom: 0.04in;
   left: 50%;
   white-space: nowrap;
-  font-size: 5pt;
+  font-size: 4.8pt;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: -0.2pt;
 }
 
-/* Horizontal header for wide columns */
-.pf-opening-table th.pf-th-horiz {
-  height: 0.72in;
-  font-size: 5pt;
-  vertical-align: bottom;
-  padding-bottom: 0.02in;
-  white-space: nowrap;
-}
-
-/* Spanning group headers */
+/* Spanning group headers (MFG SIZE, GRID OPTIONS, TYPE, TEMP) */
 .pf-opening-table th.pf-th-group {
   font-size: 5pt;
   font-weight: 700;
@@ -247,25 +262,30 @@
   padding: 0.01in 0;
   white-space: nowrap;
   height: auto;
+  /* Explicit bottom border for group header row */
+  border-bottom: 1px solid #000;
 }
 
+/* Sub-headers row (WIDTH, HEIGHT, STYLE, PATTERN, etc.) */
 .pf-opening-table th.pf-th-sub {
   font-size: 4.5pt;
   font-weight: 700;
   height: auto;
-  padding: 0.005in 0;
+  padding: 0.004in 0;
   vertical-align: middle;
   white-space: nowrap;
   position: relative;
   overflow: visible;
 }
 
+/* Data rows */
 .pf-opening-table td {
   border: 1px solid #000;
-  padding: 0 0.01in;
+  padding: 0 0.008in;
   text-align: center;
   font-size: 6.5pt;
-  height: 0.2in;
+  /* Reduced row height to fit 20 rows + headers in ~5.3in vertical space */
+  height: 0.175in;
   vertical-align: middle;
 }
 
@@ -276,56 +296,47 @@
 }
 
 /* ── Column widths — portrait proportions ─────────────────── */
-/* Total usable = 8.5in - 0.6in padding = 7.9in */
-.pf-col-rownum { width: 0.17in; }
-.pf-col-qty    { width: 0.22in; }
-.pf-col-model  { width: 0.42in; }
-.pf-col-vinyl  { width: 0.26in; }
-.pf-col-int    { width: 0.22in; }
-.pf-col-ext    { width: 0.22in; }
-.pf-col-width  { width: 0.36in; }
-.pf-col-xsep   { width: 0.12in; }
-.pf-col-height { width: 0.36in; }
-.pf-col-leg    { width: 0.22in; }
-.pf-col-radius { width: 0.26in; }
-.pf-col-winnum { width: 0.26in; }
-.pf-col-hinge  { width: 0.22in; }
-.pf-col-glass  { width: 0.26in; }
-.pf-col-foam   { width: 0.26in; }
+/* Total usable width: 8.5in - 0.56in padding = 7.94in */
+/* Sum of all columns below ≈ 7.92in */
+.pf-col-rownum { width: 0.16in; }
+.pf-col-qty    { width: 0.21in; }
+.pf-col-model  { width: 0.40in; }
+.pf-col-vinyl  { width: 0.25in; }
+.pf-col-int    { width: 0.21in; }
+.pf-col-ext    { width: 0.21in; }
+.pf-col-width  { width: 0.34in; }
+.pf-col-xsep   { width: 0.11in; }
+.pf-col-height { width: 0.34in; }
+.pf-col-leg    { width: 0.21in; }
+.pf-col-radius { width: 0.25in; }
+.pf-col-winnum { width: 0.25in; }
+.pf-col-hinge  { width: 0.21in; }
+.pf-col-glass  { width: 0.25in; }
+.pf-col-foam   { width: 0.25in; }
 /* GRID OPTIONS sub-columns */
-.pf-col-grid-style   { width: 0.2in; }
-.pf-col-grid-pattern { width: 0.26in; }
-.pf-col-grid-full    { width: 0.18in; }
-.pf-col-grid-spec    { width: 0.18in; }
+.pf-col-grid-style   { width: 0.20in; }
+.pf-col-grid-pattern { width: 0.25in; }
+.pf-col-grid-full    { width: 0.17in; }
+.pf-col-grid-spec    { width: 0.17in; }
 /* TYPE sub-columns */
-.pf-col-type-fill { width: 0.18in; }
-.pf-col-type-half { width: 0.18in; }
-.pf-col-type-mine { width: 0.18in; }
+.pf-col-type-fill { width: 0.17in; }
+.pf-col-type-half { width: 0.17in; }
+.pf-col-type-mine { width: 0.17in; }
 /* 9' TEMP sub-columns */
-.pf-col-temp-full { width: 0.18in; }
-.pf-col-temp-s    { width: 0.16in; }
-.pf-col-temp-u    { width: 0.16in; }
+.pf-col-temp-full { width: 0.17in; }
+.pf-col-temp-s    { width: 0.15in; }
+.pf-col-temp-u    { width: 0.15in; }
 /* remaining columns */
-.pf-col-nailfin { width: 0.22in; }
-.pf-col-full    { width: 0.22in; }
-.pf-col-oriel   { width: 0.22in; }
-.pf-col-hor     { width: 0.22in; }
-.pf-col-typeext { width: 0.22in; }
-.pf-col-typeint { width: 0.22in; }
-.pf-col-rmvinst { width: 0.22in; }
-.pf-col-sill    { width: 0.22in; }
+.pf-col-nailfin { width: 0.21in; }
+.pf-col-full    { width: 0.21in; }
+.pf-col-oriel   { width: 0.21in; }
+.pf-col-hor     { width: 0.21in; }
+.pf-col-typeext { width: 0.21in; }
+.pf-col-typeint { width: 0.21in; }
+.pf-col-rmvinst { width: 0.21in; }
+.pf-col-sill    { width: 0.21in; }
 
-/* MFG SIZE spanning header */
-.pf-mfg-span {
-  font-size: 5pt;
-  font-weight: 700;
-  text-align: center;
-  border: 1px solid #000;
-  border-bottom: none;
-  padding: 0.01in 0;
-}
-
-/* × separator column styling */
+/* × separator styling */
 .pf-opening-table td.pf-xsep-cell {
   font-size: 6pt;
   font-weight: 700;
@@ -337,27 +348,29 @@
 /* ── Bottom Section ───────────────────────────────────────── */
 .pf-bottom {
   flex-shrink: 0;
-  margin-top: 0.04in;
+  margin-top: 0.03in;
 }
 
 /* Notes box */
 .pf-notes-box {
   border: 2px solid #000;
-  padding: 0.03in 0.05in;
-  min-height: 0.5in;
-  margin-bottom: 0.15in;
+  padding: 0.025in 0.05in;
+  min-height: 0.45in;
+  margin-bottom: 0.08in;
+  box-sizing: border-box;
 }
 
 .pf-notes-label {
   font-weight: 900;
   font-size: 7.5pt;
   text-transform: uppercase;
-  margin-bottom: 0.02in;
+  margin-bottom: 0.015in;
 }
 
 .pf-notes-content {
   width: 100%;
-  height: 0.4in;
+  /* Reduced to allow full bottom section to fit on one page */
+  height: 0.32in;
   border: none;
   outline: none;
   resize: none;
@@ -371,8 +384,8 @@
 /* Certification text */
 .pf-cert-text {
   font-size: 6.5pt;
-  line-height: 1.3;
-  margin-bottom: 0.12in;
+  line-height: 1.25;
+  margin-bottom: 0.08in;
 }
 
 /* ── Bottom Info Grid (repeated customer info for copies) ─── */
@@ -380,14 +393,14 @@
   width: 100%;
   border-collapse: collapse;
   table-layout: fixed;
-  margin-bottom: 0.08in;
+  margin-bottom: 0.06in;
 }
 
 .pf-bottom-info-grid td {
   border: 1.5px solid #000;
-  padding: 0.03in 0.06in;
+  padding: 0.02in 0.05in;
   font-size: 6.5pt;
-  min-height: 0.2in;
+  min-height: 0.18in;
   vertical-align: middle;
 }
 
@@ -419,7 +432,7 @@
 .pf-bottom-info-grid .pf-bi-line-short {
   border-bottom: 1px solid #000;
   display: inline-block;
-  min-width: 0.7in;
+  min-width: 0.65in;
   margin-left: 0.04in;
 }
 
@@ -428,15 +441,15 @@
   display: flex;
   justify-content: space-between;
   align-items: flex-end;
-  margin-bottom: 0.06in;
-  padding-top: 0.06in;
+  margin-bottom: 0.04in;
+  padding-top: 0.04in;
   border-top: 1.5px solid #000;
 }
 
 .pf-sig-field {
   display: flex;
   align-items: flex-end;
-  gap: 0.06in;
+  gap: 0.05in;
   font-weight: 700;
   font-size: 7.5pt;
 }
@@ -444,14 +457,14 @@
 .pf-sig-line {
   border-bottom: 1px solid #000;
   min-width: 2in;
-  height: 0.18in;
+  height: 0.16in;
   display: inline-block;
 }
 
 .pf-sig-line-short {
   border-bottom: 1px solid #000;
-  min-width: 1.2in;
-  height: 0.18in;
+  min-width: 1.1in;
+  height: 0.16in;
   display: inline-block;
 }
 
@@ -473,7 +486,8 @@
 
 .pf-copy-labels {
   display: flex;
-  gap: 0.25in;
+  gap: 0.22in;
+  font-size: 5.5pt;
 }
 
 .pf-page-num {
@@ -543,6 +557,7 @@
     height: 11in !important;
     margin: 0 !important;
     page-break-after: always;
+    overflow: visible !important;
   }
 
   /* Hide edit-mode chrome */
@@ -553,7 +568,7 @@
     display: none !important;
   }
 
-  /* Ensure inputs look like regular text */
+  /* Inputs render as regular text in print */
   .pf-field-value,
   .pf-cust-input,
   .pf-cell-input,
@@ -562,12 +577,34 @@
     border: none !important;
     outline: none !important;
     background: transparent !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* Checkboxes print correctly */
+  .pf-check {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
   }
 
   @page {
     size: letter portrait;
     margin: 0;
   }
+}
+
+/* ── html2canvas PDF export overrides ────────────────────── */
+/* Applied via JS before capture — class pf-pdf-capture */
+.pf-pdf-capture {
+  overflow: visible !important;
+}
+
+.pf-pdf-capture .pf-table-wrapper {
+  overflow: visible !important;
+}
+
+.pf-pdf-capture .pf-sketch-box {
+  overflow: hidden !important;
 }
 
 /* ── Scale for on-screen preview ──────────────────────────── */

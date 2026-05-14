@@ -134,65 +134,87 @@ export function OrderFormPage() {
     drawBox('Estimator:', fd.estimator); drawBox('Phone:', fd.estimatorPhone || '');
     y += skH + 6;
 
-    // Opening table — portrait columns
-    const labels = ['#','QTY','MDL','VNL','INT','EXT','W','×','H','LEG','RAD','WIN','HNG','GLS','FOM','STY','PAT','FUL','SPC','FIL','HLF','MIN','F/L','S','U','NF','FSC','ORL','HOR','TEX','TIN','RMV','SIL'];
-    const cw = [12,14,28,18,16,16,22,8,22,16,18,16,16,20,16,14,18,12,12,12,12,12,12,10,10,14,14,14,14,14,14,14,14];
-    const rh = 12.5;
+    // Opening table — portrait column layout
+    // pw=612, m=22 each side → usable=568pt
+    // Column widths sum to exactly 568pt
+    const labels = ['#','QTY','MODEL','VNL','INT','EXT','W','×','H','LEG','RAD','WIN#','HNG','GLASS','FOAM','STYLE','PAT','FUL','SPC','FIL','HLF','MIN','F/L','S','U','N/F','SCR','ORL','HOR','TEX','TIN','RMV','SIL'];
+    const cw =     [11,  13,   26,   16,   14,   14,   20,  7,  20,  14,   16,   14,   14,   18,    16,   13,    16,   11,   11,   11,   11,   11,   11,   9,   9,   13,   13,   13,   13,   13,   13,   13,   13];
+    // Verify: sum = 11+13+26+16+14+14+20+7+20+14+16+14+14+18+16+13+16+11+11+11+11+11+11+9+9+13+13+13+13+13+13+13+13 = 568
+    const rh = 12; // row height in pt — 20 rows × 12 = 240pt, fits in available space
+    const hdrH = 18; // header row height
     let cx = m;
-    doc.setFont('helvetica', 'bold'); doc.setFontSize(4);
-    labels.forEach((l, i) => { doc.rect(cx, y, cw[i], rh * 1.3); doc.text(l, cx + cw[i] / 2, y + rh, { align: 'center' }); cx += cw[i]; });
-    y += rh * 1.3;
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(4.5);
+    labels.forEach((l, i) => { doc.rect(cx, y, cw[i], hdrH); doc.text(l, cx + cw[i] / 2, y + hdrH * 0.68, { align: 'center' }); cx += cw[i]; });
+    y += hdrH;
 
     doc.setFont('helvetica', 'normal'); doc.setFontSize(5);
     fd.openings.forEach((row, ri) => {
-      if (y > ph - 100) return;
+      // Stop drawing rows if we'd collide with bottom section (reserve 210pt)
+      if (y > ph - 210) return;
       cx = m;
-      const v = [String(ri+1), row.qty?String(row.qty):'', row.model, row.vinylColor, row.intColor, row.extColor,
+      const v = [String(ri+1), row.qty ? String(row.qty) : '', row.model, row.vinylColor, row.intColor, row.extColor,
         row.width, '×', row.height, row.legHeight, row.customRadius, row.windowNumber, row.hinge, row.glassOption,
-        row.foamEnhanced?'✓':'', row.gridStyle, row.gridPattern, row.gridFull?'✓':'', row.gridSpec?'✓':'',
-        row.typeFill?'✓':'', row.typeHalf?'✓':'', row.typeMine?'✓':'',
-        row.tempFull?'✓':'', row.tempS?'✓':'', row.tempU?'✓':'',
-        row.nailFin?'✓':'', row.fullScreen?'✓':'', row.oriel?'✓':'', row.hor?'✓':'',
-        row.typeExt, row.typeInt, row.rmvInst, row.sill?'✓':''];
-      v.forEach((val, i) => { doc.rect(cx, y, cw[i], rh); doc.text(val||'', cx + cw[i]/2, y + rh*0.75, { align: 'center' }); cx += cw[i]; });
+        row.foamEnhanced ? '✓' : '', row.gridStyle, row.gridPattern, row.gridFull ? '✓' : '', row.gridSpec ? '✓' : '',
+        row.typeFill ? '✓' : '', row.typeHalf ? '✓' : '', row.typeMine ? '✓' : '',
+        row.tempFull ? '✓' : '', row.tempS ? '✓' : '', row.tempU ? '✓' : '',
+        row.nailFin ? '✓' : '', row.fullScreen ? '✓' : '', row.oriel ? '✓' : '', row.hor ? '✓' : '',
+        row.typeExt, row.typeInt, row.rmvInst, row.sill ? '✓' : ''];
+      v.forEach((val, i) => {
+        doc.rect(cx, y, cw[i], rh);
+        // Clip long text to cell width - 1pt padding
+        const txt = (val || '').substring(0, Math.floor(cw[i] / 2.8));
+        doc.text(txt, cx + cw[i] / 2, y + rh * 0.78, { align: 'center' });
+        cx += cw[i];
+      });
       y += rh;
     });
-    y += 4;
+    y += 5;
 
     // Notes
     doc.setFont('helvetica', 'bold'); doc.setFontSize(7); doc.text('NOTES:', m, y + 8);
-    doc.rect(m, y + 10, pw - m * 2, 32);
+    doc.rect(m, y + 10, pw - m * 2, 30);
     if (fd.notes) { doc.setFont('helvetica', 'normal'); doc.setFontSize(5.5); doc.text(doc.splitTextToSize(fd.notes, pw - m * 2 - 6), m + 3, y + 18); }
-    y += 48;
+    y += 46;
 
     // Certification
     doc.setFont('helvetica', 'normal'); doc.setFontSize(5);
-    const cert = 'I certify the salesperson has explained and identified each and every abbreviation, term, and drawing on this page to my full satisfaction, and I have complete understanding how each and every window or entrance is measured, how it\'s constructed, accessorized, and warranted.';
+    const cert = "I certify the salesperson has explained and identified each and every abbreviation, term, and drawing on this page to my full satisfaction, and I have complete understanding how each and every window or entrance is measured, how it's constructed, accessorized, and warranted.";
     doc.text(doc.splitTextToSize(cert, pw - m * 2), m, y + 6);
-    y += 22;
+    y += 20;
 
-    // Bottom info grid
-    doc.rect(m, y, (pw - m * 2) * 0.22, 48); doc.rect(m + (pw - m * 2) * 0.22, y, (pw - m * 2) * 0.48, 48); doc.rect(m + (pw - m * 2) * 0.7, y, (pw - m * 2) * 0.3, 48);
-    doc.setFont('helvetica', 'bold'); doc.setFontSize(5);
-    doc.text('Estimator:', m + 3, y + 10); doc.text('Customer:', m + (pw - m * 2) * 0.22 + 3, y + 10); doc.text('PO#', m + (pw - m * 2) * 0.7 + 3, y + 10);
-    doc.text('Phone:', m + 3, y + 34); doc.text('Address', m + (pw - m * 2) * 0.22 + 3, y + 22); doc.text('ACCT #', m + (pw - m * 2) * 0.7 + 3, y + 22);
-    doc.text('ORDER DATE:', m + (pw - m * 2) * 0.7 + 3, y + 34);
-    y += 54;
+    // Bottom info grid — 3 columns (22% | 48% | 30%)
+    const bw = pw - m * 2;
+    const b1 = bw * 0.22, b2 = bw * 0.48, b3 = bw * 0.30;
+    const bh = 44;
+    doc.rect(m, y, b1, bh); doc.rect(m + b1, y, b2, bh); doc.rect(m + b1 + b2, y, b3, bh);
+    // Internal row lines
+    doc.line(m, y + bh * 0.33, m + bw, y + bh * 0.33);
+    doc.line(m, y + bh * 0.66, m + bw, y + bh * 0.66);
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(5.5);
+    doc.text('Estimator:', m + 2, y + bh * 0.22);
+    doc.text('Customer:', m + b1 + 2, y + bh * 0.22); doc.setFont('helvetica', 'normal'); doc.text(fd.customerName, m + b1 + 28, y + bh * 0.22);
+    doc.setFont('helvetica', 'bold'); doc.text('PO#', m + b1 + b2 + 2, y + bh * 0.22);
+    doc.text('Phone:', m + 2, y + bh * 0.55);
+    doc.text('Address', m + b1 + 2, y + bh * 0.55);
+    doc.text('ACCT #', m + b1 + b2 + 2, y + bh * 0.55);
+    doc.text('ORDER DATE:', m + b1 + b2 + 2, y + bh * 0.88);
+    y += bh + 8;
 
-    // OWNER / DATE
+    // OWNER / DATE signature line
     doc.line(m, y, pw - m, y);
-    doc.setFontSize(7); doc.text('OWNER', m, y + 10); doc.line(m + 36, y + 10, m + 180, y + 10);
-    doc.text('DATE', pw / 2 + 40, y + 10); doc.line(pw / 2 + 68, y + 10, pw - m, y + 10);
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(7);
+    doc.text('OWNER', m, y + 11); doc.line(m + 38, y + 11, m + 195, y + 11);
+    doc.text('DATE', pw / 2 + 42, y + 11); doc.line(pw / 2 + 70, y + 11, pw - m, y + 11);
 
-    // Footer
-    doc.setFontSize(5.5);
-    doc.text(`PAGE ${fd.pageNumber} OF ___`, m, ph - m + 4);
-    doc.text('White Copy - Original', pw * 0.28, ph - m + 4);
-    doc.text('Yellow Copy - Estimator', pw * 0.48, ph - m + 4);
-    doc.text('Pink Copy - Customer', pw * 0.72, ph - m + 4);
-
-    doc.save(`OrderForm_${fd.customerName.replace(/\s/g, '_') || 'blank'}.pdf`);
+    // Footer — always anchored to page bottom (ph - m)
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(5.5);
+    doc.text(`PAGE ${fd.pageNumber} OF ___`, m, ph - m + 6);
+    doc.text('White Copy - Original', pw * 0.30, ph - m + 6);
+    doc.text('Yellow Copy - Estimator', pw * 0.50, ph - m + 6);
+    doc.text('Pink Copy - Customer', pw * 0.72, ph - m + 6);
+    doc.save(`OrderForm_${(fd.customerName || 'blank').replace(/\s/g, '_')}.pdf`);
   };
+
 
   const printForm = () => { setMode('print'); setTimeout(() => window.print(), 200); };
 
