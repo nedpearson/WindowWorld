@@ -9,7 +9,8 @@ appointmentRoutes.use(requireAuth);
 appointmentRoutes.get('/', async (req, res) => {
   try {
     const { status, date, search } = req.query;
-    const where: any = {};
+    const userId = (req as any).user?.userId;
+    const where: any = { userId };
 
     if (status && status !== 'all') where.status = status;
     if (date) {
