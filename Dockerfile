@@ -34,15 +34,18 @@ RUN cd server && npx tsc
 FROM node:20-alpine AS production
 WORKDIR /app
 
-# Install only production server deps
+# To properly install only production dependencies in a workspace environment,
+# we need the root package.json and package-lock.json, and the workspace packages.
+COPY package.json package-lock.json ./
 COPY server/package.json ./server/
-RUN cd server && npm install --omit=dev --ignore-scripts
+COPY apps/web/package.json ./apps/web/
+
+# Install only production dependencies
+RUN npm ci --omit=dev --ignore-scripts
 
 # Copy Prisma client (generated during prisma stage)
 COPY --from=prisma /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=prisma /app/node_modules/@prisma ./node_modules/@prisma
-COPY --from=prisma /app/server/node_modules/.prisma ./server/node_modules/.prisma
-COPY --from=prisma /app/server/node_modules/@prisma ./server/node_modules/@prisma
 
 # Copy built server
 COPY --from=server-build /app/server/dist ./server/dist
