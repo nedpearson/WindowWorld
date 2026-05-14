@@ -45,11 +45,11 @@ export function FormsDashboard() {
       {/* Primary action buttons */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '0.875rem', marginBottom: '2rem' }}>
         {[
-          { icon: '📋', label: 'New Order Form', desc: 'Start a new window/door order', action: () => navigate('/appointments/new?form=order'), color: '#3b82f6' },
-          { icon: '📄', label: 'New Contract', desc: 'Start a new customer contract', action: () => navigate('/appointments/new?form=contract'), color: '#8b5cf6' },
-          { icon: '⏳', label: 'Continue Draft', desc: `${active.length} in progress`, action: () => {}, color: '#f59e0b', disabled: active.length === 0 },
+        { icon: '📋', label: 'New Order Form', desc: 'Start a new window/door order', action: () => navigate('/appointments'), color: '#3b82f6' },
+          { icon: '📄', label: 'New Contract', desc: 'Start a new customer contract', action: () => navigate('/appointments'), color: '#8b5cf6' },
+          { icon: '⏳', label: 'Continue Draft', desc: `${active.length} in progress`, action: () => document.getElementById('in-progress-section')?.scrollIntoView({ behavior: 'smooth' }), color: '#f59e0b', disabled: active.length === 0 },
           { icon: '🔍', label: 'Review Missing Info', desc: 'Check all open forms', action: () => navigate('/office'), color: '#ef4444' },
-          { icon: '📦', label: 'Export Packet', desc: 'Generate signed PDF packet', action: () => {}, color: '#22c55e' },
+          { icon: '📦', label: 'Export Packet', desc: 'Generate signed PDF packet', action: () => navigate('/office'), color: '#22c55e' },
         ].map((btn, i) => (
           <button key={i} onClick={btn.action} disabled={btn.disabled}
             style={{ padding: '1.25rem 1rem', background: 'var(--bg-card)', border: `1px solid ${btn.disabled ? 'var(--border)' : `${btn.color}40`}`, borderRadius: 12, cursor: btn.disabled ? 'not-allowed' : 'pointer', textAlign: 'left', transition: 'all 0.2s', opacity: btn.disabled ? 0.5 : 1 }}
@@ -65,7 +65,7 @@ export function FormsDashboard() {
 
       {/* Active in-progress forms */}
       {active.length > 0 && (
-        <div style={{ marginBottom: '2rem' }}>
+        <div id="in-progress-section" style={{ marginBottom: '2rem' }}>
           <h2 style={{ marginBottom: '0.75rem', fontSize: '1rem', fontWeight: 700 }}>⏳ In Progress ({active.length})</h2>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
             {active.slice(0, 5).map(a => <AppointmentFormCard key={a.id} appt={a} navigate={navigate} />)}

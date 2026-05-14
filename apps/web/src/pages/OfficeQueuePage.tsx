@@ -27,6 +27,7 @@ function getOfficeStatus(appt: any): string {
 export function OfficeQueuePage() {
   const [appointments, setAppointments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
   const [filter, setFilter] = useState<ReviewStatus>('all');
   const [search, setSearch] = useState('');
   const navigate = useNavigate();
@@ -35,8 +36,11 @@ export function OfficeQueuePage() {
     (async () => {
       try {
         const data = await api.getAppointments();
-        setAppointments(data);
-      } catch {}
+        setAppointments(Array.isArray(data) ? data : []);
+      } catch (err: any) {
+        console.error('OfficeQueue load error:', err);
+        setLoadError(err?.message || 'Failed to load appointments. Is the server running?');
+      }
       setLoading(false);
     })();
   }, []);
@@ -71,6 +75,15 @@ export function OfficeQueuePage() {
   }, [enriched]);
 
   if (loading) return <div className="loading" style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-muted)' }}>Loading office queue...</div>;
+
+  if (loadError) return (
+    <div style={{ padding: '3rem', textAlign: 'center' }}>
+      <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>⚠️</div>
+      <h2 style={{ color: 'var(--danger)', marginBottom: '0.5rem' }}>Could Not Load Queue</h2>
+      <p style={{ color: 'var(--text-muted)', marginBottom: '1.5rem' }}>{loadError}</p>
+      <button className="btn btn-primary" onClick={() => window.location.reload()}>Retry</button>
+    </div>
+  );
 
   return (
     <div>
