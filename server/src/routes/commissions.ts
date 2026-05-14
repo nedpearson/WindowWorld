@@ -585,3 +585,114 @@ commissionRoutes.get('/export/excel', async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+
+// ═══════════════════════════════════════════════════════════
+// COMMISSION REPORT GENERATION — Exact Excel Template Replica
+// ═══════════════════════════════════════════════════════════
+
+import { generateCommissionReport, buildReportInputFromRecord, type CommissionReportInput } from '../commissionReportEngine.js';
+
+// ── POST /api/commissions/report/generate — generate report from commission record ──
+commissionRoutes.post('/report/generate', async (req, res) => {
+  try {
+    const userId = (req as any).user?.id;
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+
+    const { recordId, input: manualInput } = req.body;
+
+    let reportInput: CommissionReportInput;
+
+    if (recordId) {
+      // Generate from a specific commission record
+      const record = await prisma.commissionRecord.findFirst({
+        where: { id: recordId, userId },
+        include: { payments: true, adjustments: true },
+      });
+      if (!record) return res.status(404).json({ error: 'Commission record not found' });
+      reportInput = buildReportInputFromRecord(record);
+    } else if (manualInput) {
+      // Generate from manual input
+      reportInput = manualInput;
+    } else {
+      return res.status(400).json({ error: 'Provide recordId or input data' });
+    }
+
+    const { buffer, validation } = await generateCommissionReport(reportInput);
+
+    const customerName = (reportInput.customerName || 'blank').replace(/\s+/g, '_');
+    const date = new Date().toISOString().split('T')[0];
+    const fileName = `Commission_Report_BTR_${date}_${customerName}.xlsx`;
+
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename=${fileName}`);
+    res.setHeader('X-Validation-Status', validation.valid ? 'valid' : 'needs_review');
+    res.send(buffer);
+  } catch (err: any) {
+    console.error('Commission report generation error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── POST /api/commissions/report/generate-blank — generate blank commission sheet ──
+commissionRoutes.post('/report/generate-blank', async (req, res) => {
+  try {
+    const userId = (req as any).user?.id;
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+
+    // Generate a blank sheet with just the rep info
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    const reportInput: CommissionReportInput = {
+      salesRep: user?.name || '',
+      region: 'BTR',
+    };
+
+    const { buffer } = await generateCommissionReport(reportInput);
+    const date = new Date().toISOString().split('T')[0];
+    const fileName = `Commission_Sheet_BTR_${date}_blank.xlsx`;
+
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename=${fileName}`);
+    res.send(buffer);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── GET /api/commissions/report/template-info — get template analysis ──
+commissionRoutes.get('/report/template-info', async (req, res) => {
+  try {
+    const userId = (req as any).user?.id;
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+
+    const templatePath = path.resolve(__dirname2, '../../templates/Commission_Sheet_BTR_Template.xlsx');
+    if (!fs.existsSync(templatePath)) {
+      return res.status(404).json({ error: 'Commission template not found' });
+    }
+
+    const wb = new ExcelJS.Workbook();
+    await wb.xlsx.readFile(templatePath);
+    const ws = wb.getWorksheet('Commission');
+
+    res.json({
+      templateFile: 'Commission_Sheet_BTR_Template.xlsx',
+      formNumber: 'CS-2400',
+      revised: '6/2/2023',
+      sheets: wb.worksheets.map(s => s.name),
+      mergeCount: Object.keys((ws as any)?._merges || {}).length,
+      formulaCount: 69,
+      printArea: ws?.pageSetup?.printArea || 'A1:W51',
+      orientation: ws?.pageSetup?.orientation || 'portrait',
+      scale: ws?.pageSetup?.scale || 90,
+      inputCellCount: 49, // customer + product + option + comments
+      sections: {
+        customerInfo: { rows: '4-8', cells: 12 },
+        productQuantities: { rows: '13-43', cells: 24, colA: true },
+        optionQuantities: { rows: '11-43', cells: 25, colL: true },
+        formulas: { count: 69, totalCell: 'T45/U45/V45' },
+        comments: { row: 47, range: 'L47:V50' },
+      },
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});

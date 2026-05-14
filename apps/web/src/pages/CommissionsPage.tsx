@@ -18,7 +18,9 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string }
 };
 
 export function CommissionsPage() {
-  const [tab, setTab] = useState<'dashboard' | 'records' | 'import'>('dashboard');
+  const [tab, setTab] = useState<'dashboard' | 'records' | 'import' | 'reports'>('dashboard');
+  const [templateInfo, setTemplateInfo] = useState<any>(null);
+  const [reportGenerating, setReportGenerating] = useState(false);
   const [dashboard, setDashboard] = useState<any>(null);
   const [records, setRecords] = useState<any[]>([]);
   const [total, setTotal] = useState(0);
@@ -107,6 +109,42 @@ export function CommissionsPage() {
     }
   };
 
+  const loadTemplateInfo = async () => {
+    try {
+      const data = await api.get('/commissions/report/template-info');
+      setTemplateInfo(data);
+    } catch (err) {
+      console.error('Template info error:', err);
+    }
+  };
+
+  const generateReport = async (recordId?: string) => {
+    setReportGenerating(true);
+    try {
+      const token = localStorage.getItem('wwa_token');
+      const endpoint = recordId ? '/api/commissions/report/generate' : '/api/commissions/report/generate-blank';
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token || ''}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify(recordId ? { recordId } : {}),
+      });
+      if (!res.ok) throw new Error('Report generation failed');
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      const disp = res.headers.get('Content-Disposition') || '';
+      const match = disp.match(/filename=([^;]+)/);
+      a.href = url;
+      a.download = match ? match[1] : 'Commission_Report.xlsx';
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err: any) {
+      alert('Report generation failed: ' + err.message);
+    } finally {
+      setReportGenerating(false);
+    }
+  };
+
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
@@ -120,11 +158,11 @@ export function CommissionsPage() {
 
       {/* Tab bar */}
       <div style={{ display: 'flex', gap: '0.25rem', marginBottom: '1.25rem' }}>
-        {(['dashboard', 'records', 'import'] as const).map(t => (
-          <button key={t} onClick={() => setTab(t)}
+        {(['dashboard', 'records', 'import', 'reports'] as const).map(t => (
+          <button key={t} onClick={() => { setTab(t); if (t === 'reports' && !templateInfo) loadTemplateInfo(); }}
             className={`btn btn-sm ${tab === t ? 'btn-primary' : 'btn-secondary'}`}
             style={{ textTransform: 'capitalize' }}>
-            {t === 'dashboard' ? '📊 Dashboard' : t === 'records' ? '📋 Records' : '📂 Import'}
+            {t === 'dashboard' ? '📊 Dashboard' : t === 'records' ? '📋 Records' : t === 'import' ? '📂 Import' : '📄 Reports'}
           </button>
         ))}
       </div>
@@ -420,6 +458,95 @@ export function CommissionsPage() {
               </div>
             )}
           </div>
+        </div>
+      )}
+
+      {/* ═══ REPORTS TAB ═══ */}
+      {tab === 'reports' && (
+        <div>
+          {/* Template Info */}
+          <div className="card" style={{ marginBottom: '1rem' }}>
+            <h3 style={{ marginBottom: '0.75rem' }}>📄 Commission Report — Exact Template Replica</h3>
+            <p style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)', marginBottom: '1rem' }}>
+              Generates an exact copy of the BTR Commission Sheet (CS-2400) workbook,
+              populated with your commission data. All formulas, formatting, borders,
+              merged cells, and print settings are preserved.
+            </p>
+
+            {templateInfo && (
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '1rem' }}>
+                <div style={{ padding: '0.75rem', background: 'var(--bg-secondary)', borderRadius: 'var(--radius-sm)' }}>
+                  <div style={{ fontSize: '0.6875rem', color: 'var(--text-muted)', fontWeight: 600, marginBottom: '0.25rem' }}>TEMPLATE</div>
+                  <div style={{ fontSize: '0.8125rem', fontWeight: 700 }}>{templateInfo.templateFile}</div>
+                  <div style={{ fontSize: '0.6875rem', color: 'var(--text-muted)' }}>Form {templateInfo.formNumber} · Rev. {templateInfo.revised}</div>
+                </div>
+                <div style={{ padding: '0.75rem', background: 'var(--bg-secondary)', borderRadius: 'var(--radius-sm)' }}>
+                  <div style={{ fontSize: '0.6875rem', color: 'var(--text-muted)', fontWeight: 600, marginBottom: '0.25rem' }}>PRESERVED</div>
+                  <div style={{ fontSize: '0.8125rem' }}>
+                    {templateInfo.mergeCount} merges · {templateInfo.formulaCount} formulas
+                  </div>
+                  <div style={{ fontSize: '0.6875rem', color: 'var(--text-muted)' }}>
+                    {templateInfo.orientation} · Scale {templateInfo.scale}% · Print: {templateInfo.printArea}
+                  </div>
+                </div>
+                <div style={{ padding: '0.75rem', background: 'var(--bg-secondary)', borderRadius: 'var(--radius-sm)' }}>
+                  <div style={{ fontSize: '0.6875rem', color: 'var(--text-muted)', fontWeight: 600, marginBottom: '0.25rem' }}>INPUT CELLS</div>
+                  <div style={{ fontSize: '0.8125rem' }}>{templateInfo.inputCellCount} mapped cells</div>
+                  <div style={{ fontSize: '0.6875rem', color: 'var(--text-muted)' }}>
+                    Customer ({templateInfo.sections?.customerInfo?.cells}) · Products ({templateInfo.sections?.productQuantities?.cells}) · Options ({templateInfo.sections?.optionQuantities?.cells})
+                  </div>
+                </div>
+                <div style={{ padding: '0.75rem', background: 'var(--bg-secondary)', borderRadius: 'var(--radius-sm)' }}>
+                  <div style={{ fontSize: '0.6875rem', color: 'var(--text-muted)', fontWeight: 600, marginBottom: '0.25rem' }}>TOTALS FORMULA</div>
+                  <div style={{ fontSize: '0.8125rem', fontFamily: 'monospace' }}>=SUM(I13:I43)+SUM(V11:V43)</div>
+                  <div style={{ fontSize: '0.6875rem', color: 'var(--text-muted)' }}>Cell {templateInfo.sections?.formulas?.totalCell}</div>
+                </div>
+              </div>
+            )}
+
+            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+              <button className="btn btn-primary" onClick={() => generateReport()} disabled={reportGenerating}>
+                {reportGenerating ? '⏳ Generating...' : '📥 Download Blank Commission Sheet'}
+              </button>
+            </div>
+          </div>
+
+          {/* Generate from records */}
+          {records.length > 0 || dashboard?.recentRecords?.length > 0 ? (
+            <div className="card">
+              <h3 style={{ marginBottom: '0.75rem' }}>Generate from Commission Record</h3>
+              <p style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)', marginBottom: '0.75rem' }}>
+                Select a commission record to generate a populated report.
+              </p>
+              <div style={{ overflowX: 'auto' }}>
+                <table className="data-table" style={{ fontSize: '0.8125rem' }}>
+                  <thead>
+                    <tr><th>Customer</th><th>Region</th><th># Win</th><th>Job Amt</th><th>Commission</th><th>Action</th></tr>
+                  </thead>
+                  <tbody>
+                    {(dashboard?.recentRecords || []).map((r: any) => (
+                      <tr key={r.id}>
+                        <td><strong>{r.customerName || '—'}</strong></td>
+                        <td>{r.region || 'BTR'}</td>
+                        <td>{r.numWindows || '—'}</td>
+                        <td>{fmt(r.jobAmount)}</td>
+                        <td style={{ color: '#22c55e', fontWeight: 700 }}>{fmt(r.commissionAmount)}</td>
+                        <td>
+                          <button className="btn btn-sm btn-primary" onClick={() => generateReport(r.id)} disabled={reportGenerating}>
+                            📄 Generate
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          ) : (
+            <div className="card" style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+              No commission records to generate reports from. Import data first.
+            </div>
+          )}
         </div>
       )}
     </div>
