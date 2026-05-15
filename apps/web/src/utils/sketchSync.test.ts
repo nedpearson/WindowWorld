@@ -175,6 +175,71 @@ describe('Clear Story Pricing', () => {
   });
 });
 
+describe('Fixture / Proximity Markers', () => {
+  it('tub marker has no number and no opening', () => {
+    const m = createMarkerData('s', 'tub', 200, 200, 'front', []);
+    expect(m.markerNumber).toBeNull();
+    expect(m.markerLabel).toBe('🛁 Tub');
+    expect(m.windowType).toBeNull();
+    expect(m.markerType).toBe('fixture');
+  });
+
+  it('shower marker has no number', () => {
+    const m = createMarkerData('s', 'shower', 200, 200, 'front', []);
+    expect(m.markerNumber).toBeNull();
+    expect(m.markerLabel).toBe('🚿 Shower');
+    expect(m.markerType).toBe('fixture');
+  });
+
+  it('stairs marker has no number', () => {
+    const m = createMarkerData('s', 'stairs', 200, 200, 'front', []);
+    expect(m.markerNumber).toBeNull();
+    expect(m.markerLabel).toBe('🪜 Stairs');
+  });
+
+  it('sink and toilet markers are fixtures', () => {
+    const sink = createMarkerData('s', 'sink', 100, 100, 'front', []);
+    const toilet = createMarkerData('s', 'toilet', 100, 100, 'front', []);
+    expect(sink.markerType).toBe('fixture');
+    expect(toilet.markerType).toBe('fixture');
+  });
+
+  it('fixture markers do not affect opening numbering', () => {
+    const tub = createMarkerData('s', 'tub', 50, 50, 'front', []);
+    const shower = createMarkerData('s', 'shower', 100, 100, 'front', [tub]);
+    const window1 = createMarkerData('s', 'window_x', 200, 200, 'front', [tub, shower]);
+    expect(window1.markerNumber).toBe(1); // tub & shower shouldn't count
+  });
+
+  it('tub/shower nearby triggers proximity tempered warning', () => {
+    const tub = createMarkerData('s', 'tub', 200, 200, 'front', []);
+    const window1 = createMarkerData('s', 'window_x', 250, 250, 'front', []);
+    window1.width = 35; window1.height = 60;
+    const frontDoor = createMarkerData('s', 'front_door', 0, 0, 'front', []);
+    const warnings = validateSketchSync([tub, window1, frontDoor], [{ openingNumber: 1 }], []);
+    expect(warnings.some(w => w.type === 'proximity_tempered_warning')).toBe(true);
+  });
+
+  it('distant tub does not trigger proximity warning', () => {
+    const tub = createMarkerData('s', 'tub', 50, 50, 'front', []);
+    const window1 = createMarkerData('s', 'window_x', 500, 500, 'front', []);
+    window1.width = 35; window1.height = 60;
+    const frontDoor = createMarkerData('s', 'front_door', 0, 0, 'front', []);
+    const warnings = validateSketchSync([tub, window1, frontDoor], [{ openingNumber: 1 }], []);
+    expect(warnings.some(w => w.type === 'proximity_tempered_warning')).toBe(false);
+  });
+
+  it('toilet and sink do NOT trigger proximity tempered warning', () => {
+    const toilet = createMarkerData('s', 'toilet', 200, 200, 'front', []);
+    const sink = createMarkerData('s', 'sink', 210, 210, 'front', []);
+    const window1 = createMarkerData('s', 'window_x', 230, 230, 'front', []);
+    window1.width = 35; window1.height = 60;
+    const frontDoor = createMarkerData('s', 'front_door', 0, 0, 'front', []);
+    const warnings = validateSketchSync([toilet, sink, window1, frontDoor], [{ openingNumber: 1 }], []);
+    expect(warnings.some(w => w.type === 'proximity_tempered_warning')).toBe(false);
+  });
+});
+
 describe('Lockdown Checklist', () => {
   it('blocks export with unresolved items', () => {
     const markers: SketchMarkerData[] = [

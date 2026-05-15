@@ -7,7 +7,8 @@
 import { WW_OPENING_DEFAULTS } from './openingDefaults';
 
 // ── Types ────────────────────────────────────────────────────
-export type MarkerSymbol = 'window_x' | 'front_door' | 'patio_door' | 'special_shape' | 'oriel' | 'note' | 'arrow';
+export type MarkerSymbol = 'window_x' | 'front_door' | 'patio_door' | 'special_shape' | 'oriel' | 'note' | 'arrow'
+  | 'tub' | 'shower' | 'sink' | 'toilet' | 'stairs';
 export type WindowType = 'double_hung' | 'picture' | 'slider' | 'casement' | 'awning' | 'patio_door' | 'bso' | 'special_shape' | 'oriel' | 'door_sidelight' | 'other';
 export type ShapeType = 'arch' | 'eyebrow' | 'circle_top' | 'quarter_arch' | 'half_round' | 'extended_leg' | 'custom' | 'other';
 export type ValidationStatus = 'incomplete' | 'measured' | 'priced' | 'complete';
@@ -55,7 +56,8 @@ export interface MarkerGroupData {
 export interface SyncWarning {
   type: 'marker_no_opening' | 'opening_no_marker' | 'duplicate_number' | 'missing_measurement'
     | 'missing_window_type' | 'missing_options' | 'joined_missing_note' | 'missing_front_door'
-    | 'oriel_no_confirmation' | 'special_shape_missing_dims' | 'tempered_unresolved';
+    | 'oriel_no_confirmation' | 'special_shape_missing_dims' | 'tempered_unresolved'
+    | 'proximity_tempered_warning';
   severity: 'blocker' | 'high' | 'medium' | 'low';
   message: string;
   markerNumber?: number;
@@ -71,6 +73,11 @@ const SYMBOL_TO_WINDOW_TYPE: Record<MarkerSymbol, WindowType | null> = {
   oriel: 'oriel',
   note: null,
   arrow: null,
+  tub: null,
+  shower: null,
+  sink: null,
+  toilet: null,
+  stairs: null,
 };
 
 const SYMBOL_TO_MARKER_TYPE: Record<MarkerSymbol, string> = {
@@ -81,7 +88,16 @@ const SYMBOL_TO_MARKER_TYPE: Record<MarkerSymbol, string> = {
   oriel: 'window',
   note: 'note',
   arrow: 'dimension',
+  tub: 'fixture',
+  shower: 'fixture',
+  sink: 'fixture',
+  toilet: 'fixture',
+  stairs: 'fixture',
 };
+
+// Proximity fixture types that don't create openings
+export const FIXTURE_MARKERS: MarkerSymbol[] = ['tub', 'shower', 'sink', 'toilet', 'stairs'];
+export const NON_OPENING_MARKERS: MarkerSymbol[] = ['note', 'arrow', 'front_door', ...FIXTURE_MARKERS];
 
 // ── Create marker data with defaults ────────────────────────
 export function createMarkerData(
@@ -92,18 +108,22 @@ export function createMarkerData(
   elevation: string,
   existingMarkers: SketchMarkerData[],
 ): SketchMarkerData {
-  const isOpeningMarker = symbol !== 'note' && symbol !== 'arrow' && symbol !== 'front_door';
+  const isOpeningMarker = !NON_OPENING_MARKERS.includes(symbol);
   const nextNumber = isOpeningMarker
     ? getNextMarkerNumber(existingMarkers)
     : null;
 
-  const label = symbol === 'front_door'
-    ? 'Front Door'
-    : symbol === 'note'
-      ? 'Note'
-      : symbol === 'arrow'
-        ? ''
-        : `X #${nextNumber}`;
+  const fixtureLabels: Partial<Record<MarkerSymbol, string>> = {
+    front_door: 'Front Door',
+    note: 'Note',
+    arrow: '',
+    tub: '🛁 Tub',
+    shower: '🚿 Shower',
+    sink: '🚰 Sink',
+    toilet: '🚽 Toilet',
+    stairs: '🪜 Stairs',
+  };
+  const label = fixtureLabels[symbol] ?? `X #${nextNumber}`;
 
   return {
     id: `marker_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
@@ -136,7 +156,7 @@ export function createMarkerData(
 // ── Get next available marker number ────────────────────────
 export function getNextMarkerNumber(markers: SketchMarkerData[]): number {
   const numbers = markers
-    .filter(m => m.markerNumber !== null && m.markerSymbol !== 'front_door' && m.markerSymbol !== 'note' && m.markerSymbol !== 'arrow')
+    .filter(m => m.markerNumber !== null && !NON_OPENING_MARKERS.includes(m.markerSymbol))
     .map(m => m.markerNumber!);
   if (numbers.length === 0) return 1;
   return Math.max(...numbers) + 1;
@@ -209,9 +229,8 @@ export function validateSketchSync(
   groups: MarkerGroupData[],
 ): SyncWarning[] {
   const warnings: SyncWarning[] = [];
-  const openingMarkers = markers.filter(m =>
-    m.markerSymbol !== 'note' && m.markerSymbol !== 'arrow' && m.markerSymbol !== 'front_door'
-  );
+  const openingMarkers = markers.filter(m => !NON_OPENING_MARKERS.includes(m.markerSymbol));
+  const fixtureMarkers = markers.filter(m => FIXTURE_MARKERS.includes(m.markerSymbol));
 
   // Check front door exists
   if (!markers.find(m => m.markerSymbol === 'front_door')) {
@@ -323,6 +342,25 @@ export function validateSketchSync(
     }
   }
 
+  // ── Proximity tempered glass warnings from fixtures ──
+  const wetFixtures = fixtureMarkers.filter(f => f.markerSymbol === 'tub' || f.markerSymbol === 'shower');
+  for (const fixture of wetFixtures) {
+    for (const marker of openingMarkers) {
+      const dx = marker.x - fixture.x;
+      const dy = marker.y - fixture.y;
+      const pixelDist = Math.sqrt(dx * dx + dy * dy);
+      // If markers are close on the canvas, flag for tempered review
+      if (pixelDist < 150) {
+        warnings.push({
+          type: 'proximity_tempered_warning',
+          severity: 'high',
+          message: `X #${marker.markerNumber} is near a ${fixture.markerSymbol} — check tempered glass requirement (Rule A: within 60").`,
+          markerNumber: marker.markerNumber!,
+        });
+      }
+    }
+  }
+
   return warnings;
 }
 
@@ -353,9 +391,7 @@ export function buildLockdownChecklist(
   safetyReviews: any[],
 ): LockdownItem[] {
   const items: LockdownItem[] = [];
-  const openingMarkers = markers.filter(m =>
-    m.markerSymbol !== 'note' && m.markerSymbol !== 'arrow' && m.markerSymbol !== 'front_door'
-  );
+  const openingMarkers = markers.filter(m => !NON_OPENING_MARKERS.includes(m.markerSymbol));
 
   // ── SKETCH ──
   const hasFrontDoor = markers.some(m => m.markerSymbol === 'front_door');

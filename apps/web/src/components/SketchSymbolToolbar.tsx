@@ -9,13 +9,14 @@ import type { MarkerSymbol } from '../utils/sketchSync';
 
 export type SketchTool = 'pen' | 'line' | 'rect' | 'eraser'
   | 'window_x' | 'front_door' | 'patio_door' | 'special_shape' | 'oriel'
-  | 'note' | 'arrow' | 'join_mull';
+  | 'note' | 'arrow' | 'join_mull'
+  | 'tub' | 'shower' | 'sink' | 'toilet' | 'stairs';
 
 interface ToolDef {
   id: SketchTool;
   icon: string;
   label: string;
-  category: 'draw' | 'symbol' | 'action';
+  category: 'draw' | 'symbol' | 'proximity' | 'action';
   tooltip: string;
   markerSymbol?: MarkerSymbol;
 }
@@ -33,6 +34,12 @@ const TOOLS: ToolDef[] = [
   { id: 'oriel', icon: '🔲', label: 'Oriel', category: 'symbol', tooltip: 'Oriel window marker', markerSymbol: 'oriel' },
   { id: 'note', icon: '📝', label: 'Note', category: 'symbol', tooltip: 'Add note to sketch', markerSymbol: 'note' },
   { id: 'arrow', icon: '➡️', label: 'Arrow', category: 'symbol', tooltip: 'Label / arrow', markerSymbol: 'arrow' },
+  // ── Proximity / Fixtures (for tempered glass checks) ──
+  { id: 'tub', icon: '🛁', label: 'Tub', category: 'proximity', tooltip: 'Bathtub — triggers tempered glass check', markerSymbol: 'tub' },
+  { id: 'shower', icon: '🚿', label: 'Shower', category: 'proximity', tooltip: 'Shower — triggers tempered glass check', markerSymbol: 'shower' },
+  { id: 'sink', icon: '🚰', label: 'Sink', category: 'proximity', tooltip: 'Sink near window', markerSymbol: 'sink' },
+  { id: 'toilet', icon: '🚽', label: 'Toilet', category: 'proximity', tooltip: 'Toilet near window', markerSymbol: 'toilet' },
+  { id: 'stairs', icon: '🪜', label: 'Stairs', category: 'proximity', tooltip: 'Stairs — safety hazard, check tempered', markerSymbol: 'stairs' },
   // ── Actions ──
   { id: 'join_mull', icon: '🔗', label: 'Join', category: 'action', tooltip: 'Join/mull selected markers' },
   { id: 'eraser', icon: '🧹', label: 'Erase', category: 'action', tooltip: 'Erase / delete marker' },
@@ -134,6 +141,14 @@ export function SketchSymbolToolbar({
             {TOOLS.filter(t => t.category === 'draw').map(renderBtn)}
             <div style={{ width: 1, height: btnSize, background: 'var(--border)', margin: '0 0.1rem' }} />
             {TOOLS.filter(t => t.category === 'symbol').map(renderBtn)}
+          </div>
+
+          {/* Proximity / fixtures row */}
+          <div style={{ display: 'flex', gap: '0.25rem', flexWrap: 'wrap', alignItems: 'center' }}>
+            <span style={{ fontSize: '0.55rem', color: 'var(--text-muted)', fontWeight: 600, letterSpacing: 0.5, textTransform: 'uppercase', marginRight: '0.15rem' }}>
+              ⚠️ Nearby
+            </span>
+            {TOOLS.filter(t => t.category === 'proximity').map(renderBtn)}
           </div>
 
           {/* Actions row */}

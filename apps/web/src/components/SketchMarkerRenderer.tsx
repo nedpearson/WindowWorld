@@ -1,10 +1,11 @@
 // ═══════════════════════════════════════════════════════════════
 // Sketch Marker Renderer
-// Renders typed markers (X, door, patio, shape, oriel, note, arrow)
-// on the sketch canvas with validation badges
+// Renders typed markers (X, door, patio, shape, oriel, note, arrow,
+// tub, shower, sink, toilet, stairs) on the sketch canvas with validation badges
 // ═══════════════════════════════════════════════════════════════
 
-import type { SketchMarkerData, ValidationStatus } from '../utils/sketchSync';
+import type { SketchMarkerData, ValidationStatus, MarkerSymbol } from '../utils/sketchSync';
+import { FIXTURE_MARKERS } from '../utils/sketchSync';
 
 const MARKER_SIZE = 28;
 const SMALL_MARKER_SIZE = 20;
@@ -62,6 +63,13 @@ export function drawMarkerOnCanvas(
       break;
     case 'arrow':
       // Arrow is drawn via line tool, not a marker render
+      break;
+    case 'tub':
+    case 'shower':
+    case 'sink':
+    case 'toilet':
+    case 'stairs':
+      drawFixtureMarker(ctx, x, y, SMALL_MARKER_SIZE + 4, markerSymbol, markerLabel, isSelected);
       break;
   }
 
@@ -294,6 +302,69 @@ function drawNote(
   ctx.textAlign = 'left';
   ctx.textBaseline = 'middle';
   ctx.fillText(`📝 ${label || 'Note'}`, x + 4, y);
+}
+
+// ── Fixture / proximity marker ──────────────────────────────
+const FIXTURE_ICON: Record<string, string> = {
+  tub: '🛁',
+  shower: '🚿',
+  sink: '🚰',
+  toilet: '🚽',
+  stairs: '🪜',
+};
+
+const FIXTURE_COLOR: Record<string, string> = {
+  tub: '#0ea5e9',
+  shower: '#06b6d4',
+  sink: '#8b5cf6',
+  toilet: '#a78bfa',
+  stairs: '#f97316',
+};
+
+function drawFixtureMarker(
+  ctx: CanvasRenderingContext2D,
+  x: number, y: number, r: number,
+  symbol: MarkerSymbol,
+  label: string,
+  selected: boolean,
+) {
+  const color = FIXTURE_COLOR[symbol] || '#64748b';
+  const icon = FIXTURE_ICON[symbol] || '⚠';
+
+  // Dashed proximity radius (visual cue for 60" check zone)
+  if (symbol === 'tub' || symbol === 'shower' || symbol === 'stairs') {
+    ctx.save();
+    ctx.setLineDash([4, 3]);
+    ctx.strokeStyle = `${color}55`;
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.arc(x, y, 60, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.restore();
+  }
+
+  // Main circle
+  ctx.beginPath();
+  ctx.arc(x, y, r, 0, Math.PI * 2);
+  ctx.fillStyle = selected ? color : `${color}cc`;
+  ctx.fill();
+  ctx.strokeStyle = '#fff';
+  ctx.lineWidth = selected ? 3 : 2;
+  ctx.stroke();
+
+  // Icon
+  ctx.fillStyle = '#fff';
+  ctx.font = `${r}px sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(icon, x, y);
+
+  // Label below
+  ctx.fillStyle = '#94a3b8';
+  ctx.font = '8px Inter, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText(label, x, y + r + 10);
 }
 
 // ── Validation badge ────────────────────────────────────────
