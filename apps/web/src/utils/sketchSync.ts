@@ -8,7 +8,11 @@ import { WW_OPENING_DEFAULTS } from './openingDefaults';
 
 // ── Types ────────────────────────────────────────────────────
 export type MarkerSymbol = 'window_x' | 'front_door' | 'patio_door' | 'special_shape' | 'oriel' | 'note' | 'arrow'
-  | 'tub' | 'shower' | 'sink' | 'toilet' | 'stairs';
+  | 'tub' | 'shower' | 'sink' | 'toilet' | 'stairs'
+  | 'brick' | 'siding' | 'stucco' | 'wood';
+export type ExteriorMaterial = 'brick' | 'siding' | 'stucco' | 'wood';
+export type MeasureSide = 'outside' | 'inside';
+export type MeasureRule = 'smallest_outside' | 'inside_standard';
 export type WindowType = 'double_hung' | 'picture' | 'slider' | 'casement' | 'awning' | 'patio_door' | 'bso' | 'special_shape' | 'oriel' | 'door_sidelight' | 'other';
 export type ShapeType = 'arch' | 'eyebrow' | 'circle_top' | 'quarter_arch' | 'half_round' | 'extended_leg' | 'custom' | 'other';
 export type ValidationStatus = 'incomplete' | 'measured' | 'priced' | 'complete';
@@ -57,7 +61,7 @@ export interface SyncWarning {
   type: 'marker_no_opening' | 'opening_no_marker' | 'duplicate_number' | 'missing_measurement'
     | 'missing_window_type' | 'missing_options' | 'joined_missing_note' | 'missing_front_door'
     | 'oriel_no_confirmation' | 'special_shape_missing_dims' | 'tempered_unresolved'
-    | 'proximity_tempered_warning';
+    | 'proximity_tempered_warning' | 'material_measure_reminder';
   severity: 'blocker' | 'high' | 'medium' | 'low';
   message: string;
   markerNumber?: number;
@@ -78,6 +82,10 @@ const SYMBOL_TO_WINDOW_TYPE: Record<MarkerSymbol, WindowType | null> = {
   sink: null,
   toilet: null,
   stairs: null,
+  brick: null,
+  siding: null,
+  stucco: null,
+  wood: null,
 };
 
 const SYMBOL_TO_MARKER_TYPE: Record<MarkerSymbol, string> = {
@@ -93,11 +101,16 @@ const SYMBOL_TO_MARKER_TYPE: Record<MarkerSymbol, string> = {
   sink: 'fixture',
   toilet: 'fixture',
   stairs: 'fixture',
+  brick: 'material',
+  siding: 'material',
+  stucco: 'material',
+  wood: 'material',
 };
 
 // Proximity fixture types that don't create openings
 export const FIXTURE_MARKERS: MarkerSymbol[] = ['tub', 'shower', 'sink', 'toilet', 'stairs'];
-export const NON_OPENING_MARKERS: MarkerSymbol[] = ['note', 'arrow', 'front_door', ...FIXTURE_MARKERS];
+export const MATERIAL_MARKERS: MarkerSymbol[] = ['brick', 'siding', 'stucco', 'wood'];
+export const NON_OPENING_MARKERS: MarkerSymbol[] = ['note', 'arrow', 'front_door', ...FIXTURE_MARKERS, ...MATERIAL_MARKERS];
 
 // ── Create marker data with defaults ────────────────────────
 export function createMarkerData(
@@ -113,7 +126,7 @@ export function createMarkerData(
     ? getNextMarkerNumber(existingMarkers)
     : null;
 
-  const fixtureLabels: Partial<Record<MarkerSymbol, string>> = {
+  const nonOpeningLabels: Partial<Record<MarkerSymbol, string>> = {
     front_door: 'Front Door',
     note: 'Note',
     arrow: '',
@@ -122,8 +135,12 @@ export function createMarkerData(
     sink: '🚰 Sink',
     toilet: '🚽 Toilet',
     stairs: '🪜 Stairs',
+    brick: '🧱 Brick',
+    siding: '🏠 Siding',
+    stucco: '🏗️ Stucco',
+    wood: '🪵 Wood',
   };
-  const label = fixtureLabels[symbol] ?? `X #${nextNumber}`;
+  const label = nonOpeningLabels[symbol] ?? `X #${nextNumber}`;
 
   return {
     id: `marker_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
@@ -477,4 +494,113 @@ export function checkTubShowerRule(distanceInches: number | null, nearby: string
 export function checkLowGlassRule(bottomHeightInches: number | null, glassAreaSqft: number | null): boolean {
   if (bottomHeightInches !== null && bottomHeightInches < 18 && glassAreaSqft !== null && glassAreaSqft > 9) return true;
   return false;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// WINDOW WORLD MEASUREMENT RULES
+// ─────────────────────────────────────────────────────────────
+// Brick:    Measure from OUTSIDE, take the SMALLEST measurement
+// Siding:   Measure from INSIDE
+// Stucco:   Measure from INSIDE
+// Wood:     Measure from INSIDE
+// Mixed (brick outer + wood/siding inner): Use brick rule —
+//   measure from OUTSIDE at the smallest point
+// ═══════════════════════════════════════════════════════════════
+
+export interface MeasurementGuidance {
+  material: ExteriorMaterial;
+  measureSide: MeasureSide;
+  rule: MeasureRule;
+  instruction: string;
+  shortLabel: string;
+}
+
+const MATERIAL_RULES: Record<ExteriorMaterial, MeasurementGuidance> = {
+  brick: {
+    material: 'brick',
+    measureSide: 'outside',
+    rule: 'smallest_outside',
+    instruction: 'BRICK: Measure from OUTSIDE. Take the SMALLEST measurement at 3 points (top, middle, bottom for width; left, center, right for height).',
+    shortLabel: 'Outside / Smallest',
+  },
+  siding: {
+    material: 'siding',
+    measureSide: 'inside',
+    rule: 'inside_standard',
+    instruction: 'SIDING: Measure from INSIDE. Measure jamb-to-jamb width and sill-to-header height.',
+    shortLabel: 'Inside',
+  },
+  stucco: {
+    material: 'stucco',
+    measureSide: 'inside',
+    rule: 'inside_standard',
+    instruction: 'STUCCO: Measure from INSIDE. Measure jamb-to-jamb width and sill-to-header height.',
+    shortLabel: 'Inside',
+  },
+  wood: {
+    material: 'wood',
+    measureSide: 'inside',
+    rule: 'inside_standard',
+    instruction: 'WOOD: Measure from INSIDE. Measure jamb-to-jamb width and sill-to-header height.',
+    shortLabel: 'Inside',
+  },
+};
+
+/** Get measurement guidance for a given exterior material */
+export function getMeasurementGuidance(material: ExteriorMaterial): MeasurementGuidance {
+  return MATERIAL_RULES[material];
+}
+
+/**
+ * Resolve measurement rule when there are mixed materials.
+ * Window World rule: if ANY side is brick, use the brick rule
+ * (measure from outside, smallest measurement).
+ */
+export function resolveMixedMaterialRule(
+  outerMaterial: ExteriorMaterial | null,
+  innerMaterial: ExteriorMaterial | null,
+): MeasurementGuidance {
+  // If outer is brick, or either side is brick → use brick rule
+  if (outerMaterial === 'brick' || innerMaterial === 'brick') {
+    return MATERIAL_RULES.brick;
+  }
+  // Otherwise use the outer material rule, or inner, or default to siding
+  const primary = outerMaterial || innerMaterial || 'siding';
+  return MATERIAL_RULES[primary];
+}
+
+/**
+ * Find the nearest material marker to a window marker on the canvas.
+ * Returns the material type if one is found within proximity threshold.
+ */
+export function detectNearbyMaterial(
+  windowMarker: SketchMarkerData,
+  allMarkers: SketchMarkerData[],
+  proximityPx: number = 200,
+): ExteriorMaterial | null {
+  const materialMarkers = allMarkers.filter(m => MATERIAL_MARKERS.includes(m.markerSymbol));
+
+  let closest: { material: ExteriorMaterial; dist: number } | null = null;
+  for (const mat of materialMarkers) {
+    const dx = windowMarker.x - mat.x;
+    const dy = windowMarker.y - mat.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    if (dist <= proximityPx && (!closest || dist < closest.dist)) {
+      closest = { material: mat.markerSymbol as ExteriorMaterial, dist };
+    }
+  }
+  return closest?.material ?? null;
+}
+
+/**
+ * Auto-apply measurement guidance to a window marker based on nearby material markers.
+ * Returns the guidance or null if no material marker is nearby.
+ */
+export function autoApplyMeasurementRule(
+  windowMarker: SketchMarkerData,
+  allMarkers: SketchMarkerData[],
+): MeasurementGuidance | null {
+  const material = detectNearbyMaterial(windowMarker, allMarkers);
+  if (!material) return null;
+  return getMeasurementGuidance(material);
 }

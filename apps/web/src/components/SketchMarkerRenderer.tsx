@@ -5,7 +5,7 @@
 // ═══════════════════════════════════════════════════════════════
 
 import type { SketchMarkerData, ValidationStatus, MarkerSymbol } from '../utils/sketchSync';
-import { FIXTURE_MARKERS } from '../utils/sketchSync';
+import { FIXTURE_MARKERS, MATERIAL_MARKERS } from '../utils/sketchSync';
 
 const MARKER_SIZE = 28;
 const SMALL_MARKER_SIZE = 20;
@@ -71,12 +71,19 @@ export function drawMarkerOnCanvas(
     case 'stairs':
       drawFixtureMarker(ctx, x, y, SMALL_MARKER_SIZE + 4, markerSymbol, markerLabel, isSelected);
       break;
+    case 'brick':
+    case 'siding':
+    case 'stucco':
+    case 'wood':
+      drawMaterialMarker(ctx, x, y, SMALL_MARKER_SIZE + 6, markerSymbol, markerLabel, isSelected);
+      break;
   }
 
   ctx.restore();
 
   // Room label below marker
-  if (marker.roomLocation && markerSymbol !== 'note' && markerSymbol !== 'arrow') {
+  if (marker.roomLocation && markerSymbol !== 'note' && markerSymbol !== 'arrow'
+    && !MATERIAL_MARKERS.includes(markerSymbol as any)) {
     ctx.save();
     ctx.fillStyle = '#64748b';
     ctx.font = '9px Inter, sans-serif';
@@ -365,6 +372,78 @@ function drawFixtureMarker(
   ctx.font = '8px Inter, sans-serif';
   ctx.textAlign = 'center';
   ctx.fillText(label, x, y + r + 10);
+}
+
+// ── Exterior material marker ───────────────────────────────
+const MATERIAL_ICON: Record<string, string> = {
+  brick: '🧱',
+  siding: '🏠',
+  stucco: '🏗️',
+  wood: '🪵',
+};
+
+const MATERIAL_COLOR: Record<string, string> = {
+  brick: '#dc2626',
+  siding: '#2563eb',
+  stucco: '#d97706',
+  wood: '#92400e',
+};
+
+const MATERIAL_MEASURE_LABEL: Record<string, string> = {
+  brick: '→ OUTSIDE / Smallest',
+  siding: '→ INSIDE',
+  stucco: '→ INSIDE',
+  wood: '→ INSIDE',
+};
+
+function drawMaterialMarker(
+  ctx: CanvasRenderingContext2D,
+  x: number, y: number, r: number,
+  symbol: MarkerSymbol,
+  label: string,
+  selected: boolean,
+) {
+  const color = MATERIAL_COLOR[symbol] || '#64748b';
+  const icon = MATERIAL_ICON[symbol] || '🏠';
+  const measureLabel = MATERIAL_MEASURE_LABEL[symbol] || '';
+
+  // Dashed material zone radius
+  ctx.save();
+  ctx.setLineDash([6, 4]);
+  ctx.strokeStyle = `${color}44`;
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.arc(x, y, 80, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.restore();
+
+  // Rounded rectangle background
+  const w = r * 2.5;
+  const h = r * 1.6;
+  ctx.fillStyle = selected ? color : `${color}cc`;
+  ctx.strokeStyle = '#fff';
+  ctx.lineWidth = selected ? 3 : 2;
+  ctx.beginPath();
+  ctx.roundRect(x - w / 2, y - h / 2, w, h, 8);
+  ctx.fill();
+  ctx.stroke();
+
+  // Icon + label
+  ctx.fillStyle = '#fff';
+  ctx.font = `${r * 0.7}px sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(icon, x - w / 5, y);
+
+  ctx.font = 'bold 9px Inter, sans-serif';
+  ctx.fillText(symbol.charAt(0).toUpperCase() + symbol.slice(1), x + w / 6, y);
+
+  // Measurement instruction below
+  ctx.fillStyle = symbol === 'brick' ? '#fca5a5' : '#93c5fd';
+  ctx.font = 'bold 8px Inter, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText(measureLabel, x, y + h / 2 + 12);
 }
 
 // ── Validation badge ────────────────────────────────────────

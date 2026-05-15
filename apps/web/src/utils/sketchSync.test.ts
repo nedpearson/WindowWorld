@@ -17,6 +17,10 @@ import {
   calculateClearStoryCharges,
   buildLockdownChecklist,
   isExportBlocked,
+  getMeasurementGuidance,
+  resolveMixedMaterialRule,
+  detectNearbyMaterial,
+  autoApplyMeasurementRule,
 } from './sketchSync';
 import type { SketchMarkerData, MarkerGroupData } from './sketchSync';
 
@@ -237,6 +241,99 @@ describe('Fixture / Proximity Markers', () => {
     const frontDoor = createMarkerData('s', 'front_door', 0, 0, 'front', []);
     const warnings = validateSketchSync([toilet, sink, window1, frontDoor], [{ openingNumber: 1 }], []);
     expect(warnings.some(w => w.type === 'proximity_tempered_warning')).toBe(false);
+  });
+});
+
+describe('Material Markers & Measurement Rules', () => {
+  it('brick marker is a material type with no number', () => {
+    const m = createMarkerData('s', 'brick', 100, 100, 'front', []);
+    expect(m.markerType).toBe('material');
+    expect(m.markerNumber).toBeNull();
+    expect(m.markerLabel).toBe('🧱 Brick');
+    expect(m.windowType).toBeNull();
+  });
+
+  it('siding marker is a material type', () => {
+    const m = createMarkerData('s', 'siding', 100, 100, 'front', []);
+    expect(m.markerType).toBe('material');
+    expect(m.markerLabel).toBe('🏠 Siding');
+  });
+
+  it('material markers do not affect window numbering', () => {
+    const brick = createMarkerData('s', 'brick', 50, 50, 'front', []);
+    const wood = createMarkerData('s', 'wood', 100, 100, 'front', [brick]);
+    const window1 = createMarkerData('s', 'window_x', 200, 200, 'front', [brick, wood]);
+    expect(window1.markerNumber).toBe(1);
+  });
+
+  it('brick = measure outside, smallest', () => {
+    const g = getMeasurementGuidance('brick');
+    expect(g.measureSide).toBe('outside');
+    expect(g.rule).toBe('smallest_outside');
+    expect(g.instruction).toContain('OUTSIDE');
+    expect(g.instruction).toContain('SMALLEST');
+  });
+
+  it('siding = measure inside', () => {
+    const g = getMeasurementGuidance('siding');
+    expect(g.measureSide).toBe('inside');
+    expect(g.rule).toBe('inside_standard');
+  });
+
+  it('stucco = measure inside', () => {
+    const g = getMeasurementGuidance('stucco');
+    expect(g.measureSide).toBe('inside');
+  });
+
+  it('wood = measure inside', () => {
+    const g = getMeasurementGuidance('wood');
+    expect(g.measureSide).toBe('inside');
+  });
+
+  it('mixed brick outer + wood inner = brick rule wins', () => {
+    const g = resolveMixedMaterialRule('brick', 'wood');
+    expect(g.measureSide).toBe('outside');
+    expect(g.rule).toBe('smallest_outside');
+  });
+
+  it('mixed wood outer + brick inner = brick rule still wins', () => {
+    const g = resolveMixedMaterialRule('wood', 'brick');
+    expect(g.measureSide).toBe('outside');
+    expect(g.rule).toBe('smallest_outside');
+  });
+
+  it('mixed siding + stucco = siding rule (outer)', () => {
+    const g = resolveMixedMaterialRule('siding', 'stucco');
+    expect(g.measureSide).toBe('inside');
+    expect(g.rule).toBe('inside_standard');
+  });
+
+  it('null + null = defaults to siding rule', () => {
+    const g = resolveMixedMaterialRule(null, null);
+    expect(g.measureSide).toBe('inside');
+  });
+
+  it('detects nearby brick marker', () => {
+    const brick = createMarkerData('s', 'brick', 100, 100, 'front', []);
+    const window1 = createMarkerData('s', 'window_x', 200, 150, 'front', []);
+    const material = detectNearbyMaterial(window1, [brick, window1]);
+    expect(material).toBe('brick');
+  });
+
+  it('no material detected when too far', () => {
+    const brick = createMarkerData('s', 'brick', 50, 50, 'front', []);
+    const window1 = createMarkerData('s', 'window_x', 500, 500, 'front', []);
+    const material = detectNearbyMaterial(window1, [brick, window1]);
+    expect(material).toBeNull();
+  });
+
+  it('autoApplyMeasurementRule returns brick guidance near brick marker', () => {
+    const brick = createMarkerData('s', 'brick', 100, 100, 'front', []);
+    const window1 = createMarkerData('s', 'window_x', 200, 150, 'front', []);
+    const guidance = autoApplyMeasurementRule(window1, [brick, window1]);
+    expect(guidance).not.toBeNull();
+    expect(guidance!.measureSide).toBe('outside');
+    expect(guidance!.rule).toBe('smallest_outside');
   });
 });
 

@@ -10,13 +10,14 @@ import type { MarkerSymbol } from '../utils/sketchSync';
 export type SketchTool = 'pen' | 'line' | 'rect' | 'eraser'
   | 'window_x' | 'front_door' | 'patio_door' | 'special_shape' | 'oriel'
   | 'note' | 'arrow' | 'join_mull'
-  | 'tub' | 'shower' | 'sink' | 'toilet' | 'stairs';
+  | 'tub' | 'shower' | 'sink' | 'toilet' | 'stairs'
+  | 'brick' | 'siding' | 'stucco' | 'wood';
 
 interface ToolDef {
   id: SketchTool;
   icon: string;
   label: string;
-  category: 'draw' | 'symbol' | 'proximity' | 'action';
+  category: 'draw' | 'symbol' | 'proximity' | 'material' | 'action';
   tooltip: string;
   markerSymbol?: MarkerSymbol;
 }
@@ -40,6 +41,11 @@ const TOOLS: ToolDef[] = [
   { id: 'sink', icon: '🚰', label: 'Sink', category: 'proximity', tooltip: 'Sink near window', markerSymbol: 'sink' },
   { id: 'toilet', icon: '🚽', label: 'Toilet', category: 'proximity', tooltip: 'Toilet near window', markerSymbol: 'toilet' },
   { id: 'stairs', icon: '🪜', label: 'Stairs', category: 'proximity', tooltip: 'Stairs — safety hazard, check tempered', markerSymbol: 'stairs' },
+  // ── Exterior Material (measurement rules) ──
+  { id: 'brick', icon: '🧱', label: 'Brick', category: 'material', tooltip: 'Brick exterior — measure OUTSIDE, smallest', markerSymbol: 'brick' },
+  { id: 'siding', icon: '🏠', label: 'Siding', category: 'material', tooltip: 'Siding exterior — measure INSIDE', markerSymbol: 'siding' },
+  { id: 'stucco', icon: '🏗️', label: 'Stucco', category: 'material', tooltip: 'Stucco exterior — measure INSIDE', markerSymbol: 'stucco' },
+  { id: 'wood', icon: '🪵', label: 'Wood', category: 'material', tooltip: 'Wood exterior — measure INSIDE', markerSymbol: 'wood' },
   // ── Actions ──
   { id: 'join_mull', icon: '🔗', label: 'Join', category: 'action', tooltip: 'Join/mull selected markers' },
   { id: 'eraser', icon: '🧹', label: 'Erase', category: 'action', tooltip: 'Erase / delete marker' },
@@ -149,6 +155,14 @@ export function SketchSymbolToolbar({
               ⚠️ Nearby
             </span>
             {TOOLS.filter(t => t.category === 'proximity').map(renderBtn)}
+          </div>
+
+          {/* Exterior material row */}
+          <div style={{ display: 'flex', gap: '0.25rem', flexWrap: 'wrap', alignItems: 'center' }}>
+            <span style={{ fontSize: '0.55rem', color: 'var(--text-muted)', fontWeight: 600, letterSpacing: 0.5, textTransform: 'uppercase', marginRight: '0.15rem' }}>
+              🏠 Exterior
+            </span>
+            {TOOLS.filter(t => t.category === 'material').map(renderBtn)}
           </div>
 
           {/* Actions row */}
