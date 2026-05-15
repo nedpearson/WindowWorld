@@ -12,7 +12,7 @@ import { MarkerDetailSheet } from '../components/MarkerDetailSheet';
 import { JoinMullWorkflow } from '../components/JoinMullWorkflow';
 import { createMarkerData, createOpeningFromMarker, validateSketchSync, calcUnitedInches } from '../utils/sketchSync';
 import type { SketchMarkerData, MarkerGroupData, MarkerSymbol } from '../utils/sketchSync';
-import api from '../utils/api';
+import { api } from '../utils/api';
 
 const ELEVATIONS = ['front', 'rear', 'left', 'right', 'garage', 'other'] as const;
 const CANVAS_W = 800;
@@ -46,7 +46,7 @@ export default function SketchFieldPage() {
   // Load appointment + openings
   useEffect(() => {
     if (!appointmentId) return;
-    api.get(`/api/appointments/${appointmentId}`).then(r => {
+    api.get(`/appointments/${appointmentId}`).then(r => {
       setAppointment(r.data);
       if (r.data.openings) setOpenings(r.data.openings);
     }).catch(() => {});

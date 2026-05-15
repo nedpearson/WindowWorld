@@ -6,7 +6,7 @@
 
 import { WINDOW_WORLD_RULES, evaluateRules as localEvaluateRules } from './businessRules';
 import type { RuleResult, RuleContext, RuleTrigger } from './businessRules';
-import api from './api';
+import { api } from './api';
 
 interface DbRule {
   id: string;
