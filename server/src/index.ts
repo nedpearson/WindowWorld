@@ -36,7 +36,13 @@ app.use(express.json({ limit: '50mb' }));
 
 // Health check
 app.get('/api/health', (_req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+  res.json({
+    ok: true,
+    service: 'WindowWorldAssistant',
+    timestamp: new Date().toISOString(),
+    env: process.env.NODE_ENV || 'development',
+    uptime: Math.floor(process.uptime()),
+  });
 });
 
 // Network IP — returns machine's LAN IP for QR code
@@ -116,7 +122,7 @@ if (IS_PROD) {
   });
 }
 
-app.listen(PORT, () => {
+app.listen(Number(PORT), '0.0.0.0', () => {
   console.log(`🪟 WindowWorldAssistant on :${PORT} [${IS_PROD ? 'PROD' : 'DEV'}]`);
   console.log('Backend successfully reloaded!');
 });
