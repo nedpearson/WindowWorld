@@ -18,7 +18,10 @@ import { MobileOrderFormPage } from './pages/MobileOrderFormPage';
 import { RuleEngineAdminPage } from './pages/RuleEngineAdminPage';
 import { MeasurementRulesAdminPage } from './pages/MeasurementRulesAdminPage';
 import { CommissionsPage } from './pages/CommissionsPage';
-import { useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
+
+const SketchFieldPage = lazy(() => import('./pages/SketchFieldPage'));
+const FinalLockdownReview = lazy(() => import('./pages/FinalLockdownReview'));
 
 export default function App() {
   const user = useAuthStore((s) => s.user);
@@ -49,6 +52,8 @@ export default function App() {
       <Route path="/mobile" element={<MobileHomePage />} />
       <Route path="/mobile/field/:appointmentId" element={<MobileFieldPage />} />
       <Route path="/mobile/order/:appointmentId" element={<MobileOrderFormPage />} />
+      <Route path="/appointments/:appointmentId/sketch" element={<Suspense fallback={<div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh' }}>Loading Sketch...</div>}><SketchFieldPage /></Suspense>} />
+      <Route path="/appointments/:appointmentId/lockdown" element={<Suspense fallback={<div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh' }}>Loading Review...</div>}><FinalLockdownReview /></Suspense>} />
 
       {/* Main app with sidebar */}
       <Route path="/*" element={

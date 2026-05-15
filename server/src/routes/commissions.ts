@@ -4,12 +4,14 @@ import ExcelJS from 'exceljs';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
+import { requireAuth } from '../middleware/auth.js';
 
 const __filename2 = fileURLToPath(import.meta.url);
 const __dirname2 = path.dirname(__filename2);
 
 const prisma = new PrismaClient();
 export const commissionRoutes = Router();
+commissionRoutes.use(requireAuth);
 
 // ═══════════════════════════════════════════════════════════
 // Commission Module — Private sales rep commission tracking
@@ -18,7 +20,7 @@ export const commissionRoutes = Router();
 // ── GET /api/commissions — list commission records ──
 commissionRoutes.get('/', async (req, res) => {
   try {
-    const userId = (req as any).user?.id;
+    const userId = (req as any).user?.userId;
     if (!userId) return res.status(401).json({ error: 'Unauthorized' });
 
     const { status, search, dateFrom, dateTo, linked, limit = '50', offset = '0' } = req.query;
@@ -64,7 +66,7 @@ commissionRoutes.get('/', async (req, res) => {
 // ── GET /api/commissions/dashboard — summary stats ──
 commissionRoutes.get('/dashboard', async (req, res) => {
   try {
-    const userId = (req as any).user?.id;
+    const userId = (req as any).user?.userId;
     if (!userId) return res.status(401).json({ error: 'Unauthorized' });
 
     const where = { userId, isDeleted: false };
@@ -126,7 +128,7 @@ commissionRoutes.get('/dashboard', async (req, res) => {
 // ── POST /api/commissions/import/analyze — analyze workbook ──
 commissionRoutes.post('/import/analyze', async (req, res) => {
   try {
-    const userId = (req as any).user?.id;
+    const userId = (req as any).user?.userId;
     if (!userId) return res.status(401).json({ error: 'Unauthorized' });
 
     const { filePath } = req.body;
@@ -293,7 +295,7 @@ commissionRoutes.post('/import/analyze', async (req, res) => {
 // ── POST /api/commissions/import/execute — run the import ──
 commissionRoutes.post('/import/execute', async (req, res) => {
   try {
-    const userId = (req as any).user?.id;
+    const userId = (req as any).user?.userId;
     if (!userId) return res.status(401).json({ error: 'Unauthorized' });
 
     const { filePath, parsedData, columnMapping } = req.body;
@@ -398,7 +400,7 @@ commissionRoutes.post('/import/execute', async (req, res) => {
 // ── GET /api/commissions/imports — list import history ──
 commissionRoutes.get('/imports', async (req, res) => {
   try {
-    const userId = (req as any).user?.id;
+    const userId = (req as any).user?.userId;
     if (!userId) return res.status(401).json({ error: 'Unauthorized' });
 
     const imports = await prisma.commissionImport.findMany({
@@ -416,7 +418,7 @@ commissionRoutes.get('/imports', async (req, res) => {
 // ── PATCH /api/commissions/:id — update a commission record ──
 commissionRoutes.patch('/:id', async (req, res) => {
   try {
-    const userId = (req as any).user?.id;
+    const userId = (req as any).user?.userId;
     if (!userId) return res.status(401).json({ error: 'Unauthorized' });
 
     const record = await prisma.commissionRecord.findFirst({
@@ -438,7 +440,7 @@ commissionRoutes.patch('/:id', async (req, res) => {
 // ── DELETE /api/commissions/:id — soft delete ──
 commissionRoutes.delete('/:id', async (req, res) => {
   try {
-    const userId = (req as any).user?.id;
+    const userId = (req as any).user?.userId;
     if (!userId) return res.status(401).json({ error: 'Unauthorized' });
 
     await prisma.commissionRecord.updateMany({
@@ -455,7 +457,7 @@ commissionRoutes.delete('/:id', async (req, res) => {
 // ── POST /api/commissions/:id/payments — record a payment ──
 commissionRoutes.post('/:id/payments', async (req, res) => {
   try {
-    const userId = (req as any).user?.id;
+    const userId = (req as any).user?.userId;
     if (!userId) return res.status(401).json({ error: 'Unauthorized' });
 
     const record = await prisma.commissionRecord.findFirst({
@@ -501,7 +503,7 @@ commissionRoutes.post('/:id/payments', async (req, res) => {
 // ── POST /api/commissions/:id/link — link to appointment ──
 commissionRoutes.post('/:id/link', async (req, res) => {
   try {
-    const userId = (req as any).user?.id;
+    const userId = (req as any).user?.userId;
     if (!userId) return res.status(401).json({ error: 'Unauthorized' });
 
     const record = await prisma.commissionRecord.findFirst({
@@ -531,7 +533,7 @@ commissionRoutes.post('/:id/link', async (req, res) => {
 // ── GET /api/commissions/export/excel — export to Excel ──
 commissionRoutes.get('/export/excel', async (req, res) => {
   try {
-    const userId = (req as any).user?.id;
+    const userId = (req as any).user?.userId;
     if (!userId) return res.status(401).json({ error: 'Unauthorized' });
 
     const records = await prisma.commissionRecord.findMany({
@@ -595,7 +597,7 @@ import { generateCommissionReport, buildReportInputFromRecord, type CommissionRe
 // ── POST /api/commissions/report/generate — generate report from commission record ──
 commissionRoutes.post('/report/generate', async (req, res) => {
   try {
-    const userId = (req as any).user?.id;
+    const userId = (req as any).user?.userId;
     if (!userId) return res.status(401).json({ error: 'Unauthorized' });
 
     const { recordId, input: manualInput } = req.body;
@@ -636,7 +638,7 @@ commissionRoutes.post('/report/generate', async (req, res) => {
 // ── POST /api/commissions/report/generate-blank — generate blank commission sheet ──
 commissionRoutes.post('/report/generate-blank', async (req, res) => {
   try {
-    const userId = (req as any).user?.id;
+    const userId = (req as any).user?.userId;
     if (!userId) return res.status(401).json({ error: 'Unauthorized' });
 
     // Generate a blank sheet with just the rep info
@@ -661,7 +663,7 @@ commissionRoutes.post('/report/generate-blank', async (req, res) => {
 // ── GET /api/commissions/report/template-info — get template analysis ──
 commissionRoutes.get('/report/template-info', async (req, res) => {
   try {
-    const userId = (req as any).user?.id;
+    const userId = (req as any).user?.userId;
     if (!userId) return res.status(401).json({ error: 'Unauthorized' });
 
     const templatePath = path.resolve(__dirname2, '../../templates/Commission_Sheet_BTR_Template.xlsx');

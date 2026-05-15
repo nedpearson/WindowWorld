@@ -45,13 +45,13 @@ sketchRoutes.post('/', async (req, res) => {
   }
 });
 
-// Sync markers for a sketch
+// Sync markers for a sketch (enhanced for sketch-first flow)
 sketchRoutes.post('/:sketchId/markers', async (req, res) => {
   try {
-    const { markers } = req.body; // Array of markers
+    const { markers } = req.body;
     const sketchId = req.params.sketchId;
     
-    // Simplistic sync: delete existing markers, insert new
+    // Delete existing markers, insert new
     await prisma.sketchMarker.deleteMany({ where: { sketchId } });
     
     if (markers && markers.length > 0) {
@@ -59,22 +59,112 @@ sketchRoutes.post('/:sketchId/markers', async (req, res) => {
         data: markers.map((m: any) => ({
           sketchId,
           markerType: m.markerType || 'window',
+          markerNumber: m.markerNumber || null,
+          markerSymbol: m.markerSymbol || null,
+          markerLabel: m.markerLabel || null,
+          windowType: m.windowType || m.productType || null,
+          shapeType: m.shapeType || null,
           x: m.x,
           y: m.y,
-          width: m.width,
-          height: m.height,
-          elevation: m.elevation,
-          roomLocation: m.roomLocation,
-          productType: m.productType,
-          notes: m.notes
+          width: m.width || null,
+          height: m.height || null,
+          unitedInches: m.unitedInches || null,
+          elevation: m.elevation || null,
+          roomLocation: m.roomLocation || null,
+          floorNumber: m.floorNumber || 1,
+          productType: m.productType || null,
+          specialtyType: m.specialtyType || null,
+          ladderReq: m.ladderReq || false,
+          removalType: m.removalType || null,
+          installType: m.installType || null,
+          exteriorMaterial: m.exteriorMaterial || null,
+          notes: m.notes || null,
+          pricingStatus: m.pricingStatus || null,
+          linkedOrderRowNumber: m.linkedOrderRowNumber || null,
+          validationStatus: m.validationStatus || 'incomplete',
+          groupId: m.groupId || null,
         }))
       });
     }
 
-    const updatedMarkers = await prisma.sketchMarker.findMany({ where: { sketchId } });
+    const updatedMarkers = await prisma.sketchMarker.findMany({
+      where: { sketchId },
+      include: { links: true, group: true },
+    });
     res.json(updatedMarkers);
   } catch (err) {
     res.status(500).json({ error: 'Failed to sync markers' });
+  }
+});
+
+// Create marker group (join/mull)
+sketchRoutes.post('/:sketchId/groups', async (req, res) => {
+  try {
+    const { groupType, groupNote, keepSeparateRows, memberMarkerIds } = req.body;
+    const sketchId = req.params.sketchId;
+
+    const group = await prisma.sketchMarkerGroup.create({
+      data: {
+        sketchId,
+        groupType: groupType || 'mull_pair',
+        groupNote: groupNote || null,
+        keepSeparateRows: keepSeparateRows ?? true,
+        needsReview: true,
+        pricingReviewed: false,
+      },
+    });
+
+    // Link markers to group
+    if (memberMarkerIds && memberMarkerIds.length > 0) {
+      await prisma.sketchMarker.updateMany({
+        where: { id: { in: memberMarkerIds }, sketchId },
+        data: { groupId: group.id },
+      });
+      // Create group member entries
+      for (let i = 0; i < memberMarkerIds.length; i++) {
+        await prisma.sketchMarkerGroupMember.create({
+          data: { groupId: group.id, markerId: memberMarkerIds[i], position: i },
+        });
+      }
+    }
+
+    const fullGroup = await prisma.sketchMarkerGroup.findUnique({
+      where: { id: group.id },
+      include: { markers: true, members: true },
+    });
+    res.status(201).json(fullGroup);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to create marker group' });
+  }
+});
+
+// Get groups for a sketch
+sketchRoutes.get('/:sketchId/groups', async (req, res) => {
+  try {
+    const groups = await prisma.sketchMarkerGroup.findMany({
+      where: { sketchId: req.params.sketchId },
+      include: { markers: true, members: true },
+    });
+    res.json(groups);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch groups' });
+  }
+});
+
+// Delete a group
+sketchRoutes.delete('/groups/:groupId', async (req, res) => {
+  try {
+    const groupId = req.params.groupId;
+    // Unlink markers
+    await prisma.sketchMarker.updateMany({
+      where: { groupId },
+      data: { groupId: null },
+    });
+    await prisma.sketchMarkerGroupMember.deleteMany({ where: { groupId } });
+    await prisma.sketchMarkerGroup.delete({ where: { id: groupId } });
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to delete group' });
   }
 });
 

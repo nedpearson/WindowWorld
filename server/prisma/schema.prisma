@@ -518,6 +518,7 @@ model FormSketch {
   warnings        SketchWarningFlag[]
   scores          SketchCompletenessScore[]
   clarityScores   InstallerClarityScore[]
+  markerGroups    SketchMarkerGroup[]
 
   @@index([appointmentId])
   @@index([companyId])
@@ -544,6 +545,11 @@ model SketchMarker {
   sketchId        String
   companyId       String?
   markerType      String   // window | door | note | dimension | warning
+  markerNumber    Int?     // auto-incremented per sketch (X #1, X #2...)
+  markerSymbol    String?  // window_x | front_door | patio_door | special_shape | oriel | note | arrow
+  markerLabel     String?  // display label e.g. "X #1", "Front Door"
+  windowType      String?  // double_hung | picture | slider | casement | awning | patio_door | bso | special_shape | oriel | other
+  shapeType       String?  // arch | eyebrow | circle_top | quarter_arch | half_round | extended_leg | custom | other
   x               Float
   y               Float
   width           Float?
@@ -561,14 +567,55 @@ model SketchMarker {
   exteriorMaterial String?
   notes           String?
   pricingStatus   String?
+  linkedOrderRowNumber Int? // maps to order form row number
+  validationStatus String?  // incomplete | measured | priced | complete
+  groupId         String?  // link to SketchMarkerGroup
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
   sketch          FormSketch @relation(fields: [sketchId], references: [id], onDelete: Cascade)
   links           SketchMarkerLink[]
+  group           SketchMarkerGroup? @relation(fields: [groupId], references: [id], onDelete: SetNull)
+  groupMembers    SketchMarkerGroupMember[]
 
   @@index([sketchId])
   @@index([companyId])
+  @@index([groupId])
+}
+
+model SketchMarkerGroup {
+  id              String   @id @default(uuid())
+  sketchId        String
+  companyId       String?
+  groupType       String   @default("mull_pair") // mull_pair | twin | triple | bay_bow | field_note | other
+  groupNote       String?
+  keepSeparateRows Boolean @default(true)
+  needsReview     Boolean  @default(true)
+  pricingReviewed Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  sketch          FormSketch @relation(fields: [sketchId], references: [id], onDelete: Cascade)
+  markers         SketchMarker[]
+  members         SketchMarkerGroupMember[]
+
+  @@index([sketchId])
+  @@index([companyId])
+}
+
+model SketchMarkerGroupMember {
+  id              String   @id @default(uuid())
+  groupId         String
+  markerId        String
+  position        Int      @default(0)
+  createdAt       DateTime @default(now())
+
+  group           SketchMarkerGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  marker          SketchMarker      @relation(fields: [markerId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, markerId])
+  @@index([groupId])
+  @@index([markerId])
 }
 
 model SketchMarkerLink {
@@ -688,19 +735,33 @@ model InstallerClarityScore {
 // ═══════════════════════════════════════════════════════════
 
 model BusinessRule {
-  id              String   @id @default(cuid())
-  name            String
-  description     String
-  isActive        Boolean  @default(true)
-  severity        String   @default("high") // blocker | high | medium | low
-  triggerField    String?
-  triggerValue    String?
-  actionType      String   // set_field | warn | require_confirmation
-  actionField     String?
-  actionValue     String?
-  message         String
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id                    String   @id @default(cuid())
+  ruleKey               String   @unique
+  name                  String
+  description           String
+  category              String   @default("window_defaults") // sketch_marker | window_defaults | exterior_install | pricing | measurement | oriel | specialty_shape | mull_joined | tempered_glass | final_export
+  isActive              Boolean  @default(true)
+  severity              String   @default("high") // blocker | high | medium | low | info
+  triggerField           String?
+  triggerValue           String?
+  triggerConditionJson   Json?    // complex trigger conditions
+  actionType             String   // set_field | warn | require_confirmation | add_price | add_note | expand_abbreviation
+  actionField            String?
+  actionValue            String?
+  actionJson             Json?    // complex actions array
+  message                String
+  autoApply              Boolean  @default(true)
+  requiresConfirmation   Boolean  @default(false)
+  requiresOverrideReason Boolean  @default(false)
+  effectiveDate          DateTime?
+  needsVerification      Boolean  @default(false)
+  companyId              String?
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+
+  @@index([category])
+  @@index([isActive])
+  @@index([companyId])
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -728,27 +789,36 @@ model AppointmentTimelineEvent {
 // ═══════════════════════════════════════════════════════════
 
 model OpeningSafetyGlazingReview {
-  id                  String   @id @default(cuid())
-  appointmentId       String
-  openingId           String?
-  openingNumber       Int
-  safetyReviewStatus  String   @default("not_started")
+  id                        String   @id @default(cuid())
+  appointmentId             String
+  openingId                 String?
+  openingNumber             Int
+  safetyReviewStatus        String   @default("not_started")
   // not_started | reviewed | unsure | override | flagged
-  temperedRequired    String   @default("not_reviewed")
+  temperedRequired          String   @default("not_reviewed")
   // yes | no | unsure | not_reviewed
-  temperedFull        Boolean  @default(false)
-  temperedHalf        Boolean  @default(false)
-  flaggedReasons      String[] @default([])
-  sourceType          String   @default("rule")
+  temperedFull              Boolean  @default(false)
+  temperedHalf              Boolean  @default(false)
+  flaggedReasons            String[] @default([])
+  sourceType                String   @default("rule")
   // manual | voice | text | ai | rule | wizard_question
-  sourcePhrase        String?
-  confidenceScore     Int      @default(0)
-  overrideReason      String?
-  reviewedBy          String?
-  reviewedAt          DateTime?
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
-  metadata            Json?
+  sourcePhrase              String?
+  confidenceScore           Int      @default(0)
+  overrideReason            String?
+  reviewedBy                String?
+  reviewedAt                DateTime?
+  // Tempered Rule A — Tub/Shower proximity
+  tubOrShowerNearby         String?  // yes | no | unknown
+  distanceToTubInches       Float?
+  // Tempered Rule B — Low glass / large glass
+  bottomGlassHeightInches   Float?
+  glassWidthInches          Float?
+  glassHeightInches         Float?
+  glassAreaSqft             Float?
+  lowGlassConditionMet      Boolean  @default(false)
+  createdAt                 DateTime @default(now())
+  updatedAt                 DateTime @updatedAt
+  metadata                  Json?
 
   appointment         Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
 
